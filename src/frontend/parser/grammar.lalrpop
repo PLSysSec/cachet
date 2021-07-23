@@ -311,3 +311,13 @@ Spanned<Rule>: Spanned<Rule> =
 
 Comma<Rule>: Vec<Rule> =
     <xs:(<Rule> ",")*> <x:Rule?> => iterate![..xs, ..x].collect();
+
+match {
+    // Skip whitespace.
+    r"\s*" => {},
+    // Skip line comments.
+    r"//[^\n\r]*[\n\r]*" => {},
+    // Skip block comments.
+    r"/\*([^\*]*\*+[^\*/])*([^\*]*\*+|[^\*])*\*/" => {},
+    _
+}
