@@ -10,13 +10,13 @@ use crate::util::{fmt_join, fmt_join_trailing};
 
 pub use crate::backend::cpp::ast::*;
 
-impl fmt::Display for Code {
+impl<Ident: fmt::Display> fmt::Display for Code<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt_join(f, "\n\n", self.defs.iter())
     }
 }
 
-impl fmt::Display for Def {
+impl<Ident: fmt::Display> fmt::Display for Def<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             Def::Comment(comment_def) => fmt::Display::fmt(comment_def, f),
@@ -32,7 +32,7 @@ impl fmt::Display for CommentDef {
     }
 }
 
-impl fmt::Display for NamespaceDef {
+impl<Ident: fmt::Display> fmt::Display for NamespaceDef<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "namespace {} {{\n\n", self.ident)?;
         fmt_join_trailing(f, "\n\n", self.defs.iter())?;
@@ -40,7 +40,7 @@ impl fmt::Display for NamespaceDef {
     }
 }
 
-impl fmt::Display for FnDef {
+impl<Ident: fmt::Display> fmt::Display for FnDef<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         if self.is_inline {
             write!(f, "inline ")?;
@@ -55,13 +55,13 @@ impl fmt::Display for FnDef {
     }
 }
 
-impl fmt::Display for Param {
+impl<Ident: fmt::Display> fmt::Display for Param<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{} {}", self.type_, self.ident)
     }
 }
 
-impl fmt::Display for Type {
+impl<Ident: fmt::Display> fmt::Display for Type<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             Type::Void => write!(f, "void"),
@@ -73,7 +73,7 @@ impl fmt::Display for Type {
     }
 }
 
-impl fmt::Display for TemplateType {
+impl<Ident: fmt::Display> fmt::Display for TemplateType<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}<", self.inner)?;
         fmt_join(f, ", ", self.args.iter())?;
@@ -81,13 +81,13 @@ impl fmt::Display for TemplateType {
     }
 }
 
-impl fmt::Display for ConstType {
+impl<Ident: fmt::Display> fmt::Display for ConstType<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{} const", self.inner)
     }
 }
 
-impl fmt::Display for RefType {
+impl<Ident: fmt::Display> fmt::Display for RefType<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
@@ -101,7 +101,7 @@ impl fmt::Display for RefType {
     }
 }
 
-impl fmt::Display for Block {
+impl<Ident: fmt::Display> fmt::Display for Block<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{{\n")?;
 
@@ -113,7 +113,7 @@ impl fmt::Display for Block {
     }
 }
 
-impl fmt::Display for Stmt {
+impl<Ident: fmt::Display> fmt::Display for Stmt<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             Stmt::Expr(expr_stmt) => fmt::Display::fmt(expr_stmt, f),
@@ -124,19 +124,19 @@ impl fmt::Display for Stmt {
     }
 }
 
-impl fmt::Display for ExprStmt {
+impl<Ident: fmt::Display> fmt::Display for ExprStmt<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{};", self.expr)
     }
 }
 
-impl fmt::Display for RetStmt {
+impl<Ident: fmt::Display> fmt::Display for RetStmt<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "return {};", self.value)
     }
 }
 
-impl fmt::Display for VarStmt {
+impl<Ident: fmt::Display> fmt::Display for VarStmt<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{} {}", self.type_, self.ident)?;
         if let Some(init) = &self.init {
@@ -146,13 +146,13 @@ impl fmt::Display for VarStmt {
     }
 }
 
-impl fmt::Display for IfStmt {
+impl<Ident: fmt::Display> fmt::Display for IfStmt<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "if ({}) {}", self.cond, self.body)
     }
 }
 
-impl fmt::Display for Expr {
+impl<Ident: fmt::Display> fmt::Display for Expr<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             Expr::Block(block_expr) => fmt::Display::fmt(block_expr, f),
@@ -169,9 +169,9 @@ impl fmt::Display for Expr {
     }
 }
 
-struct MaybeGrouped<'a>(&'a Expr);
+struct MaybeGrouped<'a, Ident = String>(&'a Expr<Ident>);
 
-impl fmt::Display for MaybeGrouped<'_> {
+impl<Ident: fmt::Display> fmt::Display for MaybeGrouped<'_, Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let needs_group = match self.0 {
             // Note: BlockExpr and CommaExpr are always inherently grouped for
@@ -198,13 +198,13 @@ impl fmt::Display for MaybeGrouped<'_> {
     }
 }
 
-impl fmt::Display for BlockExpr {
+impl<Ident: fmt::Display> fmt::Display for BlockExpr<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({})", self.block)
     }
 }
 
-impl fmt::Display for TemplateExpr {
+impl<Ident: fmt::Display> fmt::Display for TemplateExpr<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}<", self.inner)?;
         fmt_join(f, ", ", self.args.iter())?;
@@ -212,13 +212,13 @@ impl fmt::Display for TemplateExpr {
     }
 }
 
-impl fmt::Display for MemberExpr {
+impl<Ident: fmt::Display> fmt::Display for MemberExpr<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}.{}", MaybeGrouped(&self.parent), self.member)
     }
 }
 
-impl fmt::Display for CallExpr {
+impl<Ident: fmt::Display> fmt::Display for CallExpr<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}(", MaybeGrouped(&self.target))?;
         fmt_join(f, ", ", self.args.iter())?;
@@ -226,7 +226,7 @@ impl fmt::Display for CallExpr {
     }
 }
 
-impl fmt::Display for CastExpr {
+impl<Ident: fmt::Display> fmt::Display for CastExpr<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self.kind {
             CastExprKind::Functional(kind) => write!(f, "{}<{}>({})", kind, self.type_, self.expr),
@@ -250,7 +250,7 @@ impl fmt::Display for FunctionalCastExprKind {
     }
 }
 
-impl fmt::Display for UnaryExpr {
+impl<Ident: fmt::Display> fmt::Display for UnaryExpr<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}{}", self.kind, MaybeGrouped(&self.inner))
     }
@@ -268,7 +268,7 @@ impl fmt::Display for UnaryExprKind {
     }
 }
 
-impl fmt::Display for CompareExpr {
+impl<Ident: fmt::Display> fmt::Display for CompareExpr<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
@@ -280,7 +280,7 @@ impl fmt::Display for CompareExpr {
     }
 }
 
-impl fmt::Display for AssignExpr {
+impl<Ident: fmt::Display> fmt::Display for AssignExpr<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
@@ -291,7 +291,7 @@ impl fmt::Display for AssignExpr {
     }
 }
 
-impl fmt::Display for CommaExpr {
+impl<Ident: fmt::Display> fmt::Display for CommaExpr<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,

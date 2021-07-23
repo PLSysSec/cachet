@@ -299,7 +299,7 @@ impl<'a> Generator<'a> {
         (fwd_decls, defs)
     }
 
-    fn generate_cast_fn_ident(&self, kind: CastExprKind, subtype_of: TypeIndex) -> cpp::Ident {
+    fn generate_cast_fn_ident(&self, kind: CastExprKind, subtype_of: TypeIndex) -> Ident {
         format!(
             "{}_{}",
             match kind {
@@ -313,7 +313,7 @@ impl<'a> Generator<'a> {
     fn generate_cast_fn_fwd_decl(
         &self,
         kind: CastExprKind,
-        child_type_namespace_ident: cpp::Ident,
+        child_type_namespace_ident: Ident,
         parent_type_index: TypeIndex,
     ) -> cpp::FnDef {
         let child_type = generate_type(child_type_namespace_ident, TypeKind::Val);
@@ -336,7 +336,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_fn_fwd_decl(&self, ident: cpp::Ident, sig: &Sig) -> cpp::FnDef {
+    fn generate_fn_fwd_decl(&self, ident: Ident, sig: &Sig) -> cpp::FnDef {
         let path = cpp::Path::from_ident(ident);
 
         let params = sig
@@ -399,11 +399,11 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_type_namespace_ident(&self, type_index: TypeIndex) -> cpp::Ident {
+    fn generate_type_namespace_ident(&self, type_index: TypeIndex) -> Ident {
         generate_type_namespace_ident(self.get_type_ident(type_index))
     }
 
-    fn generate_impl_namespace_ident(&self, type_index: TypeIndex) -> cpp::Ident {
+    fn generate_impl_namespace_ident(&self, type_index: TypeIndex) -> Ident {
         generate_impl_namespace_ident(self.get_type_ident(type_index))
     }
 
@@ -414,7 +414,7 @@ impl<'a> Generator<'a> {
     fn generate_helper_call(
         &self,
         type_index: TypeIndex,
-        ident: cpp::Ident,
+        ident: Ident,
         args: Vec<cpp::Expr>,
     ) -> cpp::CallExpr {
         cpp::CallExpr {
@@ -475,15 +475,15 @@ impl TypeKind {
     }
 }
 
-fn generate_type_namespace_ident(ident: &str) -> cpp::Ident {
+fn generate_type_namespace_ident(ident: &str) -> Ident {
     format!("{}_{}", TYPE_NAMESPACE_IDENT_PREFIX, ident)
 }
 
-fn generate_impl_namespace_ident(ident: &str) -> cpp::Ident {
+fn generate_impl_namespace_ident(ident: &str) -> Ident {
     format!("{}_{}", IMPL_NAMESPACE_IDENT_PREFIX, ident)
 }
 
-fn generate_type(type_namespace_ident: cpp::Ident, type_kind: TypeKind) -> cpp::Type {
+fn generate_type(type_namespace_ident: Ident, type_kind: TypeKind) -> cpp::Type {
     cpp::Path::new(
         Some(type_namespace_ident),
         type_kind.type_ident().to_owned(),
@@ -498,15 +498,15 @@ fn generate_result_type(inner: cpp::Type) -> cpp::TemplateType {
     }
 }
 
-fn generate_variant_var_ident(ident: &str) -> cpp::Ident {
+fn generate_variant_var_ident(ident: &str) -> Ident {
     format!("{}_{}", VARIANT_VAR_IDENT_PREFIX, ident)
 }
 
-fn generate_fn_ident(ident: &str) -> cpp::Ident {
+fn generate_fn_ident(ident: &str) -> Ident {
     format!("{}_{}", FN_IDENT_PREFIX, ident)
 }
 
-fn generate_param_var_ident(ident: &str) -> cpp::Ident {
+fn generate_param_var_ident(ident: &str) -> Ident {
     format!("{}_{}", PARAM_VAR_IDENT_PREFIX, ident)
 }
 
@@ -586,7 +586,7 @@ impl<'a, 'b> ScopedGenerator<'a, 'b> {
         );
     }
 
-    fn generate_param_var_ident(&self, param_var_index: ParamVarIndex) -> cpp::Ident {
+    fn generate_param_var_ident(&self, param_var_index: ParamVarIndex) -> Ident {
         generate_param_var_ident(&self.sig.param_vars[param_var_index].ident.value)
     }
 
@@ -1028,8 +1028,8 @@ impl<'a, 'b, 'c> StmtExprGenerator<'a, 'b, 'c> {
 
     fn generate_out_ref_expr_from_local_var(
         &mut self,
-        local_var_ident: cpp::Ident,
-        local_var_type_namespace_ident: cpp::Ident,
+        local_var_ident: Ident,
+        local_var_type_namespace_ident: Ident,
     ) -> cpp::CallExpr {
         cpp::CallExpr {
             target: cpp::Path::new(
@@ -1138,11 +1138,11 @@ fn generate_built_in_var_path(built_in_var: BuiltInVar) -> cpp::Path {
     cpp::Path::new(None, generate_const_var_ident(built_in_var.ident()))
 }
 
-fn generate_const_var_ident(ident: &str) -> cpp::Ident {
+fn generate_const_var_ident(ident: &str) -> Ident {
     format!("{}_{}", CONST_VAR_IDENT_PREFIX, ident)
 }
 
-fn generate_local_var_ident(ident: &str, index: LocalVarIndex) -> cpp::Ident {
+fn generate_local_var_ident(ident: &str, index: LocalVarIndex) -> Ident {
     format!("{}_{}_{}", LOCAL_VAR_IDENT_PREFIX, ident, index)
 }
 
@@ -1177,7 +1177,7 @@ fn generate_guard_stmt(cond: cpp::Expr) -> cpp::IfStmt {
     }
 }
 
-fn generate_empty_local_var_init(type_namespace_ident: cpp::Ident) -> cpp::CallExpr {
+fn generate_empty_local_var_init(type_namespace_ident: Ident) -> cpp::CallExpr {
     cpp::CallExpr {
         target: cpp::Path::new(
             Some(type_namespace_ident.clone()),
