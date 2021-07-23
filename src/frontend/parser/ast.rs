@@ -306,10 +306,7 @@ pub struct BlockExpr {
 
 impl From<Block> for BlockExpr {
     fn from(block: Block) -> BlockExpr {
-        BlockExpr {
-            kind: None,
-            block,
-        }
+        BlockExpr { kind: None, block }
     }
 }
 
@@ -418,26 +415,29 @@ pub enum CompareExprKind {
 impl CompareExprKind {
     pub fn is_numeric(&self) -> bool {
         match self {
-            CompareExprKind::Lte |
-            CompareExprKind::Gte |
-            CompareExprKind::Lt |
-            CompareExprKind::Gt => true,
-            CompareExprKind::Eq |
-            CompareExprKind::Neq => false,
+            CompareExprKind::Lte
+            | CompareExprKind::Gte
+            | CompareExprKind::Lt
+            | CompareExprKind::Gt => true,
+            CompareExprKind::Eq | CompareExprKind::Neq => false,
         }
     }
 }
 
 impl fmt::Display for CompareExprKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", match self {
-            CompareExprKind::Eq => "==",
-            CompareExprKind::Neq => "!=",
-            CompareExprKind::Lte => "<=",
-            CompareExprKind::Gte => ">=",
-            CompareExprKind::Lt => "<",
-            CompareExprKind::Gt => ">",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                CompareExprKind::Eq => "==",
+                CompareExprKind::Neq => "!=",
+                CompareExprKind::Lte => "<=",
+                CompareExprKind::Gte => ">=",
+                CompareExprKind::Lt => "<",
+                CompareExprKind::Gt => ">",
+            }
+        )
     }
 }
 

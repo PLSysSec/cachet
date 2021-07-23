@@ -38,7 +38,7 @@ struct Opt {
     #[structopt(
         parse(from_os_str),
         required_unless("dry-run"),
-        requires("fwd-decls-output"),
+        requires("fwd-decls-output")
     )]
     defs_output: Option<PathBuf>,
 

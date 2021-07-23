@@ -183,10 +183,7 @@ impl Typed for BlockExpr {
 
 impl From<Block> for BlockExpr {
     fn from(block: Block) -> BlockExpr {
-        BlockExpr {
-            kind: None,
-            block,
-        }
+        BlockExpr { kind: None, block }
     }
 }
 
