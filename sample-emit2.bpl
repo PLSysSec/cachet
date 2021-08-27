@@ -272,7 +272,7 @@ procedure $MASM^emit(op: $MASM^Op)
   $MASM^emitPc := $MASM^emitPc + 1;
 }
 
-procedure $MASM^step()
+procedure {:inline 1} $MASM^step()
   modifies $MASM^pc;
 {
   $MASM^pc := $MASM^pc + 1;
@@ -297,7 +297,7 @@ procedure $MASM^bind(label: $MASM^Label)
   $MASM^labels[label] := $MASM^emitPc;
 }
 
-procedure $MASM^jump(label: $MASM^Label)
+procedure {:inline 1} $MASM^jump(label: $MASM^Label)
   modifies $MASM^pc;
 {
   $MASM^pc := $MASM^labels[label];
@@ -561,6 +561,10 @@ procedure $MASM^interpret()
   var op: $MASM^Op;
   op := $MASM^ops[$MASM^pc];
 
+  // Using a jump table here instead of a long if...else chain speeds things up
+  // a bit.
+
+  // Assume that the op is something we recognize.
   assume
     is#$MASM^Op~jump(op) ||
     is#$MASM^Op~branchTestNotInt32(op) ||
@@ -572,6 +576,7 @@ procedure $MASM^interpret()
     is#$MASM^Op~unboxObject(op) ||
     is#$MASM^Op~loadObjectFixedSlot(op);
 
+  // Branch depending on the opcode.
   goto
     interpret_$MASM^Op~jump,
     interpret_$MASM^Op~branchTestNotInt32,
@@ -582,6 +587,9 @@ procedure $MASM^interpret()
     interpret_$MASM^Op~unboxDouble,
     interpret_$MASM^Op~unboxObject,
     interpret_$MASM^Op~loadObjectFixedSlot;
+
+  // Each branch assumes that the op matches the opcode it's meant to handle,
+  // and only that opcode.
 
   interpret_$MASM^Op~jump:
     assume {:partition}
@@ -746,17 +754,15 @@ procedure {:entrypoint} $GetProp($valId: $ValId, $objId: $ObjId, $scratchId: $Va
   modifies $MASM^nextLabel;
   modifies $MASM^labels;
 {
-  var i: int;
-  var op: $MASM^Op;
   var failure: $MASM^Label;
   var endPc: $MASM^Pc;
+
+  /* ... support code for extra test asserts ...
   var origVal: $Value;
   var origIsObject: $Bool;
   var origObj: $Object;
   var origOutput: $Value;
-  var finalOutput: $Value;
 
-  /*
   call origVal := $ValueReg~getValue($ValId~toValueReg($valId));
   call origIsObject := $Value~isObject(origVal);
   if (origIsObject) {
@@ -767,19 +773,6 @@ procedure {:entrypoint} $GetProp($valId: $ValId, $objId: $ObjId, $scratchId: $Va
   }
   */
 
-  /*
-  $MASM^ops[0] := $MASM^Op^noOp();
-  $MASM^ops[1] := $MASM^Op^noOp();
-  $MASM^ops[2] := $MASM^Op^noOp();
-  $MASM^ops[3] := $MASM^Op^noOp();
-  $MASM^ops[4] := $MASM^Op^noOp();
-  $MASM^ops[5] := $MASM^Op^noOp();
-  $MASM^ops[6] := $MASM^Op^noOp();
-  $MASM^ops[7] := $MASM^Op^noOp();
-  $MASM^ops[8] := $MASM^Op^noOp();
-  $MASM^ops[9] := $MASM^Op^noOp();
-  */
-
   $MASM^emitPc := 0;
   $MASM^nextLabel := 0;
   call failure := $MASM^label();
@@ -788,7 +781,6 @@ procedure {:entrypoint} $GetProp($valId: $ValId, $objId: $ObjId, $scratchId: $Va
   call $CacheIR~loadFixedSlot($objId, $slotField, $scratchId);
   call $CacheIR~guardToNumberResult($scratchId, $output, failure);
   assert $MASM^emitPc >= 0;
-  //assert $MASM^emitPc <= 10;
 
   endPc := $MASM^emitPc;
   call $MASM^emit($MASM^Op^noOp());
@@ -801,12 +793,10 @@ procedure {:entrypoint} $GetProp($valId: $ValId, $objId: $ObjId, $scratchId: $Va
     call $MASM^interpret();
   }
 
-  /*
+  /* ... extra test asserts ...
   if ($MASM^pc == $MASM^labels[failure]) {
     return;
   }
-
-  call finalOutput := $ValueReg~getValue($output);
-  assert finalOutput == origOutput;
+  assert regs[$output] == origOutput;
   */
 }
