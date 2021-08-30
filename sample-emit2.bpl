@@ -29,6 +29,40 @@ type $Value;
 
 function $Value~typeOf($value: $Value): $ValueType;
 
+procedure $Value~isDouble($value: $Value)
+  returns (ret: $Bool)
+{
+  ret := $Value~typeOf($value) == $ValueType~Double();
+}
+
+procedure $Value~fromDouble($double: $Double)
+  returns (ret: $Value)
+{
+  var $value: $Value;
+  var tmp'0: $Bool;
+  $value := $Value~fromDoubleUnchecked($double);
+  call tmp'0 := $Value~isDouble($value);
+  assume tmp'0;
+  assume $Value~toDoubleUnchecked($value) == $double;
+  ret := $value;
+}
+
+function $Value~fromDoubleUnchecked($double: $Double): $Value;
+
+procedure $Value~toDouble($value: $Value)
+  returns (ret: $Double)
+{
+  var $double: $Double;
+  var tmp'0: $Bool;
+  call tmp'0 := $Value~isDouble($value);
+  assert tmp'0;
+  $double := $Value~toDoubleUnchecked($value);
+  assume $Value~fromDoubleUnchecked($double) == $value;
+  ret := $double;
+}
+
+function $Value~toDoubleUnchecked($value: $Value): $Double;
+
 procedure $Value~isInt32($value: $Value)
   returns (ret: $Bool)
 {
@@ -63,39 +97,57 @@ procedure $Value~toInt32($value: $Value)
 
 function $Value~toInt32Unchecked($value: $Value): $Int32;
 
-procedure $Value~isDouble($value: $Value)
+procedure $Value~isBoolean($value: $Value)
   returns (ret: $Bool)
 {
-  ret := $Value~typeOf($value) == $ValueType~Double();
+  ret := $Value~typeOf($value) == $ValueType~Boolean();
 }
 
-procedure $Value~fromDouble($double: $Double)
+procedure $Value~fromBoolean($boolean: $Bool)
   returns (ret: $Value)
 {
   var $value: $Value;
   var tmp'0: $Bool;
-  $value := $Value~fromDoubleUnchecked($double);
-  call tmp'0 := $Value~isDouble($value);
+  $value := $Value~fromBooleanUnchecked($boolean);
+  call tmp'0 := $Value~isBoolean($value);
   assume tmp'0;
-  assume $Value~toDoubleUnchecked($value) == $double;
+  assume $Value~toBooleanUnchecked($value) == $boolean;
   ret := $value;
 }
 
-function $Value~fromDoubleUnchecked($double: $Double): $Value;
+function $Value~fromBooleanUnchecked($boolean: $Bool): $Value;
 
-procedure $Value~toDouble($value: $Value)
-  returns (ret: $Double)
+procedure $Value~toBoolean($value: $Value)
+  returns (ret: $Bool)
 {
-  var $double: $Double;
+  var $boolean: $Bool;
   var tmp'0: $Bool;
-  call tmp'0 := $Value~isDouble($value);
+  call tmp'0 := $Value~isBoolean($value);
   assert tmp'0;
-  $double := $Value~toDoubleUnchecked($value);
-  assume $Value~fromDoubleUnchecked($double) == $value;
-  ret := $double;
+  $boolean := $Value~toBooleanUnchecked($value);
+  assume $Value~fromBooleanUnchecked($boolean) == $value;
+  ret := $boolean;
 }
 
-function $Value~toDoubleUnchecked($value: $Value): $Double;
+function $Value~toBooleanUnchecked($value: $Value): $Bool;
+
+procedure $Value~isUndefined($value: $Value)
+  returns (ret: $Bool)
+{
+  ret := $Value~typeOf($value) == $ValueType~Undefined();
+}
+
+procedure $Value~isNull($value: $Value)
+  returns (ret: $Bool)
+{
+  ret := $Value~typeOf($value) == $ValueType~Null();
+}
+
+procedure $Value~isMagic($value: $Value)
+  returns (ret: $Bool)
+{
+  ret := $Value~typeOf($value) == $ValueType~Magic();
+}
 
 procedure $Value~isObject($value: $Value)
   returns (ret: $Bool)
@@ -134,6 +186,24 @@ function $Value~toObjectUnchecked($value: $Value): $Object;
 type $Object;
 
 function $Object~shapeOf(heap: Heap, $object: $Object): $Shape;
+
+procedure $Object~getProto($object: $Object)
+  returns (ret: $Value)
+{
+  var $proto: $Value;
+  var tmp'0: $Bool;
+  var tmp'1: $Bool;
+  var tmp'2: $Bool;
+  $proto := $Object~getProtoUnchecked(heap, $object);
+  call tmp'0 := $Value~isObject($proto);
+  call tmp'1 := $Value~isNull($proto);
+  call tmp'2 := $Value~isMagic($proto);
+  assume tmp'0 || tmp'1 || tmp'2;
+  ret := $proto;
+  return;
+}
+
+function $Object~getProtoUnchecked(heap: Heap, $object: $Object): $Value;
 
 procedure $Object~toNativeObject($object: $Object)
   returns (ret: $NativeObject)
@@ -206,6 +276,22 @@ type $Reg;
 
 var regs: [$Reg]$Value;
 
+procedure $Reg~getDouble($reg: $Reg)
+  returns (ret: $Double)
+{ 
+  var tmp'0: $Double;
+  call tmp'0 := $Value~toDouble(regs[$reg]);
+  ret := tmp'0;
+}
+
+procedure $Reg~setDouble($reg: $Reg, $double: $Double)
+  modifies regs;
+{
+  var tmp'0: $Value;
+  call tmp'0 := $Value~fromDouble($double);
+  regs[$reg] := tmp'0;
+}
+
 procedure $Reg~getInt32($reg: $Reg)
   returns (ret: $Int32)
 { 
@@ -222,19 +308,19 @@ procedure $Reg~setInt32($reg: $Reg, $int32: $Int32)
   regs[$reg] := tmp'0;
 }
 
-procedure $Reg~getDouble($reg: $Reg)
-  returns (ret: $Double)
+procedure $Reg~getBoolean($reg: $Reg)
+  returns (ret: $Bool)
 { 
-  var tmp'0: $Double;
-  call tmp'0 := $Value~toDouble(regs[$reg]);
+  var tmp'0: $Bool;
+  call tmp'0 := $Value~toBoolean(regs[$reg]);
   ret := tmp'0;
 }
 
-procedure $Reg~setDouble($reg: $Reg, $double: $Double)
+procedure $Reg~setBoolean($reg: $Reg, $boolean: $Bool)
   modifies regs;
 {
   var tmp'0: $Value;
-  call tmp'0 := $Value~fromDouble($double);
+  call tmp'0 := $Value~fromBoolean($boolean);
   regs[$reg] := tmp'0;
 }
 
@@ -311,6 +397,34 @@ procedure $MASM~jump($label: $MASM^Label)
   call $MASM^jump($label);
 }
 
+function {:constructor} $MASM^Op~storeBoolean($boolean: $Bool, $dstReg: $Reg): $MASM^Op;
+
+procedure $MASM~storeBoolean($boolean: $Bool, $dstReg: $Reg)
+  modifies regs;
+  modifies $MASM^pc;
+{
+  call $Reg~setBoolean($dstReg, $boolean);
+  call $MASM^step();
+}
+
+function {:constructor} $MASM^Op~branchTestNotDouble($valueReg: $ValueReg, $label: $MASM^Label): $MASM^Op;
+
+procedure $MASM~branchTestNotDouble($valueReg: $ValueReg, $label: $MASM^Label)
+  modifies $MASM^pc;
+{
+  var $value: $Value;
+  var tmp'0: $Value;
+  var tmp'1: $Bool;
+  call tmp'0 := $ValueReg~getValue($valueReg);
+  $value := tmp'0;
+  call tmp'1 := $Value~isDouble($value);
+  if (!tmp'1) {
+    call $MASM^jump($label);
+    return;
+  }
+  call $MASM^step();
+}
+
 function {:constructor} $MASM^Op~branchTestNotInt32($valueReg: $ValueReg, $label: $MASM^Label): $MASM^Op;
 
 procedure $MASM~branchTestNotInt32($valueReg: $ValueReg, $label: $MASM^Label)
@@ -329,9 +443,9 @@ procedure $MASM~branchTestNotInt32($valueReg: $ValueReg, $label: $MASM^Label)
   call $MASM^step();
 }
 
-function {:constructor} $MASM^Op~branchTestNotDouble($valueReg: $ValueReg, $label: $MASM^Label): $MASM^Op;
+function {:constructor} $MASM^Op~branchTestNotUndefined($valueReg: $ValueReg, $label: $MASM^Label): $MASM^Op;
 
-procedure $MASM~branchTestNotDouble($valueReg: $ValueReg, $label: $MASM^Label)
+procedure $MASM~branchTestNotUndefined($valueReg: $ValueReg, $label: $MASM^Label)
   modifies $MASM^pc;
 {
   var $value: $Value;
@@ -339,8 +453,44 @@ procedure $MASM~branchTestNotDouble($valueReg: $ValueReg, $label: $MASM^Label)
   var tmp'1: $Bool;
   call tmp'0 := $ValueReg~getValue($valueReg);
   $value := tmp'0;
-  call tmp'1 := $Value~isDouble($value);
+  call tmp'1 := $Value~isUndefined($value);
   if (!tmp'1) {
+    call $MASM^jump($label);
+    return;
+  }
+  call $MASM^step();
+}
+
+function {:constructor} $MASM^Op~branchTestNull($valueReg: $ValueReg, $label: $MASM^Label): $MASM^Op;
+
+procedure $MASM~branchTestNull($valueReg: $ValueReg, $label: $MASM^Label)
+  modifies $MASM^pc;
+{
+  var $value: $Value;
+  var tmp'0: $Value;
+  var tmp'1: $Bool;
+  call tmp'0 := $ValueReg~getValue($valueReg);
+  $value := tmp'0;
+  call tmp'1 := $Value~isNull($value);
+  if (tmp'1) {
+    call $MASM^jump($label);
+    return;
+  }
+  call $MASM^step();
+}
+
+function {:constructor} $MASM^Op~branchTestMagic($valueReg: $ValueReg, $label: $MASM^Label): $MASM^Op;
+
+procedure $MASM~branchTestMagic($valueReg: $ValueReg, $label: $MASM^Label)
+  modifies $MASM^pc;
+{
+  var $value: $Value;
+  var tmp'0: $Value;
+  var tmp'1: $Bool;
+  call tmp'0 := $ValueReg~getValue($valueReg);
+  $value := tmp'0;
+  call tmp'1 := $Value~isMagic($value);
+  if (tmp'1) {
     call $MASM^jump($label);
     return;
   }
@@ -365,6 +515,26 @@ procedure $MASM~branchTestNotObject($valueReg: $ValueReg, $label: $MASM^Label)
   call $MASM^step();
 }
 
+function {:constructor} $MASM^Op~branchTestObjectEq($lhsReg: $Reg, $rhsReg: $Reg, $label: $MASM^Label): $MASM^Op;
+
+procedure $MASM~branchTestObjectEq($lhsReg: $Reg, $rhsReg: $Reg, $label: $MASM^Label)
+  modifies $MASM^pc;
+{
+  var $lhs: $Object;
+  var $rhs: $Object;
+  var tmp'0: $Object;
+  var tmp'1: $Object;
+  call tmp'0 := $Reg~getObject($lhsReg);
+  $lhs := tmp'0;
+  call tmp'1 := $Reg~getObject($rhsReg);
+  $rhs := tmp'1;
+  if ($lhs == $rhs) {
+    call $MASM^jump($label);
+    return;
+  }
+  call $MASM^step();
+}
+
 function {:constructor} $MASM^Op~branchTestNotObjectShape($objectReg: $Reg, $shape: $Shape, $label: $MASM^Label): $MASM^Op;
 
 procedure $MASM~branchTestNotObjectShape($objectReg: $Reg, $shape: $Shape, $label: $MASM^Label)
@@ -378,22 +548,6 @@ procedure $MASM~branchTestNotObjectShape($objectReg: $Reg, $shape: $Shape, $labe
     call $MASM^jump($label);
     return;
   }
-  call $MASM^step();
-}
-
-function {:constructor} $MASM^Op~unboxInt32($valueReg: $ValueReg, $int32Reg: $Reg): $MASM^Op;
-
-procedure $MASM~unboxInt32($valueReg: $ValueReg, $int32Reg: $Reg)
-  modifies regs;
-  modifies $MASM^pc;
-{
-  var $value: $Value;
-  var tmp'0: $Value;
-  var tmp'1: $Int32;
-  call tmp'0 := $ValueReg~getValue($valueReg);
-  $value := tmp'0;
-  call tmp'1 := $Value~toInt32($value);
-  call $Reg~setInt32($int32Reg, tmp'1);
   call $MASM^step();
 }
 
@@ -413,6 +567,22 @@ procedure $MASM~unboxDouble($valueReg: $ValueReg, $doubleReg: $Reg)
   call $MASM^step();
 }
 
+function {:constructor} $MASM^Op~unboxInt32($valueReg: $ValueReg, $int32Reg: $Reg): $MASM^Op;
+
+procedure $MASM~unboxInt32($valueReg: $ValueReg, $int32Reg: $Reg)
+  modifies regs;
+  modifies $MASM^pc;
+{
+  var $value: $Value;
+  var tmp'0: $Value;
+  var tmp'1: $Int32;
+  call tmp'0 := $ValueReg~getValue($valueReg);
+  $value := tmp'0;
+  call tmp'1 := $Value~toInt32($value);
+  call $Reg~setInt32($int32Reg, tmp'1);
+  call $MASM^step();
+}
+
 function {:constructor} $MASM^Op~unboxObject($valueReg: $ValueReg, $objectReg: $Reg): $MASM^Op;
 
 procedure $MASM~unboxObject($valueReg: $ValueReg, $objectReg: $Reg)
@@ -426,6 +596,22 @@ procedure $MASM~unboxObject($valueReg: $ValueReg, $objectReg: $Reg)
   $value := tmp'0;
   call tmp'1 := $Value~toObject($value);
   call $Reg~setObject($objectReg, tmp'1);
+  call $MASM^step();
+}
+
+function {:constructor} $MASM^Op~loadObjectProto($objectReg: $Reg, $protoReg: $ValueReg): $MASM^Op;
+
+procedure $MASM~loadObjectProto($objectReg: $Reg, $protoReg: $ValueReg)
+  modifies valueRegs;
+  modifies $MASM^pc;
+{
+  var $object: $Object;
+  var tmp'0: $Object;
+  var tmp'1: $Value;
+  call tmp'0 := $Reg~getObject($objectReg);
+  $object := tmp'0;
+  call tmp'1 := $Object~getProto($object);
+  call $ValueReg~setValue($protoReg, tmp'1);
   call $MASM^step();
 }
 
@@ -514,26 +700,124 @@ procedure $CacheIR~loadFixedSlot($objId: $ObjId, $slotField: $Int32Field, $valId
   call $MASM^emit($MASM^Op~loadObjectFixedSlot($obj, $slot, $val));
 }
 
+procedure $CacheIR~loadInstanceOfObjectResult($lhsId: $ValId, $protoId: $ObjId, $scratch:
+$Reg, $output: $Reg, $failure: $MASM^Label)
+  modifies $MASM^ops;
+  modifies $MASM^emitPc;
+{
+  var $lhs: $ValueReg;
+  var $proto: $Reg;
+  var $loop: $MASM^Label;
+  var $returnFalse: $MASM^Label;
+  var $returnTrue: $MASM^Label;
+  var $done: $MASM^Label;
+
+  $lhs := $ValId~toValueReg($lhsId);
+  $proto := $ObjId~toReg($protoId);
+
+  call $loop := $MASM^label();
+  call $returnFalse := $MASM^label();
+  call $returnTrue := $MASM^label();
+  call $done := $MASM^label();
+
+  call $MASM^emit($MASM^Op~branchTestNotObject($lhs, $returnFalse));
+  call $MASM^emit($MASM^Op~unboxObject($lhs, $scratch));
+  call $MASM^emit($MASM^Op~loadObjectProto($scratch, $lhs));
+
+  call $MASM^bind($loop);
+
+  call $MASM^emit($MASM^Op~branchTestNull($lhs, $returnFalse));
+  call $MASM^emit($MASM^Op~branchTestMagic($lhs, $failure));
+
+  call $MASM^emit($MASM^Op~branchTestNotObject($lhs, $returnFalse));
+  call $MASM^emit($MASM^Op~unboxObject($lhs, $scratch));
+  call $MASM^emit($MASM^Op~branchTestObjectEq($scratch, $proto, $returnTrue));
+
+  call $MASM^emit($MASM^Op~loadObjectProto($scratch, $lhs));
+  call $MASM^emit($MASM^Op~jump($loop));
+
+  call $MASM^bind($returnFalse);
+  call $MASM^emit($MASM^Op~storeBoolean(false, $output));
+  call $MASM^emit($MASM^Op~jump($done));
+
+  call $MASM^bind($returnTrue);
+  call $MASM^emit($MASM^Op~storeBoolean(true, $output));
+
+  call $MASM^bind($done);
+}
+
+procedure loadInstanceOfObjectResult(lhsId: $ValId, protoId: $ObjId, output: $Reg)
+  returns (ret: $Bool, failure: $Bool)
+{
+  var lhs: $Value;
+  var proto: $Object;
+  var scratch: $Object;
+  var b: $Bool;
+
+  call lhs := $ValueReg~getValue($ValId~toValueReg(lhsId));
+  call proto := $Reg~getObject($ObjId~toReg(protoId));
+
+  call b := $Value~isObject(lhs);
+  if (!b) {
+    ret := false;
+    failure := false;
+    return;
+  }
+  call scratch := $Value~toObject(lhs);
+  call lhs := $Object~getProto(scratch);
+
+  while (true)
+    //invariant lhs == $Object~getProtoUnchecked(heap, scratch);
+  {
+    call b := $Value~isNull(lhs);
+    if (b) {
+      ret := false;
+      failure := false;
+      return;
+    }
+    call b := $Value~isMagic(lhs);
+    if (b) {
+      failure := true;
+      return;
+    }
+
+    call b := $Value~isObject(lhs);
+    if (!b) {
+      ret := false;
+      failure := false;
+      return;
+    }
+    call scratch := $Value~toObject(lhs);
+    if (scratch == proto) {
+      ret := true;
+      failure := false;
+      return;
+    }
+
+    call lhs := $Object~getProto(scratch);
+  }
+}
+
 procedure $CacheIR~guardToNumberResult($valId: $ValId, $output: $Reg, $failure: $MASM^Label)
   modifies $MASM^ops;
   modifies $MASM^emitPc;
 {
   var $val: $ValueReg;
   var $done: $MASM^Label;
-  var $notInt32: $MASM^Label;
+  var $notDouble: $MASM^Label;
 
   $val := $ValId~toValueReg($valId);
 
   call $done := $MASM^label();
 
-  call $notInt32 := $MASM^label();
-  call $MASM^emit($MASM^Op~branchTestNotInt32($val, $notInt32));
-  call $MASM^emit($MASM^Op~unboxInt32($val, $output));
+  call $notDouble := $MASM^label();
+  call $MASM^emit($MASM^Op~branchTestNotDouble($val, $notDouble));
+  call $MASM^emit($MASM^Op~unboxDouble($val, $output));
   call $MASM^emit($MASM^Op~jump($done));
 
-  call $MASM^bind($notInt32);
-  call $MASM^emit($MASM^Op~branchTestNotDouble($val, $failure));
-  call $MASM^emit($MASM^Op~unboxDouble($val, $output));
+  call $MASM^bind($notDouble);
+  call $MASM^emit($MASM^Op~branchTestNotInt32($val, $failure));
+  call $MASM^emit($MASM^Op~unboxInt32($val, $output));
 
   call $MASM^bind($done);
 }
@@ -566,185 +850,464 @@ procedure $MASM^interpret()
 
   // Assume that the op is something we recognize.
   assume
+    is#$MASM^Op^noOp(op) ||
     is#$MASM^Op~jump(op) ||
-    is#$MASM^Op~branchTestNotInt32(op) ||
+    is#$MASM^Op~storeBoolean(op) ||
     is#$MASM^Op~branchTestNotDouble(op) ||
+    is#$MASM^Op~branchTestNotInt32(op) ||
+    is#$MASM^Op~branchTestNotUndefined(op) ||
+    is#$MASM^Op~branchTestNull(op) ||
+    is#$MASM^Op~branchTestMagic(op) ||
     is#$MASM^Op~branchTestNotObject(op) ||
+    is#$MASM^Op~branchTestObjectEq(op) ||
     is#$MASM^Op~branchTestNotObjectShape(op) ||
-    is#$MASM^Op~unboxInt32(op) ||
     is#$MASM^Op~unboxDouble(op) ||
+    is#$MASM^Op~unboxInt32(op) ||
     is#$MASM^Op~unboxObject(op) ||
+    is#$MASM^Op~loadObjectProto(op) ||
     is#$MASM^Op~loadObjectFixedSlot(op);
 
   // Branch depending on the opcode.
   goto
+    interpret_$MASM^Op^noOp,
     interpret_$MASM^Op~jump,
-    interpret_$MASM^Op~branchTestNotInt32,
+    interpret_$MASM^Op~storeBoolean,
     interpret_$MASM^Op~branchTestNotDouble,
+    interpret_$MASM^Op~branchTestNotInt32,
+    interpret_$MASM^Op~branchTestNotUndefined,
+    interpret_$MASM^Op~branchTestNull,
+    interpret_$MASM^Op~branchTestMagic,
     interpret_$MASM^Op~branchTestNotObject,
+    interpret_$MASM^Op~branchTestObjectEq,
     interpret_$MASM^Op~branchTestNotObjectShape,
-    interpret_$MASM^Op~unboxInt32,
     interpret_$MASM^Op~unboxDouble,
+    interpret_$MASM^Op~unboxInt32,
     interpret_$MASM^Op~unboxObject,
+    interpret_$MASM^Op~loadObjectProto,
     interpret_$MASM^Op~loadObjectFixedSlot;
 
-  // Each branch assumes that the op matches the opcode it's meant to handle,
-  // and only that opcode.
+  // Each branch assumes that the op matches the opcode
+
+  interpret_$MASM^Op^noOp:
+    assume {:partition}
+      is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~jump(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
+      !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
+      !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
+      !is#$MASM^Op~branchTestNotObjectShape(op) &&
+      !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
+      !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
+      !is#$MASM^Op~loadObjectFixedSlot(op);
+    return;
 
   interpret_$MASM^Op~jump:
     assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
       is#$MASM^Op~jump(op) &&
-      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
       !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
       !is#$MASM^Op~branchTestNotObjectShape(op) &&
-      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
       !is#$MASM^Op~loadObjectFixedSlot(op);
     call $MASM~jump($label#$MASM^Op~jump(op));
-    return;
+    goto next;
 
-  interpret_$MASM^Op~branchTestNotInt32:
+  interpret_$MASM^Op~storeBoolean:
     assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
       !is#$MASM^Op~jump(op) &&
-      is#$MASM^Op~branchTestNotInt32(op) &&
+      is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
       !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
       !is#$MASM^Op~branchTestNotObjectShape(op) &&
-      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
       !is#$MASM^Op~loadObjectFixedSlot(op);
-    call $MASM~branchTestNotInt32(
-      $valueReg#$MASM^Op~branchTestNotInt32(op),
-      $label#$MASM^Op~branchTestNotInt32(op)
+    call $MASM~storeBoolean(
+      $boolean#$MASM^Op~storeBoolean(op),
+      $dstReg#$MASM^Op~storeBoolean(op)
     );
-    return;
+    goto next;
 
   interpret_$MASM^Op~branchTestNotDouble:
     assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
       !is#$MASM^Op~jump(op) &&
-      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
       is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
       !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
       !is#$MASM^Op~branchTestNotObjectShape(op) &&
-      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
       !is#$MASM^Op~loadObjectFixedSlot(op);
     call $MASM~branchTestNotDouble(
       $valueReg#$MASM^Op~branchTestNotDouble(op),
       $label#$MASM^Op~branchTestNotDouble(op)
     );
-    return;
+    goto next;
+
+  interpret_$MASM^Op~branchTestNotInt32:
+    assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~jump(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
+      !is#$MASM^Op~branchTestNotDouble(op) &&
+      is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
+      !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
+      !is#$MASM^Op~branchTestNotObjectShape(op) &&
+      !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
+      !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
+      !is#$MASM^Op~loadObjectFixedSlot(op);
+    call $MASM~branchTestNotInt32(
+      $valueReg#$MASM^Op~branchTestNotInt32(op),
+      $label#$MASM^Op~branchTestNotInt32(op)
+    );
+    goto next;
+
+  interpret_$MASM^Op~branchTestNotUndefined:
+    assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~jump(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
+      !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
+      !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
+      !is#$MASM^Op~branchTestNotObjectShape(op) &&
+      !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
+      !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
+      !is#$MASM^Op~loadObjectFixedSlot(op);
+    call $MASM~branchTestNotUndefined(
+      $valueReg#$MASM^Op~branchTestNotUndefined(op),
+      $label#$MASM^Op~branchTestNotUndefined(op)
+    );
+    goto next;
+
+  interpret_$MASM^Op~branchTestNull:
+    assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~jump(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
+      !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
+      !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
+      !is#$MASM^Op~branchTestNotObjectShape(op) &&
+      !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
+      !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
+      !is#$MASM^Op~loadObjectFixedSlot(op);
+    call $MASM~branchTestNull(
+      $valueReg#$MASM^Op~branchTestNull(op),
+      $label#$MASM^Op~branchTestNull(op)
+    );
+    goto next;
+
+  interpret_$MASM^Op~branchTestMagic:
+    assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~jump(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
+      !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      is#$MASM^Op~branchTestMagic(op) &&
+      !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
+      !is#$MASM^Op~branchTestNotObjectShape(op) &&
+      !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
+      !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
+      !is#$MASM^Op~loadObjectFixedSlot(op);
+    call $MASM~branchTestMagic(
+      $valueReg#$MASM^Op~branchTestMagic(op),
+      $label#$MASM^Op~branchTestMagic(op)
+    );
+    goto next;
 
   interpret_$MASM^Op~branchTestNotObject:
     assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
       !is#$MASM^Op~jump(op) &&
-      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
       is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
       !is#$MASM^Op~branchTestNotObjectShape(op) &&
-      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
       !is#$MASM^Op~loadObjectFixedSlot(op);
     call $MASM~branchTestNotObject(
       $valueReg#$MASM^Op~branchTestNotObject(op),
       $label#$MASM^Op~branchTestNotObject(op)
     );
-    return;
+    goto next;
+
+  interpret_$MASM^Op~branchTestObjectEq:
+    assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~jump(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
+      !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
+      !is#$MASM^Op~branchTestNotObject(op) &&
+      is#$MASM^Op~branchTestObjectEq(op) &&
+      !is#$MASM^Op~branchTestNotObjectShape(op) &&
+      !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
+      !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
+      !is#$MASM^Op~loadObjectFixedSlot(op);
+    call $MASM~branchTestObjectEq(
+      $lhsReg#$MASM^Op~branchTestObjectEq(op),
+      $rhsReg#$MASM^Op~branchTestObjectEq(op),
+      $label#$MASM^Op~branchTestObjectEq(op)
+    );
+    goto next;
 
   interpret_$MASM^Op~branchTestNotObjectShape:
     assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
       !is#$MASM^Op~jump(op) &&
-      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
       !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
       is#$MASM^Op~branchTestNotObjectShape(op) &&
-      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
       !is#$MASM^Op~loadObjectFixedSlot(op);
     call $MASM~branchTestNotObjectShape(
       $objectReg#$MASM^Op~branchTestNotObjectShape(op),
       $shape#$MASM^Op~branchTestNotObjectShape(op),
       $label#$MASM^Op~branchTestNotObjectShape(op)
     );
-    return;
-
-  interpret_$MASM^Op~unboxInt32:
-    assume {:partition}
-      !is#$MASM^Op~jump(op) &&
-      !is#$MASM^Op~branchTestNotInt32(op) &&
-      !is#$MASM^Op~branchTestNotDouble(op) &&
-      !is#$MASM^Op~branchTestNotObject(op) &&
-      !is#$MASM^Op~branchTestNotObjectShape(op) &&
-      is#$MASM^Op~unboxInt32(op) &&
-      !is#$MASM^Op~unboxDouble(op) &&
-      !is#$MASM^Op~unboxObject(op) &&
-      !is#$MASM^Op~loadObjectFixedSlot(op);
-    call $MASM~unboxInt32(
-      $valueReg#$MASM^Op~unboxInt32(op),
-      $int32Reg#$MASM^Op~unboxInt32(op)
-    );
-    return;
+    goto next;
 
   interpret_$MASM^Op~unboxDouble:
     assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
       !is#$MASM^Op~jump(op) &&
-      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
       !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
       !is#$MASM^Op~branchTestNotObjectShape(op) &&
-      !is#$MASM^Op~unboxInt32(op) &&
       is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
       !is#$MASM^Op~loadObjectFixedSlot(op);
     call $MASM~unboxDouble(
       $valueReg#$MASM^Op~unboxDouble(op),
       $doubleReg#$MASM^Op~unboxDouble(op)
     );
-    return;
+    goto next;
+
+  interpret_$MASM^Op~unboxInt32:
+    assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~jump(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
+      !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
+      !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
+      !is#$MASM^Op~branchTestNotObjectShape(op) &&
+      !is#$MASM^Op~unboxDouble(op) &&
+      is#$MASM^Op~unboxInt32(op) &&
+      !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
+      !is#$MASM^Op~loadObjectFixedSlot(op);
+    call $MASM~unboxInt32(
+      $valueReg#$MASM^Op~unboxInt32(op),
+      $int32Reg#$MASM^Op~unboxInt32(op)
+    );
+    goto next;
 
   interpret_$MASM^Op~unboxObject:
     assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
       !is#$MASM^Op~jump(op) &&
-      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
       !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
       !is#$MASM^Op~branchTestNotObjectShape(op) &&
-      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
       is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
       !is#$MASM^Op~loadObjectFixedSlot(op);
     call $MASM~unboxObject(
       $valueReg#$MASM^Op~unboxObject(op),
       $objectReg#$MASM^Op~unboxObject(op)
     );
-    return;
+    goto next;
+
+  interpret_$MASM^Op~loadObjectProto:
+    assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~jump(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
+      !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
+      !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
+      !is#$MASM^Op~branchTestNotObjectShape(op) &&
+      !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
+      !is#$MASM^Op~unboxObject(op) &&
+      is#$MASM^Op~loadObjectProto(op) &&
+      !is#$MASM^Op~loadObjectFixedSlot(op);
+    call $MASM~loadObjectProto(
+      $objectReg#$MASM^Op~loadObjectProto(op),
+      $protoReg#$MASM^Op~loadObjectProto(op)
+    );
+    goto next;
 
   interpret_$MASM^Op~loadObjectFixedSlot:
     assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
       !is#$MASM^Op~jump(op) &&
-      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
       !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
       !is#$MASM^Op~branchTestNotObjectShape(op) &&
-      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
       !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
       is#$MASM^Op~loadObjectFixedSlot(op);
     call $MASM~loadObjectFixedSlot(
       $objectReg#$MASM^Op~loadObjectFixedSlot(op),
       $slot#$MASM^Op~loadObjectFixedSlot(op),
       $valueReg#$MASM^Op~loadObjectFixedSlot(op)
     );
-    return;
+    goto next;
+
+  next:
+    op := $MASM^ops[$MASM^pc];
+    assume
+      is#$MASM^Op^noOp(op) ||
+      is#$MASM^Op~jump(op) ||
+      is#$MASM^Op~storeBoolean(op) ||
+      is#$MASM^Op~branchTestNotDouble(op) ||
+      is#$MASM^Op~branchTestNotInt32(op) ||
+      is#$MASM^Op~branchTestNotUndefined(op) ||
+      is#$MASM^Op~branchTestNull(op) ||
+      is#$MASM^Op~branchTestMagic(op) ||
+      is#$MASM^Op~branchTestNotObject(op) ||
+      is#$MASM^Op~branchTestObjectEq(op) ||
+      is#$MASM^Op~branchTestNotObjectShape(op) ||
+      is#$MASM^Op~unboxDouble(op) ||
+      is#$MASM^Op~unboxInt32(op) ||
+      is#$MASM^Op~unboxObject(op) ||
+      is#$MASM^Op~loadObjectProto(op) ||
+      is#$MASM^Op~loadObjectFixedSlot(op);
+    goto
+      interpret_$MASM^Op^noOp,
+      interpret_$MASM^Op~jump,
+      interpret_$MASM^Op~storeBoolean,
+      interpret_$MASM^Op~branchTestNotDouble,
+      interpret_$MASM^Op~branchTestNotInt32,
+      interpret_$MASM^Op~branchTestNotUndefined,
+      interpret_$MASM^Op~branchTestNull,
+      interpret_$MASM^Op~branchTestMagic,
+      interpret_$MASM^Op~branchTestNotObject,
+      interpret_$MASM^Op~branchTestObjectEq,
+      interpret_$MASM^Op~branchTestNotObjectShape,
+      interpret_$MASM^Op~unboxDouble,
+      interpret_$MASM^Op~unboxInt32,
+      interpret_$MASM^Op~unboxObject,
+      interpret_$MASM^Op~loadObjectProto,
+      interpret_$MASM^Op~loadObjectFixedSlot;
 }
 
-procedure {:entrypoint} $GetProp($valId: $ValId, $objId: $ObjId, $scratchId: $ValId, $output: $Reg)
+//procedure {:entrypoint} $GetProp($valId: $ValId, $objId: $ObjId, $scratchId: $ValId, $output: $Reg)
+procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $protoId: $ObjId, $scratch: $Reg, $output: $Reg)
   modifies heap;
   modifies valueRegs;
   modifies regs;
@@ -756,6 +1319,8 @@ procedure {:entrypoint} $GetProp($valId: $ValId, $objId: $ObjId, $scratchId: $Va
 {
   var failure: $MASM^Label;
   var endPc: $MASM^Pc;
+
+  var initProtoId: $Bool;
 
   /* ... support code for extra test asserts ...
   var origVal: $Value;
@@ -772,14 +1337,67 @@ procedure {:entrypoint} $GetProp($valId: $ValId, $objId: $ObjId, $scratchId: $Va
     }
   }
   */
+  /*
+  var origLhs: $Value;
+  var origLhsIsObject: $Bool;
+  var origLhsObject: $Object;
+  var origLhsProto: $Value;
+  var origLhsProtoIsObject: $Bool;
+  var origLhsProtoObject: $Object;
+  var origProtoObject: $Object;
+  var origOutput: $Bool;
+  var finalOutput: $Bool;
+  var finalFailure: $Bool;
+  */
+  var origOutput: $Bool;
+  var origFailure: $Bool;
+  var finalOutput: $Bool;
+  var finalFailure: $Bool;
+
+  call initProtoId := $Value~isObject(regs[$ObjId~toReg($protoId)]);
+  assume initProtoId;
+  assume $ObjId~toReg($protoId) != $scratch;
+
+  /*
+  origOutput := false;
+  call origLhs := $ValueReg~getValue($ValId~toValueReg($lhsId));
+  call origLhsIsObject := $Value~isObject(origLhs);
+  if (origLhsIsObject) {
+    call origLhsObject := $Value~toObject(origLhs);
+    call origLhsProto := $Object~getProto(origLhsObject);
+    call origLhsProtoIsObject := $Value~isObject(origLhsProto);
+    if (origLhsProtoIsObject) {
+      call origLhsProtoObject := $Value~toObject(origLhsProto);
+      call origProtoObject := $Reg~getObject($ObjId~toReg($protoId));
+      origOutput := origLhsProtoObject == origProtoObject;
+  */
+      /*
+      call origLhsProto := $Object~getProto(origLhsProtoObject);
+      call origLhsProtoIsObject := $Value~isObject(origLhsProto);
+      if (origLhsProtoIsObject) {
+        call origLhsProtoObject := $Value~toObject(origLhsProto);
+        call origProtoObject := $Reg~getObject($ObjId~toReg($protoId));
+        origOutput := origLhsProtoObject == origProtoObject;
+      }
+      */
+  /*
+    }
+  }
+  */
+
+  call origOutput, origFailure := loadInstanceOfObjectResult($lhsId, $protoId, $output);
 
   $MASM^emitPc := 0;
   $MASM^nextLabel := 0;
   call failure := $MASM^label();
+  /*
   call $CacheIR~guardToObject($valId, $objId, failure);
   call $CacheIR~guardShape($objId, $shapeField, failure);
+  //call $CacheIR~loadFixedSlotResult($objId, $slotField, $output);
   call $CacheIR~loadFixedSlot($objId, $slotField, $scratchId);
   call $CacheIR~guardToNumberResult($scratchId, $output, failure);
+  */
+  call $CacheIR~loadInstanceOfObjectResult($lhsId, $protoId, $scratch, $output, failure);
   assert $MASM^emitPc >= 0;
 
   endPc := $MASM^emitPc;
@@ -789,14 +1407,29 @@ procedure {:entrypoint} $GetProp($valId: $ValId, $objId: $ObjId, $scratchId: $Va
   call $MASM^emit($MASM^Op^noOp());
 
   $MASM^pc := 0;
-  while ($MASM^pc < endPc) {
+  //while ($MASM^pc < endPc) {
     call $MASM^interpret();
-  }
+  //}
 
-  /* ... extra test asserts ...
+  /* ... extra test asserts ... */
   if ($MASM^pc == $MASM^labels[failure]) {
+    assert origFailure;
     return;
   }
-  assert regs[$output] == origOutput;
+  assert !origFailure;
+  /*
+  if (finalFailure) {
+    return;
+  }
   */
+  //assert regs[$output] == origOutput;
+  /*
+  if (origOutput) {
+  */
+    call finalOutput := $Reg~getBoolean($output);
+  /*
+    assert finalOutput;
+  }
+  */
+  assert origOutput == finalOutput;
 }
