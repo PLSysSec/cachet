@@ -389,6 +389,12 @@ procedure {:inline 1} $MASM^jump(label: $MASM^Label)
   $MASM^pc := $MASM^labels[label];
 }
 
+function {:constructor} $MASM^Op~unreachable(): $MASM^Op;
+
+procedure $MASM~unreachable() {
+  assert {:msg "Unreachable code"} false;
+}
+
 function {:constructor} $MASM^Op~jump($label: $MASM^Label): $MASM^Op;
 
 procedure $MASM~jump($label: $MASM^Label)
@@ -700,8 +706,7 @@ procedure $CacheIR~loadFixedSlot($objId: $ObjId, $slotField: $Int32Field, $valId
   call $MASM^emit($MASM^Op~loadObjectFixedSlot($obj, $slot, $val));
 }
 
-procedure $CacheIR~loadInstanceOfObjectResult($lhsId: $ValId, $protoId: $ObjId, $scratch:
-$Reg, $output: $Reg, $failure: $MASM^Label)
+procedure $CacheIR~loadInstanceOfObjectResult($lhsId: $ValId, $protoId: $ObjId, $scratch: $Reg, $output: $Reg, $failure: $MASM^Label)
   modifies $MASM^ops;
   modifies $MASM^emitPc;
 {
@@ -766,9 +771,7 @@ procedure loadInstanceOfObjectResult(lhsId: $ValId, protoId: $ObjId, output: $Re
   call scratch := $Value~toObject(lhs);
   call lhs := $Object~getProto(scratch);
 
-  while (true)
-    //invariant lhs == $Object~getProtoUnchecked(heap, scratch);
-  {
+  while (true) {
     call b := $Value~isNull(lhs);
     if (b) {
       ret := false;
@@ -851,6 +854,7 @@ procedure $MASM^interpret()
   // Assume that the op is something we recognize.
   assume
     is#$MASM^Op^noOp(op) ||
+    is#$MASM^Op~unreachable(op) ||
     is#$MASM^Op~jump(op) ||
     is#$MASM^Op~storeBoolean(op) ||
     is#$MASM^Op~branchTestNotDouble(op) ||
@@ -870,6 +874,7 @@ procedure $MASM^interpret()
   // Branch depending on the opcode.
   goto
     interpret_$MASM^Op^noOp,
+    interpret_$MASM^Op~unreachable,
     interpret_$MASM^Op~jump,
     interpret_$MASM^Op~storeBoolean,
     interpret_$MASM^Op~branchTestNotDouble,
@@ -891,6 +896,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op^noOp:
     assume {:partition}
       is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -908,9 +914,32 @@ procedure $MASM^interpret()
       !is#$MASM^Op~loadObjectFixedSlot(op);
     return;
 
+  interpret_$MASM^Op~unreachable:
+    assume {:partition}
+      !is#$MASM^Op^noOp(op) &&
+      is#$MASM^Op~unreachable(op) &&
+      !is#$MASM^Op~jump(op) &&
+      !is#$MASM^Op~storeBoolean(op) &&
+      !is#$MASM^Op~branchTestNotDouble(op) &&
+      !is#$MASM^Op~branchTestNotInt32(op) &&
+      !is#$MASM^Op~branchTestNotUndefined(op) &&
+      !is#$MASM^Op~branchTestNull(op) &&
+      !is#$MASM^Op~branchTestMagic(op) &&
+      !is#$MASM^Op~branchTestNotObject(op) &&
+      !is#$MASM^Op~branchTestObjectEq(op) &&
+      !is#$MASM^Op~branchTestNotObjectShape(op) &&
+      !is#$MASM^Op~unboxDouble(op) &&
+      !is#$MASM^Op~unboxInt32(op) &&
+      !is#$MASM^Op~unboxObject(op) &&
+      !is#$MASM^Op~loadObjectProto(op) &&
+      !is#$MASM^Op~loadObjectFixedSlot(op);
+    call $MASM~unreachable();
+    goto next;
+
   interpret_$MASM^Op~jump:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -932,6 +961,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~storeBoolean:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -956,6 +986,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~branchTestNotDouble:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       is#$MASM^Op~branchTestNotDouble(op) &&
@@ -980,6 +1011,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~branchTestNotInt32:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1004,6 +1036,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~branchTestNotUndefined:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1028,6 +1061,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~branchTestNull:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1052,6 +1086,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~branchTestMagic:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1076,6 +1111,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~branchTestNotObject:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1100,6 +1136,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~branchTestObjectEq:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1125,6 +1162,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~branchTestNotObjectShape:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1150,6 +1188,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~unboxDouble:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1174,6 +1213,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~unboxInt32:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1198,6 +1238,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~unboxObject:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1222,6 +1263,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~loadObjectProto:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1246,6 +1288,7 @@ procedure $MASM^interpret()
   interpret_$MASM^Op~loadObjectFixedSlot:
     assume {:partition}
       !is#$MASM^Op^noOp(op) &&
+      !is#$MASM^Op~unreachable(op) &&
       !is#$MASM^Op~jump(op) &&
       !is#$MASM^Op~storeBoolean(op) &&
       !is#$MASM^Op~branchTestNotDouble(op) &&
@@ -1269,9 +1312,12 @@ procedure $MASM^interpret()
     goto next;
 
   next:
+    return;
+    /*
     op := $MASM^ops[$MASM^pc];
     assume
       is#$MASM^Op^noOp(op) ||
+      is#$MASM^Op~unreachable(op) ||
       is#$MASM^Op~jump(op) ||
       is#$MASM^Op~storeBoolean(op) ||
       is#$MASM^Op~branchTestNotDouble(op) ||
@@ -1289,6 +1335,7 @@ procedure $MASM^interpret()
       is#$MASM^Op~loadObjectFixedSlot(op);
     goto
       interpret_$MASM^Op^noOp,
+      interpret_$MASM^Op~unreachable,
       interpret_$MASM^Op~jump,
       interpret_$MASM^Op~storeBoolean,
       interpret_$MASM^Op~branchTestNotDouble,
@@ -1304,6 +1351,7 @@ procedure $MASM^interpret()
       interpret_$MASM^Op~unboxObject,
       interpret_$MASM^Op~loadObjectProto,
       interpret_$MASM^Op~loadObjectFixedSlot;
+    */
 }
 
 //procedure {:entrypoint} $GetProp($valId: $ValId, $objId: $ObjId, $scratchId: $ValId, $output: $Reg)
@@ -1337,7 +1385,6 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $protoId: $ObjId, $scratch: 
     }
   }
   */
-  /*
   var origLhs: $Value;
   var origLhsIsObject: $Bool;
   var origLhsObject: $Object;
@@ -1347,18 +1394,19 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $protoId: $ObjId, $scratch: 
   var origProtoObject: $Object;
   var origOutput: $Bool;
   var finalOutput: $Bool;
-  var finalFailure: $Bool;
-  */
+  //var finalFailure: $Bool;
+  /*
   var origOutput: $Bool;
   var origFailure: $Bool;
   var finalOutput: $Bool;
   var finalFailure: $Bool;
+  */
 
   call initProtoId := $Value~isObject(regs[$ObjId~toReg($protoId)]);
   assume initProtoId;
+
   assume $ObjId~toReg($protoId) != $scratch;
 
-  /*
   origOutput := false;
   call origLhs := $ValueReg~getValue($ValId~toValueReg($lhsId));
   call origLhsIsObject := $Value~isObject(origLhs);
@@ -1370,22 +1418,28 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $protoId: $ObjId, $scratch: 
       call origLhsProtoObject := $Value~toObject(origLhsProto);
       call origProtoObject := $Reg~getObject($ObjId~toReg($protoId));
       origOutput := origLhsProtoObject == origProtoObject;
-  */
       /*
-      call origLhsProto := $Object~getProto(origLhsProtoObject);
-      call origLhsProtoIsObject := $Value~isObject(origLhsProto);
-      if (origLhsProtoIsObject) {
-        call origLhsProtoObject := $Value~toObject(origLhsProto);
-        call origProtoObject := $Reg~getObject($ObjId~toReg($protoId));
-        origOutput := origLhsProtoObject == origProtoObject;
+      if (origLhsProtoObject != origProtoObject) {
+        call origLhsProto := $Object~getProto(origLhsProtoObject);
+        call origLhsProtoIsObject := $Value~isObject(origLhsProto);
+        if (origLhsProtoIsObject) {
+          call origLhsProtoObject := $Value~toObject(origLhsProto);
+          //origOutput := origLhsProtoObject == origProtoObject;
+          if (origLhsProtoObject != origProtoObject) {
+            call origLhsProto := $Object~getProto(origLhsProtoObject);
+            call origLhsProtoIsObject := $Value~isObject(origLhsProto);
+            if (origLhsProtoIsObject) {
+              call origLhsProtoObject := $Value~toObject(origLhsProto);
+              origOutput := origLhsProtoObject == origProtoObject;
+            }
+          }
+        }
       }
       */
-  /*
     }
   }
-  */
 
-  call origOutput, origFailure := loadInstanceOfObjectResult($lhsId, $protoId, $output);
+  //call finalOutput, finalFailure := loadInstanceOfObjectResult($lhsId, $protoId, $output);
 
   $MASM^emitPc := 0;
   $MASM^nextLabel := 0;
@@ -1407,29 +1461,32 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $protoId: $ObjId, $scratch: 
   call $MASM^emit($MASM^Op^noOp());
 
   $MASM^pc := 0;
-  //while ($MASM^pc < endPc) {
+  while ($MASM^pc < endPc) {
     call $MASM^interpret();
-  //}
+  }
+  /*
+  if (origOutput) {
+    assert false;
+  }
+  */
 
   /* ... extra test asserts ... */
   if ($MASM^pc == $MASM^labels[failure]) {
-    assert origFailure;
+    //assert origFailure;
+    assert !origOutput;
     return;
   }
-  assert !origFailure;
+  //assert !origFailure;
   /*
   if (finalFailure) {
     return;
   }
   */
   //assert regs[$output] == origOutput;
-  /*
   if (origOutput) {
-  */
     call finalOutput := $Reg~getBoolean($output);
-  /*
+    //assert !finalFailure;
     assert finalOutput;
   }
-  */
-  assert origOutput == finalOutput;
+  //assert origOutput == finalOutput;
 }
