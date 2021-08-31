@@ -340,21 +340,15 @@ procedure {:inline 1} $MASM^jump(label: $MASM^Label)
 }
 
 var $MASM^emitPc: $MASM^Pc;
-var $MASM^emitOps: [$MASM^Pc]$MASM^Op;
-var $MASM^emitTrace: [$MASM^Pc]bool;
+
+var $MASM^ops: [$MASM^Pc]$MASM^Op;
 
 procedure $MASM^emit(op: $MASM^Op)
-  modifies $MASM^emitOps;
+  modifies $MASM^ops;
   modifies $MASM^emitPc;
 {
-  $MASM^emitOps[$MASM^emitPc] := op;
+  $MASM^ops[$MASM^emitPc] := op;
   $MASM^emitPc := $MASM^emitPc + 1;
-}
-
-procedure $MASM^record(branch: bool)
-  modifies $MASM^emitTrace;
-{
-  $MASM^emitTrace[$MASM^emitPc] := branch;
 }
 
 function {:constructor} $MASM^Op~jump($label: $MASM^Label): $MASM^Op;
@@ -363,7 +357,7 @@ function {:constructor} $MASM^Op~storeBoolean($boolean: $Bool, $dstReg: $Reg): $
 
 procedure $MASM~storeBoolean(regs: Regs, $boolean: $Bool, $dstReg: $Reg)
   returns (out_regs: Regs)
-  //modifies $MASM^pc;
+  modifies $MASM^pc;
 {
   call out_regs := $Reg~setBoolean(regs, $dstReg, $boolean);
   call $MASM^step();
@@ -397,7 +391,7 @@ function {:constructor} $MASM^Op~loadObjectProto($objectReg: $Reg, $protoReg: $V
 
 procedure $MASM~loadObjectProto(valueRegs: ValueRegs, regs: Regs, $objectReg: $Reg, $protoReg: $ValueReg)
   returns (out_valueRegs: ValueRegs)
-  //modifies $MASM^pc;
+  modifies $MASM^pc;
 {
   var $object: $Object;
   var tmp'0: $Object;
@@ -425,16 +419,30 @@ type $ShapeField;
 
 function $ShapeField~toShape($shapeField: $ShapeField): $Shape;
 
-procedure $CacheIR~loadInstanceOfObjectResult($lhsId: $ValId, $protoId: $ObjId, $scratch: $Reg, $output: $Reg, $failure: $MASM^Label)
+type $CacheIR^Branch = int;
+
+var $CacheIR^trace: [$CacheIR^Branch, $MASM^Pc]bool;
+
+procedure {:inline 1} $CacheIR^record(branch: $CacheIR^Branch, cond: bool)
+  modifies $CacheIR^trace;
+{
+  $CacheIR^trace[branch, $MASM^emitPc] := cond;
+}
+
+procedure $CacheIR~loadInstanceOfObjectResult(valueRegs: ValueRegs, $lhsId: $ValId, $hasKnownLhs: $Bool, $protoId: $ObjId, $scratch: $Reg, $output: $Reg, $failure: $MASM^Label)
   modifies $MASM^emitPc;
-  modifies $MASM^emitOps;
+  modifies $MASM^ops;
+  modifies $CacheIR^trace;
 {
   var $lhs: $ValueReg;
+  var $knownLhs: $Value;
+  var $hasKnownObjectLhs: $Bool;
   var $proto: $Reg;
   var $loop: $MASM^Label;
   var $returnFalse: $MASM^Label;
   var $returnTrue: $MASM^Label;
   var $done: $MASM^Label;
+  var i: int;
 
   $lhs := $ValId~toValueReg($lhsId);
   $proto := $ObjId~toReg($protoId);
@@ -444,7 +452,24 @@ procedure $CacheIR~loadInstanceOfObjectResult($lhsId: $ValId, $protoId: $ObjId, 
   call $returnTrue := $MASM^label();
   call $done := $MASM^label();
 
-  call $MASM^emit($MASM^Op~branchTestNotObject($lhs, $returnFalse));
+  $hasKnownObjectLhs := false;
+  if ($hasKnownLhs) {
+    call $knownLhs := $ValueReg~getValue(valueRegs, $lhs);
+    call $hasKnownObjectLhs := $Value~isObject($knownLhs);
+  }
+
+  if (!$hasKnownObjectLhs) {
+    call $CacheIR^record(0, true);
+    i := 0;
+    while (i < 1) {
+      call $CacheIR^record(1, true);
+      call $MASM^emit($MASM^Op~branchTestNotObject($lhs, $returnFalse));
+      i := i + 1;
+    }
+    call $CacheIR^record(1, false);
+  } else {
+    call $CacheIR^record(0, false);
+  }
   call $MASM^emit($MASM^Op~unboxObject($lhs, $scratch));
   call $MASM^emit($MASM^Op~loadObjectProto($scratch, $lhs));
 
@@ -483,9 +508,10 @@ const $slotField: $Int32Field;
 axiom $ShapeField~toShape($shapeField) == $shape;
 axiom $Int32Field~toInt32($slotField) == $slot;
 
-procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch: $Reg, $output: $Reg)
+procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $hasKnownLhs: $Bool, $protoId: $ObjId, $scratch: $Reg, $output: $Reg)
   modifies $MASM^emitPc;
-  modifies $MASM^emitOps;
+  modifies $MASM^ops;
+  modifies $CacheIR^trace;
 {
   var op: $MASM^Op;
 
@@ -495,11 +521,8 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
   var $failure: $MASM^Label;
 
   var $lhs: $ValueReg;
-  var lhs: $Value;
   var $proto: $Reg;
   var proto: $Object;
-  var scratch: $Object;
-  var b: $Bool;
 
   var $MASM~branchTestNull'$value: $Value;
   var $MASM~branchTestNull'tmp'0: $Value;
@@ -529,10 +552,11 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
   $MASM^emitPc := 0;
 
   assume (forall pc: $MASM^Pc :: $MASM^pcBinds[pc] == -1);
+  //assume (forall branch: $CacheIR^Branch, pc: $MASM^Pc :: !$CacheIR^trace[branch, pc]);
 
   call $failure := $MASM^label();
 
-  call $CacheIR~loadInstanceOfObjectResult($lhsId, $protoId, $scratch, $output, $failure);
+  call $CacheIR~loadInstanceOfObjectResult(valueRegs, $lhsId, $hasKnownLhs, $protoId, $scratch, $output, $failure);
 
   $MASM^emitPc := $MASM^emitPc + 1;
 
@@ -543,19 +567,23 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
 
   $MASM^pc := 0;
 
-  op'0$MASM~branchTestNotObject:
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~branchTestNotObject'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestNotObject(op));
-    $MASM~branchTestNotObject'$value := $MASM~branchTestNotObject'tmp'0;
-    call $MASM~branchTestNotObject'tmp'1 := $Value~isObject($MASM~branchTestNotObject'$value);
-    if (!$MASM~branchTestNotObject'tmp'1) {
-      call $MASM^jump($label#$MASM^Op~branchTestNotObject(op));
-      goto label$returnFalse;
+  if ($CacheIR^trace[0, $MASM^pc]) {
+    while ($CacheIR^trace[1, $MASM^pc]) {
+      op'0$MASM~branchTestNotObject:
+        op := $MASM^ops[$MASM^pc];
+        call $MASM~branchTestNotObject'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestNotObject(op));
+        $MASM~branchTestNotObject'$value := $MASM~branchTestNotObject'tmp'0;
+        call $MASM~branchTestNotObject'tmp'1 := $Value~isObject($MASM~branchTestNotObject'$value);
+        if (!$MASM~branchTestNotObject'tmp'1) {
+          call $MASM^jump($label#$MASM^Op~branchTestNotObject(op));
+          goto label$returnFalse;
+        }
+        call $MASM^step();
     }
-    call $MASM^step();
+  }
 
   op'1$MASM~unboxObject:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call regs := $MASM~unboxObject(
       valueRegs,
       regs,
@@ -564,7 +592,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     );
 
   op'2$MASM~loadObjectProto:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call valueRegs := $MASM~loadObjectProto(
       valueRegs,
       regs,
@@ -579,7 +607,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     assume regs[$proto] == $Value~fromObjectUnchecked(proto);
 
   op'3$MASM^branchTestNull:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call $MASM~branchTestNull'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestNull(op));
     $MASM~branchTestNull'$value := $MASM~branchTestNull'tmp'0;
     call $MASM~branchTestNull'tmp'1 := $Value~isNull($MASM~branchTestNull'$value);
@@ -590,7 +618,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     call $MASM^step();
 
   op'4$MASM~branchTestMagic:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call $MASM~branchTestMagic'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestMagic(op));
     $MASM~branchTestMagic'$value := $MASM~branchTestMagic'tmp'0;
     call $MASM~branchTestMagic'tmp'1 := $Value~isMagic($MASM~branchTestMagic'$value);
@@ -601,7 +629,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     call $MASM^step();
 
   op'5$MASM~branchTestNotObject:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call $MASM~branchTestNotObject'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestNotObject(op));
     $MASM~branchTestNotObject'$value := $MASM~branchTestNotObject'tmp'0;
     call $MASM~branchTestNotObject'tmp'1 := $Value~isObject($MASM~branchTestNotObject'$value);
@@ -612,7 +640,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     call $MASM^step();
 
   op'6$MASM~unboxObject:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call regs := $MASM~unboxObject(
       valueRegs,
       regs,
@@ -621,7 +649,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     );
 
   op'7$MASM~branchTestObjectEq:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call $MASM~branchTestObjectEq'tmp'0 := $Reg~getObject(regs, $lhsReg#$MASM^Op~branchTestObjectEq(op));
     $MASM~branchTestObjectEq'$lhs := $MASM~branchTestObjectEq'tmp'0;
     call $MASM~branchTestObjectEq'tmp'1 := $Reg~getObject(regs, $rhsReg#$MASM^Op~branchTestObjectEq(op));
@@ -633,7 +661,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     call $MASM^step();
 
   op'8$MASM~loadObjectProto:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call valueRegs := $MASM~loadObjectProto(
       valueRegs,
       regs,
@@ -642,7 +670,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     );
 
   op'9$MASM~jump:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call $MASM^jump($label#$MASM^Op~jump(op));
     assert regs[$proto] == $Value~fromObjectUnchecked(proto);
     goto label$loop;
@@ -651,7 +679,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     assume $MASM^pcBinds[$MASM^pc] == 2;
 
   op'10$MASM~storeBoolean:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call regs := $MASM~storeBoolean(
       regs,
       $boolean#$MASM^Op~storeBoolean(op),
@@ -659,7 +687,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     );
 
   op'11$MASM~jump:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call $MASM^jump($label#$MASM^Op~jump(op));
     goto label$done;
 
@@ -667,7 +695,7 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
     assume $MASM^pcBinds[$MASM^pc] == 3;
 
   op'12$MASM~storeBoolean:
-    op := $MASM^emitOps[$MASM^pc];
+    op := $MASM^ops[$MASM^pc];
     call regs := $MASM~storeBoolean(
       regs,
       $boolean#$MASM^Op~storeBoolean(op),
@@ -681,202 +709,4 @@ procedure {:entrypoint} $InstanceOf2($lhsId: $ValId, $protoId: $ObjId, $scratch:
 
   label$failure:
     assume $MASM^pcBinds[$MASM^pc] == 0;
-}
-
-
-procedure /*{:entrypoint}*/ $InstanceOf($lhsId: $ValId, $protoId: $ObjId, $scratch: $Reg, $output: $Reg)
-  modifies $MASM^emitPc;
-  modifies $MASM^emitOps;
-  modifies $MASM^emitTrace;
-  //modifies $MASM^pc;
-{
-  var ops: [$MASM^Pc]$MASM^Op;
-  var op: $MASM^Op;
-
-  var valueRegs: ValueRegs;
-  var regs: Regs;
-
-  var $failure: $MASM^Label;
-
-  var $MASM~branchTestNull'$value: $Value;
-  var $MASM~branchTestNull'tmp'0: $Value;
-  var $MASM~branchTestNull'tmp'1: $Bool;
-
-  var $MASM~branchTestMagic'$value: $Value;
-  var $MASM~branchTestMagic'tmp'0: $Value;
-  var $MASM~branchTestMagic'tmp'1: $Bool;
-
-  var $MASM~branchTestNotObject'$value: $Value;
-  var $MASM~branchTestNotObject'tmp'0: $Value;
-  var $MASM~branchTestNotObject'tmp'1: $Bool;
-
-  var $MASM~branchTestObjectEq'$lhs: $Object;
-  var $MASM~branchTestObjectEq'$rhs: $Object;
-  var $MASM~branchTestObjectEq'tmp'0: $Object;
-  var $MASM~branchTestObjectEq'tmp'1: $Object;
-
-  /*
-  var origOutput: $Bool;
-  var origFailure: $Bool;
-  */
-
-  var initProtoId: $Bool;
-  call initProtoId := $Value~isObject(regs[$ObjId~toReg($protoId)]);
-  assume initProtoId;
-
-  assume $ObjId~toReg($protoId) != $scratch;
-
-  //call origOutput, origFailure := loadInstanceOfObjectResult($lhsId, $protoId);
-
-  //assume (forall pc: $MASM^Pc :: $MASM^emitOps[pc] == $MASM^Op^noOp());
-
-  $MASM^emitPc := 0;
-
-  call $failure := $MASM^label();
-
-  call $CacheIR~loadInstanceOfObjectResult($lhsId, $protoId, $scratch, $output, $failure);
-
-  $MASM^emitPc := $MASM^emitPc + 1;
-
-  call $MASM^bind(0, $failure);
-  $MASM^emitPc := $MASM^emitPc + 1;
-
-  assert $MASM^emitPc >= 0;
-
-  //$MASM^pc := 0;
-
-  ops := $MASM^emitOps;
-
-  op'0$MASM~branchTestNotObject:
-    op := ops[0];
-    call $MASM~branchTestNotObject'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestNotObject(op));
-    $MASM~branchTestNotObject'$value := $MASM~branchTestNotObject'tmp'0;
-    call $MASM~branchTestNotObject'tmp'1 := $Value~isObject($MASM~branchTestNotObject'$value);
-    if (!$MASM~branchTestNotObject'tmp'1) {
-      //call $MASM^jump($label#$MASM^Op~branchTestNotObject(op));
-      //$MASM^pc := 10;
-      goto label$returnFalse;
-    }
-    call $MASM^step();
-
-  op'1$MASM~unboxObject:
-    op := ops[1];
-    call regs := $MASM~unboxObject(
-      valueRegs,
-      regs,
-      $valueReg#$MASM^Op~unboxObject(op),
-      $objectReg#$MASM^Op~unboxObject(op)
-    );
-
-  op'2$MASM~loadObjectProto:
-    op := ops[2];
-    call valueRegs := $MASM~loadObjectProto(
-      valueRegs,
-      regs,
-      $objectReg#$MASM^Op~loadObjectProto(op),
-      $protoReg#$MASM^Op~loadObjectProto(op)
-    );
-
-  label$loop:
-  op'3$MASM^branchTestNull:
-    op := ops[3];
-    call $MASM~branchTestNull'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestNull(op));
-    $MASM~branchTestNull'$value := $MASM~branchTestNull'tmp'0;
-    call $MASM~branchTestNull'tmp'1 := $Value~isNull($MASM~branchTestNull'$value);
-    if ($MASM~branchTestNull'tmp'1) {
-      //call $MASM^jump($label#$MASM^Op~branchTestNull(op));
-      //$MASM^pc := 10;
-      goto label$returnFalse;
-    }
-    call $MASM^step();
-
-  op'4$MASM~branchTestMagic:
-    op := ops[4];
-    call $MASM~branchTestMagic'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestMagic(op));
-    $MASM~branchTestMagic'$value := $MASM~branchTestMagic'tmp'0;
-    call $MASM~branchTestMagic'tmp'1 := $Value~isMagic($MASM~branchTestMagic'$value);
-    if ($MASM~branchTestMagic'tmp'1) {
-      //call $MASM^jump($label#$MASM^Op~branchTestMagic(op));
-      //$MASM^pc := 14;
-      goto label$failure;
-    }
-    call $MASM^step();
-
-  op'5$MASM~branchTestNotObject:
-    op := ops[5];
-    call $MASM~branchTestNotObject'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestNotObject(op));
-    $MASM~branchTestNotObject'$value := $MASM~branchTestNotObject'tmp'0;
-    call $MASM~branchTestNotObject'tmp'1 := $Value~isObject($MASM~branchTestNotObject'$value);
-    if (!$MASM~branchTestNotObject'tmp'1) {
-      //call $MASM^jump($label#$MASM^Op~branchTestNotObject(op));
-      //$MASM^pc := 10;
-      goto label$returnFalse;
-    }
-    call $MASM^step();
-
-  op'6$MASM~unboxObject:
-    op := ops[6];
-    assert is#$MASM^Op~unboxObject(op);
-    call regs := $MASM~unboxObject(
-      valueRegs,
-      regs,
-      $valueReg#$MASM^Op~unboxObject(op),
-      $objectReg#$MASM^Op~unboxObject(op)
-    );
-
-  op'7$MASM~branchTestObjectEq:
-    op := ops[7];
-    call $MASM~branchTestObjectEq'tmp'0 := $Reg~getObject(regs, $lhsReg#$MASM^Op~branchTestObjectEq(op));
-    $MASM~branchTestObjectEq'$lhs := $MASM~branchTestObjectEq'tmp'0;
-    call $MASM~branchTestObjectEq'tmp'1 := $Reg~getObject(regs, $rhsReg#$MASM^Op~branchTestObjectEq(op));
-    $MASM~branchTestObjectEq'$rhs := $MASM~branchTestObjectEq'tmp'1;
-    if ($MASM~branchTestObjectEq'$lhs == $MASM~branchTestObjectEq'$rhs) {
-      //call $MASM^jump($label#$MASM^Op~branchTestObjectEq(op));
-      //$MASM^pc := 12;
-      goto label$returnTrue;
-    }
-    call $MASM^step();
-
-  op'8$MASM~loadObjectProto:
-    op := ops[8];
-    call valueRegs := $MASM~loadObjectProto(
-      valueRegs,
-      regs,
-      $objectReg#$MASM^Op~loadObjectProto(op),
-      $protoReg#$MASM^Op~loadObjectProto(op)
-    );
-
-  op'9$MASM~jump:
-    op := ops[9];
-    //call $MASM^jump($label#$MASM^Op~jump(op));
-    //$MASM^pc := 3;
-    goto label$loop;
-
-  label$returnFalse:
-  op'10$MASM~storeBoolean:
-    op := ops[10];
-    call regs := $MASM~storeBoolean(
-      regs,
-      $boolean#$MASM^Op~storeBoolean(op),
-      $dstReg#$MASM^Op~storeBoolean(op)
-    );
-
-  op'11$MASM~jump:
-    op := ops[11];
-    //call $MASM^jump($label#$MASM^Op~jump(op));
-    //$MASM^pc := 13;
-    goto label$done;
-
-  label$returnTrue:
-  op'12$MASM~storeBoolean:
-    op := ops[12];
-    call regs := $MASM~storeBoolean(
-      regs,
-      $boolean#$MASM^Op~storeBoolean(op),
-      $dstReg#$MASM^Op~storeBoolean(op)
-    );
-
-  label$done:
-
-  label$failure:
 }
