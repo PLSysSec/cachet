@@ -384,8 +384,8 @@ procedure {:inline 1} $MASM^jump(label: $MASM^Label)
   var boundLabel: $MASM^BoundLabel;
   boundLabel := $MASM^boundLabels[label];
   assert is#$MASM^BoundLabel(boundLabel);
-  $MASM^controlFlow := $MASM^Jump(bind#$MASM^BoundLabel(boundLabel));
   $MASM^pc := pc#$MASM^BoundLabel(boundLabel);
+  $MASM^controlFlow := $MASM^Jump(bind#$MASM^BoundLabel(boundLabel));
 }
 
 var $MASM^emitPc: $MASM^Pc;
@@ -489,6 +489,24 @@ procedure $MASM~branchTestMagic($valueReg: $ValueReg, $label: $MASM^Label)
   call tmp'0 := $ValueReg~getValue($valueReg);
   $value := tmp'0;
   call tmp'1 := $Value~isMagic($value);
+  if (tmp'1) {
+    call $MASM^jump($label);
+    return;
+  }
+  call $MASM^step();
+}
+
+function {:constructor} $MASM^Op~branchTestObject($valueReg: $ValueReg, $label: $MASM^Label): $MASM^Op;
+
+procedure $MASM~branchTestObject($valueReg: $ValueReg, $label: $MASM^Label)
+  modifies $MASM^pc;
+{
+  var $value: $Value;
+  var tmp'0: $Value;
+  var tmp'1: $Bool;
+  call tmp'0 := $ValueReg~getValue($valueReg);
+  $value := tmp'0;
+  call tmp'1 := $Value~isObject($value);
   if (tmp'1) {
     call $MASM^jump($label);
     return;
@@ -763,6 +781,56 @@ procedure $CacheIR~loadInstanceOfObjectResult($lhsId: $ValId, $protoId: $ObjId, 
   call $MASM^bind(4, $done);
 }
 
+procedure loadInstanceOfObjectResult(lhsId: $ValId, protoId: $ObjId)
+  returns (ret: $Bool, failure: $Bool)
+{
+  var lhs: $Value;
+  var proto: $Object;
+  var scratch: $Object;
+  var b: $Bool;
+
+  call lhs := $ValueReg~getValue($ValId~toValueReg(lhsId));
+  call proto := $Reg~getObject($ObjId~toReg(protoId));
+
+  call b := $Value~isObject(lhs);
+  if (!b) {
+    ret := false;
+    failure := false;
+    return;
+  }
+  call scratch := $Value~toObject(lhs);
+  call lhs := $Object~getProto(scratch);
+
+  while (true) {
+    call b := $Value~isNull(lhs);
+    if (b) {
+      ret := false;
+      failure := false;
+      return;
+    }
+    call b := $Value~isMagic(lhs);
+    if (b) {
+      failure := true;
+      return;
+    }
+
+    call b := $Value~isObject(lhs);
+    if (!b) {
+      ret := false;
+      failure := false;
+      return;
+    }
+    call scratch := $Value~toObject(lhs);
+    if (scratch == proto) {
+      ret := true;
+      failure := false;
+      return;
+    }
+
+    call lhs := $Object~getProto(scratch);
+  }
+}
+
 const $shape: $Shape;
 const $class: $Class;
 const $slot: $Int32;
@@ -814,91 +882,103 @@ procedure /*{:entrypoint}*/ $GetProp($valId: $ValId, $objId: $ObjId, $scratchId:
   $MASM^pc := 0;
   $MASM^controlFlow := $MASM^Seq();
 
-  op := $MASM^emitOps[$MASM^pc];
-  call $MASM~branchTestNotObject(
-    $valueReg#$MASM^Op~branchTestNotObject(op),
-    $label#$MASM^Op~branchTestNotObject(op)
-  );
-  goto seq'0, label$notDouble, label$done, label$failure;
+  while (true) {
+    goto seq'0, label$notDouble, label$done, label$failure;
 
-  seq'0:
-    assume {:partition} $MASM^controlFlow == $MASM^Seq();
+    seq'0:
+      assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~unboxObject(
-      $valueReg#$MASM^Op~unboxObject(op),
-      $objectReg#$MASM^Op~unboxObject(op)
-    );
+      op := $MASM^emitOps[$MASM^pc];
+      call $MASM~branchTestNotObject(
+        $valueReg#$MASM^Op~branchTestNotObject(op),
+        $label#$MASM^Op~branchTestNotObject(op)
+      );
+      goto seq'1, jump;
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~branchTestNotObjectShape(
-      $objectReg#$MASM^Op~branchTestNotObjectShape(op),
-      $shape#$MASM^Op~branchTestNotObjectShape(op),
-      $label#$MASM^Op~branchTestNotObjectShape(op)
-    );
-    goto seq'1, label$notDouble, label$done, label$failure;
+    seq'1:
+      assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-  seq'1:
-    assume {:partition} $MASM^controlFlow == $MASM^Seq();
+      op := $MASM^emitOps[$MASM^pc];
+      call $MASM~unboxObject(
+        $valueReg#$MASM^Op~unboxObject(op),
+        $objectReg#$MASM^Op~unboxObject(op)
+      );
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~loadObjectFixedSlot(
-      $objectReg#$MASM^Op~loadObjectFixedSlot(op),
-      $slot#$MASM^Op~loadObjectFixedSlot(op),
-      $valueReg#$MASM^Op~loadObjectFixedSlot(op)
-    );
+      op := $MASM^emitOps[$MASM^pc];
+      call $MASM~branchTestNotObjectShape(
+        $objectReg#$MASM^Op~branchTestNotObjectShape(op),
+        $shape#$MASM^Op~branchTestNotObjectShape(op),
+        $label#$MASM^Op~branchTestNotObjectShape(op)
+      );
+      goto seq'2, jump;
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~branchTestNotDouble(
-      $valueReg#$MASM^Op~branchTestNotDouble(op),
-      $label#$MASM^Op~branchTestNotDouble(op)
-    );
-    goto seq'2, label$notDouble, label$done, label$failure;
+    seq'2:
+      assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-  seq'2:
-    assume {:partition} $MASM^controlFlow == $MASM^Seq();
+      op := $MASM^emitOps[$MASM^pc];
+      call $MASM~loadObjectFixedSlot(
+        $objectReg#$MASM^Op~loadObjectFixedSlot(op),
+        $slot#$MASM^Op~loadObjectFixedSlot(op),
+        $valueReg#$MASM^Op~loadObjectFixedSlot(op)
+      );
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~unboxDouble(
-      $valueReg#$MASM^Op~unboxDouble(op),
-      $doubleReg#$MASM^Op~unboxDouble(op)
-    );
+      op := $MASM^emitOps[$MASM^pc];
+      call $MASM~branchTestNotDouble(
+        $valueReg#$MASM^Op~branchTestNotDouble(op),
+        $label#$MASM^Op~branchTestNotDouble(op)
+      );
+      goto seq'3, jump;
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~jump($label#$MASM^Op~jump(op));
-    goto label$notDouble, label$done, label$failure;
+    seq'3:
+      assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-  label$notDouble:
-    assume {:partition} $MASM^controlFlow == $MASM^Jump(1);
-    $MASM^controlFlow := $MASM^Seq();
+      op := $MASM^emitOps[$MASM^pc];
+      call $MASM~unboxDouble(
+        $valueReg#$MASM^Op~unboxDouble(op),
+        $doubleReg#$MASM^Op~unboxDouble(op)
+      );
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~branchTestNotInt32(
-      $valueReg#$MASM^Op~branchTestNotInt32(op),
-      $label#$MASM^Op~branchTestNotInt32(op)
-    );
-    goto seq'3, label$notDouble, label$done, label$failure;
+      op := $MASM^emitOps[$MASM^pc];
+      call $MASM~jump($label#$MASM^Op~jump(op));
+      goto jump;
 
-  seq'3:
-    assume {:partition} $MASM^controlFlow == $MASM^Seq();
+    label$notDouble:
+      assume {:partition} $MASM^controlFlow == $MASM^Jump(1);
+      $MASM^controlFlow := $MASM^Seq();
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~unboxInt32(
-      $valueReg#$MASM^Op~unboxInt32(op),
-      $int32Reg#$MASM^Op~unboxInt32(op)
-    );
-    goto seq'4;
+      op := $MASM^emitOps[$MASM^pc];
+      call $MASM~branchTestNotInt32(
+        $valueReg#$MASM^Op~branchTestNotInt32(op),
+        $label#$MASM^Op~branchTestNotInt32(op)
+      );
+      goto seq'4, jump;
 
-  label$done:
-    assume {:partition} $MASM^controlFlow == $MASM^Jump(2);
-    $MASM^controlFlow := $MASM^Seq();
+    seq'4:
+      assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-  seq'4:
-    return;
+      op := $MASM^emitOps[$MASM^pc];
+      call $MASM~unboxInt32(
+        $valueReg#$MASM^Op~unboxInt32(op),
+        $int32Reg#$MASM^Op~unboxInt32(op)
+      );
+      goto seq'5;
 
-  label$failure:
-    assume {:partition} $MASM^controlFlow == $MASM^Jump(0);
-    $MASM^controlFlow := $MASM^Seq();
+    label$done:
+      assume {:partition} $MASM^controlFlow == $MASM^Jump(2);
+      $MASM^controlFlow := $MASM^Seq();
+
+    seq'5:
+      return;
+
+    label$failure:
+      assume {:partition} $MASM^controlFlow == $MASM^Jump(0);
+      $MASM^controlFlow := $MASM^Seq();
+
+      return;
+
+    jump:
+      assume {:partition} is#$MASM^Jump($MASM^controlFlow);
+  }
 }
 
 procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $protoId: $ObjId, $scratch: $Reg, $output: $Reg)
@@ -915,11 +995,18 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $protoId: $ObjId, $scratch: 
   var failure: $MASM^Label;
   var op: $MASM^Op;
 
+  /*
+  var origOutput: $Bool;
+  var origFailure: $Bool;
+  */
+
   var initProtoId: $Bool;
   call initProtoId := $Value~isObject(regs[$ObjId~toReg($protoId)]);
   assume initProtoId;
 
   assume $ObjId~toReg($protoId) != $scratch;
+
+  //call origOutput, origFailure := loadInstanceOfObjectResult($lhsId, $protoId);
 
   assume (forall label: $MASM^Label :: $MASM^boundLabels[label] == $MASM^UnboundLabel());
   //assume (forall pc: $MASM^Pc :: $MASM^emitOps[pc] == $MASM^Op^noOp());
@@ -938,127 +1025,175 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $protoId: $ObjId, $scratch: 
 
   assert $MASM^emitPc >= 0;
 
+  goto start, entry'1;
+
+  start:
+    assume {:partition} ($MASM^controlFlow == $MASM^Seq() && $MASM^pc == 0);
+    goto interpret;
+
+  entry'1:
+    // TODO: Double-check this.
+    assume {:partition} ($MASM^controlFlow == $MASM^Jump(1) && (exists label: $MASM^Label :: $MASM^boundLabels[label] == $MASM^BoundLabel(1, $MASM^pc)));
+    goto interpret;
+
+  /*
   $MASM^pc := 0;
   $MASM^controlFlow := $MASM^Seq();
+  */
 
-  op := $MASM^emitOps[$MASM^pc];
-  call $MASM~branchTestNotObject(
-    $valueReg#$MASM^Op~branchTestNotObject(op),
-    $label#$MASM^Op~branchTestNotObject(op)
-  );
-  goto seq'0, label$loop, label$returnFalse, label$returnTrue, label$done, label$failure;
+  interpret:
+    while (true) {
+      goto seq'0, label$loop, label$returnFalse, label$returnTrue, label$done, label$failure;
 
-  seq'0:
-    assume {:partition} $MASM^controlFlow == $MASM^Seq();
+      seq'0:
+        assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~unboxObject(
-      $valueReg#$MASM^Op~unboxObject(op),
-      $objectReg#$MASM^Op~unboxObject(op)
-    );
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~branchTestNotObject(
+          $valueReg#$MASM^Op~branchTestNotObject(op),
+          $label#$MASM^Op~branchTestNotObject(op)
+        );
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~loadObjectProto(
-      $objectReg#$MASM^Op~loadObjectProto(op),
-      $protoReg#$MASM^Op~loadObjectProto(op)
-    );
-    goto seq'1;
+        goto seq'1, jump;
 
-  label$loop:
-    assume {:partition} $MASM^controlFlow == $MASM^Jump(1);
-    $MASM^controlFlow := $MASM^Seq();
+      seq'1:
+        assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-  seq'1:
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~branchTestNull(
-      $valueReg#$MASM^Op~branchTestNull(op),
-      $label#$MASM^Op~branchTestNull(op)
-    );
-    goto seq'2, label$loop, label$returnFalse, label$returnTrue, label$done, label$failure;
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~unboxObject(
+          $valueReg#$MASM^Op~unboxObject(op),
+          $objectReg#$MASM^Op~unboxObject(op)
+        );
 
-  seq'2:
-    assume {:partition} $MASM^controlFlow == $MASM^Seq();
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~loadObjectProto(
+          $objectReg#$MASM^Op~loadObjectProto(op),
+          $protoReg#$MASM^Op~loadObjectProto(op)
+        );
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~branchTestMagic(
-      $valueReg#$MASM^Op~branchTestMagic(op),
-      $label#$MASM^Op~branchTestMagic(op)
-    );
-    goto seq'3, label$loop, label$returnFalse, label$returnTrue, label$done, label$failure;
+        assert $Value~typeOf(regs[$ObjId~toReg($protoId)]) == $ValueType~Object();
+        assume false;
+        //goto seq'2;
 
-  seq'3:
-    assume {:partition} $MASM^controlFlow == $MASM^Seq();
+      label$loop:
+        assume {:partition} $MASM^controlFlow == $MASM^Jump(1);
+        $MASM^controlFlow := $MASM^Seq();
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~branchTestNotObject(
-      $valueReg#$MASM^Op~branchTestNotObject(op),
-      $label#$MASM^Op~branchTestNotObject(op)
-    );
-    goto seq'4, label$loop, label$returnFalse, label$returnTrue, label$done, label$failure;
+      seq'2:
+        havoc heap, valueRegs, regs;
+        assume $Value~typeOf(regs[$ObjId~toReg($protoId)]) == $ValueType~Object();
 
-  seq'4:
-    assume {:partition} $MASM^controlFlow == $MASM^Seq();
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~branchTestNull(
+          $valueReg#$MASM^Op~branchTestNull(op),
+          $label#$MASM^Op~branchTestNull(op)
+        );
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~unboxObject(
-      $valueReg#$MASM^Op~unboxObject(op),
-      $objectReg#$MASM^Op~unboxObject(op)
-    );
+        goto seq'3, jump;
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~branchTestObjectEq(
-      $lhsReg#$MASM^Op~branchTestObjectEq(op),
-      $rhsReg#$MASM^Op~branchTestObjectEq(op),
-      $label#$MASM^Op~branchTestObjectEq(op)
-    );
-    goto seq'5, label$loop, label$returnFalse, label$returnTrue, label$done, label$failure;
+      seq'3:
+        assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-  seq'5:
-    assume {:partition} $MASM^controlFlow == $MASM^Seq();
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~branchTestMagic(
+          $valueReg#$MASM^Op~branchTestMagic(op),
+          $label#$MASM^Op~branchTestMagic(op)
+        );
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~loadObjectProto(
-      $objectReg#$MASM^Op~loadObjectProto(op),
-      $protoReg#$MASM^Op~loadObjectProto(op)
-    );
+        goto seq'4, jump;
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~jump($label#$MASM^Op~jump(op));
-    goto label$loop, label$returnFalse, label$returnTrue, label$done, label$failure;
+      seq'4:
+        assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-  label$returnFalse:
-    assume {:partition} $MASM^controlFlow == $MASM^Jump(2);
-    $MASM^controlFlow := $MASM^Seq();
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~branchTestNotObject(
+          $valueReg#$MASM^Op~branchTestNotObject(op),
+          $label#$MASM^Op~branchTestNotObject(op)
+        );
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~storeBoolean(
-      $boolean#$MASM^Op~storeBoolean(op),
-      $dstReg#$MASM^Op~storeBoolean(op)
-    );
+        goto seq'5, jump;
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~jump($label#$MASM^Op~jump(op));
-    goto label$loop, label$returnFalse, label$returnTrue, label$done, label$failure;
+      seq'5:
+        assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-  label$returnTrue:
-    assume {:partition} $MASM^controlFlow == $MASM^Jump(3);
-    $MASM^controlFlow := $MASM^Seq();
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~unboxObject(
+          $valueReg#$MASM^Op~unboxObject(op),
+          $objectReg#$MASM^Op~unboxObject(op)
+        );
 
-    op := $MASM^emitOps[$MASM^pc];
-    call $MASM~storeBoolean(
-      $boolean#$MASM^Op~storeBoolean(op),
-      $dstReg#$MASM^Op~storeBoolean(op)
-    );
-    goto seq'6;
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~branchTestObjectEq(
+          $lhsReg#$MASM^Op~branchTestObjectEq(op),
+          $rhsReg#$MASM^Op~branchTestObjectEq(op),
+          $label#$MASM^Op~branchTestObjectEq(op)
+        );
 
-  label$done:
-    assume {:partition} $MASM^controlFlow == $MASM^Jump(4);
-    $MASM^controlFlow := $MASM^Seq();
+        goto seq'6, jump;
 
-  seq'6:
-    return;
+      seq'6:
+        assume {:partition} $MASM^controlFlow == $MASM^Seq();
 
-  label$failure:
-    assume {:partition} $MASM^controlFlow == $MASM^Jump(0);
-    $MASM^controlFlow := $MASM^Seq();
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~loadObjectProto(
+          $objectReg#$MASM^Op~loadObjectProto(op),
+          $protoReg#$MASM^Op~loadObjectProto(op)
+        );
+
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~jump($label#$MASM^Op~jump(op));
+
+        goto seq'7, jump;
+
+      label$returnFalse:
+        assume {:partition} $MASM^controlFlow == $MASM^Jump(2);
+        $MASM^controlFlow := $MASM^Seq();
+
+      seq'7:
+        assume {:partition} $MASM^controlFlow == $MASM^Seq();
+
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~storeBoolean(
+          $boolean#$MASM^Op~storeBoolean(op),
+          $dstReg#$MASM^Op~storeBoolean(op)
+        );
+
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~jump($label#$MASM^Op~jump(op));
+
+        goto jump;
+
+      label$returnTrue:
+        assume {:partition} $MASM^controlFlow == $MASM^Jump(3);
+        $MASM^controlFlow := $MASM^Seq();
+
+        op := $MASM^emitOps[$MASM^pc];
+        call $MASM~storeBoolean(
+          $boolean#$MASM^Op~storeBoolean(op),
+          $dstReg#$MASM^Op~storeBoolean(op)
+        );
+
+        goto seq'8;
+
+      label$done:
+        assume {:partition} $MASM^controlFlow == $MASM^Jump(4);
+        $MASM^controlFlow := $MASM^Seq();
+
+      seq'8:
+        return;
+
+      label$failure:
+        assume {:partition} $MASM^controlFlow == $MASM^Jump(0);
+        $MASM^controlFlow := $MASM^Seq();
+
+        return;
+
+      jump:
+        assume {:partition} is#$MASM^Jump($MASM^controlFlow);
+
+        if (bind#$MASM^Jump($MASM^controlFlow) == 1) {
+          assert $Value~typeOf(regs[$ObjId~toReg($protoId)]) == $ValueType~Object();
+          assume false;
+        }
+    }
 }
