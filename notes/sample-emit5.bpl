@@ -556,6 +556,17 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $hasKnownLhs: $Bool, $protoI
   var $MASM~branchTestObjectEq'tmp'0: $Object;
   var $MASM~branchTestObjectEq'tmp'1: $Object;
 
+  /*
+  var origLhs: $Value;
+  var origLhsIsObject: $Bool;
+  var origLhsObject: $Object;
+  var origLhsProto: $Value;
+  var origLhsProtoIsObject: $Bool;
+  var origLhsProtoObject: $Object;
+  var origOutput: $Bool;
+  var finalOutput: $Bool;
+  */
+
   $lhs := $ValId~toValueReg($lhsId);
   $proto := $ObjId~toReg($protoId);
 
@@ -563,6 +574,21 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $hasKnownLhs: $Bool, $protoI
   assume $Value~typeOf(regs[$proto]) == $ValueType~Object();
 
   call proto := $Reg~getObject(regs, $proto);
+
+  /*
+  origOutput := false;
+  call origLhs := $ValueReg~getValue(valueRegs, $ValId~toValueReg($lhsId));
+  call origLhsIsObject := $Value~isObject(origLhs);
+  if (origLhsIsObject) {
+    call origLhsObject := $Value~toObject(origLhs);
+    call origLhsProto := $Object~getProto(origLhsObject);
+    call origLhsProtoIsObject := $Value~isObject(origLhsProto);
+    if (origLhsProtoIsObject) {
+      call origLhsProtoObject := $Value~toObject(origLhsProto);
+      origOutput := origLhsProtoObject == proto;
+    }
+  }
+  */
 
   $MASM^emitPc := 0;
 
@@ -757,8 +783,15 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $hasKnownLhs: $Bool, $protoI
   label$done:
     assume $MASM^pcBinds[$MASM^pc] == 4;
 
+    /*
+    if (origOutput) {
+      call finalOutput := $Reg~getBoolean(regs, $output);
+      assert finalOutput;
+    }
+    */
     return;
 
   label$failure:
     assume $MASM^pcBinds[$MASM^pc] == 0;
+    //assert !origOutput;
 }
