@@ -248,7 +248,7 @@ type ValueRegs = [$ValueReg]$Value;
 
 procedure $ValueReg~getValue(valueRegs: ValueRegs, $valueReg: $ValueReg)
   returns (ret: $Value)
-{ 
+{
   ret := valueRegs[$valueReg];
 }
 
@@ -264,7 +264,7 @@ type Regs = [$Reg]$Value;
 
 procedure $Reg~getBoolean(regs: Regs, $reg: $Reg)
   returns (ret: $Bool)
-{ 
+{
   var tmp'0: $Bool;
   call tmp'0 := $Value~toBoolean(regs[$reg]);
   ret := tmp'0;
@@ -281,7 +281,7 @@ procedure $Reg~setBoolean(regs: Regs, $reg: $Reg, $boolean: $Bool)
 
 procedure $Reg~getObject(regs: Regs, $reg: $Reg)
   returns (ret: $Object)
-{ 
+{
   var tmp'0: $Object;
   call tmp'0 := $Value~toObject(regs[$reg]);
   ret := tmp'0;
@@ -360,6 +360,18 @@ procedure $MASM~storeBoolean(regs: Regs, $boolean: $Bool, $dstReg: $Reg)
   modifies $MASM^pc;
 {
   call out_regs := $Reg~setBoolean(regs, $dstReg, $boolean);
+  call $MASM^step();
+}
+
+function {:constructor} $MASM^Op~storeBooleanValue($boolean: $Bool, $dstReg: $ValueReg): $MASM^Op;
+
+procedure $MASM~storeBooleanValue(valueRegs: ValueRegs, $boolean: $Bool, $dstReg: $ValueReg)
+  returns (out_valueRegs: ValueRegs)
+  modifies $MASM^pc;
+{
+  var tmp'0: $Value;
+  call tmp'0 := $Value~fromBoolean($boolean);
+  call out_valueRegs := $ValueReg~setValue(valueRegs, $dstReg, tmp'0);
   call $MASM^step();
 }
 
@@ -472,6 +484,7 @@ procedure $CacheIR~loadInstanceOfObjectResult(valueRegs: ValueRegs, $lhsId: $Val
   }
   call $MASM^emit($MASM^Op~unboxObject($lhs, $scratch));
   call $MASM^emit($MASM^Op~loadObjectProto($scratch, $lhs));
+  //call $MASM^emit($MASM^Op~branchTestNotObject($lhs, $returnFalse));
 
   call $MASM^bind(1, $loop);
   call $MASM^emit($MASM^Op~branchTestNull($lhs, $returnFalse));
@@ -482,6 +495,8 @@ procedure $CacheIR~loadInstanceOfObjectResult(valueRegs: ValueRegs, $lhsId: $Val
   call $MASM^emit($MASM^Op~branchTestObjectEq($scratch, $proto, $returnTrue));
 
   call $MASM^emit($MASM^Op~loadObjectProto($scratch, $lhs));
+  //call $MASM^emit($MASM^Op~storeBooleanValue(true, $lhs));
+  //call $MASM^emit($MASM^Op~branchTestNotObject($lhs, $returnFalse));
   call $MASM^emit($MASM^Op~jump($loop));
 
   call $MASM^bind(2, $returnFalse);
@@ -601,11 +616,26 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $hasKnownLhs: $Bool, $protoI
       $protoReg#$MASM^Op~loadObjectProto(op)
     );
 
+  /*
+  op'2a$MASM~branchTestNotObject:
+    op := $MASM^ops[$MASM^pc];
+    call $MASM~branchTestNotObject'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestNotObject(op));
+    $MASM~branchTestNotObject'$value := $MASM~branchTestNotObject'tmp'0;
+    call $MASM~branchTestNotObject'tmp'1 := $Value~isObject($MASM~branchTestNotObject'$value);
+    if (!$MASM~branchTestNotObject'tmp'1) {
+      call $MASM^jump($label#$MASM^Op~branchTestNotObject(op));
+      goto label$returnFalse;
+    }
+    call $MASM^step();
+  */
+
   assert regs[$proto] == $Value~fromObjectUnchecked(proto);
+  //assert $Value~typeOf(valueRegs[$lhs]) == $ValueType~Object();
 
   label$loop:
     assume $MASM^pcBinds[$MASM^pc] == 1;
     assume regs[$proto] == $Value~fromObjectUnchecked(proto);
+    //assume $Value~typeOf(valueRegs[$lhs]) == $ValueType~Object();
 
   op'3$MASM^branchTestNull:
     op := $MASM^ops[$MASM^pc];
@@ -669,11 +699,32 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $hasKnownLhs: $Bool, $protoI
       $objectReg#$MASM^Op~loadObjectProto(op),
       $protoReg#$MASM^Op~loadObjectProto(op)
     );
+  /*
+  op'8$MASM~storeBooleanValue:
+    op := $MASM^ops[$MASM^pc];
+    call valueRegs := $MASM~storeBooleanValue(
+      valueRegs,
+      $boolean#$MASM^Op~storeBooleanValue(op),
+      $dstReg#$MASM^Op~storeBooleanValue(op)
+    );
+
+  op'8a$MASM~branchTestNotObject:
+    op := $MASM^ops[$MASM^pc];
+    call $MASM~branchTestNotObject'tmp'0 := $ValueReg~getValue(valueRegs, $valueReg#$MASM^Op~branchTestNotObject(op));
+    $MASM~branchTestNotObject'$value := $MASM~branchTestNotObject'tmp'0;
+    call $MASM~branchTestNotObject'tmp'1 := $Value~isObject($MASM~branchTestNotObject'$value);
+    if (!$MASM~branchTestNotObject'tmp'1) {
+      call $MASM^jump($label#$MASM^Op~branchTestNotObject(op));
+      goto label$returnFalse;
+    }
+    call $MASM^step();
+  */
 
   op'9$MASM~jump:
     op := $MASM^ops[$MASM^pc];
     call $MASM^jump($label#$MASM^Op~jump(op));
     assert regs[$proto] == $Value~fromObjectUnchecked(proto);
+    //assert $Value~typeOf(valueRegs[$lhs]) == $ValueType~Object();
     goto label$loop;
 
   label$returnFalse:
