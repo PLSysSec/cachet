@@ -564,6 +564,7 @@ procedure {:entrypoint} $InstanceOf($lhsId: $ValId, $hasKnownLhs: $Bool, $protoI
   $MASM^emitPc := $MASM^emitPc + 1;
 
   assert $MASM^emitPc >= 0;
+  assume (forall pc: $MASM^Pc :: $MASM^pcBinds[pc] >= -1 && $MASM^pcBinds[pc] <= 4);
 
   $MASM^pc := 0;
 
