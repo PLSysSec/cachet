@@ -1,0 +1,43 @@
+use super::*;
+use iterate::iterate;
+
+grammar;
+
+pub Stub: Stub = 
+    Word "IonIC" <instrs: Instr*> "ReturnFromIC" <context: ContextInfo*> =>  {
+        Stub { instrs, context }
+    };
+
+
+Instr: Instr = 
+    <name:Word> <args:Comma<Arg>> => {
+        Instr {name, args}
+    };
+
+
+Arg: Arg = 
+    "["  <type_:Word> <name:Word> "]" <idx:Num> => {
+        Arg {
+            type_, 
+            name,
+            idx
+        }
+    };
+
+
+ContextInfo: ContextInfo =
+    <type_:Word> <idx: Num> "," <value: Word> => {
+        ContextInfo { type_, idx, value }
+    };
+
+Num: usize =
+    <w:Word> => {
+        w.parse().unwrap()
+    };
+
+Word: String =
+    <i:r"\w+"> => i.to_string();
+
+
+Comma<Rule>: Vec<Rule> =
+    <xs:(<Rule> ",")*> <x:Rule?> => iterate![..xs, ..x].collect();

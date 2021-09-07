@@ -4,7 +4,6 @@ use std::fmt::Display;
 
 use crate::frontend::type_checker::*;
 
-
 fn bail() -> ast::Ident {
     ast::Ident("bail".to_string())
 }
@@ -40,11 +39,7 @@ fn const_ident(env: &Env, idx: ConstIndex) -> ast::Ident {
 fn fn_ident(env: &Env, idx: FnIndex) -> ast::Ident {
     let f = &env.fn_defs[idx];
     match f.parent_type {
-        Some(t) => ast::Ident(format!(
-            "{}~{}",
-            type_name(env, t),
-            f.sig.ident.to_string()
-        )),
+        Some(t) => ast::Ident(format!("{}~{}", type_name(env, t), f.sig.ident.to_string())),
         None => user_ident(&f.sig.ident),
     }
 }
@@ -65,7 +60,7 @@ fn type_name(env: &Env, idx: TypeIndex) -> ast::Ident {
 fn type_ident(env: &Env, idx: TypeIndex) -> ast::Ident {
     match idx {
         TypeIndex::Struct(_) => ast::Ident("Ref".to_string()),
-        _ => type_name(env, idx)
+        _ => type_name(env, idx),
     }
 }
 
@@ -119,10 +114,16 @@ function {:bvbuiltin "bvadd"} Int32^Add(x: Int32, y: Int32): Int32;
 
     let fn_decls = env.fn_def_order.iter().flat_map(|idx| lower_fn(env, *idx));
 
-
     let op_decls = env.op_defs.iter().flat_map(|op| lower_op(env, op));
 
-    ast::Program(std::iter::once(preamble).chain(type_decls).chain(fn_decls).chain(const_decls).chain(op_decls).collect())
+    ast::Program(
+        std::iter::once(preamble)
+            .chain(type_decls)
+            .chain(fn_decls)
+            .chain(const_decls)
+            .chain(op_decls)
+            .collect(),
+    )
 }
 
 fn lower_enum<'a>(env: &'a Env, idx: EnumIndex) -> impl Iterator<Item = ast::Decl> + 'a {
@@ -163,11 +164,17 @@ fn lower_const(env: &Env, idx: ConstIndex) -> impl Iterator<Item = ast::Decl> {
     std::iter::once(const_decl)
 }
 
-fn lower_op(env:  &Env, op: &OpDef) -> Vec<ast::Decl> {
+fn lower_op(env: &Env, op: &OpDef) -> Vec<ast::Decl> {
     lower_fn_or_op(env, user_ident(&op.sig.ident), op, &op.sig, Some(&op.body))
 }
 
-fn lower_fn_or_op(env: &Env, name: ast::Ident, scope: &dyn Scope, sig: &Sig, body: Option<&Body>) -> Vec<ast::Decl> {
+fn lower_fn_or_op(
+    env: &Env,
+    name: ast::Ident,
+    scope: &dyn Scope,
+    sig: &Sig,
+    body: Option<&Body>,
+) -> Vec<ast::Decl> {
     let mut decls = vec![];
     let mut params = vec![];
     let mut returns = vec![];
@@ -178,7 +185,10 @@ fn lower_fn_or_op(env: &Env, name: ast::Ident, scope: &dyn Scope, sig: &Sig, bod
             params.push(lower_param_var(env, p))
         }
     }
-    returns.push(ast::TypedVar { var: ret(), typ: type_ident(env, sig.ret) });
+    returns.push(ast::TypedVar {
+        var: ret(),
+        typ: type_ident(env, sig.ret),
+    });
     if body.is_none() {
         let mut body = vec![];
         for out_var in returns.iter() {
@@ -195,8 +205,11 @@ fn lower_fn_or_op(env: &Env, name: ast::Ident, scope: &dyn Scope, sig: &Sig, bod
                 var: out_var.var.clone(),
                 val: ast::Expr::Call {
                     func: pure_ident,
-                    args: params.iter().map(|pv| ast::Expr::Var(pv.var.clone())).collect()
-                }
+                    args: params
+                        .iter()
+                        .map(|pv| ast::Expr::Var(pv.var.clone()))
+                        .collect(),
+                },
             })
         }
         let proc = ast::Decl::Proc {
@@ -205,7 +218,7 @@ fn lower_fn_or_op(env: &Env, name: ast::Ident, scope: &dyn Scope, sig: &Sig, bod
             returns,
             modifies: vec![],
             ensures: vec![],
-            body: Some(body)
+            body: Some(body),
         };
         decls.push(proc);
     } else {
@@ -217,13 +230,13 @@ fn lower_fn_or_op(env: &Env, name: ast::Ident, scope: &dyn Scope, sig: &Sig, bod
             ensures: if !sig.is_fallible && body.is_some() {
                 vec![ast::Ensure {
                     is_free: true,
-                    expr: ast::Expr::Neg(Box::new(ast::Expr::Var(bail())))
+                    expr: ast::Expr::Neg(Box::new(ast::Expr::Var(bail()))),
                 }]
             } else {
                 vec![]
             },
             body: body.as_ref().map(|b| lower_body(env, scope, b)),
-            })
+        })
     }
     decls
 }
@@ -242,7 +255,11 @@ fn lower_body(env: &Env, scope: &dyn Scope, body: &Body) -> Vec<ast::Statement> 
             typ: type_ident(env, lv.type_),
         })
     });
-    let mut bl = BodyLowerer{env, scope, stmts: vec![]};
+    let mut bl = BodyLowerer {
+        env,
+        scope,
+        stmts: vec![],
+    };
     bl.lower_block(Fallible, &body.block, ret);
     vars.chain(bl.stmts.into_iter()).collect()
 }
@@ -254,11 +271,10 @@ enum AssertMode {
 }
 use AssertMode::*;
 
-
 struct BodyLowerer<'a> {
     env: &'a Env,
     scope: &'a dyn Scope,
-    stmts: Vec<ast::Statement>
+    stmts: Vec<ast::Statement>,
 }
 
 impl BodyLowerer<'_> {
@@ -273,19 +289,17 @@ impl BodyLowerer<'_> {
 
             ast::Ident(format!("gen_{}_{}", index, hint))
         };
-        self.stmts.insert(0, ast::Statement::Var(ast::TypedVar{
-            var: ident.clone(), 
-            typ: type_ident(self.env, ty)
-        }));
+        self.stmts.insert(
+            0,
+            ast::Statement::Var(ast::TypedVar {
+                var: ident.clone(),
+                typ: type_ident(self.env, ty),
+            }),
+        );
         ident
     }
 
-    fn lower_block<'a>(
-        &mut self,
-        mode: AssertMode,
-        block: &'a Block,
-        ret_name: ast::Ident,
-    ) {
+    fn lower_block<'a>(&mut self, mode: AssertMode, block: &'a Block, ret_name: ast::Ident) {
         for stmt in &block.stmts {
             self.lower_stmt(mode, stmt);
         }
@@ -300,12 +314,7 @@ impl BodyLowerer<'_> {
         self.stmts.push(assign);
     }
 
-
-    fn lower_stmt(
-        &mut self,
-        mode: AssertMode,
-        s: &Stmt,
-    ) {
+    fn lower_stmt(&mut self, mode: AssertMode, s: &Stmt) {
         match s {
             Stmt::Let(let_stmt) => {
                 let expr = self.lower_expr(mode, &let_stmt.rhs);
@@ -316,35 +325,28 @@ impl BodyLowerer<'_> {
             }
             Stmt::Expr(e) => {
                 self.lower_expr(mode, e);
-            },
-            Stmt::Check(check_stmt) => {
-                match check_stmt.kind {
-                    CheckStmtKind::Assert => todo!(),
-                    CheckStmtKind::Guard => {
-                        let cond = self.lower_expr(mode, &check_stmt.cond);
-                        self.stmts.push(ast::Statement::If {
-                            cond, 
-                            body: vec![
-                                ast::Statement::Assign {
-                                    var: bail(),
-                                    val: ast::Expr::Var(true_ident())
-                                },
-                                ast::Statement::Return,
-                            ],
-                            els: vec![]
-                        });
-                    },
-                }
             }
+            Stmt::Check(check_stmt) => match check_stmt.kind {
+                CheckStmtKind::Assert => todo!(),
+                CheckStmtKind::Guard => {
+                    let cond = self.lower_expr(mode, &check_stmt.cond);
+                    self.stmts.push(ast::Statement::If {
+                        cond,
+                        body: vec![
+                            ast::Statement::Assign {
+                                var: bail(),
+                                val: ast::Expr::Var(true_ident()),
+                            },
+                            ast::Statement::Return,
+                        ],
+                        els: vec![],
+                    });
+                }
+            },
         }
     }
 
-
-    fn lower_expr(
-        &mut self,
-        mode: AssertMode,
-        expr: &Expr,
-    ) -> ast::Expr {
+    fn lower_expr(&mut self, mode: AssertMode, expr: &Expr) -> ast::Expr {
         match expr {
             Expr::Block(block) => {
                 let block_var = self.new_var("block_var", block.type_());
@@ -357,28 +359,22 @@ impl BodyLowerer<'_> {
                 self.lower_block(mode, &block.block, block_var.clone());
                 ast::Expr::Var(block_var)
             }
-            Expr::Var(var_expr) => {
-                match var_expr.index {
-                    VarIndex::BuiltIn(b) => {
-                        match b {
-                            BuiltInVar::Unit => ast::Expr::Call {
-                                func: unit(),
-                                args: vec![]
-                            },
-                            BuiltInVar::True => ast::Expr::Var(true_ident()),
-                            BuiltInVar::False => ast::Expr::Var(false_ident()),
-                        }
-                    }
-                    VarIndex::EnumVariant(idx) => {
-                        ast::Expr::Call {
-                            func: variant_ident(self.env, idx.enum_index, idx.variant_index),
-                            args: vec![],
-                        }
-                    }
-                    VarIndex::Const(idx) => ast::Expr::Var(const_ident(self.env, idx)),
-                    VarIndex::ScopedVar(sv) => ast::Expr::Var(user_ident(&self.scope.lookup(sv))),
-                }
-            }
+            Expr::Var(var_expr) => match var_expr.index {
+                VarIndex::BuiltIn(b) => match b {
+                    BuiltInVar::Unit => ast::Expr::Call {
+                        func: unit(),
+                        args: vec![],
+                    },
+                    BuiltInVar::True => ast::Expr::Var(true_ident()),
+                    BuiltInVar::False => ast::Expr::Var(false_ident()),
+                },
+                VarIndex::EnumVariant(idx) => ast::Expr::Call {
+                    func: variant_ident(self.env, idx.enum_index, idx.variant_index),
+                    args: vec![],
+                },
+                VarIndex::Const(idx) => ast::Expr::Var(const_ident(self.env, idx)),
+                VarIndex::ScopedVar(sv) => ast::Expr::Var(user_ident(&self.scope.lookup(sv))),
+            },
 
             Expr::Call(call_expr) => {
                 let result = self.new_var("call_result", call_expr.type_());
@@ -419,7 +415,7 @@ impl BodyLowerer<'_> {
                         }),
                         // If the spec has promised this is infallible, trust them
                         // We'll catch it later
-                        Infallible => ()
+                        Infallible => (),
                     }
                 }
 
@@ -427,7 +423,8 @@ impl BodyLowerer<'_> {
             }
             Expr::Assign(assign_expr) => {
                 let val_expr = self.lower_expr(mode, &assign_expr.rhs);
-                let ident = user_ident(&self.scope.lookup(ScopedVarIndex::ParamVar(assign_expr.lhs)));
+                let ident =
+                    user_ident(&self.scope.lookup(ScopedVarIndex::ParamVar(assign_expr.lhs)));
                 self.stmts.push(ast::Statement::Assign {
                     var: ident.clone(),
                     val: val_expr,
@@ -459,9 +456,7 @@ impl BodyLowerer<'_> {
             }
         }
     }
-
 }
-
 
 fn fresh_ident(hint: &str) -> ast::Ident {
     static mut IDENT_CT: u32 = 0;
@@ -499,9 +494,7 @@ impl Scope for OpDef {
     fn lookup(&self, var: ScopedVarIndex) -> String {
         match var {
             ScopedVarIndex::ParamVar(pv) => self.sig.param_vars[pv].ident.to_string(),
-            ScopedVarIndex::LocalVar(lv) => {
-                self.body.local_vars[lv].ident.to_string()
-            }
+            ScopedVarIndex::LocalVar(lv) => self.body.local_vars[lv].ident.to_string(),
         }
     }
 }

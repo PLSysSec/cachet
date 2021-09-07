@@ -11,7 +11,6 @@ impl Display for Ident {
     }
 }
 
-
 #[derive(Debug)]
 pub enum Decl {
     Type {
@@ -36,7 +35,7 @@ pub enum Decl {
         name: Ident,
         params: Vec<TypedVar>,
         return_type: Ident,
-        keyword: Option<String>
+        keyword: Option<String>,
     },
 
     /// Sometimes it's just not worth encoding special cases
@@ -60,15 +59,15 @@ pub enum Statement {
     If {
         cond: Expr,
         body: Vec<Statement>,
-        els: Vec<Statement>
+        els: Vec<Statement>,
     },
     Assign {
         var: Ident,
-        val: Expr
+        val: Expr,
     },
     Assert(Expr),
     Assume(Expr),
-    Return
+    Return,
 }
 
 #[derive(Debug)]
@@ -81,9 +80,9 @@ pub enum Expr {
     BinOp {
         op: Op,
         lhs: Box<Expr>,
-        rhs: Box<Expr>
+        rhs: Box<Expr>,
     },
-    Var(Ident)
+    Var(Ident),
 }
 
 #[derive(Debug)]
@@ -95,7 +94,7 @@ pub enum Op {
     LTE,
     GTE,
     LT,
-    GT
+    GT,
 }
 
 #[derive(Clone, Debug)]

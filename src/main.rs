@@ -13,6 +13,7 @@ use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
+use cachet::backend::boogie::lower_env;
 use cachet::backend::interpreter::Interpreter;
 
 use cachet::frontend::parser::parse;
@@ -55,6 +56,9 @@ struct Opt {
     /// Dump type checking output.
     #[structopt(long)]
     dump_type_checking: bool,
+
+    #[structopt(long)]
+    dump_boogie: bool,
 }
 
 fn main() -> Result<(), Error> {
@@ -103,6 +107,12 @@ fn main() -> Result<(), Error> {
     };
     if opt.dump_type_checking {
         eprintln!("=== TYPE CHECKING ===\n\n{:#?}\n\n", env);
+    }
+
+    if opt.dump_boogie {
+        let prog = lower_env(&env);
+
+        println!("{}", prog);
     }
 
     let interpreter = Interpreter::generate(&env);
