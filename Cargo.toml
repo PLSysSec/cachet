@@ -1,33 +1,11 @@
-[package]
-name = "cachet"
-version = "0.0.0"
-authors = ["Michael Smith <michael@spinda.net>"]
-license = "MPL-2.0"
-description = """
-Language and toolset for trustworthy JIT implementation
-"""
-edition = "2018"
+[workspace]
+members = [
+   "crates/cachet-lang",
+   "crates/cachet-compiler",
+   "crates/stub-verifier",
+]
 
-#[lib]
-#crate-type = ["rlib"]
-#name = "cachet"
 
-[build-dependencies]
-lalrpop = "0.19.6"
-
-[dependencies]
-anyhow = "1.0.28"
-codespan = "0.11.1"
-codespan-reporting = "0.11.1"
-enumset = "1.0.6"
-indent_write = "2.2.0"
-internment = "0.5.0"
-intptr = "0.1.4"
-iterate = "1.0.0"
-lalrpop-util = "0.19.6"
-lazy_static = "1.4.0"
-petgraph = "0.5.1"
-regex = "1.5.4"
-structopt = "0.3.22"
-thiserror = "1.0.25"
-z3 = "0.10.0"
+# LALRPOP is really slow when built as debug, so let's just always opt it
+[profile.dev.package.lalrpop]
+opt-level=3
