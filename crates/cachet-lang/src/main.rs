@@ -1,8 +1,8 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
 use std::fmt;
-use std::fs::{read_to_string, File};
-use std::io::prelude::*;
+use std::fs::read_to_string;
+//use std::io::prelude::*;
 use std::iter;
 use std::path::PathBuf;
 
@@ -13,13 +13,13 @@ use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
+//use cachet_compiler::interpreter::Interpreter;
+
 use cachet_lang::normalizer::normalize;
 use cachet_lang::parser::parse;
 use cachet_lang::resolver::{resolve, ResolveErrors};
 use cachet_lang::type_checker::{type_check, TypeCheckErrors};
 use cachet_lang::FrontendError;
-
-use cachet_compiler::compile;
 
 /// The Cachet compiler.
 #[derive(StructOpt)]
@@ -28,24 +28,26 @@ struct Opt {
     /// Input source file (typically ending in .cachet).
     #[structopt(parse(from_os_str))]
     input: PathBuf,
-    /// Output file for declarations (typically ending in .h or .hpp).
+    /*
+    /// Output file for forward declarations (typically ending in .h or .hpp).
     #[structopt(
         parse(from_os_str),
         required_unless("dry-run"),
         requires("defs-output")
     )]
-    decls_output: Option<PathBuf>,
+    fwd_decls_output: Option<PathBuf>,
     /// Output file for definitions (typically ending in .inc or .cpp).
     #[structopt(
         parse(from_os_str),
         required_unless("dry-run"),
-        requires("decls-output")
+        requires("fwd-decls-output")
     )]
     defs_output: Option<PathBuf>,
 
     /// Skip writing output files.
     #[structopt(long)]
     dry_run: bool,
+    */
     /// Dump parsing output.
     #[structopt(long)]
     dump_parsing: bool,
@@ -113,27 +115,29 @@ fn main() -> Result<(), Error> {
         println!("=== NORMALIZATION ===\n\n{:#?}\n\n", env);
     }
 
-    let compiler_output = compile(&env);
+    /*
+    let interpreter = Interpreter::generate(&env);
 
     if !opt.dry_run {
-        let decls_output = opt.decls_output.unwrap();
+        let fwd_decls_output = opt.fwd_decls_output.unwrap();
         write!(
-            File::create(&decls_output)
-                .with_context(|| format!("Failed to open {}", decls_output.display()))?,
+            File::create(&fwd_decls_output)
+                .with_context(|| format!("Failed to open {}", fwd_decls_output.display()))?,
             "{}",
-            compiler_output.decls
+            interpreter.fwd_decls
         )
-        .with_context(|| format!("Failed to write {}", decls_output.display()))?;
+        .with_context(|| format!("Failed to write {}", fwd_decls_output.display()))?;
 
         let defs_output = opt.defs_output.unwrap();
         write!(
             File::create(&defs_output)
                 .with_context(|| format!("Failed to open {}", defs_output.display()))?,
             "{}",
-            compiler_output.defs
+            interpreter.defs
         )
         .with_context(|| format!("Failed to write {}", defs_output.display()))?;
     }
+    */
 
     Ok(())
 }

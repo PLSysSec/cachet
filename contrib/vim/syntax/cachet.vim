@@ -6,13 +6,16 @@ elseif exists("b:current_syntax")
   finish
 endif
 
-syn keyword cachetTypeDef enum struct impl nextgroup=cachetIdent skipwhite skipempty
-syn keyword cachetFnDef op fn nextgroup=cachetFnIdent skipwhite skipempty
-syn keyword cachetVarDef const
-syn keyword cachetTag fallible unsafe
-syn keyword cachetCheck assert guard
-syn keyword cachetOperator as
-syn keyword cachetKeyword let out
+syn keyword cachetTypeItem enum struct impl ir emits nextgroup=cachetIdent skipwhite skipempty
+syn keyword cachetFnItem fn op nextgroup=cachetFnIdent skipwhite skipempty
+syn keyword cachetUnsafe unsafe
+syn keyword cachetImpure impure
+syn keyword cachetCheck assert assume
+syn keyword cachetKeyword var let out label
+syn keyword cachetStorage mut
+syn keyword cachetConditional if
+syn keyword cachetControlFlow goto
+syn keyword cachetEmit emit
 
 syn match cachetIdent "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match cachetFnIdent "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
@@ -26,6 +29,7 @@ syn match cachetPathSep "::"
 
 syn match cachetCall "\w\(\w\)*("he=e-1,me=e-1
 
+syn keyword cachetOperator as
 syn match cachetOperator "\%(+\|-\|/\|*\|=\|\^\|&\||\|!\|>\|<\|%\)=\?"
 syn match cachetOperator "<:"
 syn match cachetOperator display "&&\|||"
@@ -40,12 +44,16 @@ syn region cachetBlockComment matchgroup=cachetBlockComment start="/\*\%(!\|\*[*
 
 syn keyword cachetTodo contained TODO FIXME XXX NB NOTE SAFETY
 
-hi def link cachetTypeDef Keyword
-hi def link cachetFnDef Keyword
-hi def link cachetVarDef Keyword
-hi def link cachetTag Exception
+hi def link cachetTypeItem Keyword
+hi def link cachetFnItem Keyword
+hi def link cachetUnsafe Exception
+hi def link cachetImpure Exception
 hi def link cachetCheck Exception
 hi def link cachetKeyword Keyword
+hi def link cachetStorage StorageClass
+hi def link cachetConditional Conditional
+hi def link cachetControlFlow Keyword
+hi def link cachetEmit Keyword
 
 hi def link cachetIdent Identifier
 hi def link cachetFnIdent Function

@@ -3,15 +3,13 @@
 use std::error::Error;
 use std::fmt;
 
-use codespan::Span;
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use thiserror::Error;
 
-use crate::parser::Path;
+use crate::ast::{Ident, Path, Span, Spanned};
 use crate::FrontendError;
 
-use crate::type_checker::ast::{Ident, Spanned};
-
+// TODO(spinda): Break up TypeCheckError like ResolveError.
 #[derive(Debug, Error)]
 pub enum TypeCheckError {
     #[error("found cycle in subtype relationships")]
@@ -19,26 +17,24 @@ pub enum TypeCheckError {
         first_cycle_type: Spanned<Ident>,
         other_cycle_types: Vec<Spanned<Ident>>,
     },
-    #[error("found cycle in function calls; recursion is not allowed")]
-    FnCallCycle {
-        first_cycle_fn: Spanned<Path>,
-        other_cycle_fns: Vec<Spanned<Path>>,
+    #[error("recursive calls are not allowed")]
+    CallCycle {
+        first_cycle_callable: Spanned<Path>,
+        other_cycle_callables: Vec<Spanned<Path>>,
     },
+    #[error("op `{}` must be a member of an IR", .op)]
+    MisplacedOpItem { op: Spanned<Path> },
+    #[error("op `{}` can't have out-parameter `{}`", .op, .out_param)]
+    OpHasOutParam { op: Path, out_param: Spanned<Ident> },
+    #[error("op `{}` can't return a value", .op)]
+    OpReturnsValue { op: Path, ret_span: Span },
+    #[error("op `{}` is missing a body", .op)]
+    MissingOpBody { op: Path, body_span: Span },
     #[error("mismatched types")]
     ExprTypeMismatch {
         expected_type: Ident,
         found_type: Ident,
         expr_span: Span,
-    },
-    #[error("can't read from out-parameter `{ident}`")]
-    ReadFromOutParamVar {
-        ident: Spanned<Ident>,
-        defined_at: Span,
-    },
-    #[error("can't write to `{ident}`: all variables except out-parameters are immutable")]
-    WriteToReadOnlyVar {
-        ident: Spanned<Ident>,
-        defined_at: Span,
     },
     #[error("casting `{source_type}` to `{target_type}` is invalid")]
     InvalidCast {
@@ -46,18 +42,17 @@ pub enum TypeCheckError {
         target_type: Ident,
         expr_span: Span,
     },
-    #[error("call to fallible function `{target}` requires fallible function or block")]
-    FallibleCallInInfallibleContext {
-        target: Spanned<Path>,
-        target_defined_at: Span,
-    },
-    #[error("call to unsafe function `{target}` requires unsafe function or block")]
+    #[error(
+        "calls to `{target}` are unsafe and can only appear inside an unsafe function, op, or \
+        block"
+    )]
     UnsafeCallInSafeContext {
         target: Spanned<Path>,
         target_defined_at: Span,
     },
     #[error(
-        "cast from `{source_type}` to subtype `{target_type}` requires unsafe function or block"
+        "casts from `{source_type}` to subtype `{target_type}` are unsafe and can only appear \
+        inside an unsafe function, op, or block"
     )]
     UnsafeCastInSafeContext {
         source_type: Ident,
@@ -71,21 +66,21 @@ pub enum TypeCheckError {
         target_defined_at: Span,
         args_span: Span,
     },
-    #[error("mismatched argument kind for parameter `{param_var}` of function `{target}`")]
+    #[error("mismatched argument kind for parameter `{param}` to `{target}`")]
     ArgKindMismatch {
-        expected_kind: ArgKind,
-        found_kind: ArgKind,
+        expected_arg_kind: ArgKind,
+        found_arg_kind: ArgKind,
         arg_span: Span,
         target: Path,
-        param_var: Spanned<Ident>,
+        param: Spanned<Ident>,
     },
-    #[error("mismatched argument type for parameter `{param_var}` of function `{target}`")]
+    #[error("mismatched argument type for parameter `{param}` to `{target}`")]
     ArgTypeMismatch {
         expected_type: Ident,
         found_type: Ident,
         arg_span: Span,
         target: Path,
-        param_var: Spanned<Ident>,
+        param: Spanned<Ident>,
     },
     #[error("left- and right-hand sides of operator have mismatched types")]
     BinaryOperatorTypeMismatch {
@@ -101,25 +96,21 @@ pub enum TypeCheckError {
         operand_type: Ident,
         operator_span: Span,
     },
-    #[error("mismatched value type for assignment to out-parameter `{param_var}`")]
+    #[error("mismatched value type for assignment to `{lhs}`")]
     AssignTypeMismatch {
         expected_type: Ident,
         found_type: Ident,
+        lhs: Path,
+        lhs_defined_at: Option<Span>,
         rhs_span: Span,
-        param_var: Spanned<Ident>,
     },
-    #[error("`{context}` can write to out-parameter `{param_var}` more than once")]
-    ExtraOutParamVarWrite {
-        extra_write_span: Span,
-        first_write_span: Span,
-        context: Path,
-        param_var: Spanned<Ident>,
-    },
-    #[error("return from `{context}` without writing to out-parameter `{param_var}`")]
-    UnwrittenOutParamVar {
-        ret_span: Span,
-        context: Path,
-        param_var: Spanned<Ident>,
+    /// This error should only arise from mistakes in internal code or misuse of
+    /// this crate's API, and shouldn't be possible to hit from user source code
+    /// input.
+    #[error("local variable used before its definition")]
+    LocalVarUsedBeforeDef {
+        var: Spanned<Ident>,
+        defined_at: Span,
     },
 }
 
@@ -129,12 +120,16 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::SubtypeCycle {
                 first_cycle_type, ..
             } => first_cycle_type.span,
-            TypeCheckError::FnCallCycle { first_cycle_fn, .. } => first_cycle_fn.span,
+            TypeCheckError::CallCycle {
+                first_cycle_callable,
+                ..
+            } => first_cycle_callable.span,
+            TypeCheckError::MisplacedOpItem { op } => op.span,
+            TypeCheckError::OpHasOutParam { out_param, .. } => out_param.span,
+            TypeCheckError::OpReturnsValue { ret_span, .. } => *ret_span,
+            TypeCheckError::MissingOpBody { body_span, .. } => *body_span,
             TypeCheckError::ExprTypeMismatch { expr_span, .. } => *expr_span,
-            TypeCheckError::ReadFromOutParamVar { ident, .. } => ident.span,
-            TypeCheckError::WriteToReadOnlyVar { ident, .. } => ident.span,
             TypeCheckError::InvalidCast { expr_span, .. } => *expr_span,
-            TypeCheckError::FallibleCallInInfallibleContext { target, .. } => target.span,
             TypeCheckError::UnsafeCallInSafeContext { target, .. } => target.span,
             TypeCheckError::UnsafeCastInSafeContext { target_type, .. } => target_type.span,
             TypeCheckError::ArgCountMismatch { target, .. } => target.span,
@@ -143,10 +138,7 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::BinaryOperatorTypeMismatch { operator_span, .. } => *operator_span,
             TypeCheckError::NumericOperatorTypeMismatch { operand_span, .. } => *operand_span,
             TypeCheckError::AssignTypeMismatch { rhs_span, .. } => *rhs_span,
-            TypeCheckError::UnwrittenOutParamVar { ret_span, .. } => *ret_span,
-            TypeCheckError::ExtraOutParamVarWrite {
-                extra_write_span, ..
-            } => *extra_write_span,
+            TypeCheckError::LocalVarUsedBeforeDef { var, .. } => var.span,
         }
     }
 
@@ -159,7 +151,7 @@ impl FrontendError for TypeCheckError {
                 other_cycle_types,
             } => {
                 label.message = format!(
-                    "{}type `{}` is a subtype of `{}`",
+                    "{}`{}` is a subtype of `{}`",
                     if other_cycle_types.is_empty() {
                         ""
                     } else {
@@ -169,20 +161,28 @@ impl FrontendError for TypeCheckError {
                     other_cycle_types.last().unwrap_or(first_cycle_type)
                 );
             }
-            TypeCheckError::FnCallCycle {
-                first_cycle_fn,
-                other_cycle_fns,
+            TypeCheckError::CallCycle {
+                first_cycle_callable,
+                other_cycle_callables,
             } => {
                 label.message = format!(
-                    "{}function `{}` calls `{}`",
-                    if other_cycle_fns.is_empty() {
+                    "{}`{}` calls `{}`",
+                    if other_cycle_callables.is_empty() {
                         ""
                     } else {
                         "(1) "
                     },
-                    other_cycle_fns.last().unwrap_or(first_cycle_fn),
-                    first_cycle_fn
+                    other_cycle_callables.last().unwrap_or(first_cycle_callable),
+                    first_cycle_callable
                 );
+            }
+            TypeCheckError::MisplacedOpItem { .. } => {
+                label.message = "misplaced `op` item".to_owned();
+            }
+            TypeCheckError::OpHasOutParam { .. }
+            | TypeCheckError::OpReturnsValue { .. }
+            | TypeCheckError::MissingOpBody { .. } => {
+                label.message = "allowed for functions but not for ops".to_owned();
             }
             TypeCheckError::ExprTypeMismatch {
                 expected_type,
@@ -190,12 +190,6 @@ impl FrontendError for TypeCheckError {
                 ..
             } => {
                 label.message = format!("expected `{}`, found `{}`", expected_type, found_type);
-            }
-            TypeCheckError::ReadFromOutParamVar { .. } => {
-                label.message = "write-only variable".to_owned();
-            }
-            TypeCheckError::WriteToReadOnlyVar { .. } => {
-                label.message = "read-only variable".to_owned();
             }
             TypeCheckError::InvalidCast {
                 source_type,
@@ -206,9 +200,6 @@ impl FrontendError for TypeCheckError {
                     "`{}` isn't a subtype of `{}', and vice-versa",
                     source_type, target_type
                 );
-            }
-            TypeCheckError::FallibleCallInInfallibleContext { .. } => {
-                label.message = "call to fallible function".to_owned();
             }
             TypeCheckError::UnsafeCallInSafeContext { .. } => {
                 label.message = "call to unsafe function".to_owned();
@@ -226,11 +217,12 @@ impl FrontendError for TypeCheckError {
                 );
             }
             TypeCheckError::ArgKindMismatch {
-                expected_kind,
-                found_kind,
+                expected_arg_kind,
+                found_arg_kind,
                 ..
             } => {
-                label.message = format!("expected {}, found {}", expected_kind, found_kind);
+                label.message =
+                    format!("expected {}, found {}", expected_arg_kind, found_arg_kind);
             }
             TypeCheckError::ArgTypeMismatch {
                 expected_type,
@@ -250,17 +242,8 @@ impl FrontendError for TypeCheckError {
             } => {
                 label.message = format!("expected `{}`, found `{}`", expected_type, found_type);
             }
-            TypeCheckError::UnwrittenOutParamVar { param_var, .. } => {
-                label.message = format!(
-                    "all return paths must write to `{}` exactly once",
-                    param_var
-                );
-            }
-            TypeCheckError::ExtraOutParamVarWrite { param_var, .. } => {
-                label.message = format!(
-                    "all return paths must write to `{}` exactly once",
-                    param_var
-                );
+            TypeCheckError::LocalVarUsedBeforeDef { var, .. } => {
+                label.message = format!("variable `{}` used here", var);
             }
         }
 
@@ -276,7 +259,7 @@ impl FrontendError for TypeCheckError {
                     |(curr_cycle_type_index, curr_cycle_type)| {
                         let label =
                             Label::secondary(file_id, curr_cycle_type.span).with_message(format!(
-                                "({}) type `{}` is a subtype of `{}`",
+                                "({}) `{}` is a subtype of `{}`",
                                 curr_cycle_type_index + 2,
                                 curr_cycle_type,
                                 prev_cycle_type
@@ -286,49 +269,31 @@ impl FrontendError for TypeCheckError {
                     },
                 ));
             }
-            TypeCheckError::FnCallCycle {
-                first_cycle_fn,
-                other_cycle_fns,
+            TypeCheckError::CallCycle {
+                first_cycle_callable,
+                other_cycle_callables,
             } => {
-                let mut prev_cycle_fn = first_cycle_fn;
-                labels.extend(other_cycle_fns.iter().enumerate().map(
-                    |(curr_cycle_fn_index, curr_cycle_fn)| {
-                        let label =
-                            Label::secondary(file_id, curr_cycle_fn.span).with_message(format!(
-                                "({}) function `{}` calls `{}`",
-                                curr_cycle_fn_index + 2,
-                                prev_cycle_fn,
-                                curr_cycle_fn
+                let mut prev_cycle_callable = first_cycle_callable;
+                labels.extend(other_cycle_callables.iter().enumerate().map(
+                    |(curr_cycle_callable_index, curr_cycle_callable)| {
+                        let label = Label::secondary(file_id, curr_cycle_callable.span)
+                            .with_message(format!(
+                                "({}) `{}` calls `{}`",
+                                curr_cycle_callable_index + 2,
+                                prev_cycle_callable,
+                                curr_cycle_callable
                             ));
-                        prev_cycle_fn = curr_cycle_fn;
+                        prev_cycle_callable = curr_cycle_callable;
                         label
                     },
                 ));
             }
+            TypeCheckError::OpHasOutParam { .. } => (),
+            TypeCheckError::OpReturnsValue { .. } => (),
+            TypeCheckError::MissingOpBody { .. } => (),
             TypeCheckError::ExprTypeMismatch { .. } => (),
-            TypeCheckError::ReadFromOutParamVar { ident, defined_at } => {
-                labels.push(
-                    Label::secondary(file_id, *defined_at)
-                        .with_message(format!("out-parameter `{}` defined here", ident)),
-                );
-            }
-            TypeCheckError::WriteToReadOnlyVar { ident, defined_at } => {
-                labels.push(
-                    Label::secondary(file_id, *defined_at)
-                        .with_message(format!("variable `{}` defined here", ident)),
-                );
-            }
+            TypeCheckError::MisplacedOpItem { .. } => (),
             TypeCheckError::InvalidCast { .. } => (),
-            TypeCheckError::FallibleCallInInfallibleContext {
-                target,
-                target_defined_at,
-                ..
-            } => {
-                labels.push(
-                    Label::secondary(file_id, *target_defined_at)
-                        .with_message(format!("function `{}` defined here", target)),
-                );
-            }
             TypeCheckError::UnsafeCallInSafeContext {
                 target,
                 target_defined_at,
@@ -357,16 +322,16 @@ impl FrontendError for TypeCheckError {
                         .with_message(format!("function `{}` defined here", target)),
                 ]);
             }
-            TypeCheckError::ArgKindMismatch { param_var, .. } => {
+            TypeCheckError::ArgKindMismatch { param, .. } => {
                 labels.push(
-                    Label::secondary(file_id, param_var.span)
-                        .with_message(format!("parameter `{}` defined here", param_var)),
+                    Label::secondary(file_id, param.span)
+                        .with_message(format!("parameter `{}` defined here", param)),
                 );
             }
-            TypeCheckError::ArgTypeMismatch { param_var, .. } => {
+            TypeCheckError::ArgTypeMismatch { param, .. } => {
                 labels.push(
-                    Label::secondary(file_id, param_var.span)
-                        .with_message(format!("parameter `{}` defined here", param_var)),
+                    Label::secondary(file_id, param.span)
+                        .with_message(format!("parameter `{}` defined here", param)),
                 );
             }
             TypeCheckError::BinaryOperatorTypeMismatch {
@@ -389,29 +354,27 @@ impl FrontendError for TypeCheckError {
                         .with_message("operator is only defined for numeric types"),
                 );
             }
-            TypeCheckError::AssignTypeMismatch { param_var, .. } => {
-                labels.push(
-                    Label::secondary(file_id, param_var.span)
-                        .with_message(format!("out-parameter `{}` defined here", param_var)),
-                );
-            }
-            TypeCheckError::UnwrittenOutParamVar { param_var, .. } => {
-                labels.push(
-                    Label::secondary(file_id, param_var.span)
-                        .with_message(format!("out-parameter `{}` defined here", param_var)),
-                );
-            }
-            TypeCheckError::ExtraOutParamVarWrite {
-                first_write_span,
-                param_var,
+            TypeCheckError::AssignTypeMismatch {
+                lhs,
+                lhs_defined_at,
                 ..
             } => {
-                labels.extend([
-                    Label::secondary(file_id, *first_write_span)
-                        .with_message(format!("earlier write to `{}` can happen here", param_var)),
-                    Label::secondary(file_id, param_var.span)
-                        .with_message(format!("out-parameter `{}` defined here", param_var)),
-                ]);
+                if let Some(lhs_defined_at) = lhs_defined_at {
+                    labels.push(
+                        Label::secondary(file_id, *lhs_defined_at)
+                            .with_message(format!("variable `{}` defined here", lhs)),
+                    );
+                }
+            }
+            TypeCheckError::LocalVarUsedBeforeDef {
+                var,
+                defined_at,
+                ..
+            } => {
+                labels.push(
+                    Label::secondary(file_id, *defined_at)
+                        .with_message(format!("variable `{}` defined here", var)),
+                );
             }
         }
 
@@ -442,14 +405,16 @@ impl Error for TypeCheckErrors {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ArgKind {
     Expr,
-    OutRef,
+    Label,
+    OutVar,
 }
 
 impl fmt::Display for ArgKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             ArgKind::Expr => write!(f, "expression"),
-            ArgKind::OutRef => write!(f, "out-reference"),
+            ArgKind::Label => write!(f, "label"),
+            ArgKind::OutVar => write!(f, "out-parameter"),
         }
     }
 }

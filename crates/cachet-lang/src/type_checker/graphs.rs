@@ -1,138 +1,203 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use codespan::Span;
 use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
+use typed_index_collections::TiSlice;
+
+use crate::ast::{Span, Spanned};
 
 use crate::type_checker::ast::{
-    EnumDef, FnIndex, Spanned, StructDef, TypeIndex, BUILT_IN_TYPES, NUM_BUILT_IN_TYPES,
+    BuiltInType, CallableIndex, EnumIndex, EnumItem, FnIndex, OpIndex, StructIndex,
+    StructItem, TypeIndex, BUILT_IN_TYPES, NUM_BUILT_IN_TYPES,
 };
 
 pub struct TypeGraph {
-    inner: DiGraph<TypeIndex, ()>,
+    inner: DiGraph<(), ()>,
+    num_enum_items: usize,
 }
 
 impl TypeGraph {
-    pub fn new(enum_defs: &[EnumDef], struct_defs: &[StructDef]) -> Self {
-        let num_enums = enum_defs.len();
-        let num_structs = struct_defs.len();
-        let num_types = NUM_BUILT_IN_TYPES + num_enums + num_structs;
+    pub fn new(
+        enum_items: &TiSlice<EnumIndex, EnumItem>,
+        struct_items: &TiSlice<StructIndex, StructItem>,
+    ) -> Self {
+        let num_enum_items = enum_items.len();
+        let num_struct_items = struct_items.len();
+        let num_types = NUM_BUILT_IN_TYPES + num_enum_items + num_struct_items;
 
         let mut inner = DiGraph::with_capacity(num_types, 0);
 
-        let built_in_type_node_indices =
-            BUILT_IN_TYPES.map(|built_in_type| inner.add_node(built_in_type.into()));
+        for _ in 0..num_types {
+            inner.add_node(());
+        }
+
+        let get_built_in_type_node_index =
+            |built_in_type: BuiltInType| NodeIndex::new(built_in_type.index());
+        let get_enum_node_index =
+            |enum_index: EnumIndex| NodeIndex::new(NUM_BUILT_IN_TYPES + usize::from(enum_index));
+        let get_struct_node_index = |struct_index: StructIndex| {
+            NodeIndex::new(NUM_BUILT_IN_TYPES + num_enum_items + usize::from(struct_index))
+        };
+        let get_type_node_index = |type_index| match type_index {
+            TypeIndex::BuiltIn(built_in_type) => get_built_in_type_node_index(built_in_type),
+            TypeIndex::Enum(enum_index) => get_enum_node_index(enum_index),
+            TypeIndex::Struct(struct_index) => get_struct_node_index(struct_index),
+        };
+
         for built_in_type in BUILT_IN_TYPES {
-            if let Some(subtype_of) = built_in_type.subtype_of() {
+            if let Some(supertype) = built_in_type.supertype() {
                 inner.add_edge(
-                    built_in_type_node_indices[subtype_of],
-                    built_in_type_node_indices[built_in_type],
+                    get_built_in_type_node_index(supertype),
+                    get_built_in_type_node_index(built_in_type),
                     (),
                 );
             }
         }
 
-        let enum_node_indices: Vec<_> = (0..num_enums)
-            .map(|enum_index| inner.add_node(TypeIndex::Enum(enum_index)))
-            .collect();
-        let struct_node_indices: Vec<_> = (0..num_structs)
-            .map(|struct_index| inner.add_node(TypeIndex::Struct(struct_index)))
-            .collect();
-
-        let get_type_node_index = |type_index| match type_index {
-            TypeIndex::BuiltIn(built_in_type) => built_in_type_node_indices[built_in_type],
-            TypeIndex::Enum(enum_index) => enum_node_indices[enum_index],
-            TypeIndex::Struct(struct_index) => struct_node_indices[struct_index],
-        };
-
-        for (struct_node_index, struct_def) in struct_node_indices.iter().zip(struct_defs.iter()) {
-            if let Some(subtype_of) = struct_def.subtype_of {
-                inner.add_edge(get_type_node_index(subtype_of), *struct_node_index, ());
+        for (struct_index, struct_item) in struct_items.iter_enumerated() {
+            if let Some(supertype) = struct_item.supertype {
+                inner.add_edge(
+                    get_type_node_index(supertype),
+                    get_struct_node_index(struct_index),
+                    (),
+                );
             }
         }
 
-        TypeGraph { inner }
+        TypeGraph {
+            inner,
+            num_enum_items,
+        }
     }
 
     pub fn sccs(&self) -> TypeSccs<'_> {
         TypeSccs {
             inner: GraphSccs::new(&self.inner),
+            num_enum_items: self.num_enum_items,
         }
     }
 }
 
 pub struct TypeSccs<'a> {
-    inner: GraphSccs<'a, TypeIndex, ()>,
+    inner: GraphSccs<'a, (), ()>,
+    num_enum_items: usize,
 }
 
 impl<'a> TypeSccs<'a> {
     pub fn iter_cycles(&self) -> impl '_ + Iterator<Item = impl '_ + Iterator<Item = TypeIndex>> {
-        self.inner.iter_cycles().map(move |cycle_node_indices| {
-            cycle_node_indices
+        self.inner.iter_cycles().map(move |cycle_node_indexes| {
+            cycle_node_indexes
                 .iter()
-                .map(move |node_index| self.inner.graph[*node_index])
+                .map(|node_index| self.get_type_index(*node_index))
         })
     }
 
     pub fn iter_post_order(&self) -> impl '_ + Iterator<Item = TypeIndex> {
         self.inner
             .iter_post_order()
-            .map(move |node_index| self.inner.graph[node_index])
+            .map(|node_index| self.get_type_index(node_index))
+    }
+
+    fn get_type_index(&self, node_index: NodeIndex) -> TypeIndex {
+        let mut node_index = node_index.index();
+
+        if node_index < NUM_BUILT_IN_TYPES {
+            return BUILT_IN_TYPES[node_index].into();
+        }
+        node_index -= NUM_BUILT_IN_TYPES;
+
+        if node_index < self.num_enum_items {
+            return EnumIndex::from(node_index).into();
+        }
+        node_index -= self.num_enum_items;
+
+        StructIndex::from(node_index).into()
     }
 }
 
-pub struct FnGraph {
+pub struct CallGraph {
     inner: DiGraph<(), Span>,
+    num_fn_items: usize,
 }
 
-impl FnGraph {
-    pub fn new(num_fns: usize) -> Self {
-        let mut inner = DiGraph::with_capacity(num_fns, 0);
-        for _ in 0..num_fns {
+impl CallGraph {
+    pub fn new(num_fn_items: usize, num_op_items: usize) -> Self {
+        let num_callable_items = num_fn_items + num_op_items;
+        let mut inner = DiGraph::with_capacity(num_callable_items, 0);
+        for _ in 0..num_callable_items {
             inner.add_node(());
         }
-        FnGraph { inner }
+        CallGraph {
+            inner,
+            num_fn_items,
+        }
     }
 
-    pub fn record_call(&mut self, source_fn: FnIndex, target_fn: Spanned<FnIndex>) {
+    pub fn record_call(
+        &mut self,
+        source_callable_index: CallableIndex,
+        target_callable_index: Spanned<CallableIndex>,
+    ) {
         self.inner.add_edge(
-            NodeIndex::new(source_fn),
-            NodeIndex::new(target_fn.value),
-            target_fn.span,
+            self.get_node_index(source_callable_index),
+            self.get_node_index(target_callable_index.value),
+            target_callable_index.span,
         );
     }
 
-    pub fn sccs(&self) -> FnSccs<'_> {
-        FnSccs {
+    pub fn sccs(&self) -> CallableSccs<'_> {
+        CallableSccs {
             inner: GraphSccs::new(&self.inner),
+            num_fn_items: self.num_fn_items,
         }
+    }
+
+    fn get_node_index(&self, callable_index: CallableIndex) -> NodeIndex {
+        NodeIndex::new(match callable_index {
+            CallableIndex::Fn(fn_index) => usize::from(fn_index),
+            CallableIndex::Op(op_index) => self.num_fn_items + usize::from(op_index),
+        })
     }
 }
 
-pub struct FnSccs<'a> {
+pub struct CallableSccs<'a> {
     inner: GraphSccs<'a, (), Span>,
+    num_fn_items: usize,
 }
 
-impl<'a> FnSccs<'a> {
+impl<'a> CallableSccs<'a> {
     pub fn iter_cycles(
         &self,
-    ) -> impl '_ + Iterator<Item = impl '_ + Iterator<Item = Spanned<FnIndex>>> {
-        self.inner.iter_cycles().map(move |cycle_node_indices| {
-            let mut prev_node_index = *cycle_node_indices.last().unwrap();
-            cycle_node_indices.iter().copied().map(move |node_index| {
+    ) -> impl '_ + Iterator<Item = impl '_ + Iterator<Item = Spanned<CallableIndex>>> {
+        self.inner.iter_cycles().map(move |cycle_node_indexes| {
+            let mut prev_node_index = *cycle_node_indexes.last().unwrap();
+            cycle_node_indexes.iter().copied().map(move |node_index| {
                 let span = self.inner.graph[self
                     .inner
                     .graph
                     .find_edge(prev_node_index, node_index)
                     .unwrap()];
                 prev_node_index = node_index;
-                Spanned::new(span, node_index.index())
+                Spanned::new(span, self.get_callable_index(node_index))
             })
         })
     }
 
-    pub fn iter_post_order(&self) -> impl '_ + Iterator<Item = FnIndex> {
-        self.inner.iter_post_order().map(NodeIndex::index)
+    pub fn iter_post_order(&self) -> impl '_ + Iterator<Item = CallableIndex> {
+        self.inner
+            .iter_post_order()
+            .map(|node_index| self.get_callable_index(node_index))
+    }
+
+    fn get_callable_index(&self, node_index: NodeIndex) -> CallableIndex {
+        let mut node_index = node_index.index();
+
+        if node_index < self.num_fn_items {
+            return FnIndex::from(node_index).into();
+        }
+        node_index -= self.num_fn_items;
+
+        OpIndex::from(node_index).into()
     }
 }
 

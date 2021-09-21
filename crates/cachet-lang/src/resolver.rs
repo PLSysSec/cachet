@@ -2,69 +2,80 @@
 
 mod ast;
 mod error;
+mod registry;
 
 use std::borrow::Cow;
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
-use std::iter::FromIterator;
+use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use codespan::Span;
+use derive_more::{From, Into};
 use enumset::EnumSet;
+use typed_index_collections::TiVec;
 
-use crate::parser::{self, Path};
+use crate::ast::{Ident, Path, Spanned};
+use crate::parser;
+use crate::util::{collect_eager, deref_from, map_spanned};
 use crate::FrontendError;
 
 pub use crate::resolver::ast::*;
 pub use crate::resolver::error::*;
+use crate::resolver::registry::{LookupError, LookupResult, Registrable, Registry};
 
-pub fn resolve(spec: parser::Spec) -> Result<Env, ResolveErrors> {
-    let mut registry = Registry::new();
-    registry.register_spec(spec);
+pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> {
+    let mut item_catalog = ItemCatalog::new();
+    item_catalog.catalog_items(items);
 
     let mut resolver = Resolver::new(
-        registry.errors,
-        registry.items,
-        registry.impl_def_parent_types,
+        item_catalog.errors,
+        item_catalog.global_registry,
+        item_catalog.impl_item_parents,
     );
 
-    let enum_defs = registry.enum_defs;
+    let enum_items = item_catalog.enum_items;
 
-    let struct_defs: Option<_> = collect_eager(
-        registry
-            .struct_defs
-            .into_iter()
-            .map(|struct_def| resolver.resolve_struct_def(struct_def)),
+    let struct_items: Option<_> = collect_eager(
+        item_catalog
+            .struct_items
+            .iter()
+            .map(|struct_item| resolver.resolve_struct_item(struct_item)),
     );
 
-    let const_defs: Option<_> = collect_eager(
-        registry
-            .const_defs
-            .into_iter()
-            .map(|const_def| resolver.resolve_const_def(const_def)),
+    let ir_items: Option<_> = collect_eager(
+        item_catalog
+            .ir_items
+            .iter()
+            .map(|ir_item| resolver.resolve_ir_item(&ir_item.item)),
     );
 
-    let fn_defs: Option<_> = collect_eager(
-        registry
-            .fn_defs
-            .into_iter()
-            .map(|fn_def| resolver.resolve_fn_def(fn_def)),
+    let global_var_items: Option<_> = collect_eager(
+        item_catalog
+            .global_var_items
+            .iter()
+            .map(|global_var_item| resolver.resolve_global_var_item(global_var_item.as_ref())),
     );
 
-    let op_defs: Option<_> = collect_eager(
-        registry
-            .op_defs
-            .into_iter()
-            .map(|op_def| resolver.resolve_op_def(op_def)),
+    let fn_items: Option<_> = collect_eager(
+        item_catalog
+            .fn_items
+            .iter()
+            .map(|fn_item| resolver.resolve_fn_item(fn_item.as_ref())),
+    );
+
+    let op_items: Option<_> = collect_eager(
+        item_catalog
+            .op_items
+            .iter()
+            .map(|op_item| resolver.resolve_op_item(op_item.as_ref())),
     );
 
     if resolver.errors.is_empty() {
         Ok(Env {
-            enum_defs,
-            struct_defs: struct_defs.unwrap(),
-            const_defs: const_defs.unwrap(),
-            fn_defs: fn_defs.unwrap(),
-            op_defs: op_defs.unwrap(),
+            enum_items,
+            struct_items: struct_items.unwrap(),
+            ir_items: ir_items.unwrap(),
+            global_var_items: global_var_items.unwrap(),
+            fn_items: fn_items.unwrap(),
+            op_items: op_items.unwrap(),
         })
     } else {
         resolver.errors.sort_by_key(|error| error.span());
@@ -72,461 +83,574 @@ pub fn resolve(spec: parser::Spec) -> Result<Env, ResolveErrors> {
     }
 }
 
-struct RegisteredDef<T> {
-    def: T,
-    impl_def_index: Option<usize>,
-}
-
-struct RegisteredItem {
-    first_defined_at: Option<Span>,
-    status: RegisteredItemStatus,
-}
-
-enum RegisteredItemStatus {
-    DefinedOnce(ItemIndex),
-    Duplicated(EnumSet<ItemKind>),
-}
-
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, From)]
 enum ItemIndex {
+    #[from(types(BuiltInType, EnumIndex, StructIndex))]
     Type(TypeIndex),
-    Fn(FnIndex),
+    #[from]
+    Ir(IrIndex),
+    #[from(types(
+        BuiltInVar,
+        EnumVariantIndex,
+        GlobalVarIndex,
+        VarParamIndex,
+        LocalVarIndex
+    ))]
     Var(VarIndex),
+    #[from]
+    Fn(FnIndex),
+    #[from]
     Op(OpIndex),
 }
 
-impl ItemIndex {
-    fn kind(&self) -> ItemKind {
+impl Registrable for ItemIndex {
+    fn name_kind(&self) -> NameKind {
         match self {
-            ItemIndex::Type(_) => ItemKind::Type,
-            ItemIndex::Fn(_) => ItemKind::Fn,
-            ItemIndex::Var(_) => ItemKind::Var,
-            ItemIndex::Op(_) => ItemKind::Op,
+            ItemIndex::Type(_) => NameKind::Type,
+            ItemIndex::Var(_) => NameKind::Var,
+            ItemIndex::Fn(_) => NameKind::Fn,
+            ItemIndex::Ir(_) => NameKind::Ir,
+            ItemIndex::Op(_) => NameKind::Op,
+        }
+    }
+
+    fn shadows(&self) -> bool {
+        false
+    }
+}
+
+type GlobalRegistry = Registry<Path, ItemIndex>;
+
+#[derive(Clone, Copy, From, Into)]
+struct ImplIndex(usize);
+
+#[derive(Clone, Copy, From)]
+enum UnresolvedParentIndex {
+    Impl(ImplIndex),
+    Ir(IrIndex),
+}
+
+deref_from!(&ImplIndex => UnresolvedParentIndex);
+deref_from!(&IrIndex => UnresolvedParentIndex);
+
+struct GlobalItem<T> {
+    parent: Option<UnresolvedParentIndex>,
+    path: Spanned<Path>,
+    item: T,
+}
+
+impl<T> GlobalItem<T> {
+    fn as_ref(&self) -> GlobalItem<&T> {
+        GlobalItem {
+            parent: self.parent,
+            path: self.path,
+            item: &self.item,
+        }
+    }
+
+    fn map<U>(self, f: impl FnOnce(T) -> U) -> GlobalItem<U> {
+        GlobalItem {
+            parent: self.parent,
+            path: self.path,
+            item: f(self.item),
         }
     }
 }
 
-struct Registry {
+struct ItemCatalog {
     errors: Vec<ResolveError>,
-    items: HashMap<Path, RegisteredItem>,
-    enum_defs: Vec<parser::EnumDef>,
-    struct_defs: Vec<parser::StructDef>,
-    const_defs: Vec<RegisteredDef<parser::ConstDef>>,
-    fn_defs: Vec<RegisteredDef<parser::FnDef>>,
-    op_defs: Vec<parser::OpDef>,
-    impl_def_parent_types: Vec<Spanned<Path>>,
+    global_registry: GlobalRegistry,
+    enum_items: TiVec<EnumIndex, parser::EnumItem>,
+    struct_items: TiVec<StructIndex, parser::StructItem>,
+    ir_items: TiVec<IrIndex, GlobalItem<parser::IrItem>>,
+    impl_item_parents: TiVec<ImplIndex, Spanned<Path>>,
+    global_var_items: TiVec<GlobalVarIndex, GlobalItem<parser::GlobalVarItem>>,
+    fn_items: TiVec<FnIndex, GlobalItem<parser::FnItem>>,
+    op_items: TiVec<OpIndex, GlobalItem<parser::OpItem>>,
 }
 
-impl Registry {
+impl ItemCatalog {
     fn new() -> Self {
-        let mut items = HashMap::with_capacity(BUILT_IN_TYPES.len() + BUILT_IN_VARS.len());
+        let mut global_registry =
+            GlobalRegistry::with_capacity(BUILT_IN_TYPES.len() + BUILT_IN_VARS.len());
+
         for built_in_type in BUILT_IN_TYPES {
-            items.insert(
-                Path::from_ident(built_in_type.ident().into()),
-                RegisteredItem {
-                    first_defined_at: None,
-                    status: RegisteredItemStatus::DefinedOnce(ItemIndex::Type(
-                        built_in_type.into(),
-                    )),
-                },
-            );
+            global_registry
+                .register(
+                    Path::from(built_in_type.ident().to_owned()).into(),
+                    built_in_type.into(),
+                )
+                .expect("built-in types shouldn't shadow other built-ins");
         }
+
         for built_in_var in BUILT_IN_VARS {
-            items.insert(
-                Path::from_ident(built_in_var.ident().into()),
-                RegisteredItem {
-                    first_defined_at: None,
-                    status: RegisteredItemStatus::DefinedOnce(ItemIndex::Var(built_in_var.into())),
-                },
+            global_registry
+                .register(
+                    Path::from(built_in_var.ident().to_owned()).into(),
+                    built_in_var.into(),
+                )
+                .expect("built-in variables shouldn't shadow other built-ins");
+        }
+
+        ItemCatalog {
+            errors: Vec::new(),
+            global_registry,
+            enum_items: TiVec::new(),
+            struct_items: TiVec::new(),
+            ir_items: TiVec::new(),
+            impl_item_parents: TiVec::new(),
+            fn_items: TiVec::new(),
+            global_var_items: TiVec::new(),
+            op_items: TiVec::new(),
+        }
+    }
+
+    fn catalog_items(&mut self, items: Vec<Spanned<parser::Item>>) {
+        for item in items {
+            self.catalog_item(None, item);
+        }
+    }
+
+    fn catalog_item(
+        &mut self,
+        parent_index: Option<UnresolvedParentIndex>,
+        item: Spanned<parser::Item>,
+    ) {
+        match item.value {
+            parser::Item::Enum(enum_item) => {
+                self.catalog_enum_item(parent_index, Spanned::new(item.span, enum_item))
+            }
+            parser::Item::Struct(struct_item) => {
+                self.catalog_struct_item(parent_index, Spanned::new(item.span, struct_item))
+            }
+            parser::Item::Ir(ir_item) => {
+                self.catalog_ir_item(parent_index, Spanned::new(item.span, ir_item))
+            }
+            parser::Item::Impl(impl_item) => {
+                self.catalog_impl_item(parent_index, Spanned::new(item.span, impl_item))
+            }
+            parser::Item::GlobalVar(global_var_item) => {
+                self.catalog_global_var_item(parent_index, global_var_item)
+            }
+            parser::Item::Fn(fn_item) => self.catalog_fn_item(parent_index, fn_item),
+            parser::Item::Op(op_item) => {
+                self.catalog_op_item(parent_index, Spanned::new(item.span, op_item))
+            }
+        }
+    }
+
+    fn catalog_enum_item(
+        &mut self,
+        parent_index: Option<UnresolvedParentIndex>,
+        enum_item: Spanned<parser::EnumItem>,
+    ) {
+        let parent_path = parent_index.map(|parent_index| {
+            let parent_path = self.get_parent_path(parent_index);
+            self.errors.push(
+                NonMemberItemError {
+                    span: enum_item.span,
+                    parent: parent_path,
+                }
+                .into(),
+            );
+            parent_path.value
+        });
+        let enum_path = enum_item
+            .value
+            .ident
+            .map(|enum_ident| Path::new(parent_path, enum_ident));
+        let enum_index = self.enum_items.next_key();
+
+        for (variant_index, variant) in enum_item.value.variants.iter_enumerated() {
+            let enum_variant_index = EnumVariantIndex {
+                enum_index,
+                variant_index,
+            };
+            self.register_global(
+                (*variant).map(|variant| enum_path.value.member(variant)),
+                enum_variant_index.into(),
             );
         }
 
-        Registry {
-            errors: Vec::new(),
-            items,
-            enum_defs: Vec::new(),
-            struct_defs: Vec::new(),
-            const_defs: Vec::new(),
-            fn_defs: Vec::new(),
-            op_defs: Vec::new(),
-            impl_def_parent_types: Vec::new(),
-        }
+        let actual_enum_index = self.enum_items.push_and_get_key(enum_item.value);
+        debug_assert_eq!(enum_index, actual_enum_index);
+        self.register_global(enum_path, enum_index.into());
     }
 
-    fn register_spec(&mut self, spec: parser::Spec) {
-        for top_def in spec {
-            self.register_top_def(top_def);
-        }
-    }
-
-    fn register_top_def(&mut self, top_def: parser::TopDef) {
-        match top_def {
-            parser::TopDef::Enum(enum_def) => {
-                let enum_index = self.enum_defs.len();
-                self.register_item(
-                    None,
-                    enum_def.ident.clone(),
-                    ItemIndex::Type(TypeIndex::Enum(enum_index)),
-                );
-                for (variant_index, variant) in enum_def.variants.iter().enumerate() {
-                    self.register_item(
-                        Some(enum_def.ident.clone()),
-                        variant.clone(),
-                        ItemIndex::Var(VarIndex::EnumVariant(EnumVariantIndex {
-                            enum_index,
-                            variant_index,
-                        })),
-                    );
-                }
-                self.enum_defs.push(enum_def);
-            }
-            parser::TopDef::Struct(struct_def) => {
-                self.register_item(
-                    None,
-                    struct_def.ident.clone(),
-                    ItemIndex::Type(TypeIndex::Struct(self.struct_defs.len())),
-                );
-                self.struct_defs.push(struct_def);
-            }
-            parser::TopDef::Impl(impl_def) => {
-                // The nested defs will only be accessible if the path supplied
-                // for the parent type is valid, i.e., it doesn't have its own
-                // parent type specified.
-                if impl_def.parent_type.value.parent_type.is_none() {
-                    let impl_def_index = self.impl_def_parent_types.len();
-                    let parent_type = impl_def
-                        .parent_type
-                        .as_ref()
-                        .map(|parent_type| &parent_type.ident);
-                    for def in impl_def.defs {
-                        self.register_def(def, Some((impl_def_index, parent_type.cloned())));
-                    }
-                }
-
-                self.impl_def_parent_types.push(impl_def.parent_type);
-            }
-            parser::TopDef::Def(def) => {
-                self.register_def(def, None);
-            }
-            parser::TopDef::Op(op_def) => {
-                self.register_item(
-                    None,
-                    op_def.sig.ident.clone(),
-                    ItemIndex::Op(self.op_defs.len()),
-                );
-                self.op_defs.push(op_def);
-            }
-        }
-    }
-
-    fn register_def(&mut self, def: parser::Def, impl_info: Option<(usize, Spanned<Ident>)>) {
-        let (impl_def_index, parent_type) = match impl_info {
-            Some((impl_def_index, parent_type)) => (Some(impl_def_index), Some(parent_type)),
-            None => (None, None),
-        };
-
-        match def {
-            parser::Def::Const(const_def) => {
-                self.register_item(
-                    parent_type,
-                    const_def.ident.clone(),
-                    ItemIndex::Var(VarIndex::Const(self.const_defs.len())),
-                );
-                self.const_defs.push(RegisteredDef {
-                    def: const_def,
-                    impl_def_index,
-                });
-            }
-            parser::Def::Fn(fn_def) => {
-                self.register_item(
-                    parent_type,
-                    fn_def.sig.ident.clone(),
-                    ItemIndex::Fn(self.fn_defs.len()),
-                );
-                self.fn_defs.push(RegisteredDef {
-                    def: fn_def,
-                    impl_def_index,
-                });
-            }
-        }
-    }
-
-    fn register_item(
+    fn catalog_struct_item(
         &mut self,
-        parent_type: Option<Spanned<Ident>>,
-        ident: Spanned<Ident>,
-        index: ItemIndex,
+        parent_index: Option<UnresolvedParentIndex>,
+        struct_item: Spanned<parser::StructItem>,
     ) {
-        let parent_type_span = parent_type.as_ref().map(|parent_type| parent_type.span);
-        let ident_span = ident.span;
-        let path = Path::new(
-            parent_type.map(|parent_type| parent_type.value),
-            ident.value,
-        );
-        match self.items.entry(path) {
-            Entry::Vacant(vacant_entry) => {
-                vacant_entry.insert(RegisteredItem {
-                    first_defined_at: Some(ident_span),
-                    status: RegisteredItemStatus::DefinedOnce(index),
-                });
-            }
-            Entry::Occupied(mut occupied_entry) => {
-                let Path { parent_type, ident } = occupied_entry.key().clone();
-                self.errors.push(ResolveError::DuplicateDef {
-                    parent_type: parent_type
-                        .map(|parent_type| Spanned::new(parent_type_span.unwrap(), parent_type)),
-                    ident: Spanned::new(ident_span, ident),
-                    first_defined_at: occupied_entry.get().first_defined_at,
-                });
-
-                let status = &mut occupied_entry.get_mut().status;
-                match status {
-                    RegisteredItemStatus::DefinedOnce(registered_index) => {
-                        *status = RegisteredItemStatus::Duplicated(
-                            registered_index.kind() | index.kind(),
-                        );
-                    }
-                    RegisteredItemStatus::Duplicated(kinds) => {
-                        kinds.insert(index.kind());
-                    }
+        let parent_path = parent_index.map(|parent_index| {
+            let parent_path = self.get_parent_path(parent_index);
+            self.errors.push(
+                NonMemberItemError {
+                    span: struct_item.span,
+                    parent: parent_path,
                 }
-            }
+                .into(),
+            );
+            parent_path.value
+        });
+        let struct_path = struct_item
+            .value
+            .ident
+            .map(|struct_ident| Path::new(parent_path, struct_ident));
+        let struct_index = self.struct_items.push_and_get_key(struct_item.value);
+        self.register_global(struct_path, struct_index.into());
+    }
+
+    fn catalog_ir_item(
+        &mut self,
+        parent_index: Option<UnresolvedParentIndex>,
+        mut ir_item: Spanned<parser::IrItem>,
+    ) {
+        let parent_path = parent_index.map(|parent_index| {
+            let parent_path = self.get_parent_path(parent_index);
+            self.errors.push(
+                NonMemberItemError {
+                    span: ir_item.span,
+                    parent: parent_path,
+                }
+                .into(),
+            );
+            parent_path.value
+        });
+        let ir_path = ir_item
+            .value
+            .ident
+            .map(|ir_ident| Path::new(parent_path, ir_ident));
+        let ir_sub_items = mem::replace(&mut ir_item.value.items, Vec::new());
+        let ir_index = self.ir_items.push_and_get_key(GlobalItem {
+            parent: parent_index,
+            path: ir_path,
+            item: ir_item.value,
+        });
+        self.register_global(ir_path, ir_index.into());
+
+        for item in ir_sub_items {
+            self.catalog_item(Some(ir_index.into()), item);
+        }
+    }
+
+    fn catalog_impl_item(
+        &mut self,
+        parent_index: Option<UnresolvedParentIndex>,
+        impl_item: Spanned<parser::ImplItem>,
+    ) {
+        if let Some(parent_index) = parent_index {
+            self.errors.push(
+                NonMemberItemError {
+                    span: impl_item.span,
+                    parent: self.get_parent_path(parent_index),
+                }
+                .into(),
+            );
+        }
+
+        let impl_index = self
+            .impl_item_parents
+            .push_and_get_key(impl_item.value.parent);
+
+        for item in impl_item.value.items {
+            self.catalog_item(Some(impl_index.into()), item);
+        }
+    }
+
+    fn catalog_global_var_item(
+        &mut self,
+        parent_index: Option<UnresolvedParentIndex>,
+        global_var_item: parser::GlobalVarItem,
+    ) {
+        let parent_path =
+            parent_index.map(|parent_index| self.get_parent_path(parent_index).value);
+        let global_var_path = global_var_item
+            .ident
+            .map(|global_var_ident| Path::new(parent_path, global_var_ident));
+        let global_var_index = self.global_var_items.push_and_get_key(GlobalItem {
+            parent: parent_index,
+            path: global_var_path,
+            item: global_var_item,
+        });
+        self.register_global(global_var_path, global_var_index.into());
+    }
+
+    fn catalog_fn_item(
+        &mut self,
+        parent_index: Option<UnresolvedParentIndex>,
+        fn_item: parser::FnItem,
+    ) {
+        let parent_path =
+            parent_index.map(|parent_index| self.get_parent_path(parent_index).value);
+        let fn_path = fn_item
+            .ident
+            .map(|fn_ident| Path::new(parent_path, fn_ident));
+        let fn_index = self.fn_items.push_and_get_key(GlobalItem {
+            parent: parent_index,
+            path: fn_path,
+            item: fn_item,
+        });
+        self.register_global(fn_path, fn_index.into());
+    }
+
+    fn catalog_op_item(
+        &mut self,
+        parent_index: Option<UnresolvedParentIndex>,
+        op_item: Spanned<parser::OpItem>,
+    ) {
+        let parent_path =
+            parent_index.map(|parent_index| self.get_parent_path(parent_index).value);
+        let op_path = op_item
+            .value
+            .ident
+            .map(|op_ident| Path::new(parent_path, op_ident));
+        let op_index = self.op_items.push_and_get_key(GlobalItem {
+            parent: parent_index,
+            path: op_path,
+            item: op_item.value,
+        });
+        self.register_global(op_path, op_index.into());
+    }
+
+    fn register_global(&mut self, path: Spanned<Path>, item_index: ItemIndex) {
+        if let Err(error) = self.global_registry.register(path.into(), item_index) {
+            self.errors.push(error.into());
+        }
+    }
+
+    fn get_parent_path(&self, parent_index: UnresolvedParentIndex) -> Spanned<Path> {
+        match parent_index {
+            UnresolvedParentIndex::Impl(impl_index) => self.impl_item_parents[impl_index],
+            UnresolvedParentIndex::Ir(ir_index) => self.ir_items[ir_index].path,
         }
     }
 }
 
-enum LookupResult<T> {
-    Found {
-        path: Spanned<Path>,
-        defined_at: Option<Span>,
-        index: Option<T>,
-    },
-    Failure,
+trait LookupResultExt<T> {
+    fn found(self, errors: &mut Vec<ResolveError>) -> Option<T>;
+
+    fn map_found<U>(self, f: impl FnOnce(T) -> U) -> LookupResult<U>;
 }
 
-impl<T> LookupResult<T> {
-    fn found(self) -> Option<T> {
+impl<T> LookupResultExt<T> for LookupResult<T> {
+    fn found(self, errors: &mut Vec<ResolveError>) -> Option<T> {
         match self {
-            LookupResult::Found { index, .. } => index,
-            _ => None,
-        }
-    }
-
-    fn found_spanned(self) -> Option<Spanned<T>> {
-        match self {
-            LookupResult::Found { path, index, .. } => {
-                index.map(|index| Spanned::new(path.span, index))
+            Ok((value, _)) => value,
+            Err(error) => {
+                errors.push(error.into());
+                None
             }
-            _ => None,
         }
     }
 
-    fn map<U>(self, f: impl FnOnce(T) -> U) -> LookupResult<U> {
+    fn map_found<U>(self, f: impl FnOnce(T) -> U) -> LookupResult<U> {
         match self {
-            LookupResult::Found {
-                path,
-                defined_at,
-                index,
-            } => LookupResult::Found {
-                path,
-                defined_at,
-                index: index.map(f),
-            },
-            LookupResult::Failure => LookupResult::Failure,
+            Ok((value, defined_at)) => Ok((value.map(f), defined_at)),
+            Err(error) => Err(error),
         }
     }
 }
 
 struct Resolver {
     errors: Vec<ResolveError>,
-    items: HashMap<Path, RegisteredItem>,
-    impl_def_parent_types: Vec<Option<TypeIndex>>,
+    global_registry: GlobalRegistry,
+    impl_item_parents: TiVec<ImplIndex, Option<TypeIndex>>,
 }
 
 impl Resolver {
     fn new(
         errors: Vec<ResolveError>,
-        items: HashMap<Path, RegisteredItem>,
-        impl_def_parent_types: Vec<Spanned<Path>>,
+        global_registry: GlobalRegistry,
+        impl_item_parents: TiVec<ImplIndex, Spanned<Path>>,
     ) -> Self {
         let mut resolver = Resolver {
             errors,
-            items,
-            impl_def_parent_types: Vec::with_capacity(impl_def_parent_types.len()),
+            global_registry,
+            impl_item_parents: TiVec::with_capacity(impl_item_parents.len()),
         };
 
-        for parent_type in impl_def_parent_types {
-            let parent_type = resolver.lookup_type_global(parent_type).found();
-            resolver.impl_def_parent_types.push(parent_type);
+        for parent_index in impl_item_parents {
+            let parent_index = resolver.lookup_type_global(parent_index);
+            resolver
+                .impl_item_parents
+                .push(parent_index.found(&mut resolver.errors));
         }
 
         resolver
     }
 
-    fn resolve_struct_def(&mut self, struct_def: parser::StructDef) -> Option<StructDef> {
-        let subtype_of = match struct_def.subtype_of {
+    fn resolve_struct_item(&mut self, struct_item: &parser::StructItem) -> Option<StructItem> {
+        let supertype = match struct_item.supertype {
             None => Some(None),
-            Some(subtype_of) => self.lookup_type_global(subtype_of).found().map(Some),
-        };
-
-        Some(StructDef {
-            ident: struct_def.ident,
-            subtype_of: subtype_of?,
-        })
-    }
-
-    fn resolve_const_def(
-        &mut self,
-        registered_const_def: RegisteredDef<parser::ConstDef>,
-    ) -> Option<ConstDef> {
-        let (const_def, parent_type) = self.resolve_registered_def(registered_const_def);
-
-        let type_ = self.lookup_type_global(const_def.type_).found();
-
-        Some(ConstDef {
-            ident: const_def.ident,
-            parent_type: parent_type?,
-            type_: type_?,
-        })
-    }
-
-    fn resolve_fn_def(
-        &mut self,
-        registered_fn_def: RegisteredDef<parser::FnDef>,
-    ) -> Option<FnDef> {
-        let (fn_def, parent_type) = self.resolve_registered_def(registered_fn_def);
-
-        let body = match fn_def.body {
-            None => Some(None),
-            Some(body) => self
-                .resolve_body(body, fn_def.sig.param_vars.as_ref())
+            Some(supertype) => self
+                .lookup_type_global(supertype)
+                .found(&mut self.errors)
                 .map(Some),
         };
 
-        let sig = self.resolve_sig(fn_def.sig);
-
-        Some(FnDef {
-            sig: sig?,
-            parent_type: parent_type?,
-            is_unsafe: fn_def.is_unsafe,
-            body: body?,
+        Some(StructItem {
+            ident: struct_item.ident,
+            supertype: supertype?,
         })
     }
 
-    fn resolve_op_def(&mut self, op_def: parser::OpDef) -> Option<OpDef> {
-        let body = self.resolve_body(op_def.body, op_def.sig.param_vars.as_ref());
-
-        let sig = self.resolve_sig(op_def.sig);
-
-        Some(OpDef {
-            sig: sig?,
-            body: body?,
-        })
-    }
-
-    fn resolve_sig(&mut self, sig: parser::Sig) -> Option<Sig> {
-        let param_vars = self.resolve_param_vars(sig.param_vars);
-
-        let ret = self.resolve_fn_ret(sig.ret);
-
-        Some(Sig {
-            ident: sig.ident,
-            is_fallible: sig.is_fallible,
-            param_vars: param_vars?,
-            ret: ret?,
-        })
-    }
-
-    fn resolve_registered_def<T>(
-        &self,
-        registered_def: RegisteredDef<T>,
-    ) -> (T, Option<Option<TypeIndex>>) {
-        (
-            registered_def.def,
-            match registered_def.impl_def_index {
-                None => Some(None),
-                Some(impl_def_index) => self.impl_def_parent_types[impl_def_index].map(Some),
-            },
-        )
-    }
-
-    fn resolve_body(
-        &mut self,
-        body: Spanned<parser::Block>,
-        param_vars: &[parser::ParamVar],
-    ) -> Option<Body> {
-        let mut local_vars = Vec::new();
-
-        let mut scoped_resolver = ScopedResolver {
-            resolver: self,
-            local_vars: &mut local_vars,
-            scoped_vars: Cow::Owned(
-                param_vars
-                    .iter()
-                    .enumerate()
-                    .map(|(index, param_var)| {
-                        (
-                            param_var.ident.value.clone(),
-                            Spanned::new(param_var.ident.span, ScopedVarIndex::ParamVar(index)),
-                        )
-                    })
-                    .collect(),
-            ),
+    fn resolve_ir_item(&mut self, ir_item: &parser::IrItem) -> Option<IrItem> {
+        let emits = match ir_item.emits {
+            None => Some(None),
+            Some(emits) => self
+                .lookup_ir_global(emits)
+                .found(&mut self.errors)
+                .map(Some),
         };
 
-        let block = map_spanned(body, |body| scoped_resolver.resolve_block(body));
-
-        Some(Body {
-            local_vars,
-            block: block?,
+        Some(IrItem {
+            ident: ir_item.ident,
+            emits: emits?,
         })
     }
 
-    fn resolve_param_vars(&mut self, param_vars: Vec<parser::ParamVar>) -> Option<Vec<ParamVar>> {
-        collect_eager(
-            param_vars
-                .into_iter()
-                .map(|param_var| self.resolve_param_var(param_var)),
-        )
-    }
+    fn resolve_global_var_item(
+        &mut self,
+        global_var_item: GlobalItem<&parser::GlobalVarItem>,
+    ) -> Option<GlobalVarItem> {
+        let parent_index = match global_var_item.parent {
+            Some(parent_index) => self.resolve_parent_index(parent_index).map(Some),
+            None => Some(None),
+        };
 
-    fn resolve_param_var(&mut self, param_var: parser::ParamVar) -> Option<ParamVar> {
-        let type_ = self.lookup_type_global(param_var.type_).found();
+        let type_ = self
+            .lookup_type_global(global_var_item.item.type_)
+            .found(&mut self.errors);
 
-        Some(ParamVar {
-            ident: param_var.ident,
-            is_out: param_var.is_out,
+        Some(GlobalVarItem {
+            path: global_var_item.path,
+            parent: parent_index?,
+            is_mut: global_var_item.item.is_mut,
             type_: type_?,
         })
     }
 
-    fn resolve_fn_ret(&mut self, ret: Option<Spanned<Path>>) -> Option<TypeIndex> {
-        match ret {
-            None => Some(BuiltInType::Unit.into()),
-            Some(ret) => self.lookup_type_global(ret).found(),
+    fn resolve_fn_item(&mut self, fn_item: GlobalItem<&parser::FnItem>) -> Option<FnItem> {
+        let parent_index = match fn_item.parent {
+            Some(parent_index) => self.resolve_parent_index(parent_index).map(Some),
+            None => Some(None),
+        };
+
+        let (params, param_order, body) = self.resolve_params_and_body(
+            &fn_item.item.params,
+            fn_item.item.body.as_ref().map(Option::as_ref),
+        );
+
+        let ret = match fn_item.item.ret {
+            Some(ret) => map_spanned(ret, |ret| {
+                self.lookup_type_global(ret).found(&mut self.errors)
+            })
+            .map(Some),
+            None => Some(None),
+        };
+
+        Some(FnItem {
+            path: fn_item.path,
+            parent: parent_index?,
+            is_unsafe: fn_item.item.is_unsafe,
+            params,
+            param_order,
+            ret: ret?,
+            body: body?,
+        })
+    }
+
+    fn resolve_op_item(&mut self, op_item: GlobalItem<&parser::OpItem>) -> Option<OpItem> {
+        self.resolve_fn_item(op_item.map(parser::OpItem::as_ref))
+            .map(OpItem::from)
+    }
+
+    fn resolve_params_and_body(
+        &mut self,
+        params: &[parser::Param],
+        body: Spanned<Option<&parser::Block>>,
+    ) -> (Params, Vec<ParamIndex>, Option<Spanned<Option<Body>>>) {
+        let mut resolved_params = Params::default();
+        let mut local_vars = TiVec::new();
+        let mut local_labels = TiVec::new();
+
+        let mut scoped_resolver = ScopedResolver::new(
+            self,
+            &mut resolved_params,
+            &mut local_vars,
+            &mut local_labels,
+        );
+
+        let param_order = scoped_resolver.bind_params(params);
+
+        let body = match body.value {
+            Some(block) => scoped_resolver
+                .resolve_top_level_block(block)
+                .map(move |block| {
+                    Spanned::new(
+                        body.span,
+                        Some(
+                            Body {
+                                local_vars,
+                                local_labels,
+                                block,
+                            }
+                            .into(),
+                        ),
+                    )
+                }),
+            None => Some(Spanned::new(body.span, None)),
+        };
+
+        (resolved_params, param_order, body)
+    }
+
+    fn resolve_parent_index(&self, parent_index: UnresolvedParentIndex) -> Option<ParentIndex> {
+        match parent_index {
+            UnresolvedParentIndex::Impl(impl_index) => {
+                self.impl_item_parents[impl_index].map(ParentIndex::from)
+            }
+            UnresolvedParentIndex::Ir(ir_index) => Some(ir_index.into()),
         }
     }
 
     fn lookup_type_global(&mut self, path: Spanned<Path>) -> LookupResult<TypeIndex> {
-        self.lookup_global(path, ItemKind::Type.into())
-            .map(|index| match index {
-                ItemIndex::Type(index) => index,
+        self.lookup_global(path, NameKind::Type.into())
+            .map_found(|item_index| match item_index {
+                ItemIndex::Type(type_index) => type_index,
                 _ => unreachable!(),
             })
     }
 
-    fn lookup_fn_global(&mut self, path: Spanned<Path>) -> LookupResult<FnIndex> {
-        self.lookup_global(path, ItemKind::Fn.into())
-            .map(|index| match index {
-                ItemIndex::Fn(index) => index,
+    fn lookup_ir_global(&mut self, path: Spanned<Path>) -> LookupResult<IrIndex> {
+        self.lookup_global(path, NameKind::Ir.into())
+            .map_found(|item_index| match item_index {
+                ItemIndex::Ir(ir_index) => ir_index,
+                _ => unreachable!(),
+            })
+    }
+
+    fn lookup_op_global(&mut self, path: Spanned<Path>) -> LookupResult<OpIndex> {
+        self.lookup_global(path, NameKind::Op.into())
+            .map_found(|item_index| match item_index {
+                ItemIndex::Op(op_index) => op_index,
                 _ => unreachable!(),
             })
     }
 
     fn lookup_var_global(&mut self, path: Spanned<Path>) -> LookupResult<VarIndex> {
-        self.lookup_global(path, ItemKind::Var.into())
-            .map(|index| match index {
-                ItemIndex::Var(index) => index,
+        self.lookup_global(path, NameKind::Var.into())
+            .map_found(|item_index| match item_index {
+                ItemIndex::Var(var_index) => var_index,
+                _ => unreachable!(),
+            })
+    }
+
+    fn lookup_fn_global(&mut self, path: Spanned<Path>) -> LookupResult<FnIndex> {
+        self.lookup_global(path, NameKind::Fn.into())
+            .map_found(|item_index| match item_index {
+                ItemIndex::Fn(fn_index) => fn_index,
                 _ => unreachable!(),
             })
     }
@@ -534,47 +658,47 @@ impl Resolver {
     fn lookup_global(
         &mut self,
         path: Spanned<Path>,
-        expected: EnumSet<ItemKind>,
+        expected: EnumSet<NameKind>,
     ) -> LookupResult<ItemIndex> {
-        let registered_item = match self.items.get(&path.value) {
-            Some(registered_item) => registered_item,
-            None => {
-                self.errors.push(ResolveError::Undefined { path, expected });
-                return LookupResult::Failure;
-            }
-        };
+        self.global_registry
+            .lookup(path, expected)
+            .map_found(|item_index| *item_index)
+    }
+}
 
-        let (index, found) = match registered_item.status {
-            RegisteredItemStatus::DefinedOnce(index) => (Some(index), index.kind().into()),
-            RegisteredItemStatus::Duplicated(found) => (None, found),
-        };
+#[derive(Clone, Copy, From)]
+enum ScopedIndex {
+    #[from(types(VarParamIndex, OutVarParamIndex, LocalVarIndex))]
+    Var(VarIndex),
+    #[from(types(LabelParamIndex, LocalLabelIndex))]
+    Label(LabelIndex),
+}
 
-        if found.is_disjoint(expected) {
-            self.errors.push(ResolveError::WrongKind {
-                path,
-                expected,
-                found,
-                defined_at: registered_item.first_defined_at,
-            });
-            LookupResult::Failure
-        } else {
-            LookupResult::Found {
-                path,
-                defined_at: if found.len() == 1 {
-                    registered_item.first_defined_at
-                } else {
-                    None
-                },
-                index,
-            }
+impl Registrable for ScopedIndex {
+    fn name_kind(&self) -> NameKind {
+        match self {
+            ScopedIndex::Var(_) => NameKind::Var,
+            ScopedIndex::Label(_) => NameKind::Label,
+        }
+    }
+
+    fn shadows(&self) -> bool {
+        match self {
+            ScopedIndex::Var(VarIndex::Local(_)) => true,
+            ScopedIndex::Label(LabelIndex::Local(_)) => true,
+            _ => false,
         }
     }
 }
 
+type ScopedRegistry = Registry<Ident, ScopedIndex>;
+
 struct ScopedResolver<'a> {
     resolver: &'a mut Resolver,
-    local_vars: &'a mut Vec<LocalVar>,
-    scoped_vars: Cow<'a, HashMap<Ident, Spanned<ScopedVarIndex>>>,
+    scoped_registry: Cow<'a, ScopedRegistry>,
+    params: &'a mut Params,
+    local_vars: &'a mut TiVec<LocalVarIndex, LocalVar>,
+    local_labels: &'a mut TiVec<LocalLabelIndex, Spanned<Ident>>,
 }
 
 impl Deref for ScopedResolver<'_> {
@@ -592,11 +716,95 @@ impl DerefMut for ScopedResolver<'_> {
 }
 
 impl<'a> ScopedResolver<'a> {
-    fn resolve_block(&mut self, block: parser::Block) -> Option<Block> {
-        let stmts: Option<_> =
-            collect_eager(block.stmts.into_iter().map(|stmt| self.resolve_stmt(stmt)));
+    fn new(
+        resolver: &'a mut Resolver,
+        params: &'a mut Params,
+        local_vars: &'a mut TiVec<LocalVarIndex, LocalVar>,
+        local_labels: &'a mut TiVec<LocalLabelIndex, Spanned<Ident>>,
+    ) -> Self {
+        ScopedResolver {
+            resolver,
+            scoped_registry: Cow::Owned(ScopedRegistry::new()),
+            params,
+            local_vars,
+            local_labels,
+        }
+    }
 
-        let value = match block.value {
+    fn recurse(&mut self) -> ScopedResolver<'_> {
+        ScopedResolver {
+            resolver: self.resolver,
+            scoped_registry: Cow::Borrowed(&self.scoped_registry),
+            params: self.params,
+            local_vars: self.local_vars,
+            local_labels: self.local_labels,
+        }
+    }
+
+    fn bind_params(&mut self, params: &[parser::Param]) -> Vec<ParamIndex> {
+        params.iter().map(|param| self.bind_param(param)).collect()
+    }
+
+    fn bind_param(&mut self, param: &parser::Param) -> ParamIndex {
+        match param {
+            parser::Param::Var(var_param) => self.bind_var_param(var_param).into(),
+            parser::Param::OutVar(out_var_param) => self.bind_out_var_param(out_var_param).into(),
+            parser::Param::Label(label) => self.bind_label_param(*label).into(),
+        }
+    }
+
+    fn bind_var_param(&mut self, var_param: &parser::VarParam) -> VarParamIndex {
+        let type_ = self
+            .lookup_type_global(var_param.type_)
+            .found(&mut self.errors)
+            .unwrap_or_else(|| BuiltInType::Unit.into());
+
+        let var_param_index = self.params.var_params.push_and_get_key(VarParam {
+            ident: var_param.ident,
+            is_mut: var_param.is_mut,
+            type_,
+        });
+        self.register_scoped(var_param.ident, var_param_index.into());
+        var_param_index
+    }
+
+    fn bind_out_var_param(&mut self, out_var_param: &parser::OutVarParam) -> OutVarParamIndex {
+        let type_ = self
+            .lookup_type_global(out_var_param.type_)
+            .found(&mut self.errors)
+            .unwrap_or_else(|| BuiltInType::Unit.into());
+
+        let out_var_param_index = self.params.out_var_params.push_and_get_key(OutVarParam {
+            ident: out_var_param.ident,
+            type_,
+        });
+        self.register_scoped(out_var_param.ident, out_var_param_index.into());
+        out_var_param_index
+    }
+
+    fn bind_label_param(&mut self, label: Spanned<Ident>) -> LabelParamIndex {
+        let label_param_index = self.params.label_params.push_and_get_key(label);
+        self.register_scoped(label, label_param_index.into());
+        label_param_index
+    }
+
+    fn resolve_top_level_block(&mut self, block: &parser::Block) -> Option<Block> {
+        self.resolve_block_impl(block)
+    }
+
+    fn resolve_nested_block(&mut self, block: &parser::Block) -> Option<Block> {
+        self.recurse().resolve_block_impl(block)
+    }
+
+    // This is deliberately *not* called `resolve_block`, to force explicit
+    // disambiguation between calls to `resolve_top_level_block` and
+    // `resolve_nested_block`. `resolve_block_impl` should not be called
+    // directly.
+    fn resolve_block_impl(&mut self, block: &parser::Block) -> Option<Block> {
+        let stmts: Option<_> =
+            collect_eager(block.stmts.iter().map(|stmt| self.resolve_stmt(stmt)));
+
+        let value = match &block.value {
             None => Some(None),
             Some(value) => self.resolve_expr(value).map(Some),
         };
@@ -607,40 +815,65 @@ impl<'a> ScopedResolver<'a> {
         })
     }
 
-    fn resolve_inner_block(&mut self, block: parser::Block) -> Option<Block> {
-        let mut scoped_resolver = ScopedResolver {
-            resolver: self.resolver,
-            local_vars: self.local_vars,
-            scoped_vars: Cow::Borrowed(&self.scoped_vars),
-        };
-        scoped_resolver.resolve_block(block)
-    }
-
-    fn resolve_stmt(&mut self, stmt: parser::Stmt) -> Option<Stmt> {
+    fn resolve_stmt(&mut self, stmt: &parser::Stmt) -> Option<Stmt> {
         match stmt {
             parser::Stmt::Let(let_stmt) => self.resolve_let_stmt(let_stmt).map(Stmt::from),
+            parser::Stmt::If(if_stmt) => self.resolve_if_stmt(if_stmt).map(Stmt::from),
             parser::Stmt::Check(check_stmt) => self.resolve_check_stmt(check_stmt).map(Stmt::from),
+            parser::Stmt::Goto(goto_stmt) => self.resolve_goto_stmt(goto_stmt).map(Stmt::from),
+            parser::Stmt::Emit(emit_stmt) => self.resolve_emit_stmt(emit_stmt).map(Stmt::from),
             parser::Stmt::Expr(expr) => self.resolve_expr(expr).map(Stmt::from),
         }
     }
 
-    fn resolve_let_stmt(&mut self, let_stmt: parser::LetStmt) -> Option<LetStmt> {
-        let lhs = self.bind_local_var(
-            let_stmt.lhs,
-            let_stmt.type_,
-            |scoped_resolver, ident, index| scoped_resolver.insert_into_scope(ident, index),
-        );
+    fn resolve_let_stmt(&mut self, let_stmt: &parser::LetStmt) -> Option<LetStmt> {
+        let rhs = map_spanned(let_stmt.rhs.as_ref(), |rhs| self.resolve_expr(rhs.value));
 
-        let rhs = map_spanned(let_stmt.rhs, |rhs| self.resolve_expr(rhs));
+        let lhs = self.bind_local_var(&let_stmt.lhs, |scoped_resolver, ident, local_var_index| {
+            scoped_resolver.register_scoped(ident, local_var_index.into());
+        });
 
         Some(LetStmt {
-            lhs: lhs?,
+            lhs: lhs,
             rhs: rhs?,
         })
     }
 
-    fn resolve_check_stmt(&mut self, check_stmt: parser::CheckStmt) -> Option<CheckStmt> {
-        let cond = map_spanned(check_stmt.cond, |cond| self.resolve_expr(cond));
+    fn bind_local_var(
+        &mut self,
+        local_var: &parser::LocalVar,
+        mut register_local_var: impl FnMut(&mut Self, Spanned<Ident>, LocalVarIndex),
+    ) -> LocalVarIndex {
+        let type_ = local_var.type_.map(|type_| {
+            self.lookup_type_scoped(type_)
+                .found(&mut self.errors)
+                .unwrap_or_else(|| BuiltInType::Unit.into())
+        });
+
+        let local_var_index = self.local_vars.push_and_get_key(LocalVar {
+            ident: local_var.ident,
+            is_mut: local_var.is_mut,
+            type_,
+        });
+        register_local_var(self, local_var.ident, local_var_index);
+        local_var_index
+    }
+
+    fn resolve_if_stmt(&mut self, if_stmt: &parser::IfStmt) -> Option<IfStmt> {
+        let cond = map_spanned(if_stmt.cond.as_ref(), |cond| self.resolve_expr(cond.value));
+
+        let then = self.resolve_nested_block(&if_stmt.then);
+
+        Some(IfStmt {
+            cond: cond?,
+            then: then?,
+        })
+    }
+
+    fn resolve_check_stmt(&mut self, check_stmt: &parser::CheckStmt) -> Option<CheckStmt> {
+        let cond = map_spanned(check_stmt.cond.as_ref(), |cond| {
+            self.resolve_expr(cond.value)
+        });
 
         Some(CheckStmt {
             kind: check_stmt.kind,
@@ -648,27 +881,55 @@ impl<'a> ScopedResolver<'a> {
         })
     }
 
-    fn resolve_expr(&mut self, expr: parser::Expr) -> Option<Expr> {
+    fn resolve_goto_stmt(&mut self, goto_stmt: &parser::GotoStmt) -> Option<GotoStmt> {
+        let label = self
+            .lookup_label_scoped(goto_stmt.label)
+            .found(&mut self.errors);
+
+        Some(GotoStmt { label: label? })
+    }
+
+    fn resolve_emit_stmt(&mut self, emit_stmt: &parser::EmitStmt) -> Option<EmitStmt> {
+        let target = map_spanned(emit_stmt.target, |target| {
+            self.lookup_op_scoped(target).found(&mut self.errors)
+        });
+
+        let args = map_spanned(emit_stmt.args.as_ref(), |args| {
+            self.resolve_args(args.value)
+        });
+
+        Some(EmitStmt {
+            target: target?,
+            args: args?,
+        })
+    }
+
+    fn resolve_expr(&mut self, expr: &parser::Expr) -> Option<Expr> {
         match expr {
-            parser::Expr::Block(block_expr) => {
-                self.resolve_block_expr(*block_expr).map(Expr::from)
-            }
-            parser::Expr::Var(path) => {
-                self.lookup_var_scoped(path).found_spanned().map(Expr::from)
-            }
+            parser::Expr::Block(block_expr) => self.resolve_block_expr(block_expr).map(Expr::from),
+            parser::Expr::Var(path) => self.resolve_var_expr(*path).map(Expr::from),
             parser::Expr::Call(call_expr) => self.resolve_call_expr(call_expr).map(Expr::from),
-            parser::Expr::Cast(cast_expr) => self.resolve_cast_expr(*cast_expr).map(Expr::from),
+            parser::Expr::Negate(negate_expr) => {
+                self.resolve_negate_expr(negate_expr).map(Expr::from)
+            }
+            parser::Expr::Cast(cast_expr) => self.resolve_cast_expr(cast_expr).map(Expr::from),
             parser::Expr::Compare(compare_expr) => {
-                self.resolve_compare_expr(*compare_expr).map(Expr::from)
+                self.resolve_compare_expr(compare_expr).map(Expr::from)
             }
             parser::Expr::Assign(assign_expr) => {
-                self.resolve_assign_expr(*assign_expr).map(Expr::from)
+                self.resolve_assign_expr(assign_expr).map(Expr::from)
             }
         }
     }
 
-    fn resolve_block_expr(&mut self, block_expr: parser::BlockExpr) -> Option<BlockExpr> {
-        let block = self.resolve_inner_block(block_expr.block);
+    fn resolve_var_expr(&mut self, path: Spanned<Path>) -> Option<Spanned<VarIndex>> {
+        map_spanned(path, |path| {
+            self.lookup_var_scoped(path).found(&mut self.errors)
+        })
+    }
+
+    fn resolve_block_expr(&mut self, block_expr: &parser::BlockExpr) -> Option<BlockExpr> {
+        let block = self.resolve_nested_block(&block_expr.block);
 
         Some(BlockExpr {
             kind: block_expr.kind,
@@ -676,19 +937,14 @@ impl<'a> ScopedResolver<'a> {
         })
     }
 
-    fn resolve_call_expr(&mut self, call_expr: parser::CallExpr) -> Option<CallExpr> {
-        let target = self.lookup_fn_scoped(call_expr.target).found_spanned();
-
-        let mut deferred_scope_insertions = Vec::new();
-        let args = map_spanned(call_expr.args, |args| {
-            collect_eager(
-                args.into_iter()
-                    .map(|arg| self.resolve_call_expr_arg(arg, &mut deferred_scope_insertions)),
-            )
+    fn resolve_call_expr(&mut self, call_expr: &parser::CallExpr) -> Option<CallExpr> {
+        let target = map_spanned(call_expr.target, |target| {
+            self.lookup_fn_scoped(target).found(&mut self.errors)
         });
-        for (ident, index) in deferred_scope_insertions {
-            self.insert_into_scope(ident, index);
-        }
+
+        let args = map_spanned(call_expr.args.as_ref(), |args| {
+            self.resolve_args(args.value)
+        });
 
         Some(CallExpr {
             target: target?,
@@ -696,35 +952,79 @@ impl<'a> ScopedResolver<'a> {
         })
     }
 
-    fn resolve_call_expr_arg(
+    fn resolve_args(&mut self, args: &[Spanned<parser::Arg>]) -> Option<Vec<Spanned<Arg>>> {
+        let mut deferred_local_var_registrations = Vec::new();
+
+        let args = collect_eager(args.iter().map(|arg| {
+            map_spanned(arg.as_ref(), |arg| {
+                self.resolve_arg(arg.value, &mut deferred_local_var_registrations)
+            })
+        }));
+
+        for (ident, local_var_index) in deferred_local_var_registrations {
+            self.register_scoped(ident, local_var_index.into());
+        }
+
+        args
+    }
+
+    fn resolve_arg(
         &mut self,
-        arg: parser::CallExprArg,
-        deferred_scope_insertions: &mut Vec<(Ident, Spanned<LocalVarIndex>)>,
-    ) -> Option<CallExprArg> {
+        arg: &parser::Arg,
+        deferred_local_var_registrations: &mut Vec<(Spanned<Ident>, LocalVarIndex)>,
+    ) -> Option<Arg> {
         match arg {
-            parser::CallExprArg::Expr(expr) => {
-                map_spanned(expr, |expr| self.resolve_expr(expr)).map(CallExprArg::from)
-            }
-            parser::CallExprArg::OutRef(out_ref) => self
-                .lookup_out_param_var_scoped(out_ref)
-                .found_spanned()
-                .map(|index| CallExprArg::OutRef(index.map(ScopedVarIndex::ParamVar))),
-            parser::CallExprArg::LetOutRef(let_out_ref) => {
-                let span = let_out_ref.ident.span;
-                self.bind_local_var(let_out_ref.ident, let_out_ref.type_, |_, ident, index| {
-                    deferred_scope_insertions.push((ident, index));
+            parser::Arg::VarExprOrLabel(path) => self
+                .lookup_var_or_label_scoped(*path)
+                .found(&mut self.errors)
+                .map(|scoped_index| match scoped_index {
+                    ScopedIndex::Var(var_index) => {
+                        Expr::from(Spanned::new(path.span, var_index)).into()
+                    }
+                    ScopedIndex::Label(label_index) => label_index.into(),
+                }),
+            parser::Arg::Expr(expr) => self.resolve_expr(expr).map(Arg::from),
+            parser::Arg::OutVar(out_var) => match out_var {
+                parser::OutVar::Out(out_var_path) => map_spanned(*out_var_path, |out_var_path| {
+                    self.lookup_var_scoped(out_var_path).found(&mut self.errors)
                 })
-                .map(|index| {
-                    CallExprArg::OutRef(Spanned::new(span, ScopedVarIndex::LocalVar(index)))
-                })
+                .map(OutVar::Out),
+                parser::OutVar::OutLet(out_let_var) => Some(OutVar::OutLet(self.bind_local_var(
+                    out_let_var,
+                    |_, ident, out_let_var_index| {
+                        // An `out let` variable shouldn't come into scope until
+                        // after the call expression finishes executing.
+                        // Otherwise, another argument in the call expression
+                        // could refer to this newly-introduced variable, before
+                        // it has actually been populated with a value by the
+                        // call.
+                        deferred_local_var_registrations.push((ident, out_let_var_index));
+                    },
+                ))),
             }
+            .map(Arg::from),
         }
     }
 
-    fn resolve_cast_expr(&mut self, cast_expr: parser::CastExpr) -> Option<CastExpr> {
-        let expr = map_spanned(cast_expr.expr, |expr| self.resolve_expr(expr));
+    fn resolve_negate_expr(&mut self, negate_expr: &parser::NegateExpr) -> Option<NegateExpr> {
+        let expr = map_spanned(negate_expr.expr.as_ref(), |expr| {
+            self.resolve_expr(expr.value)
+        });
 
-        let type_ = self.lookup_type_scoped(cast_expr.type_).found_spanned();
+        Some(NegateExpr {
+            kind: negate_expr.kind,
+            expr: expr?,
+        })
+    }
+
+    fn resolve_cast_expr(&mut self, cast_expr: &parser::CastExpr) -> Option<CastExpr> {
+        let expr = map_spanned(cast_expr.expr.as_ref(), |expr| {
+            self.resolve_expr(expr.value)
+        });
+
+        let type_ = map_spanned(cast_expr.type_, |type_| {
+            self.lookup_type_scoped(type_).found(&mut self.errors)
+        });
 
         Some(CastExpr {
             expr: expr?,
@@ -732,10 +1032,14 @@ impl<'a> ScopedResolver<'a> {
         })
     }
 
-    fn resolve_compare_expr(&mut self, compare_expr: parser::CompareExpr) -> Option<CompareExpr> {
-        let lhs = map_spanned(compare_expr.lhs, |lhs| self.resolve_expr(lhs));
+    fn resolve_compare_expr(&mut self, compare_expr: &parser::CompareExpr) -> Option<CompareExpr> {
+        let lhs = map_spanned(compare_expr.lhs.as_ref(), |lhs| {
+            self.resolve_expr(lhs.value)
+        });
 
-        let rhs = map_spanned(compare_expr.rhs, |rhs| self.resolve_expr(rhs));
+        let rhs = map_spanned(compare_expr.rhs.as_ref(), |rhs| {
+            self.resolve_expr(rhs.value)
+        });
 
         Some(CompareExpr {
             kind: compare_expr.kind,
@@ -744,12 +1048,12 @@ impl<'a> ScopedResolver<'a> {
         })
     }
 
-    fn resolve_assign_expr(&mut self, assign_expr: parser::AssignExpr) -> Option<AssignExpr> {
-        let lhs = self
-            .lookup_out_param_var_scoped(assign_expr.lhs)
-            .found_spanned();
+    fn resolve_assign_expr(&mut self, assign_expr: &parser::AssignExpr) -> Option<AssignExpr> {
+        let lhs = map_spanned(assign_expr.lhs, |lhs| {
+            self.lookup_var_scoped(lhs).found(&mut self.errors)
+        });
 
-        let rhs = map_spanned(assign_expr.rhs, |rhs| self.resolve_expr(rhs));
+        let rhs = map_spanned(assign_expr.rhs.as_ref(), |rhs| self.resolve_expr(rhs.value));
 
         Some(AssignExpr {
             lhs: lhs?,
@@ -757,125 +1061,104 @@ impl<'a> ScopedResolver<'a> {
         })
     }
 
-    fn bind_local_var(
-        &mut self,
-        ident: Spanned<Ident>,
-        type_: Option<Spanned<Path>>,
-        mut insert_into_scope: impl FnMut(&mut Self, Ident, Spanned<LocalVarIndex>),
-    ) -> Option<LocalVarIndex> {
-        let (type_, did_resolve_type) = match type_ {
-            None => (None, true),
-            Some(type_) => {
-                let type_ = self.lookup_type_scoped(type_).found();
-                (type_, type_.is_some())
-            }
-        };
-
-        let index = self.local_vars.len();
-        self.local_vars.push(LocalVar {
-            ident: ident.value.clone(),
-            type_,
-        });
-        insert_into_scope(self, ident.value, Spanned::new(ident.span, index));
-
-        if did_resolve_type { Some(index) } else { None }
-    }
-
-    fn insert_into_scope(&mut self, ident: Ident, index: Spanned<LocalVarIndex>) {
-        self.scoped_vars
+    fn register_scoped(&mut self, ident: Spanned<Ident>, scoped_index: ScopedIndex) {
+        if let Err(error) = self
+            .scoped_registry
             .to_mut()
-            .insert(ident, index.map(ScopedVarIndex::LocalVar));
+            .register(ident.into(), scoped_index)
+        {
+            self.errors.push(error.into());
+        }
     }
 
     fn lookup_type_scoped(&mut self, path: Spanned<Path>) -> LookupResult<TypeIndex> {
-        if path.value.parent_type.is_none() {
-            if let Some(index) = self.scoped_vars.get(&path.value.ident) {
-                self.resolver.errors.push(ResolveError::WrongKind {
-                    path,
-                    expected: ItemKind::Type.into(),
-                    found: ItemKind::Var.into(),
-                    defined_at: Some(index.span),
-                });
-                return LookupResult::Failure;
-            }
-        }
+        let path = match self.lookup_scoped_only(path, NameKind::Type.into()) {
+            Ok(_) => unreachable!(),
+            Err(LookupError::Undefined(error)) => error.path,
+            Err(error @ LookupError::WrongKind(_)) => return Err(error),
+        };
 
         self.lookup_type_global(path)
     }
 
-    fn lookup_fn_scoped(&mut self, path: Spanned<Path>) -> LookupResult<FnIndex> {
-        if path.value.parent_type.is_none() {
-            if let Some(index) = self.scoped_vars.get(&path.value.ident) {
-                self.resolver.errors.push(ResolveError::WrongKind {
-                    path,
-                    expected: ItemKind::Fn.into(),
-                    found: ItemKind::Var.into(),
-                    defined_at: Some(index.span),
-                });
-                return LookupResult::Failure;
-            }
-        }
+    fn lookup_op_scoped(&mut self, path: Spanned<Path>) -> LookupResult<OpIndex> {
+        let path = match self.lookup_scoped_only(path, NameKind::Op.into()) {
+            Ok(_) => unreachable!(),
+            Err(LookupError::Undefined(error)) => error.path,
+            Err(error @ LookupError::WrongKind(_)) => return Err(error),
+        };
 
-        self.lookup_fn_global(path)
+        self.lookup_op_global(path)
     }
 
     fn lookup_var_scoped(&mut self, path: Spanned<Path>) -> LookupResult<VarIndex> {
-        if path.value.parent_type.is_none() {
-            if let Some(index) = self.scoped_vars.get(&path.value.ident) {
-                return LookupResult::Found {
-                    path,
-                    defined_at: Some(index.span),
-                    index: Some(index.value.into()),
-                };
-            }
-        }
+        let path = match self
+            .lookup_scoped_only(path, NameKind::Var.into())
+            .map_found(|scoped_index| match scoped_index {
+                ScopedIndex::Var(var_index) => var_index,
+                _ => unreachable!(),
+            }) {
+            Ok(found) => return Ok(found),
+            Err(LookupError::Undefined(error)) => error.path,
+            Err(error @ LookupError::WrongKind(_)) => return Err(error),
+        };
 
         self.lookup_var_global(path)
     }
 
-    fn lookup_out_param_var_scoped(&mut self, path: Spanned<Path>) -> LookupResult<ParamVarIndex> {
-        if path.value.parent_type.is_none() {
-            if let Some(index) = self.scoped_vars.get(&path.value.ident) {
-                return match index.value {
-                    ScopedVarIndex::ParamVar(param_var_index) => LookupResult::Found {
-                        path,
-                        defined_at: Some(index.span),
-                        index: Some(param_var_index),
-                    },
-                    ScopedVarIndex::LocalVar(_) => {
-                        self.resolver.errors.push(ResolveError::WriteToReadOnlyVar {
-                            path,
-                            defined_at: Some(index.span),
-                        });
-                        LookupResult::Failure
-                    }
-                };
-            }
-        }
+    fn lookup_var_or_label_scoped(&mut self, path: Spanned<Path>) -> LookupResult<ScopedIndex> {
+        let path = match self.lookup_scoped_only(path, NameKind::Var | NameKind::Label) {
+            Ok(found) => return Ok(found),
+            Err(LookupError::Undefined(error)) => error.path,
+            Err(error @ LookupError::WrongKind(_)) => return Err(error),
+        };
 
-        match self.lookup_var_global(path) {
-            LookupResult::Found {
-                path, defined_at, ..
-            } => {
-                self.errors
-                    .push(ResolveError::WriteToReadOnlyVar { path, defined_at });
-            }
-            _ => (),
-        }
-
-        LookupResult::Failure
+        self.lookup_global(path, NameKind::Var | NameKind::Label)
+            .map_found(|item_index| match item_index {
+                ItemIndex::Var(var_index) => ScopedIndex::Var(var_index),
+                _ => unreachable!(),
+            })
     }
-}
 
-fn collect_eager<T, U: FromIterator<T>>(mut iter: impl Iterator<Item = T>) -> U {
-    let result = U::from_iter(&mut iter);
-    for _ in iter {}
-    result
-}
+    fn lookup_fn_scoped(&mut self, path: Spanned<Path>) -> LookupResult<FnIndex> {
+        let path = match self.lookup_scoped_only(path, NameKind::Fn.into()) {
+            Ok(_) => unreachable!(),
+            Err(LookupError::Undefined(error)) => error.path,
+            Err(error @ LookupError::WrongKind(_)) => return Err(error),
+        };
 
-fn map_spanned<T, U>(x: Spanned<T>, f: impl FnOnce(T) -> Option<U>) -> Option<Spanned<U>> {
-    match f(x.value) {
-        None => None,
-        Some(y) => Some(Spanned::new(x.span, y)),
+        self.lookup_fn_global(path)
+    }
+
+    fn lookup_label_scoped(&mut self, path: Spanned<Path>) -> LookupResult<LabelIndex> {
+        let path = match self
+            .lookup_scoped_only(path, NameKind::Label.into())
+            .map_found(|scoped_index| match scoped_index {
+                ScopedIndex::Label(label_index) => label_index,
+                _ => unreachable!(),
+            }) {
+            Ok(found) => return Ok(found),
+            Err(LookupError::Undefined(error)) => error.path,
+            Err(error @ LookupError::WrongKind(_)) => return Err(error),
+        };
+
+        match self.lookup_global(path, NameKind::Label.into()) {
+            Ok(_) => unreachable!(),
+            Err(error) => Err(error),
+        }
+    }
+
+    fn lookup_scoped_only(
+        &mut self,
+        path: Spanned<Path>,
+        expected: EnumSet<NameKind>,
+    ) -> LookupResult<ScopedIndex> {
+        if path.value.has_parent() {
+            Err(LookupError::Undefined(UndefinedError { path, expected }))
+        } else {
+            self.scoped_registry
+                .lookup(path.map(|path| path.ident()), expected)
+                .map_found(|scoped_index| *scoped_index)
+        }
     }
 }

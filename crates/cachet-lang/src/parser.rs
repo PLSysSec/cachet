@@ -9,22 +9,22 @@ lalrpop_mod!(grammar, "/parser/grammar.rs");
 use std::error::Error;
 use std::fmt;
 
-use codespan::{RawIndex, Span};
+use codespan::RawIndex;
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use lazy_static::lazy_static;
 
+use crate::ast::{Span, Spanned};
 use crate::util::fmt_join_or;
-
 use crate::FrontendError;
 
 pub use crate::parser::ast::*;
 
-pub fn parse<'a>(spec_src: &'a str) -> Result<Spec, ParseError> {
+pub fn parse<'a>(src: &'a str) -> Result<Vec<Spanned<Item>>, ParseError> {
     lazy_static! {
-        static ref SPEC_PARSER: grammar::SpecParser = grammar::SpecParser::new();
+        static ref PARSER: grammar::ItemsParser = grammar::ItemsParser::new();
     }
-    SPEC_PARSER
-        .parse(spec_src)
+    PARSER
+        .parse(src)
         .map_err(|error| ParseError(error.map_token(|token| token.to_string())))
 }
 
@@ -74,20 +74,20 @@ impl Error for ParseError {}
 
 impl FrontendError for ParseError {
     fn span(&self) -> Span {
-        match self.0 {
+        match &self.0 {
             helpers::ParseError::InvalidToken { location } => {
-                Span::new(location as RawIndex, location as RawIndex)
+                Span::new(*location as RawIndex, *location as RawIndex)
             }
             helpers::ParseError::UnrecognizedEOF { location, .. } => {
-                Span::new(location as RawIndex, location as RawIndex)
+                Span::new(*location as RawIndex, *location as RawIndex)
             }
             helpers::ParseError::UnrecognizedToken {
                 token: (start, _, end),
                 ..
-            } => Span::new(start as RawIndex, end as RawIndex),
+            } => Span::new(*start as RawIndex, *end as RawIndex),
             helpers::ParseError::ExtraToken {
                 token: (start, _, end),
-            } => Span::new(start as RawIndex, end as RawIndex),
+            } => Span::new(*start as RawIndex, *end as RawIndex),
             helpers::ParseError::User { error } => error.span,
         }
     }

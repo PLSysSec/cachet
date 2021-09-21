@@ -5,10 +5,11 @@ use std::iter::{FromIterator, IntoIterator};
 use std::ops::{Deref, DerefMut};
 
 use iterate::iterate;
+use lazy_static::lazy_static;
 
-use cachet_lang::type_checker::*;
+use cachet_lang::normalizer;
 
-use crate::cpp;
+use crate::cpp::*;
 
 #[derive(Clone, Debug)]
 pub struct Interpreter {
@@ -19,19 +20,7 @@ pub struct Interpreter {
 impl Interpreter {
     pub fn generate(env: &Env) -> Interpreter {
         let (fwd_decls, defs) = Generator { env }.generate_code();
-        Interpreter {
-            fwd_decls: Code(fwd_decls),
-            defs: Code(defs),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Code(cpp::Code);
-
-impl fmt::Display for Code {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        fmt::Display::fmt(&self.0, f)
+        Interpreter { fwd_decls, defs }
     }
 }
 
@@ -59,9 +48,6 @@ const COMPARE_GTE_HELPER_IDENT: &'static str = "CompareGte";
 const COMPARE_LT_HELPER_IDENT: &'static str = "CompareLt";
 const COMPARE_GT_HELPER_IDENT: &'static str = "CompareGt";
 
-const DOWNCAST_FN_IDENT_PREFIX: &'static str = "From";
-const UPCAST_FN_IDENT_PREFIX: &'static str = "To";
-
 const VARIANT_VAR_IDENT_PREFIX: &'static str = "Variant";
 const CONST_VAR_IDENT_PREFIX: &'static str = "Const";
 
@@ -88,94 +74,6 @@ const UNWRAP_FN_IDENT: &'static str = "Cachet_Unwrap";
 const ASSERT_FN_IDENT: &'static str = "Cachet_Assert";
 const BAIL_TYPE_IDENT: &'static str = "Cachet_Bail";
 
-#[derive(Clone)]
-struct DefBuckets {
-    built_in_type_namespaces: BuiltInTypeMap<cpp::NamespaceDef>,
-    enum_namespaces: Vec<cpp::NamespaceDef>,
-    struct_namespaces: Vec<cpp::NamespaceDef>,
-    top_defs: Vec<cpp::Def>,
-}
-
-impl DefBuckets {
-    fn new(env: &Env, namespace_ident_prefix: &str) -> Self {
-        DefBuckets {
-            built_in_type_namespaces: BUILT_IN_TYPES.map(|built_in_type| cpp::NamespaceDef {
-                ident: format!("{}_{}", namespace_ident_prefix, built_in_type.ident()),
-                defs: Vec::new(),
-            }),
-            enum_namespaces: env
-                .enum_defs
-                .iter()
-                .map(|enum_def| cpp::NamespaceDef {
-                    ident: format!("{}_{}", namespace_ident_prefix, &enum_def.ident),
-                    defs: Vec::new(),
-                })
-                .collect(),
-            struct_namespaces: env
-                .struct_defs
-                .iter()
-                .map(|struct_def| cpp::NamespaceDef {
-                    ident: format!("{}_{}", namespace_ident_prefix, &struct_def.ident),
-                    defs: Vec::new(),
-                })
-                .collect(),
-            top_defs: Vec::new(),
-        }
-    }
-
-    fn bucket_for(&mut self, parent_type: Option<TypeIndex>) -> &mut Vec<cpp::Def> {
-        match parent_type {
-            Some(parent_type) => self.bucket_for_type(parent_type),
-            None => &mut self.top_defs,
-        }
-    }
-
-    fn bucket_for_type(&mut self, parent_type: TypeIndex) -> &mut Vec<cpp::Def> {
-        match parent_type {
-            TypeIndex::BuiltIn(built_in_type) => self.bucket_for_built_in_type(built_in_type),
-            TypeIndex::Enum(enum_index) => self.bucket_for_enum_type(enum_index),
-            TypeIndex::Struct(struct_index) => self.bucket_for_struct_type(struct_index),
-        }
-    }
-
-    fn bucket_for_built_in_type(&mut self, built_in_type: BuiltInType) -> &mut Vec<cpp::Def> {
-        &mut self.built_in_type_namespaces[built_in_type].defs
-    }
-
-    fn bucket_for_enum_type(&mut self, enum_index: EnumIndex) -> &mut Vec<cpp::Def> {
-        &mut self.enum_namespaces[enum_index].defs
-    }
-
-    fn bucket_for_struct_type(&mut self, struct_index: StructIndex) -> &mut Vec<cpp::Def> {
-        &mut self.struct_namespaces[struct_index].defs
-    }
-}
-
-impl IntoIterator for DefBuckets {
-    type Item = cpp::Def;
-    type IntoIter = impl Iterator<Item = Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        let DefBuckets {
-            built_in_type_namespaces,
-            enum_namespaces,
-            struct_namespaces,
-            top_defs,
-        } = self;
-
-        iterate![
-            ..iterate![
-                ..built_in_type_namespaces,
-                ..enum_namespaces,
-                ..struct_namespaces
-            ]
-            .filter(|namespace_def| !namespace_def.defs.is_empty())
-            .map(Into::into),
-            ..top_defs
-        ]
-    }
-}
-
 struct Generator<'a> {
     env: &'a Env,
 }
@@ -187,14 +85,11 @@ impl<'a> Generator<'a> {
         let mut internal_defs = external_fwd_decls.clone();
 
         for (enum_index, enum_def) in self.env.enum_defs.iter().enumerate() {
-            let type_namespace_ident = generate_type_namespace_ident(&enum_def.ident.value);
-            let val_type = generate_type(type_namespace_ident, TypeKind::Val);
-
             let variant_fwd_decls = enum_def.variants.iter().map(|variant| {
                 cpp::CommentDef {
                     text: format!(
                         "inline constexpr {} {};",
-                        val_type,
+                        TypePath { ident: enum_def.ident.value, TypeKind::Val },
                         generate_variant_var_ident(&variant.value)
                     ),
                 }
@@ -207,24 +102,22 @@ impl<'a> Generator<'a> {
         }
 
         for (struct_index, struct_def) in self.env.struct_defs.iter().enumerate() {
-            if let Some(subtype_of) = struct_def.subtype_of {
-                let type_namespace_ident = generate_type_namespace_ident(&struct_def.ident.value);
+            if let Some(supertype) = struct_def.supertype {
+                let supertype_ident = self.get_type_ident(supertype);
 
-                let downcast_fn_fwd_decl = self
-                    .generate_cast_fn_fwd_decl(
-                        CastExprKind::Downcast,
-                        type_namespace_ident.clone(),
-                        subtype_of,
-                    )
-                    .into();
+                let downcast_fn_fwd_decl = generate_cast_fn_fwd_decl(
+                    CastExprKind::Downcast,
+                    struct_def.ident.value,
+                    supertype_ident,
+                )
+                .into();
 
-                let upcast_fn_fwd_decl = self
-                    .generate_cast_fn_fwd_decl(
-                        CastExprKind::Upcast,
-                        type_namespace_ident.clone(),
-                        subtype_of,
-                    )
-                    .into();
+                let upcast_fn_fwd_decl = generate_cast_fn_fwd_decl(
+                    CastExprKind::Upcast,
+                    struct_def.ident.value,
+                    supertype_ident,
+                )
+                .into();
 
                 external_fwd_decls
                     .bucket_for_struct_type(struct_index)
@@ -297,43 +190,6 @@ impl<'a> Generator<'a> {
         };
 
         (fwd_decls, defs)
-    }
-
-    fn generate_cast_fn_ident(&self, kind: CastExprKind, subtype_of: TypeIndex) -> Ident {
-        format!(
-            "{}_{}",
-            match kind {
-                CastExprKind::Downcast => DOWNCAST_FN_IDENT_PREFIX,
-                CastExprKind::Upcast => UPCAST_FN_IDENT_PREFIX,
-            },
-            self.get_type_ident(subtype_of)
-        )
-    }
-
-    fn generate_cast_fn_fwd_decl(
-        &self,
-        kind: CastExprKind,
-        child_type_namespace_ident: Ident,
-        parent_type_index: TypeIndex,
-    ) -> cpp::FnDef {
-        let child_type = generate_type(child_type_namespace_ident, TypeKind::Val);
-        let parent_type = self.generate_type(parent_type_index, TypeKind::Val);
-
-        let (source_type, target_type) = match kind {
-            CastExprKind::Downcast => (parent_type, child_type),
-            CastExprKind::Upcast => (child_type, parent_type),
-        };
-
-        cpp::FnDef {
-            path: cpp::Path::from_ident(self.generate_cast_fn_ident(kind, parent_type_index)),
-            is_inline: true,
-            params: vec![cpp::Param {
-                ident: "in".to_owned(),
-                type_: source_type,
-            }],
-            ret: target_type,
-            body: None,
-        }
     }
 
     fn generate_fn_fwd_decl(&self, ident: Ident, sig: &Sig) -> cpp::FnDef {
@@ -456,22 +312,65 @@ impl<'a> Generator<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
-enum TypeKind {
-    Val,
-    Local,
-    Ref,
-    OutRef,
+fn generate_cast_fn_fwd_decl(
+    kind: CastExprKind,
+    child_type_ident: Ident,
+    parent_type_ident: Ident,
+) -> cpp::FnDef {
+    let child_type_path = TypePath {
+        ident: child_type_ident,
+        kind: TypeKind::Val,
+    };
+    let parent_type_path = TypePath {
+        ident: parent_type_ident,
+        kind: TypeKind::Val,
+    };
+
+    let (source_type_path, target_type_path) = match kind {
+        CastExprKind::Downcast => (parent_type_path, child_type_path),
+        CastExprKind::Upcast => (child_type_path, parent_type_path),
+    };
+
+    lazy_static! {
+        static ref IN_PARAM_IDENT: Ident = "in".into();
+    }
+
+    cpp::FnDef {
+        path: CastFnIdent {
+            kind,
+            parent_type_ident,
+        }
+        .into(),
+        is_inline: true,
+        params: vec![cpp::Param {
+            ident: *IN_PARAM_IDENT,
+            type_: source_type_path,
+        }],
+        ret: target_type_path,
+        body: None,
+    }
 }
 
-impl TypeKind {
-    fn type_ident(&self) -> &'static str {
-        match self {
-            TypeKind::Val => VAL_TYPE_IDENT,
-            TypeKind::Local => LOCAL_TYPE_IDENT,
-            TypeKind::Ref => REF_TYPE_IDENT,
-            TypeKind::OutRef => OUT_REF_TYPE_IDENT,
+fn generate_cast_expr(
+    &mut self,
+    kind: CastExprKind,
+    expr: cpp::Expr,
+    source_type_ident: Ident,
+    target_type_ident: Ident,
+) -> cpp::CallExpr {
+    let (parent_type_ident, child_type_ident) = match kind {
+        CastExprKind::Downcast => (source_type_ident, target_type_ident),
+        CastExprKind::Upcast => (target_type_ident, source_type_ident),
+    };
+
+    cpp::CallExpr {
+        target: CastFnIdent {
+            kind,
+            parent_type_ident,
         }
+        .full_path(child_type_ident)
+        .into(),
+        args: vec![expr],
     }
 }
 
@@ -590,18 +489,18 @@ impl<'a, 'b> ScopedGenerator<'a, 'b> {
         generate_param_var_ident(&self.sig.param_vars[param_var_index].ident.value)
     }
 
-    fn generate_synthetic_var_stmt(
+    fn generate_synthetic_let_stmt(
         &mut self,
         synthetic_var_ident_prefix: &str,
         synthetic_var_type: cpp::Type,
         synthetic_var_init: Option<cpp::Expr>,
-    ) -> cpp::VarStmt {
+    ) -> cpp::LetStmt {
         let synthetic_var_index = self.num_synthetic_vars;
         self.num_synthetic_vars += 1;
         let synthetic_var_ident =
             format!("{}_{}", synthetic_var_ident_prefix, synthetic_var_index);
 
-        cpp::VarStmt {
+        cpp::LetStmt {
             ident: synthetic_var_ident,
             type_: synthetic_var_type,
             init: synthetic_var_init,
@@ -661,9 +560,9 @@ impl<'a, 'b, 'c> StmtExprGenerator<'a, 'b, 'c> {
         }
     }
 
-    fn generate_let_stmt(&mut self, let_stmt: &LetStmt) -> cpp::VarStmt {
+    fn generate_let_stmt(&mut self, let_stmt: &LetStmt) -> cpp::LetStmt {
         let local_var = &self.local_vars[let_stmt.lhs];
-        cpp::VarStmt {
+        cpp::LetStmt {
             ident: generate_local_var_ident(&local_var.ident, let_stmt.lhs),
             type_: self.generate_type(local_var.type_, TypeKind::Local),
             init: Some(self.generate_expr_of_kind(ExprKind::Local, &let_stmt.rhs)),
@@ -821,14 +720,14 @@ impl<'a, 'b, 'c> StmtExprGenerator<'a, 'b, 'c> {
                     generate_result_type(self.generate_type(call_expr.type_(), TypeKind::Val))
                         .into();
 
-                let result_var_stmt = self.generate_synthetic_var_stmt(
+                let result_let_stmt = self.generate_synthetic_let_stmt(
                     RESULT_VAR_IDENT_PREFIX,
                     result_var_type,
                     Some(cpp_call_expr),
                 );
 
                 let result_var_expr =
-                    cpp::Expr::from(cpp::Path::from_ident(result_var_stmt.ident.clone()));
+                    cpp::Expr::from(cpp::Path::from_ident(result_let_stmt.ident.clone()));
 
                 let result_guard_stmt = generate_guard_stmt(
                     cpp::CallExpr {
@@ -843,7 +742,7 @@ impl<'a, 'b, 'c> StmtExprGenerator<'a, 'b, 'c> {
                         kind: cpp::FunctionalCastExprKind::Static.into(),
                         expr: result_var_expr,
                         type_: cpp::RefType {
-                            inner: result_var_stmt.type_.clone(),
+                            inner: result_let_stmt.type_.clone(),
                             value_category: cpp::ValueCategory::RValue,
                         }
                         .into(),
@@ -852,7 +751,7 @@ impl<'a, 'b, 'c> StmtExprGenerator<'a, 'b, 'c> {
                 ));
 
                 cpp::Block::from(vec![
-                    result_var_stmt.into(),
+                    result_let_stmt.into(),
                     result_guard_stmt.into(),
                     result_unwrap_expr.into(),
                 ])
@@ -882,18 +781,18 @@ impl<'a, 'b, 'c> StmtExprGenerator<'a, 'b, 'c> {
         {
             let ret_var_type = self.generate_type(call_expr.type_(), TypeKind::Val);
 
-            let ret_var_stmt = self.generate_synthetic_var_stmt(
+            let ret_let_stmt = self.generate_synthetic_let_stmt(
                 RET_VAR_IDENT_PREFIX,
                 ret_var_type,
                 Some(cpp_call_expr),
             );
 
-            let ret_var_expr = cpp::Expr::from(cpp::Path::from_ident(ret_var_stmt.ident.clone()));
+            let ret_var_expr = cpp::Expr::from(cpp::Path::from_ident(ret_let_stmt.ident.clone()));
 
             cpp::Block {
                 stmts: iterate![
                     ..deferred_pre_call_stmts,
-                    ret_var_stmt.into(),
+                    ret_let_stmt.into(),
                     ..deferred_post_call_stmts,
                     ret_var_expr.into(),
                 ]
@@ -937,20 +836,16 @@ impl<'a, 'b, 'c> StmtExprGenerator<'a, 'b, 'c> {
             ScopedVarIndex::LocalVar(local_var_index) => {
                 let local_var = &self.local_vars[local_var_index];
                 let local_var_ident = generate_local_var_ident(&local_var.ident, local_var_index);
-                let local_var_type_namespace_ident =
-                    self.generate_type_namespace_ident(local_var.type_);
+                let local_var_type_ident = self.get_type_ident(local_var.type_);
 
                 self.deferred_stmts.push(
-                    cpp::VarStmt {
+                    cpp::LetStmt {
                         ident: local_var_ident.clone(),
-                        type_: generate_type(
-                            local_var_type_namespace_ident.clone(),
-                            TypeKind::Local,
-                        ),
-                        init: Some(
-                            generate_empty_local_var_init(local_var_type_namespace_ident.clone())
-                                .into(),
-                        ),
+                        type_: TypePath {
+                            ident: local_var_type_ident,
+                            kind: TypeKind::Local,
+                        },
+                        init: Some(generate_empty_local_var_init(local_var_type_ident).into()),
                     }
                     .into(),
                 );
@@ -977,17 +872,15 @@ impl<'a, 'b, 'c> StmtExprGenerator<'a, 'b, 'c> {
                 let out_var_type_namespace_ident =
                     self.generate_type_namespace_ident(source_type_index);
 
-                let out_var_stmt = self.generate_synthetic_var_stmt(
+                let out_let_stmt = self.generate_synthetic_let_stmt(
                     OUT_VAR_IDENT_PREFIX,
                     generate_type(out_var_type_namespace_ident.clone(), TypeKind::Local),
-                    Some(
-                        generate_empty_local_var_init(out_var_type_namespace_ident.clone()).into(),
-                    ),
+                    Some(generate_empty_local_var_init(out_var_type_ident).into()),
                 );
 
-                let out_var_ident = out_var_stmt.ident.clone();
+                let out_var_ident = out_let_stmt.ident.clone();
 
-                deferred_pre_call_stmts.push(out_var_stmt.into());
+                deferred_pre_call_stmts.push(out_let_stmt.into());
 
                 let out_var_expr = self.convert_expr_to_kind(
                     ExprKind::Val,
@@ -1063,32 +956,8 @@ impl<'a, 'b, 'c> StmtExprGenerator<'a, 'b, 'c> {
         let source_type = cast_expr.expr.type_();
         let target_type = cast_expr.type_;
 
-        expr_scaffold.build(
-            self.generate_cpp_cast_expr(cast_expr.kind, expr, source_type, target_type)
-                .into(),
-        )
-    }
-
-    fn generate_cpp_cast_expr(
-        &mut self,
-        kind: CastExprKind,
-        expr: cpp::Expr,
-        source_type: TypeIndex,
-        target_type: TypeIndex,
-    ) -> cpp::CallExpr {
-        let (parent_type, child_type) = match kind {
-            CastExprKind::Downcast => (source_type, target_type),
-            CastExprKind::Upcast => (target_type, source_type),
-        };
-
-        cpp::CallExpr {
-            target: cpp::Path::new(
-                Some(self.generate_impl_namespace_ident(child_type)),
-                self.generate_cast_fn_ident(kind, parent_type),
-            )
-            .into(),
-            args: vec![expr],
-        }
+        expr_scaffold
+            .build(generate_cpp_cast_expr(cast_expr.kind, expr, source_type, target_type).into())
     }
 
     fn generate_compare_expr(&mut self, compare_expr: &CompareExpr) -> TaggedExpr {
@@ -1177,13 +1046,9 @@ fn generate_guard_stmt(cond: cpp::Expr) -> cpp::IfStmt {
     }
 }
 
-fn generate_empty_local_var_init(type_namespace_ident: Ident) -> cpp::CallExpr {
-    cpp::CallExpr {
-        target: cpp::Path::new(
-            Some(type_namespace_ident.clone()),
-            EMPTY_LOCAL_HELPER_IDENT.to_owned(),
-        )
-        .into(),
+fn generate_empty_local_var_init(type_ident: Ident) -> CallExpr {
+    CallExpr {
+        target: FnIdent::EmptyLocal.full_path(local_var_type_ident).into(),
         args: vec![
             cpp::Path::from_ident(CONTEXT_PARAM_VAR_IDENT)
                 .to_owned()
@@ -1292,7 +1157,7 @@ impl<T> TaggedExpr<T> {
 struct ExprScaffold {
     tag: ExprTag,
     has_undeferred_clobberable_intermediate: bool,
-    deferred_temp_var_stmts: Vec<cpp::VarStmt>,
+    deferred_temp_let_stmts: Vec<cpp::LetStmt>,
 }
 
 impl ExprScaffold {
@@ -1300,7 +1165,7 @@ impl ExprScaffold {
         ExprScaffold {
             tag,
             has_undeferred_clobberable_intermediate: false,
-            deferred_temp_var_stmts: Vec::new(),
+            deferred_temp_let_stmts: Vec::new(),
         }
     }
 
@@ -1326,16 +1191,16 @@ impl ExprScaffold {
 
             let temp_var_type = stmt_expr_generator.generate_type(expr_type, TypeKind::Local);
 
-            let temp_var_stmt = stmt_expr_generator.generate_synthetic_var_stmt(
+            let temp_let_stmt = stmt_expr_generator.generate_synthetic_let_stmt(
                 TEMP_VAR_IDENT_PREFIX,
                 temp_var_type,
                 Some(temp_var_init),
             );
 
             let temp_var_expr =
-                cpp::Expr::from(cpp::Path::from_ident(temp_var_stmt.ident.clone()));
+                cpp::Expr::from(cpp::Path::from_ident(temp_let_stmt.ident.clone()));
 
-            self.deferred_temp_var_stmts.push(temp_var_stmt);
+            self.deferred_temp_let_stmts.push(temp_let_stmt);
 
             TaggedExpr::new(ExprTag::LLocal, temp_var_expr)
         } else {
@@ -1350,11 +1215,11 @@ impl ExprScaffold {
     fn build(self, expr: cpp::Expr) -> TaggedExpr {
         TaggedExpr::new(
             self.tag,
-            if self.deferred_temp_var_stmts.is_empty() {
+            if self.deferred_temp_let_stmts.is_empty() {
                 expr
             } else {
                 cpp::Block::from_iter(iterate![
-                    ..self.deferred_temp_var_stmts.into_iter().map(Into::into),
+                    ..self.deferred_temp_let_stmts.into_iter().map(Into::into),
                     cpp::Stmt::from(expr)
                 ])
                 .into()

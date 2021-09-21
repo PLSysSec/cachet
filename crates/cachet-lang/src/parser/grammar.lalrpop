@@ -1,7 +1,9 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use codespan::{RawIndex, Span};
+use codespan::RawIndex;
 use iterate::iterate;
+
+use crate::ast::{Ident, Path, Span, Spanned};
 
 use crate::parser::ast::*;
 use crate::parser::helpers::*;
@@ -12,116 +14,93 @@ extern {
     type Error = UserParseError;
 }
 
-pub Spec: Spec = TopDef*;
+pub Items: Vec<Spanned<Item>> = Spanned<Item>*;
 
-TopDef: TopDef = {
-    <enum_def:EnumDef> => enum_def.into(),
-    <struct_def:StructDef> => struct_def.into(),
-    <impl_def:ImplDef> => impl_def.into(),
-    <const_def:ConstDef> => const_def.into(),
-    <fn_def:FnDef> => fn_def,
+Item: Item = {
+    <enum_item:EnumItem> => Item::from(enum_item).into(),
+    <struct_item:StructItem> => Item::from(struct_item).into(),
+    <ir_item:IrItem> => Item::from(ir_item).into(),
+    <impl_item:ImplItem> => Item::from(impl_item).into(),
+    <global_var_item:GlobalVarItem> => Item::from(global_var_item).into(),
+    <callable_item:CallableItem> => callable_item,
 };
 
-EnumDef: EnumDef =
+EnumItem: EnumItem =
     "enum" <ident:Spanned<Ident>> "{" <variants:Comma<Spanned<Ident>>> "}" =>
-        EnumDef { ident, variants };
+        EnumItem { ident, variants: variants.into() };
 
-StructDef: StructDef =
-    "struct" <ident:Spanned<Ident>> <subtype_of:StructDefSubtypeOf?> ";" =>
-        StructDef { ident, subtype_of };
+StructItem: StructItem =
+    "struct" <ident:Spanned<Ident>> <supertype:("<:" <Spanned<Path>>)?> ";" =>
+        StructItem { ident, supertype };
 
-StructDefSubtypeOf: Spanned<Path> =
-    "<:" <ident:Spanned<Path>> => ident;
+IrItem: IrItem =
+    "ir" <ident:Spanned<Ident>> <emits:("emits" <Spanned<Path>>)?>
+    "{" <items:Spanned<Item>*> "}" =>
+        IrItem { ident, emits, items };
 
-ImplDef: ImplDef =
-    "impl" <parent_type:Spanned<Path>> "{" <top_defs:Spanned<TopDef>*> "}" =>? {
-        let defs = top_defs.into_iter().map(|top_def| {
-            match top_def.value {
-                TopDef::Def(def) => Ok(def),
-                _ => Err(ParseError::User {
-                    error: Spanned {
-                        span: top_def.span,
-                        value: "definitions of this kind can't be nested under `impl`s",
-                    },
-                }),
-            }
-        }).collect::<Result<_, _>>()?;
+ImplItem: ImplItem =
+    "impl" <parent:Spanned<Path>> "{" <items:Spanned<Item>*> "}" => ImplItem { parent, items };
 
-        Ok(ImplDef { parent_type, defs })
-    };
+GlobalVarItem: GlobalVarItem =
+    "var" <tags:VarTags> <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> ";" =>
+        GlobalVarItem { ident, is_mut: tags.mut_tag.is_some(), type_ };
 
-ConstDef: ConstDef =
-    "const" <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> ";" =>
-        ConstDef { ident, type_ };
+#[inline]
+VarTags: VarTags =
+    <tags:Spanned<VarTag>*> =>? VarTags::reduce(tags.into_iter());
 
-FnDef: TopDef =
-    <attrs:Spanned<FnDefAttr>*> <kind:FnDefKind> <ident:Spanned<Ident>> "(" <param_vars:Comma<ParamVar>> ")" <ret:FnDefRet?> <body:Spanned<FnBody>> =>? {
-        let (is_fallible, is_unsafe) = FnDefAttr::reduce(attrs.into_iter())?;
+VarTag: VarTag =
+    "mut" => VarTag::Mut;
 
-        let sig = Sig {
+CallableItem: Item =
+    <tags:CallableTags> <kind:CallableKind> <ident:Spanned<Ident>>
+    "(" <params:Comma<Param>> ")" <ret:("->" <Spanned<Path>>)?>
+    <body:Spanned<CallableBody>> => {
+        let fn_item = FnItem {
             ident,
-            is_fallible: is_fallible.is_some(),
-            param_vars,
+            is_unsafe: tags.unsafe_tag.is_some(),
+            params,
             ret,
+            body,
         };
 
         match kind {
-            FnDefKind::Fn => {
-                Ok(FnDef {
-                    sig,
-                    is_unsafe: is_unsafe.is_some(),
-                    body: body.value,
-                }.into())
-            }
-            FnDefKind::Op => {
-                let body_span = body.span;
-                let body = body.value.ok_or_else(|| ParseError::User {
-                    error: Spanned {
-                        span: body_span,
-                        value: "op definitions must have a body",
-                    }
-                })?;
-
-                if let Some(span) = is_unsafe {
-                    return Err(ParseError::User {
-                        error: Spanned {
-                            span,
-                            value: "op definitions can't be `unsafe`",
-                        }
-                    });
-                }
-
-                Ok(OpDef { sig, body }.into())
-            }
+            CallableKind::Fn => fn_item.into(),
+            CallableKind::Op => OpItem(fn_item).into(),
         }
     };
 
-FnDefKind: FnDefKind = {
-    "fn" => FnDefKind::Fn,
-    "op" => FnDefKind::Op,
+#[inline]
+CallableTags: CallableTags =
+    <tags:Spanned<CallableTag>*> =>? CallableTags::reduce(tags.into_iter());
+
+CallableTag: CallableTag = {
+    "unsafe" => CallableTag::Unsafe,
 };
 
-FnDefAttr: FnDefAttr = {
-    "fallible" => FnDefAttr::Fallible,
-    "unsafe" => FnDefAttr::Unsafe,
+CallableKind: CallableKind = {
+    "fn" => CallableKind::Fn,
+    "op" => CallableKind::Op,
 };
 
-FnDefRet: Spanned<Path> =
-    "->" <type_:Spanned<Path>> => type_;
+Param: Param = {
+    <var_param:VarParam> => var_param.into(),
+    <out_var_param:OutVarParam> => out_var_param.into(),
+    "label" <label:Spanned<Ident>> => Param::Label(label),
+};
 
-FnBody: Option<Spanned<Block>> = {
+VarParam: VarParam =
+    <tags:VarTags> <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> =>
+        VarParam { ident, is_mut: tags.mut_tag.is_some(), type_ };
+
+OutVarParam: OutVarParam =
+    "out" <ident:Spanned<Ident>> ":" <type_: Spanned<Path>> => OutVarParam { ident, type_ };
+
+CallableBody: Option<Block> = {
     ";" => None,
-    <block:Spanned<Block>> => Some(block),
+    <block:Block> => Some(block),
 };
 
-ParamVar: ParamVar =
-    <ident:Spanned<Ident>> ":" <attrs:Spanned<ParamVarAttr>*> <type_:Spanned<Path>> =>? {
-        let is_out = ParamVarAttr::reduce(attrs.into_iter())?.is_some();
-        Ok(ParamVar { ident, is_out, type_ })
-    };
-
-ParamVarAttr: ParamVarAttr =
-    "out" => ParamVarAttr::Out;
 
 Block: Block = {
     "{" <stmts:Stmts> <value:Expr?> "}" => Block { stmts, value }, 
@@ -173,73 +152,114 @@ StmtsBlock: (Vec<Stmt>, Block) = {
 
 Stmt: Stmt = {
     <let_stmt:LetStmt> => let_stmt.into(),
+    <if_stmt:IfStmt> => if_stmt.into(),
     <check_stmt:CheckStmt> => check_stmt.into(),
+    <goto_stmt:GotoStmt> => goto_stmt.into(),
+    <emit_stmt:EmitStmt> => emit_stmt.into(),
     <expr:Expr> ";" => expr.into(),
 };
 
 LetStmt: LetStmt =
-    "let" <lhs:Spanned<Ident>> <type_:LetStmtType?> "=" <rhs:Spanned<BlockOrExpr>> ";" =>
-        LetStmt { lhs, rhs, type_ };
+    <lhs:LocalVar> "=" <rhs:Spanned<BlockOrExpr>> ";" => LetStmt { lhs, rhs };
 
-LetStmtType: Spanned<Path> =
-    ":" <type_:Spanned<Path>> => type_;
+LocalVar: LocalVar =
+    "let" <tags:VarTags> <ident:Spanned<Ident>> <type_:(":" <Spanned<Path>>)?> =>
+        LocalVar { ident, is_mut: tags.mut_tag.is_some(), type_ };
+
+IfStmt: IfStmt =
+    "if" <cond:Spanned<BlockOrExpr>> <then:Block> => IfStmt { cond, then };
 
 CheckStmt: CheckStmt =
     <kind:CheckStmtKind> <cond:Spanned<BlockOrExpr>> ";" => CheckStmt { kind, cond };
 
 CheckStmtKind: CheckStmtKind = {
     "assert" => CheckStmtKind::Assert,
-    "guard" => CheckStmtKind::Guard,
+    "assume" => CheckStmtKind::Assume,
 };
 
+GotoStmt: GotoStmt =
+    "goto" <label:Spanned<Path>> ";" => GotoStmt { label };
+
+EmitStmt: EmitStmt =
+    "emit" <call_expr:CallExpr> => EmitStmt(call_expr);
+
+#[inline]
 Expr: Expr = Expr0;
 
-BlockOrExpr: Expr = {
-    <block:Block> => block.into(),
-    Expr0,
+#[inline]
+BlockOrExpr: Expr = BlockOrExpr0;
+
+#[inline]
+RawExpr: MaybeGrouped = RawExpr0;
+
+#[inline]
+RawBlockOrExpr: MaybeGrouped = RawBlockOrExpr0;
+
+Expr0: Expr =
+    <expr:RawExpr0> => expr.expr;
+
+BlockOrExpr0: Expr =
+    <expr:RawBlockOrExpr0> => expr.expr;
+
+RawExpr0: MaybeGrouped = {
+    <assign_expr:AssignExpr> => MaybeGrouped::ungrouped(assign_expr.into()),
+    RawExpr1,
 };
 
-Expr0: Expr = {
-    <assign_expr:AssignExpr> => assign_expr.into(),
-    Expr1,
+RawBlockOrExpr0: MaybeGrouped = {
+    <block:Block> => MaybeGrouped::ungrouped(block.into()),
+    RawExpr0,
 };
 
-BlockOrExpr0: Expr = {
-    <block:Block> => block.into(),
-    Expr0,
+Expr1: Expr =
+    <expr:RawExpr1> => expr.expr;
+
+BlockOrExpr1: Expr =
+    <expr:RawBlockOrExpr1> => expr.expr;
+
+RawExpr1: MaybeGrouped = {
+    <compare_expr:CompareExpr> => MaybeGrouped::ungrouped(compare_expr.into()),
+    RawExpr2,
 };
 
-Expr1: Expr = {
-    <compare_expr:CompareExpr> => compare_expr.into(),
-    Expr2,
+RawBlockOrExpr1: MaybeGrouped = {
+    <block:Block> => MaybeGrouped::ungrouped(block.into()),
+    RawExpr1,
 };
 
-BlockOrExpr1: Expr = {
-    <block:Block> => block.into(),
-    Expr1,
+Expr2: Expr =
+    <expr:RawExpr2> => expr.expr;
+
+BlockOrExpr2: Expr =
+    <expr:RawBlockOrExpr2> => expr.expr;
+
+RawExpr2: MaybeGrouped = {
+    <cast_expr:CastExpr> => MaybeGrouped::ungrouped(cast_expr.into()),
+    RawExpr3,
 };
 
-Expr2: Expr = {
-    <cast_expr:CastExpr> => cast_expr.into(),
-    VarOrCallExpr,
-    <block_expr:BlockExpr> => block_expr.into(),
+RawBlockOrExpr2: MaybeGrouped = {
+    <block:Block> => MaybeGrouped::ungrouped(block.into()),
+    RawExpr2,
 };
 
-BlockOrExpr2: Expr = {
-    <block:Block> => block.into(),
-    Expr2,
+Expr3: Expr =
+    <expr:RawExpr3> => expr.expr;
+
+BlockOrExpr3: Expr =
+    <expr:RawBlockOrExpr3> => expr.expr;
+
+RawExpr3: MaybeGrouped = {
+    "(" <expr:BlockOrExpr0> ")" => MaybeGrouped::grouped(expr),
+    <block_expr:BlockExpr> => MaybeGrouped::ungrouped(block_expr.into()),
+    <var_or_call_expr:VarOrCallExpr> => MaybeGrouped::ungrouped(var_or_call_expr),
+    <negate_expr:NegateExpr> => MaybeGrouped::ungrouped(negate_expr.into()),
 };
 
-VarOrCallExpr: Expr =
-    <path:Spanned<Path>> <args:Spanned<CallExprArgs>?> => {
-        match args {
-            Some(args) => CallExpr {
-                target: path,
-                args,
-            }.into(),
-            None => path.into(),
-        }
-    };
+RawBlockOrExpr3: MaybeGrouped = {
+    <block:Block> => MaybeGrouped::ungrouped(block.into()),
+    RawExpr3,
+};
 
 BlockExpr: BlockExpr =
     <kind:BlockExprKind> <block:Block> => BlockExpr {
@@ -248,17 +268,57 @@ BlockExpr: BlockExpr =
     };
 
 BlockExprKind: BlockExprKind = {
-    "fallible" => BlockExprKind::Fallible,
     "unsafe" => BlockExprKind::Unsafe,
 };
 
+VarOrCallExpr: Expr = {
+    <call_expr:CallExpr> => call_expr.into(),
+    <path:Spanned<Path>> => path.into(),
+};
+
+CallExpr: CallExpr =
+    <target:Spanned<Path>> <args:Spanned<("(" <Comma<Spanned<Arg>>> ")")>> =>
+        CallExpr { target, args };
+
+Arg: Arg = {
+    <expr:RawBlockOrExpr> => {
+        match expr.expr {
+            Expr::Var(path) if !expr.is_grouped => Arg::VarExprOrLabel(path),
+            expr => expr.into(),
+        }
+    },
+    "out" <out_var_path:Spanned<Path>> => OutVar::Out(out_var_path).into(),
+    "out" <out_let_var:LocalVar> => OutVar::OutLet(out_let_var).into(),
+};
+
+NegateExpr: NegateExpr =
+    <kind:Spanned<NegateExprKind>> <expr:Spanned<BlockOrExpr3>> => NegateExpr { kind, expr };
+
+NegateExprKind: NegateExprKind = {
+    "-" => NegateExprKind::Arithmetic,
+    "!" => NegateExprKind::Logical,
+};
+
 CastExpr: CastExpr =
-    <expr:Spanned<BlockOrExpr2>> "as" <type_:Spanned<Path>> =>
-        CastExpr { expr, type_ };
+    <expr:Spanned<BlockOrExpr2>> "as" <type_:Spanned<Path>> => CastExpr { expr, type_ };
 
 CompareExpr: CompareExpr =
-    <lhs:Spanned<BlockOrExpr1>> <kind:Spanned<CompareExprKind>> <rhs:Spanned<BlockOrExpr2>> =>
-        CompareExpr { kind, lhs, rhs };
+    <lhs:Spanned<RawBlockOrExpr1>> <kind:Spanned<CompareExprKind>> <rhs:Spanned<BlockOrExpr2>> =>?
+    {
+        if !lhs.value.is_grouped {
+            if let Expr::Compare(_) = lhs.value.expr {
+                return Err(ParseError::User {
+                    error: Spanned::new(kind.span, "comparison operators can't be chained"),
+                });
+            }
+        }
+
+        Ok(CompareExpr {
+            kind,
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs
+        })
+    };
 
 CompareExprKind: CompareExprKind = {
     "==" => CompareExprKind::Eq,
@@ -274,43 +334,26 @@ AssignExpr: AssignExpr =
         match lhs.value {
             Expr::Var(lhs) => Ok(AssignExpr { lhs, rhs }),
             _ => Err(ParseError::User {
-                error: Spanned {
-                    span: lhs.span,
-                    value: "can't assign to this expression"
-                }
+                error: Spanned::new(lhs.span, "can't assign to this expression"),
             }),
         }
     };
 
-CallExprArgs: Vec<CallExprArg> =
-    "(" <args:Comma<CallExprArg>> ")" => args;
-
-CallExprArg: CallExprArg = {
-    <expr:Spanned<BlockOrExpr>> => expr.into(),
-    "out" <path:Spanned<Path>> => CallExprArg::OutRef(path),
-    "out" "let" <ident:Spanned<Ident>> <type_:LetStmtType?> => LetOutRef { ident, type_ }.into(),
-};
-
-Ident: String =
-    <name:r"[A-Za-z_][A-Za-z0-9_]*"> => name.to_owned();
+Ident: Ident =
+    <name:r"[A-Za-z_][A-Za-z0-9_]*"> => Ident::from(name);
 
 Path: Path =
-    <x:Ident> <y:PathSegment?> => {
-        match y {
-            Some(ident) => Path::new(Some(x), ident),
-            None => Path::from_ident(x),
-        }
-    };
-
-PathSegment: Ident =
-    "::" <ident:Ident> => ident;
+    <segments:(<Ident> "::")*> <segment:Ident> => iterate![..segments, segment].collect();
 
 Spanned<Rule>: Spanned<Rule> =
     <start: @L> <value: Rule> <end: @R> =>
         Spanned::new(Span::new(start as RawIndex, end as RawIndex), value);
 
 Comma<Rule>: Vec<Rule> =
-    <xs:(<Rule> ",")*> <x:Rule?> => iterate![..xs, ..x].collect();
+    <mut xs:(<Rule> ",")*> <x:Rule?> => {
+        xs.extend(x);
+        xs
+    };
 
 match {
     // Skip whitespace.

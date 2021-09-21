@@ -1,12 +1,23 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::ops::{Index, IndexMut};
+
+use derive_more::From;
+use thiserror::Error;
+use typed_index_collections::TiVec;
+
+use crate::ast::{Ident, Path, Spanned};
+use crate::resolver;
 pub use crate::resolver::{
-    BlockExprKind, BuiltInType, BuiltInTypeMap, BuiltInVar, BuiltInVarMap, CheckStmtKind,
-    CompareExprKind, ConstDef, ConstIndex, EnumDef, EnumIndex, EnumVariantIndex, FnIndex, Ident,
-    LocalVarIndex, OpIndex, ParamVar, ParamVarIndex, ScopedVarIndex, Sig, Spanned, StructDef,
-    StructIndex, TypeIndex, VarIndex, VariantIndex, BUILT_IN_TYPES, BUILT_IN_VARS,
+    BlockExprKind, BuiltInType, BuiltInTypeMap, BuiltInVar, BuiltInVarMap, CallableIndex,
+    CheckStmtKind, CompareExprKind, EnumIndex, EnumItem, EnumVariantIndex, FnIndex,
+    GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, LabelIndex, LabelParamIndex,
+    LocalLabelIndex, LocalVarIndex, NegateExprKind, OpIndex, OutVar, OutVarParam,
+    OutVarParamIndex, ParentIndex, StructIndex, StructItem, TypeIndex,
+    VarIndex, VarParam, VarParamIndex, VariantIndex, BUILT_IN_TYPES, BUILT_IN_VARS,
     NUM_BUILT_IN_TYPES, NUM_BUILT_IN_VARS,
 };
+use crate::util::{box_from, deref_from, deref_index, field_index};
 
 pub trait Typed {
     fn type_(&self) -> TypeIndex;
@@ -18,9 +29,15 @@ impl<T: Typed> Typed for Box<T> {
     }
 }
 
-impl Typed for EnumVariantIndex {
+impl<T: Typed> Typed for Spanned<T> {
     fn type_(&self) -> TypeIndex {
-        TypeIndex::Enum(self.enum_index)
+        self.value.type_()
+    }
+}
+
+impl Typed for BuiltInType {
+    fn type_(&self) -> TypeIndex {
+        self.into()
     }
 }
 
@@ -30,34 +47,237 @@ impl Typed for BuiltInVar {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Env {
-    pub enum_defs: Vec<EnumDef>,
-    pub struct_defs: Vec<StructDef>,
-    pub type_def_order: Vec<TypeIndex>,
-    pub const_defs: Vec<ConstDef>,
-    pub fn_defs: Vec<FnDef>,
-    pub fn_def_order: Vec<FnIndex>,
-    pub op_defs: Vec<OpDef>,
+impl Typed for TypeIndex {
+    fn type_(&self) -> TypeIndex {
+        *self
+    }
+}
+
+impl Typed for EnumVariantIndex {
+    fn type_(&self) -> TypeIndex {
+        TypeIndex::Enum(self.enum_index)
+    }
+}
+
+impl Typed for GlobalVarItem {
+    fn type_(&self) -> TypeIndex {
+        self.type_
+    }
+}
+
+impl Typed for resolver::FnItem {
+    fn type_(&self) -> TypeIndex {
+        match self.ret {
+            Some(ret) => ret.value,
+            None => BuiltInType::Unit.into(),
+        }
+    }
+}
+
+impl Typed for VarParam {
+    fn type_(&self) -> TypeIndex {
+        self.type_
+    }
+}
+
+impl Typed for OutVarParam {
+    fn type_(&self) -> TypeIndex {
+        self.type_
+    }
 }
 
 #[derive(Clone, Debug)]
-pub struct FnDef {
-    pub sig: Sig,
-    pub parent_type: Option<TypeIndex>,
+pub struct Env {
+    pub enum_items: TiVec<EnumIndex, EnumItem>,
+    pub struct_items: TiVec<StructIndex, StructItem>,
+    pub ir_items: TiVec<IrIndex, IrItem>,
+    pub global_var_items: TiVec<GlobalVarIndex, GlobalVarItem>,
+    pub fn_items: TiVec<FnIndex, FnItem>,
+    pub op_items: TiVec<OpIndex, OpItem>,
+    pub decl_order: Vec<DeclIndex>,
+}
+
+field_index!(Env:enum_items[EnumIndex] => EnumItem);
+field_index!(Env:struct_items[StructIndex] => StructItem);
+field_index!(Env:ir_items[IrIndex] => IrItem);
+field_index!(Env:global_var_items[GlobalVarIndex] => GlobalVarItem);
+field_index!(Env:fn_items[FnIndex] => FnItem);
+field_index!(Env:op_items[OpIndex] => OpItem);
+
+impl Index<EnumVariantIndex> for Env {
+    type Output = Spanned<Ident>;
+
+    fn index(&self, index: EnumVariantIndex) -> &Self::Output {
+        &self.enum_items[index.enum_index][index.variant_index]
+    }
+}
+
+impl IndexMut<EnumVariantIndex> for Env {
+    fn index_mut(&mut self, index: EnumVariantIndex) -> &mut Self::Output {
+        &mut self.enum_items[index.enum_index][index.variant_index]
+    }
+}
+
+deref_index!(Env[&EnumVariantIndex] => Spanned<Ident>);
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub enum DeclIndex {
+    Enum(EnumIndex),
+    Struct(StructIndex),
+    GlobalVar(GlobalVarIndex),
+    Fn(FnIndex),
+    Op(OpIndex),
+}
+
+deref_from!(&EnumIndex => DeclIndex);
+deref_from!(&StructIndex => DeclIndex);
+deref_from!(&OpIndex => DeclIndex);
+deref_from!(&FnIndex => DeclIndex);
+
+impl TryFrom<TypeIndex> for DeclIndex {
+    type Error = NotPartOfDeclOrderError;
+
+    fn try_from(type_index: TypeIndex) -> Result<Self, Self::Error> {
+        match type_index {
+            TypeIndex::BuiltIn(_) => Err(NotPartOfDeclOrderError),
+            TypeIndex::Enum(enum_index) => Ok(enum_index.into()),
+            TypeIndex::Struct(struct_index) => Ok(struct_index.into()),
+        }
+    }
+}
+
+impl TryFrom<&TypeIndex> for DeclIndex {
+    type Error = NotPartOfDeclOrderError;
+
+    fn try_from(src: &TypeIndex) -> Result<Self, Self::Error> {
+        TryFrom::try_from(*src)
+    }
+}
+
+impl TryFrom<VarIndex> for DeclIndex {
+    type Error = NotPartOfDeclOrderError;
+
+    fn try_from(var_index: VarIndex) -> Result<Self, Self::Error> {
+        match var_index {
+            VarIndex::BuiltIn(_)
+            | VarIndex::EnumVariant(_)
+            | VarIndex::Param(_)
+            | VarIndex::OutParam(_)
+            | VarIndex::Local(_) => Err(NotPartOfDeclOrderError),
+            VarIndex::Global(global_var_index) => Ok(global_var_index.into()),
+        }
+    }
+}
+
+impl TryFrom<&VarIndex> for DeclIndex {
+    type Error = NotPartOfDeclOrderError;
+
+    fn try_from(src: &VarIndex) -> Result<Self, Self::Error> {
+        TryFrom::try_from(*src)
+    }
+}
+
+impl From<CallableIndex> for DeclIndex {
+    fn from(callable_index: CallableIndex) -> DeclIndex {
+        match callable_index {
+            CallableIndex::Op(op_index) => DeclIndex::Op(op_index),
+            CallableIndex::Fn(fn_index) => DeclIndex::Fn(fn_index),
+        }
+    }
+}
+
+deref_from!(&CallableIndex => DeclIndex);
+
+#[derive(Clone, Copy, Debug, Default, Error)]
+#[error("item is not part of the declaration order")]
+pub struct NotPartOfDeclOrderError;
+
+#[derive(Clone, Debug)]
+pub struct FnItem {
+    pub path: Spanned<Path>,
+    pub parent: Option<ParentIndex>,
     pub is_unsafe: bool,
+    pub params: FnParams,
+    pub param_order: Vec<FnParamIndex>,
+    pub ret: TypeIndex,
     pub body: Option<Body>,
 }
 
-#[derive(Clone, Debug)]
-pub struct OpDef {
-    pub sig: Sig,
-    pub body: Body,
+impl Typed for FnItem {
+    fn type_(&self) -> TypeIndex {
+        self.ret
+    }
 }
 
 #[derive(Clone, Debug)]
+pub struct OpItem {
+    pub path: Spanned<Path>,
+    pub parent: IrIndex,
+    pub is_unsafe: bool,
+    pub params: Params,
+    pub param_order: Vec<ParamIndex>,
+    pub body: Body,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct FnParams {
+    pub params: Params,
+    pub out_var_params: TiVec<OutVarParamIndex, OutVarParam>,
+}
+
+field_index!(FnParams:params[VarParamIndex] => VarParam);
+field_index!(FnParams:params[LabelParamIndex] => Spanned<Ident>);
+field_index!(FnParams:out_var_params[OutVarParamIndex] => OutVarParam);
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub enum FnParamIndex {
+    #[from(types(VarParamIndex, "&VarParamIndex", LabelParamIndex, "&LabelParamIndex"))]
+    Param(ParamIndex),
+    #[from]
+    OutVar(OutVarParamIndex),
+}
+
+deref_from!(&ParamIndex => FnParamIndex);
+deref_from!(&OutVarParamIndex => FnParamIndex);
+
+#[derive(Clone, Debug, Default)]
+pub struct Params {
+    pub var_params: TiVec<VarParamIndex, VarParam>,
+    pub label_params: TiVec<LabelParamIndex, Spanned<Ident>>,
+}
+
+field_index!(Params:var_params[VarParamIndex] => VarParam);
+field_index!(Params:label_params[LabelParamIndex] => Spanned<Ident>);
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub enum ParamIndex {
+    Var(VarParamIndex),
+    Label(LabelParamIndex),
+}
+
+deref_from!(&VarParamIndex => ParamIndex);
+deref_from!(&LabelParamIndex => ParamIndex);
+
+#[derive(Clone, Debug)]
+pub struct Body {
+    pub local_vars: TiVec<LocalVarIndex, LocalVar>,
+    pub local_labels: TiVec<LocalLabelIndex, Spanned<Ident>>,
+    pub block: Block,
+}
+
+impl Typed for Body {
+    fn type_(&self) -> TypeIndex {
+        self.block.value.type_()
+    }
+}
+
+field_index!(Body:local_vars[LocalVarIndex] => LocalVar);
+field_index!(Body:local_labels[LocalLabelIndex] => Spanned<Ident>);
+
+#[derive(Clone, Debug)]
 pub struct LocalVar {
-    pub ident: Ident,
+    pub ident: Spanned<Ident>,
+    pub is_mut: bool,
     pub type_: TypeIndex,
 }
 
@@ -65,12 +285,6 @@ impl Typed for LocalVar {
     fn type_(&self) -> TypeIndex {
         self.type_
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct Body {
-    pub local_vars: Vec<LocalVar>,
-    pub block: Block,
 }
 
 #[derive(Clone, Debug)]
@@ -85,24 +299,23 @@ impl Typed for Block {
     }
 }
 
-impl From<Block> for Stmt {
-    fn from(block: Block) -> Self {
-        Expr::from(block).into()
-    }
-}
-
-impl From<Block> for Expr {
-    fn from(block: Block) -> Self {
-        BlockExpr::from(block).into()
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From)]
 pub enum Stmt {
+    #[from]
     Let(LetStmt),
+    #[from]
+    If(IfStmt),
+    #[from]
     Check(CheckStmt),
+    #[from]
+    Goto(GotoStmt),
+    #[from]
+    Emit(EmitStmt),
+    #[from(types(Block))]
     Expr(Expr),
 }
+
+deref_from!(&GotoStmt => Stmt);
 
 #[derive(Clone, Debug)]
 pub struct LetStmt {
@@ -110,10 +323,10 @@ pub struct LetStmt {
     pub rhs: Expr,
 }
 
-impl From<LetStmt> for Stmt {
-    fn from(let_stmt: LetStmt) -> Self {
-        Stmt::Let(let_stmt)
-    }
+#[derive(Clone, Debug)]
+pub struct IfStmt {
+    pub cond: Expr,
+    pub then: Block,
 }
 
 #[derive(Clone, Debug)]
@@ -122,19 +335,57 @@ pub struct CheckStmt {
     pub cond: Expr,
 }
 
-impl From<CheckStmt> for Stmt {
-    fn from(check_stmt: CheckStmt) -> Self {
-        Stmt::Check(check_stmt)
+#[derive(Clone, Debug)]
+pub struct EmitStmt {
+    pub target: OpIndex,
+    pub is_unsafe: bool,
+    pub args: Vec<Arg>,
+}
+
+#[derive(Clone, Debug, From)]
+pub enum FnArg {
+    #[from(types(Expr, LabelIndex, "&LabelIndex"))]
+    Arg(Arg),
+    #[from]
+    OutVar(OutVarArg),
+}
+
+#[derive(Clone, Debug, From)]
+pub enum Arg {
+    Expr(Expr),
+    Label(LabelIndex),
+}
+
+deref_from!(&LabelIndex => Arg);
+
+#[derive(Clone, Debug)]
+pub struct OutVarArg {
+    pub out_var: OutVar,
+    pub type_: TypeIndex,
+    pub upcast_route: Vec<TypeIndex>,
+}
+
+impl Typed for OutVarArg {
+    fn type_(&self) -> TypeIndex {
+        self.type_
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From)]
 pub enum Expr {
+    #[from]
     Block(Box<BlockExpr>),
+    #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
+    #[from]
     Call(CallExpr),
+    #[from]
+    Negate(Box<NegateExpr>),
+    #[from]
     Cast(Box<CastExpr>),
+    #[from]
     Compare(Box<CompareExpr>),
+    #[from]
     Assign(Box<AssignExpr>),
 }
 
@@ -144,6 +395,7 @@ impl Typed for Expr {
             Expr::Block(block_expr) => block_expr.type_(),
             Expr::Var(var_expr) => var_expr.type_(),
             Expr::Call(call_expr) => call_expr.type_(),
+            Expr::Negate(negate_expr) => negate_expr.type_(),
             Expr::Cast(cast_expr) => cast_expr.type_(),
             Expr::Compare(compare_expr) => compare_expr.type_(),
             Expr::Assign(assign_expr) => assign_expr.type_(),
@@ -151,21 +403,15 @@ impl Typed for Expr {
     }
 }
 
-impl From<BuiltInVar> for Expr {
-    fn from(built_in_var: BuiltInVar) -> Self {
-        Expr::Var(built_in_var.into())
-    }
-}
+box_from!(BlockExpr => Expr);
+box_from!(NegateExpr => Expr);
+box_from!(CastExpr => Expr);
+box_from!(CompareExpr => Expr);
+box_from!(AssignExpr => Expr);
 
-impl From<&BuiltInVar> for Expr {
-    fn from(built_in_var: &BuiltInVar) -> Self {
-        Expr::Var(built_in_var.into())
-    }
-}
-
-impl From<Expr> for Stmt {
-    fn from(expr: Expr) -> Self {
-        Stmt::Expr(expr)
+impl From<Block> for Expr {
+    fn from(block: Block) -> Self {
+        BlockExpr::from(block).into()
     }
 }
 
@@ -187,28 +433,10 @@ impl From<Block> for BlockExpr {
     }
 }
 
-impl From<Box<BlockExpr>> for Expr {
-    fn from(block_expr: Box<BlockExpr>) -> Self {
-        Expr::Block(block_expr)
-    }
-}
-
-impl From<BlockExpr> for Expr {
-    fn from(block_expr: BlockExpr) -> Self {
-        Box::new(block_expr).into()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct VarExpr {
-    pub index: VarIndex,
+    pub var: VarIndex,
     pub type_: TypeIndex,
-}
-
-impl From<VarExpr> for Expr {
-    fn from(var_expr: VarExpr) -> Self {
-        Expr::Var(var_expr)
-    }
 }
 
 impl Typed for VarExpr {
@@ -220,24 +448,19 @@ impl Typed for VarExpr {
 impl From<BuiltInVar> for VarExpr {
     fn from(built_in_var: BuiltInVar) -> Self {
         VarExpr {
-            index: built_in_var.into(),
+            var: built_in_var.into(),
             type_: built_in_var.type_().into(),
         }
     }
 }
 
-impl From<&BuiltInVar> for VarExpr {
-    fn from(built_in_var: &BuiltInVar) -> Self {
-        (*built_in_var).into()
-    }
-}
+deref_from!(&BuiltInVar => VarExpr);
 
 #[derive(Clone, Debug)]
 pub struct CallExpr {
     pub target: FnIndex,
-    pub is_fallible: bool,
     pub is_unsafe: bool,
-    pub args: Vec<CallExprArg>,
+    pub args: Vec<FnArg>,
     pub ret: TypeIndex,
 }
 
@@ -247,49 +470,15 @@ impl Typed for CallExpr {
     }
 }
 
-impl From<CallExpr> for Expr {
-    fn from(call_expr: CallExpr) -> Self {
-        Expr::Call(call_expr)
-    }
-}
-
 #[derive(Clone, Debug)]
-pub enum CallExprArg {
-    Expr(Expr),
-    OutRef(OutRef),
+pub struct NegateExpr {
+    pub kind: NegateExprKind,
+    pub expr: Expr,
 }
 
-impl Typed for CallExprArg {
+impl Typed for NegateExpr {
     fn type_(&self) -> TypeIndex {
-        match self {
-            CallExprArg::Expr(expr) => expr.type_(),
-            CallExprArg::OutRef(out_ref) => out_ref.type_(),
-        }
-    }
-}
-
-impl From<Expr> for CallExprArg {
-    fn from(expr: Expr) -> Self {
-        CallExprArg::Expr(expr)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct OutRef {
-    pub index: ScopedVarIndex,
-    pub type_: TypeIndex,
-    pub upcast_route: Vec<TypeIndex>,
-}
-
-impl Typed for OutRef {
-    fn type_(&self) -> TypeIndex {
-        self.type_
-    }
-}
-
-impl From<OutRef> for CallExprArg {
-    fn from(out_ref: OutRef) -> Self {
-        CallExprArg::OutRef(out_ref)
+        self.expr.type_()
     }
 }
 
@@ -303,18 +492,6 @@ pub struct CastExpr {
 impl Typed for CastExpr {
     fn type_(&self) -> TypeIndex {
         self.type_
-    }
-}
-
-impl From<Box<CastExpr>> for Expr {
-    fn from(cast_expr: Box<CastExpr>) -> Self {
-        Expr::Cast(cast_expr)
-    }
-}
-
-impl From<CastExpr> for Expr {
-    fn from(cast_expr: CastExpr) -> Self {
-        Box::new(cast_expr).into()
     }
 }
 
@@ -346,38 +523,14 @@ impl Typed for CompareExpr {
     }
 }
 
-impl From<Box<CompareExpr>> for Expr {
-    fn from(compare_expr: Box<CompareExpr>) -> Self {
-        Expr::Compare(compare_expr)
-    }
-}
-
-impl From<CompareExpr> for Expr {
-    fn from(compare_expr: CompareExpr) -> Self {
-        Box::new(compare_expr).into()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct AssignExpr {
-    pub lhs: ParamVarIndex,
+    pub lhs: Spanned<VarIndex>,
     pub rhs: Expr,
 }
 
 impl Typed for AssignExpr {
     fn type_(&self) -> TypeIndex {
-        self.rhs.type_()
-    }
-}
-
-impl From<Box<AssignExpr>> for Expr {
-    fn from(assign_expr: Box<AssignExpr>) -> Self {
-        Expr::Assign(assign_expr)
-    }
-}
-
-impl From<AssignExpr> for Expr {
-    fn from(assign_expr: AssignExpr) -> Self {
-        Box::new(assign_expr).into()
+        BuiltInType::Unit.into()
     }
 }

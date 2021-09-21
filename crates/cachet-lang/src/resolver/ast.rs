@@ -1,38 +1,21 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
-use crate::parser::{
-    Path, BOOL_TYPE, DOUBLE_TYPE, FALSE_VAR, INT32_TYPE, TRUE_VAR, UNIT_TYPE, UNIT_VAR,
+use derive_more::{AsMut, AsRef, Deref, DerefMut, From, Into};
+use lazy_static::lazy_static;
+use typed_index_collections::TiVec;
+
+use crate::ast::{Ident, Path, Spanned};
+pub use crate::parser::{
+    BlockExprKind, CheckStmtKind, CompareExprKind, EnumItem, NegateExprKind, VariantIndex,
+    NUM_BUILT_IN_TYPES, NUM_BUILT_IN_VARS,
 };
+use crate::parser::{BUILT_IN_TYPE_IDENTS, BUILT_IN_VAR_IDENTS};
+use crate::util::{box_from, deref_from, deref_index, typed_index};
 
-pub use crate::parser::{BlockExprKind, CheckStmtKind, CompareExprKind, EnumDef, Ident, Spanned};
-
-#[derive(Clone, Debug)]
-pub struct Env {
-    pub enum_defs: Vec<EnumDef>,
-    pub struct_defs: Vec<StructDef>,
-    pub const_defs: Vec<ConstDef>,
-    pub fn_defs: Vec<FnDef>,
-    pub op_defs: Vec<OpDef>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum TypeIndex {
-    BuiltIn(BuiltInType),
-    Enum(EnumIndex),
-    Struct(StructIndex),
-}
-
-impl TypeIndex {
-    pub fn is_numeric(&self) -> bool {
-        match self {
-            TypeIndex::BuiltIn(built_in_type) => built_in_type.is_numeric(),
-            TypeIndex::Enum(_) | TypeIndex::Struct(_) => false,
-        }
-    }
-}
-
+// TODO(spinda): Implement TryFrom<Ident> and TryFrom<Path>.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum BuiltInType {
     Unit,
@@ -41,8 +24,6 @@ pub enum BuiltInType {
     Double,
 }
 
-pub const NUM_BUILT_IN_TYPES: usize = 4;
-
 pub const BUILT_IN_TYPES: [BuiltInType; NUM_BUILT_IN_TYPES] = [
     BuiltInType::Unit,
     BuiltInType::Bool,
@@ -50,71 +31,8 @@ pub const BUILT_IN_TYPES: [BuiltInType; NUM_BUILT_IN_TYPES] = [
     BuiltInType::Double,
 ];
 
-impl BuiltInType {
-    pub const fn index(&self) -> usize {
-        match self {
-            BuiltInType::Unit => 0,
-            BuiltInType::Bool => 1,
-            BuiltInType::Int32 => 2,
-            BuiltInType::Double => 3,
-        }
-    }
-
-    pub const fn ident(&self) -> &'static str {
-        match self {
-            BuiltInType::Unit => UNIT_TYPE,
-            BuiltInType::Bool => BOOL_TYPE,
-            BuiltInType::Int32 => INT32_TYPE,
-            BuiltInType::Double => DOUBLE_TYPE,
-        }
-    }
-
-    pub const fn subtype_of(&self) -> Option<BuiltInType> {
-        match self {
-            BuiltInType::Unit => None,
-            BuiltInType::Bool => Some(BuiltInType::Int32),
-            BuiltInType::Int32 => None,
-            BuiltInType::Double => None,
-        }
-    }
-
-    pub const fn is_numeric(&self) -> bool {
-        match self {
-            BuiltInType::Bool | BuiltInType::Int32 | BuiltInType::Double => true,
-            BuiltInType::Unit => false,
-        }
-    }
-
-    pub fn from_ident(ident: &str) -> Option<BuiltInType> {
-        match ident {
-            UNIT_TYPE => Some(BuiltInType::Unit),
-            BOOL_TYPE => Some(BuiltInType::Bool),
-            INT32_TYPE => Some(BuiltInType::Int32),
-            DOUBLE_TYPE => Some(BuiltInType::Double),
-            _ => None,
-        }
-    }
-
-    pub fn from_path(path: &Path) -> Option<BuiltInType> {
-        match path.parent_type {
-            Some(_) => None,
-            None => BuiltInType::from_ident(&path.ident),
-        }
-    }
-}
-
-impl From<BuiltInType> for TypeIndex {
-    fn from(built_in_type: BuiltInType) -> Self {
-        TypeIndex::BuiltIn(built_in_type)
-    }
-}
-
-impl From<&BuiltInType> for TypeIndex {
-    fn from(built_in_type: &BuiltInType) -> Self {
-        (*built_in_type).into()
-    }
-}
-
+// TODO(spinda): It would be awesome if we could replace this with something
+// like `TiArray<BuiltInType, NUM_BUILT_IN_TYPES>`.
 pub type BuiltInTypeMap<T> = [T; NUM_BUILT_IN_TYPES];
 
 impl<T> Index<BuiltInType> for BuiltInTypeMap<T> {
@@ -145,70 +63,60 @@ impl<T> IndexMut<&'_ BuiltInType> for BuiltInTypeMap<T> {
     }
 }
 
-pub type EnumIndex = usize;
-pub type VariantIndex = usize;
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct EnumVariantIndex {
-    pub enum_index: EnumIndex,
-    pub variant_index: VariantIndex,
+lazy_static! {
+    static ref IDENT_TO_BUILT_IN_TYPE: HashMap<Ident, BuiltInType> = {
+        let mut ident_to_built_in_type = HashMap::with_capacity(NUM_BUILT_IN_TYPES);
+        for (built_in_type_ident, built_in_type) in
+            BUILT_IN_TYPE_IDENTS.iter().zip(BUILT_IN_TYPES.iter())
+        {
+            ident_to_built_in_type.insert(*built_in_type_ident, *built_in_type);
+        }
+        ident_to_built_in_type
+    };
 }
 
-impl From<EnumVariantIndex> for VarIndex {
-    fn from(index: EnumVariantIndex) -> Self {
-        VarIndex::EnumVariant(index)
+impl BuiltInType {
+    pub const fn index(self) -> usize {
+        match self {
+            BuiltInType::Unit => 0,
+            BuiltInType::Bool => 1,
+            BuiltInType::Int32 => 2,
+            BuiltInType::Double => 3,
+        }
+    }
+
+    pub fn ident(self) -> Ident {
+        BUILT_IN_TYPE_IDENTS[self]
+    }
+
+    pub fn from_ident(ident: Ident) -> Option<BuiltInType> {
+        IDENT_TO_BUILT_IN_TYPE.get(&ident).copied()
+    }
+
+    pub fn from_path(path: Path) -> Option<BuiltInType> {
+        if path.has_parent() {
+            None
+        } else {
+            BuiltInType::from_ident(path.ident())
+        }
+    }
+
+    pub const fn supertype(self) -> Option<BuiltInType> {
+        match self {
+            BuiltInType::Bool => Some(BuiltInType::Int32),
+            BuiltInType::Unit | BuiltInType::Int32 | BuiltInType::Double => None,
+        }
+    }
+
+    pub const fn is_numeric(self) -> bool {
+        match self {
+            BuiltInType::Bool | BuiltInType::Int32 | BuiltInType::Double => true,
+            BuiltInType::Unit => false,
+        }
     }
 }
 
-impl From<&EnumVariantIndex> for VarIndex {
-    fn from(index: &EnumVariantIndex) -> Self {
-        (*index).into()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct StructDef {
-    pub ident: Spanned<Ident>,
-    pub subtype_of: Option<TypeIndex>,
-}
-
-pub type StructIndex = usize;
-
-#[derive(Clone, Debug)]
-pub struct ConstDef {
-    pub ident: Spanned<Ident>,
-    pub parent_type: Option<TypeIndex>,
-    pub type_: TypeIndex,
-}
-
-pub type ConstIndex = usize;
-
-#[derive(Clone, Debug)]
-pub struct FnDef {
-    pub sig: Sig,
-    pub parent_type: Option<TypeIndex>,
-    pub is_unsafe: bool,
-    pub body: Option<Body>,
-}
-
-pub type FnIndex = usize;
-
-#[derive(Clone, Debug)]
-pub struct OpDef {
-    pub sig: Sig,
-    pub body: Body,
-}
-
-pub type OpIndex = usize;
-
-#[derive(Clone, Debug)]
-pub struct Sig {
-    pub ident: Spanned<Ident>,
-    pub is_fallible: bool,
-    pub param_vars: Vec<ParamVar>,
-    pub ret: TypeIndex,
-}
-
+// TODO(spinda): Implement TryFrom<Ident> and TryFrom<Path>.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum BuiltInVar {
     Unit,
@@ -216,65 +124,11 @@ pub enum BuiltInVar {
     False,
 }
 
-pub const NUM_BUILT_IN_VARS: usize = 3;
-
 pub const BUILT_IN_VARS: [BuiltInVar; NUM_BUILT_IN_VARS] =
     [BuiltInVar::Unit, BuiltInVar::True, BuiltInVar::False];
 
-impl BuiltInVar {
-    pub const fn index(&self) -> usize {
-        match self {
-            BuiltInVar::Unit => 0,
-            BuiltInVar::True => 1,
-            BuiltInVar::False => 2,
-        }
-    }
-
-    pub const fn ident(&self) -> &'static str {
-        match self {
-            BuiltInVar::Unit => UNIT_VAR,
-            BuiltInVar::True => TRUE_VAR,
-            BuiltInVar::False => FALSE_VAR,
-        }
-    }
-
-    pub const fn built_in_type(&self) -> BuiltInType {
-        match self {
-            BuiltInVar::Unit => BuiltInType::Unit,
-            BuiltInVar::True => BuiltInType::Bool,
-            BuiltInVar::False => BuiltInType::Bool,
-        }
-    }
-
-    pub fn from_path(path: &Path) -> Option<BuiltInVar> {
-        match path.parent_type {
-            Some(_) => None,
-            None => BuiltInVar::from_ident(&path.ident),
-        }
-    }
-
-    pub fn from_ident(ident: impl AsRef<str>) -> Option<BuiltInVar> {
-        match ident.as_ref() {
-            UNIT_VAR => Some(BuiltInVar::Unit),
-            TRUE_VAR => Some(BuiltInVar::True),
-            FALSE_VAR => Some(BuiltInVar::False),
-            _ => None,
-        }
-    }
-}
-
-impl From<BuiltInVar> for VarIndex {
-    fn from(built_in_var: BuiltInVar) -> Self {
-        VarIndex::BuiltIn(built_in_var)
-    }
-}
-
-impl From<&BuiltInVar> for VarIndex {
-    fn from(built_in_var: &BuiltInVar) -> Self {
-        (*built_in_var).into()
-    }
-}
-
+// TODO(spinda): It would be awesome if we could replace this with something
+// like `TiArray<BuiltInVar, NUM_BUILT_IN_VARS>`.
 pub type BuiltInVarMap<T> = [T; NUM_BUILT_IN_VARS];
 
 impl<T> Index<BuiltInVar> for BuiltInVarMap<T> {
@@ -305,48 +159,269 @@ impl<T> IndexMut<&'_ BuiltInVar> for BuiltInVarMap<T> {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct ParamVar {
-    pub ident: Spanned<Ident>,
-    pub is_out: bool,
-    pub type_: TypeIndex,
+lazy_static! {
+    static ref IDENT_TO_BUILT_IN_VAR: HashMap<Ident, BuiltInVar> = {
+        let mut ident_to_built_in_var = HashMap::with_capacity(NUM_BUILT_IN_VARS);
+        for (built_in_var_ident, built_in_var) in
+            BUILT_IN_VAR_IDENTS.iter().zip(BUILT_IN_VARS.iter())
+        {
+            ident_to_built_in_var.insert(*built_in_var_ident, *built_in_var);
+        }
+        ident_to_built_in_var
+    };
 }
 
-pub type ParamVarIndex = usize;
+impl BuiltInVar {
+    pub const fn index(self) -> usize {
+        match self {
+            BuiltInVar::Unit => 0,
+            BuiltInVar::True => 1,
+            BuiltInVar::False => 2,
+        }
+    }
 
-#[derive(Clone, Debug)]
-pub struct LocalVar {
-    pub ident: Ident,
-    pub type_: Option<TypeIndex>,
-}
+    pub fn ident(self) -> Ident {
+        BUILT_IN_VAR_IDENTS[self]
+    }
 
-pub type LocalVarIndex = usize;
+    pub fn from_ident(ident: Ident) -> Option<BuiltInVar> {
+        IDENT_TO_BUILT_IN_VAR.get(&ident).copied()
+    }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum ScopedVarIndex {
-    ParamVar(ParamVarIndex),
-    LocalVar(LocalVarIndex),
-}
+    pub fn from_path(path: Path) -> Option<BuiltInVar> {
+        if path.has_parent() {
+            None
+        } else {
+            BuiltInVar::from_ident(path.ident())
+        }
+    }
 
-impl From<ScopedVarIndex> for VarIndex {
-    fn from(index: ScopedVarIndex) -> Self {
-        VarIndex::ScopedVar(index)
+    pub const fn built_in_type(self) -> BuiltInType {
+        match self {
+            BuiltInVar::Unit => BuiltInType::Unit,
+            BuiltInVar::True | BuiltInVar::False => BuiltInType::Bool,
+        }
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Env {
+    pub enum_items: TiVec<EnumIndex, EnumItem>,
+    pub struct_items: TiVec<StructIndex, StructItem>,
+    pub ir_items: TiVec<IrIndex, IrItem>,
+    pub global_var_items: TiVec<GlobalVarIndex, GlobalVarItem>,
+    pub fn_items: TiVec<FnIndex, FnItem>,
+    pub op_items: TiVec<OpIndex, OpItem>,
+}
+
+typed_index!(Env:enum_items[EnumIndex] => EnumItem);
+typed_index!(Env:struct_items[StructIndex] => StructItem);
+typed_index!(Env:ir_items[IrIndex] => IrItem);
+typed_index!(Env:global_var_items[GlobalVarIndex] => GlobalVarItem);
+typed_index!(Env:fn_items[FnIndex] => FnItem);
+typed_index!(Env:op_items[OpIndex] => OpItem);
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct EnumVariantIndex {
+    pub enum_index: EnumIndex,
+    pub variant_index: VariantIndex,
+}
+
+impl Index<EnumVariantIndex> for Env {
+    type Output = Spanned<Ident>;
+
+    fn index(&self, index: EnumVariantIndex) -> &Self::Output {
+        &self.enum_items[index.enum_index][index.variant_index]
+    }
+}
+
+impl IndexMut<EnumVariantIndex> for Env {
+    fn index_mut(&mut self, index: EnumVariantIndex) -> &mut Self::Output {
+        &mut self.enum_items[index.enum_index][index.variant_index]
+    }
+}
+
+deref_index!(Env[&EnumVariantIndex] => Spanned<Ident>);
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub enum ParentIndex {
+    #[from(types(
+        BuiltInType,
+        "&BuiltInType",
+        EnumIndex,
+        "&EnumIndex",
+        StructIndex,
+        "&StructIndex"
+    ))]
+    Type(TypeIndex),
+    #[from]
+    Ir(IrIndex),
+}
+
+deref_from!(&TypeIndex => ParentIndex);
+deref_from!(&IrIndex => ParentIndex);
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub enum TypeIndex {
+    BuiltIn(BuiltInType),
+    Enum(EnumIndex),
+    Struct(StructIndex),
+}
+
+impl TypeIndex {
+    pub fn is_numeric(&self) -> bool {
+        match self {
+            TypeIndex::BuiltIn(built_in_type) => built_in_type.is_numeric(),
+            TypeIndex::Enum(_) | TypeIndex::Struct(_) => false,
+        }
+    }
+}
+
+deref_from!(&BuiltInType => TypeIndex);
+deref_from!(&EnumIndex => TypeIndex);
+deref_from!(&StructIndex => TypeIndex);
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
 pub enum VarIndex {
     BuiltIn(BuiltInVar),
     EnumVariant(EnumVariantIndex),
-    Const(ConstIndex),
-    ScopedVar(ScopedVarIndex),
+    Global(GlobalVarIndex),
+    Param(VarParamIndex),
+    OutParam(OutVarParamIndex),
+    Local(LocalVarIndex),
+}
+
+deref_from!(&BuiltInVar => VarIndex);
+deref_from!(&EnumVariantIndex => VarIndex);
+deref_from!(&GlobalVarIndex => VarIndex);
+deref_from!(&VarParamIndex => VarIndex);
+deref_from!(&OutVarParamIndex => VarIndex);
+deref_from!(&LocalVarIndex => VarIndex);
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub enum CallableIndex {
+    Fn(FnIndex),
+    Op(OpIndex),
+}
+
+deref_from!(&FnIndex => CallableIndex);
+deref_from!(&OpIndex => CallableIndex);
+
+impl Index<CallableIndex> for Env {
+    type Output = FnItem;
+
+    fn index(&self, index: CallableIndex) -> &Self::Output {
+        match index {
+            CallableIndex::Fn(fn_index) => &self.fn_items[fn_index],
+            CallableIndex::Op(op_index) => self.op_items[op_index].as_ref(),
+        }
+    }
+}
+
+impl IndexMut<CallableIndex> for Env {
+    fn index_mut(&mut self, index: CallableIndex) -> &mut Self::Output {
+        match index {
+            CallableIndex::Fn(fn_index) => &mut self.fn_items[fn_index],
+            CallableIndex::Op(op_index) => self.op_items[op_index].as_mut(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct StructItem {
+    pub ident: Spanned<Ident>,
+    pub supertype: Option<TypeIndex>,
+}
+
+#[derive(Clone, Debug)]
+pub struct IrItem {
+    pub ident: Spanned<Ident>,
+    pub emits: Option<IrIndex>,
+}
+
+#[derive(Clone, Debug)]
+pub struct GlobalVarItem {
+    pub path: Spanned<Path>,
+    pub parent: Option<ParentIndex>,
+    pub is_mut: bool,
+    pub type_: TypeIndex,
+}
+
+#[derive(Clone, Debug)]
+pub struct FnItem {
+    pub path: Spanned<Path>,
+    pub parent: Option<ParentIndex>,
+    pub is_unsafe: bool,
+    pub params: Params,
+    pub param_order: Vec<ParamIndex>,
+    pub ret: Option<Spanned<TypeIndex>>,
+    pub body: Spanned<Option<Body>>,
+}
+
+// TODO(spinda): Expand derives.
+#[derive(AsMut, AsRef, Clone, Debug, Deref, DerefMut, From, Into)]
+pub struct OpItem(pub FnItem);
+
+#[derive(Clone, Debug, Default)]
+pub struct Params {
+    pub var_params: TiVec<VarParamIndex, VarParam>,
+    pub out_var_params: TiVec<OutVarParamIndex, OutVarParam>,
+    pub label_params: TiVec<LabelParamIndex, Spanned<Ident>>,
+}
+
+typed_index!(Params:var_params[VarParamIndex] => VarParam);
+typed_index!(Params:out_var_params[OutVarParamIndex] => OutVarParam);
+typed_index!(Params:label_params[LabelParamIndex] => Spanned<Ident>);
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub enum ParamIndex {
+    Var(VarParamIndex),
+    OutVar(OutVarParamIndex),
+    Label(LabelParamIndex),
+}
+
+deref_from!(&VarParamIndex => ParamIndex);
+deref_from!(&OutVarParamIndex => ParamIndex);
+deref_from!(&LabelParamIndex => ParamIndex);
+
+#[derive(Clone, Debug)]
+pub struct VarParam {
+    pub ident: Spanned<Ident>,
+    pub is_mut: bool,
+    pub type_: TypeIndex,
+}
+
+#[derive(Clone, Debug)]
+pub struct OutVarParam {
+    pub ident: Spanned<Ident>,
+    pub type_: TypeIndex,
 }
 
 #[derive(Clone, Debug)]
 pub struct Body {
-    pub local_vars: Vec<LocalVar>,
-    pub block: Spanned<Block>,
+    pub local_vars: TiVec<LocalVarIndex, LocalVar>,
+    pub local_labels: TiVec<LocalLabelIndex, Spanned<Ident>>,
+    pub block: Block,
 }
+
+typed_index!(Body:local_vars[LocalVarIndex] => LocalVar);
+typed_index!(Body:local_labels[LocalLabelIndex] => Spanned<Ident>);
+
+#[derive(Clone, Debug)]
+pub struct LocalVar {
+    pub ident: Spanned<Ident>,
+    pub is_mut: bool,
+    pub type_: Option<TypeIndex>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub enum LabelIndex {
+    Param(LabelParamIndex),
+    Local(LocalLabelIndex),
+}
+
+deref_from!(&LabelParamIndex => LabelIndex);
+deref_from!(&LocalLabelIndex => LabelIndex);
 
 #[derive(Clone, Debug)]
 pub struct Block {
@@ -354,24 +429,23 @@ pub struct Block {
     pub value: Option<Expr>,
 }
 
-impl From<Block> for Stmt {
-    fn from(block: Block) -> Self {
-        Expr::from(block).into()
-    }
-}
-
-impl From<Block> for Expr {
-    fn from(block: Block) -> Self {
-        BlockExpr::from(block).into()
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From)]
 pub enum Stmt {
+    #[from]
     Let(LetStmt),
+    #[from]
+    If(IfStmt),
+    #[from]
     Check(CheckStmt),
+    #[from]
+    Goto(GotoStmt),
+    #[from]
+    Emit(EmitStmt),
+    #[from(types(Block))]
     Expr(Expr),
 }
+
+deref_from!(&GotoStmt => Stmt);
 
 #[derive(Clone, Debug)]
 pub struct LetStmt {
@@ -379,10 +453,10 @@ pub struct LetStmt {
     pub rhs: Spanned<Expr>,
 }
 
-impl From<LetStmt> for Stmt {
-    fn from(let_stmt: LetStmt) -> Self {
-        Stmt::Let(let_stmt)
-    }
+#[derive(Clone, Debug)]
+pub struct IfStmt {
+    pub cond: Spanned<Expr>,
+    pub then: Block,
 }
 
 #[derive(Clone, Debug)]
@@ -391,55 +465,67 @@ pub struct CheckStmt {
     pub cond: Spanned<Expr>,
 }
 
-impl From<CheckStmt> for Stmt {
-    fn from(check_stmt: CheckStmt) -> Self {
-        Stmt::Check(check_stmt)
-    }
+#[derive(Clone, Copy, Debug)]
+pub struct GotoStmt {
+    pub label: LabelIndex,
 }
 
 #[derive(Clone, Debug)]
+pub struct EmitStmt {
+    pub target: Spanned<OpIndex>,
+    pub args: Spanned<Vec<Spanned<Arg>>>,
+}
+
+#[derive(Clone, Debug, From)]
+pub enum Arg {
+    Expr(Expr),
+    OutVar(OutVar),
+    Label(LabelIndex),
+}
+
+deref_from!(&LabelIndex => Arg);
+
+#[derive(Clone, Copy, Debug)]
+pub enum OutVar {
+    Out(Spanned<VarIndex>),
+    OutLet(LocalVarIndex),
+}
+
+#[derive(Clone, Debug, From)]
 pub enum Expr {
+    #[from]
     Block(Box<BlockExpr>),
+    #[from]
     Var(Spanned<VarIndex>),
+    #[from]
     Call(CallExpr),
+    #[from]
+    Negate(Box<NegateExpr>),
+    #[from]
     Cast(Box<CastExpr>),
+    #[from]
     Compare(Box<CompareExpr>),
+    #[from]
     Assign(Box<AssignExpr>),
 }
 
-impl From<Spanned<VarIndex>> for Expr {
-    fn from(index: Spanned<VarIndex>) -> Self {
-        Expr::Var(index)
+box_from!(BlockExpr => Expr);
+box_from!(NegateExpr => Expr);
+box_from!(CastExpr => Expr);
+box_from!(CompareExpr => Expr);
+box_from!(AssignExpr => Expr);
+
+deref_from!(&Spanned<VarIndex> => Expr);
+
+impl From<Spanned<&VarIndex>> for Expr {
+    fn from(var_index: Spanned<&VarIndex>) -> Self {
+        var_index.copied().into()
     }
 }
 
-impl From<Spanned<BuiltInVar>> for Expr {
-    fn from(built_in_var: Spanned<BuiltInVar>) -> Self {
-        Expr::Var(built_in_var.map(VarIndex::from))
-    }
-}
-
-impl From<Spanned<&BuiltInVar>> for Expr {
-    fn from(built_in_var: Spanned<&BuiltInVar>) -> Self {
-        Expr::Var(built_in_var.map(VarIndex::from))
-    }
-}
-
-impl From<Spanned<EnumVariantIndex>> for Expr {
-    fn from(enum_variant_index: Spanned<EnumVariantIndex>) -> Self {
-        Expr::Var(enum_variant_index.map(VarIndex::from))
-    }
-}
-
-impl From<Spanned<&EnumVariantIndex>> for Expr {
-    fn from(enum_variant_index: Spanned<&EnumVariantIndex>) -> Self {
-        Expr::Var(enum_variant_index.map(VarIndex::from))
-    }
-}
-
-impl From<Expr> for Stmt {
-    fn from(expr: Expr) -> Self {
-        Stmt::Expr(expr)
+impl From<Block> for Expr {
+    fn from(block: Block) -> Self {
+        BlockExpr::from(block).into()
     }
 }
 
@@ -455,58 +541,22 @@ impl From<Block> for BlockExpr {
     }
 }
 
-impl From<Box<BlockExpr>> for Expr {
-    fn from(block_expr: Box<BlockExpr>) -> Self {
-        Expr::Block(block_expr)
-    }
-}
-
-impl From<BlockExpr> for Expr {
-    fn from(block_expr: BlockExpr) -> Self {
-        Box::new(block_expr).into()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct CallExpr {
     pub target: Spanned<FnIndex>,
-    pub args: Spanned<Vec<CallExprArg>>,
-}
-
-impl From<CallExpr> for Expr {
-    fn from(call_expr: CallExpr) -> Self {
-        Expr::Call(call_expr)
-    }
+    pub args: Spanned<Vec<Spanned<Arg>>>,
 }
 
 #[derive(Clone, Debug)]
-pub enum CallExprArg {
-    Expr(Spanned<Expr>),
-    OutRef(Spanned<ScopedVarIndex>),
-}
-
-impl From<Spanned<Expr>> for CallExprArg {
-    fn from(expr: Spanned<Expr>) -> Self {
-        CallExprArg::Expr(expr)
-    }
+pub struct NegateExpr {
+    pub kind: Spanned<NegateExprKind>,
+    pub expr: Spanned<Expr>,
 }
 
 #[derive(Clone, Debug)]
 pub struct CastExpr {
     pub expr: Spanned<Expr>,
     pub type_: Spanned<TypeIndex>,
-}
-
-impl From<Box<CastExpr>> for Expr {
-    fn from(cast_expr: Box<CastExpr>) -> Self {
-        Expr::Cast(cast_expr)
-    }
-}
-
-impl From<CastExpr> for Expr {
-    fn from(cast_expr: CastExpr) -> Self {
-        Box::new(cast_expr).into()
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -516,32 +566,8 @@ pub struct CompareExpr {
     pub rhs: Spanned<Expr>,
 }
 
-impl From<Box<CompareExpr>> for Expr {
-    fn from(compare_expr: Box<CompareExpr>) -> Self {
-        Expr::Compare(compare_expr)
-    }
-}
-
-impl From<CompareExpr> for Expr {
-    fn from(compare_expr: CompareExpr) -> Self {
-        Box::new(compare_expr).into()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct AssignExpr {
-    pub lhs: Spanned<ParamVarIndex>,
+    pub lhs: Spanned<VarIndex>,
     pub rhs: Spanned<Expr>,
-}
-
-impl From<Box<AssignExpr>> for Expr {
-    fn from(assign_expr: Box<AssignExpr>) -> Self {
-        Expr::Assign(assign_expr)
-    }
-}
-
-impl From<AssignExpr> for Expr {
-    fn from(assign_expr: AssignExpr) -> Self {
-        Box::new(assign_expr).into()
-    }
 }

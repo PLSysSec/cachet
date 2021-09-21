@@ -1,49 +1,71 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use codespan::Span;
-
-use crate::parser::ast::Spanned;
+use crate::ast::{Span, Spanned};
+use crate::parser::ast::Expr;
 
 pub type ParseError<T> = lalrpop_util::ParseError<usize, T, UserParseError>;
 pub type UserParseError = Spanned<&'static str>;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum FnDefKind {
+#[derive(Default)]
+pub struct VarTags {
+    pub mut_tag: Option<Span>,
+}
+
+pub enum VarTag {
+    Mut,
+}
+
+impl VarTags {
+    pub fn reduce<T>(tags: impl Iterator<Item = Spanned<VarTag>>) -> Result<Self, ParseError<T>> {
+        let mut accum = VarTags::default();
+
+        for tag in tags {
+            match tag.value {
+                VarTag::Mut => {
+                    if accum.mut_tag.replace(tag.span).is_some() {
+                        return Err(ParseError::User {
+                            error: Spanned {
+                                span: tag.span,
+                                value: "duplicate `mut` tag",
+                            },
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(accum)
+    }
+}
+
+pub enum CallableKind {
     Fn,
     Op,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum FnDefAttr {
-    Fallible,
+#[derive(Default)]
+pub struct CallableTags {
+    pub unsafe_tag: Option<Span>,
+}
+
+pub enum CallableTag {
     Unsafe,
 }
 
-impl FnDefAttr {
+impl CallableTags {
     pub fn reduce<T>(
-        attrs: impl Iterator<Item = Spanned<Self>>,
-    ) -> Result<(Option<Span>, Option<Span>), ParseError<T>> {
-        let mut is_fallible = None;
-        let mut is_unsafe = None;
+        tags: impl Iterator<Item = Spanned<CallableTag>>,
+    ) -> Result<Self, ParseError<T>> {
+        let mut accum = CallableTags::default();
 
-        for attr in attrs {
-            match attr.value {
-                FnDefAttr::Fallible => {
-                    if is_fallible.replace(attr.span).is_some() {
+        for tag in tags {
+            match tag.value {
+                CallableTag::Unsafe => {
+                    if accum.unsafe_tag.replace(tag.span).is_some() {
                         return Err(ParseError::User {
                             error: Spanned {
-                                span: is_fallible.take().unwrap(),
-                                value: "duplicate `fallible` attribute",
-                            },
-                        });
-                    }
-                }
-                FnDefAttr::Unsafe => {
-                    if is_unsafe.replace(attr.span).is_some() {
-                        return Err(ParseError::User {
-                            error: Spanned {
-                                span: is_unsafe.take().unwrap(),
-                                value: "duplicate `unsafe` attribute",
+                                span: tag.span,
+                                value: "duplicate `unsafe` tag",
                             },
                         });
                     }
@@ -51,36 +73,27 @@ impl FnDefAttr {
             }
         }
 
-        Ok((is_fallible, is_unsafe))
+        Ok(accum)
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum ParamVarAttr {
-    Out,
+pub struct MaybeGrouped {
+    pub is_grouped: bool,
+    pub expr: Expr,
 }
 
-impl ParamVarAttr {
-    pub fn reduce<T>(
-        attrs: impl Iterator<Item = Spanned<Self>>,
-    ) -> Result<Option<Span>, ParseError<T>> {
-        let mut is_out = None;
-
-        for attr in attrs {
-            match attr.value {
-                ParamVarAttr::Out => {
-                    if is_out.replace(attr.span).is_some() {
-                        return Err(ParseError::User {
-                            error: Spanned {
-                                span: is_out.take().unwrap(),
-                                value: "duplicate `out` attribute",
-                            },
-                        });
-                    }
-                }
-            }
+impl MaybeGrouped {
+    pub fn grouped(expr: Expr) -> Self {
+        MaybeGrouped {
+            is_grouped: true,
+            expr,
         }
+    }
 
-        Ok(is_out)
+    pub fn ungrouped(expr: Expr) -> Self {
+        MaybeGrouped {
+            is_grouped: false,
+            expr,
+        }
     }
 }
