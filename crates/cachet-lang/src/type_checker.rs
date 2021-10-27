@@ -66,7 +66,13 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
 
     let decl_order = type_order
         .into_iter()
-        .filter_map(|type_index| DeclIndex::try_from(type_index).ok())
+        .filter_map(|type_index| {
+            if type_index == unknown_type_index {
+                None
+            } else {
+                DeclIndex::try_from(type_index).ok()
+            }
+        })
         .chain(env.global_var_items.keys().map(DeclIndex::from))
         .chain(callable_order.into_iter().map(DeclIndex::from))
         .collect();
