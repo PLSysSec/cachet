@@ -2,8 +2,99 @@ mod ast;
 mod emit;
 use std::fmt::Display;
 
-use cachet_lang::type_checker::*;
+use cachet_lang::normalizer;
+use cachet_lang::type_checker;
+use cachet_lang::parser;
 
+fn lower_enum(e: &normalizer::EnumItem) -> ast::Decl {
+    ast::Decl::Hack("test_enum\n".to_string())
+}
+
+fn lower_struct(s: &normalizer::StructItem) -> ast::Decl {
+    ast::Decl::Hack("test_enum\n".to_string())
+}
+
+fn lower_global_var(g: &normalizer::GlobalVarItem) -> ast::Decl {
+    ast::Decl::Hack("test_enum\n".to_string())
+}
+
+fn lower_fn(f: &normalizer::FnItem) -> ast::Decl {
+    ast::Decl::Hack("test_enum\n".to_string())
+}
+
+fn lower_op(o: &normalizer::OpItem) -> ast::Decl {
+    ast::Decl::Hack("test_enum\n".to_string())
+}
+
+pub fn lower_env(env: &normalizer::Env) -> ast::Program {
+    let preamble = ast::Decl::Hack(r#"
+// ... begin prelude ...
+
+type $Unit;
+
+const $unit: $Unit;
+
+axiom (forall x: $Unit, y: $Unit :: x == y);
+
+type $Bool = bool;
+
+type $Int32 = bv32;
+
+function {:bvbuiltin "bvadd"} $Int32^Add(x: $Int32, y: $Int32): $Int32;
+// etc; see https://boogie-docs.readthedocs.io/en/latest/LangRef.html#other-operators
+
+type $Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/issues/29#issuecomment-231239065
+
+type $Map k v = [k]v;
+
+function {:inline} $Map~get<k, v>(map: $Map k v, key: k): v {
+  map[key]
+}
+
+function {:inline} $Map~set<k, v>(map: $Map k v, key: k, value: v): $Map k v {
+  map[key := value]
+}
+
+type $Set a = $Map a $Bool;
+
+function {:inline} $Set~contains<a>(set: $Set a, value: a): $Bool {
+  $Map~get(set, value)
+}
+
+function {:inline} $Set~add<a>(set: $Set a, value: a): $Set a {
+  $Map~set(set, value, true)
+}
+
+function {:inline} $Set~remove<a>(set: $Set a, value: a): $Set a {
+  $Map~set(set, value, false)
+}
+
+// ... end prelude ...
+"#.to_string());
+
+    let mut decls : Vec<_> = env
+        .decl_order
+        .iter()
+        .map(|decl_idx| -> ast::Decl {
+            match decl_idx {
+                type_checker::DeclIndex::Enum(i) =>
+                    lower_enum(&env.enum_items[*i]),
+                type_checker::DeclIndex::Struct(i) =>
+                    lower_struct(&env.struct_items[*i]),
+                type_checker::DeclIndex::GlobalVar(i) =>
+                    lower_global_var(&env.global_var_items[*i]),
+                type_checker::DeclIndex::Fn(i) =>
+                    lower_fn(&env.fn_items[*i]),
+                type_checker::DeclIndex::Op(i) =>
+                    lower_op(&env.op_items[*i]),
+            }
+        }).collect();
+
+    decls.append(&mut vec![preamble]);
+    ast::Program(decls)
+}
+
+/*
 fn bail() -> ast::Ident {
     ast::Ident("bail".to_string())
 }
@@ -75,7 +166,9 @@ fn variant_ident(env: &Env, idx: EnumIndex, variant: VariantIndex) -> ast::Ident
         env.enum_defs[idx].variants[variant]
     ))
 }
+*/
 
+/*
 pub fn lower_env<'a>(env: &'a Env) -> ast::Program {
     let preamble = ast::Decl::Hack(r#"
 type Heap;
@@ -125,7 +218,9 @@ function {:bvbuiltin "bvadd"} Int32^Add(x: Int32, y: Int32): Int32;
             .collect(),
     )
 }
+*/
 
+/*
 fn lower_enum<'a>(env: &'a Env, idx: EnumIndex) -> impl Iterator<Item = ast::Decl> + 'a {
     let type_decl = ast::Decl::Type {
         name: enum_ident(env, idx),
@@ -498,3 +593,4 @@ impl Scope for OpDef {
         }
     }
 }
+*/

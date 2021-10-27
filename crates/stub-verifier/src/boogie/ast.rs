@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+#[derive(Debug)]
 pub struct Program(pub Vec<Decl>);
 
 #[derive(Debug, Clone)]
