@@ -327,6 +327,7 @@ pub struct LetStmt {
 pub struct IfStmt {
     pub cond: Expr,
     pub then: Block,
+    pub else_: Option<Block>,
 }
 
 #[derive(Clone, Debug)]

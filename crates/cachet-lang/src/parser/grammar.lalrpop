@@ -167,7 +167,8 @@ LocalVar: LocalVar =
         LocalVar { ident, is_mut: tags.mut_tag.is_some(), type_ };
 
 IfStmt: IfStmt =
-    "if" <cond:Spanned<BlockOrExpr>> <then:Block> => IfStmt { cond, then };
+    "if" <cond:Spanned<BlockOrExpr>> <then:Block> <else_:("else" <Block>)?> =>
+        IfStmt { cond, then, else_ };
 
 CheckStmt: CheckStmt =
     <kind:CheckStmtKind> <cond:Spanned<BlockOrExpr>> ";" => CheckStmt { kind, cond };

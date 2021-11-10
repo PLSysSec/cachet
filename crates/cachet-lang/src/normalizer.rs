@@ -198,8 +198,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_if_stmt(&mut self, if_stmt: type_checker::IfStmt) {
         let cond = self.normalize_expr(if_stmt.cond);
         let then = self.normalize_unused_block(if_stmt.then);
+        let else_ = if_stmt.else_.map(|else_| self.normalize_unused_block(else_));
 
-        self.stmts.push(IfStmt { cond, then }.into());
+        self.stmts.push(IfStmt { cond, then, else_ }.into());
     }
 
     fn normalize_check_stmt(&mut self, check_stmt: type_checker::CheckStmt) {
@@ -306,9 +307,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         debug_assert_ne!(expr.type_(), BuiltInType::Unit.into());
 
         match expr {
-            type_checker::Expr::Block(block_expr) => {
-                self.normalize_used_block_expr(*block_expr).into()
-            }
+            type_checker::Expr::Block(block_expr) => self.normalize_used_block_expr(*block_expr),
             type_checker::Expr::Var(var_expr) => var_expr.into(),
             type_checker::Expr::Call(call_expr) => self.normalize_used_call_expr(call_expr),
             type_checker::Expr::Negate(negate_expr) => {
@@ -344,16 +343,21 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         }
     }
 
-    fn normalize_used_block_expr(&mut self, block_expr: type_checker::BlockExpr) -> BlockExpr {
+    fn normalize_used_block_expr(&mut self, block_expr: type_checker::BlockExpr) -> Expr {
         let mut stmts = self.normalize_block_stmts(block_expr.block.stmts);
 
         let mut scoped_normalizer = self.recurse(&mut stmts);
         let value = scoped_normalizer.normalize_expr(block_expr.block.value);
 
-        BlockExpr {
-            kind: block_expr.kind,
-            stmts,
-            value,
+        if stmts.is_empty() {
+            value
+        } else {
+            BlockExpr {
+                kind: block_expr.kind,
+                stmts,
+                value,
+            }
+            .into()
         }
     }
 
@@ -363,13 +367,15 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         let mut scoped_normalizer = self.recurse(&mut stmts);
         scoped_normalizer.normalize_unused_expr(block_expr.block.value);
 
-        self.stmts.push(
-            BlockStmt {
-                kind: block_expr.kind,
-                stmts,
-            }
-            .into(),
-        );
+        if !stmts.is_empty() {
+            self.stmts.push(
+                BlockStmt {
+                    kind: block_expr.kind,
+                    stmts,
+                }
+                .into(),
+            );
+        }
     }
 
     fn normalize_used_call_expr(&mut self, call_expr: type_checker::CallExpr) -> Expr {

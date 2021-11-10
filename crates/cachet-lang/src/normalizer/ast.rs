@@ -114,6 +114,7 @@ pub struct LetStmt {
 pub struct IfStmt {
     pub cond: Expr,
     pub then: Vec<Stmt>,
+    pub else_: Option<Vec<Stmt>>,
 }
 
 #[derive(Clone, Debug)]

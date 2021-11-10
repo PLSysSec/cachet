@@ -499,7 +499,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         let then = self.type_check_block(&if_stmt.then);
 
-        IfStmt { cond, then }
+        let else_ = if_stmt.else_.as_ref().map(|else_| self.type_check_block(else_));
+
+        IfStmt { cond, then, else_ }
     }
 
     fn type_check_check_stmt(&mut self, check_stmt: &resolver::CheckStmt) -> CheckStmt {

@@ -179,7 +179,7 @@ impl FrontendError for WrongKindError {
     }
 }
 
-#[derive(EnumSetType, Debug, Hash)]
+#[derive(Debug, EnumSetType, Hash)]
 pub enum NameKind {
     Type,
     Ir,

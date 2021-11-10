@@ -864,9 +864,15 @@ impl<'a> ScopedResolver<'a> {
 
         let then = self.resolve_nested_block(&if_stmt.then);
 
+        let else_ = match &if_stmt.else_ {
+            None => Some(None),
+            Some(else_) => self.resolve_nested_block(else_).map(Some),
+        };
+
         Some(IfStmt {
             cond: cond?,
             then: then?,
+            else_: else_?,
         })
     }
 

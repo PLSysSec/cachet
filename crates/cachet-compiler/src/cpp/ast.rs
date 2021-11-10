@@ -4,6 +4,7 @@ use std::fmt::{self, Write};
 use std::iter::FromIterator;
 
 use derive_more::{Display, From};
+use enumset::EnumSetType;
 use indent_write::fmt::IndentWriter;
 
 use cachet_lang::ast::Ident;
@@ -34,7 +35,7 @@ pub enum NamespaceKind {
 pub enum Type {
     #[display(fmt = "void")]
     Void,
-    #[from(types(TypeMemberTypePath, IrMemberTypePath))]
+    #[from(types(HelperTypeIdent, TypeMemberTypePath, IrMemberTypePath))]
     Path(TypePath),
     #[from]
     Template(Box<TemplateType>),
@@ -46,6 +47,7 @@ pub enum Type {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum TypePath {
+    Helper(HelperTypeIdent),
     TypeMember(TypeMemberTypePath),
     IrMember(IrMemberTypePath),
 }
@@ -53,6 +55,7 @@ pub enum TypePath {
 impl TypePath {
     pub const fn ident(self) -> TypeIdent {
         match self {
+            TypePath::Helper(helper_type_ident) => TypeIdent::Helper(helper_type_ident),
             TypePath::TypeMember(type_member_type_path) => {
                 TypeIdent::TypeMember(type_member_type_path.ident)
             }
@@ -62,29 +65,40 @@ impl TypePath {
         }
     }
 
-    pub const fn parent_namespace(self) -> NamespaceIdent {
+    pub const fn parent_namespace(self) -> Option<NamespaceIdent> {
         match self {
+            TypePath::Helper(_) => None,
             TypePath::TypeMember(type_member_type_path) => {
-                type_member_type_path.parent_namespace()
+                Some(type_member_type_path.parent_namespace())
             }
-            TypePath::IrMember(ir_member_type_path) => ir_member_type_path.parent_namespace(),
+            TypePath::IrMember(ir_member_type_path) => {
+                Some(ir_member_type_path.parent_namespace())
+            }
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum TypeIdent {
+    Helper(HelperTypeIdent),
     TypeMember(TypeMemberTypeIdent),
     IrMember(IrMemberTypeIdent),
 }
 
 impl TypeIdent {
-    pub const fn parent_namespace_kind(self) -> NamespaceKind {
+    pub const fn parent_namespace_kind(self) -> Option<NamespaceKind> {
         match self {
-            TypeIdent::TypeMember(_) => TypeMemberTypeIdent::PARENT_NAMESPACE_KIND,
-            TypeIdent::IrMember(_) => IrMemberTypeIdent::PARENT_NAMESPACE_KIND,
+            TypeIdent::Helper(_) => None,
+            TypeIdent::TypeMember(_) => Some(TypeMemberTypeIdent::PARENT_NAMESPACE_KIND),
+            TypeIdent::IrMember(_) => Some(IrMemberTypeIdent::PARENT_NAMESPACE_KIND),
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum HelperTypeIdent {
+    #[display(fmt = "Cachet_ContextRef")]
+    ContextRef,
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -103,16 +117,9 @@ impl TypeMemberTypePath {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, Hash, PartialEq)]
 pub enum TypeMemberTypeIdent {
-    #[display(fmt = "Val")]
-    Val,
-    #[display(fmt = "Local")]
-    Local,
-    #[display(fmt = "Param")]
-    Param,
-    #[display(fmt = "OutParam")]
-    OutParam,
+    ExprTag(ExprTag),
 }
 
 impl TypeMemberTypeIdent {
@@ -137,8 +144,12 @@ impl IrMemberTypePath {
 
 #[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum IrMemberTypeIdent {
-    #[display(fmt = "Label")]
-    Label,
+    #[display(fmt = "LabelRef")]
+    LabelRef,
+    #[display(fmt = "InterpreterRef")]
+    InterpreterRef,
+    #[display(fmt = "CompilerRef")]
+    CompilerRef,
 }
 
 impl IrMemberTypeIdent {
@@ -199,147 +210,15 @@ pub enum ValueCategory {
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
-pub enum VarPath {
-    Variant(VariantVarPath),
-    Global(GlobalVarPath),
-    Context(ContextVarIdent),
-    Param(ParamIdent),
-    Local(LocalVarIdent),
-    LocalLabel(LocalLabelVarIdent),
-    Synthetic(SyntheticVarIdent),
-}
-
-impl VarPath {
-    pub const fn ident(self) -> VarIdent {
-        match self {
-            VarPath::Variant(variant_var_path) => VarIdent::Variant(variant_var_path.ident),
-            VarPath::Global(global_var_path) => VarIdent::Global(global_var_path.ident),
-            VarPath::Context(context_var_ident) => VarIdent::Context(context_var_ident),
-            VarPath::Param(param_ident) => VarIdent::Param(param_ident),
-            VarPath::Local(local_var_ident) => VarIdent::Local(local_var_ident),
-            VarPath::LocalLabel(local_label_var_ident) => {
-                VarIdent::LocalLabel(local_label_var_ident)
-            }
-            VarPath::Synthetic(synthetic_var_ident) => VarIdent::Synthetic(synthetic_var_ident),
-        }
-    }
-
-    pub const fn parent_namespace(self) -> Option<NamespaceIdent> {
-        match self {
-            VarPath::Variant(variant_var_path) => Some(variant_var_path.parent_namespace()),
-            VarPath::Global(global_var_path) => global_var_path.parent_namespace(),
-            VarPath::Context(_)
-            | VarPath::Param(_)
-            | VarPath::Local(_)
-            | VarPath::LocalLabel(_)
-            | VarPath::Synthetic(_) => None,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Display, From)]
 pub enum VarIdent {
-    Variant(VariantVarIdent),
-    Global(GlobalVarIdent),
-    Context(ContextVarIdent),
+    #[from(types(IrContextParamIdent, UserParamIdent))]
     Param(ParamIdent),
+    #[from]
     Local(LocalVarIdent),
+    #[from]
     LocalLabel(LocalLabelVarIdent),
+    #[from]
     Synthetic(SyntheticVarIdent),
-}
-
-impl VarIdent {
-    pub const fn parent_namespace_kind(self) -> Option<NamespaceKind> {
-        match self {
-            VarIdent::Variant(_) => Some(VariantVarIdent::PARENT_NAMESPACE_KIND),
-            VarIdent::Global(_) => Some(GlobalVarIdent::PARENT_NAMESPACE_KIND),
-            VarIdent::Context(_)
-            | VarIdent::Param(_)
-            | VarIdent::Local(_)
-            | VarIdent::LocalLabel(_)
-            | VarIdent::Synthetic(_) => None,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}::{}", "self.parent_namespace()", ident)]
-pub struct VariantVarPath {
-    pub parent: Ident,
-    pub ident: VariantVarIdent,
-}
-
-impl VariantVarPath {
-    pub const fn parent_namespace(self) -> NamespaceIdent {
-        NamespaceIdent {
-            kind: VariantVarIdent::PARENT_NAMESPACE_KIND,
-            ident: self.parent,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "Variant_{}", ident)]
-pub struct VariantVarIdent {
-    pub ident: Ident,
-}
-
-impl VariantVarIdent {
-    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct GlobalVarPath {
-    pub parent: Option<Ident>,
-    pub ident: GlobalVarIdent,
-}
-
-impl GlobalVarPath {
-    pub const fn parent_namespace(self) -> Option<NamespaceIdent> {
-        match self.parent {
-            Some(parent_ident) => Some(NamespaceIdent {
-                kind: GlobalVarIdent::PARENT_NAMESPACE_KIND,
-                ident: parent_ident,
-            }),
-            None => None,
-        }
-    }
-}
-
-impl fmt::Display for GlobalVarPath {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        if let Some(parent_namespace_ident) = self.parent_namespace() {
-            write!(f, "{}::", parent_namespace_ident)?;
-        }
-        write!(f, "{}", self.ident)
-    }
-}
-
-impl From<GlobalVarIdent> for GlobalVarPath {
-    fn from(global_var_ident: GlobalVarIdent) -> Self {
-        GlobalVarPath {
-            parent: None,
-            ident: global_var_ident,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "Var_{}", ident)]
-pub struct GlobalVarIdent {
-    pub ident: Ident,
-}
-
-impl GlobalVarIdent {
-    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
-}
-
-#[derive(Clone, Copy, Debug, Display)]
-pub enum ContextVarIdent {
-    #[display(fmt = "cx")]
-    Global,
-    #[display(fmt = "irCx")]
-    Ir,
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -381,6 +260,8 @@ pub enum FnPath {
     Helper(HelperFnIdent),
     TypeMember(TypeMemberFnPath),
     IrMember(IrMemberFnPath),
+    Variant(VariantFnPath),
+    GlobalVar(GlobalVarFnPath),
     User(UserFnPath),
     Op(OpFnPath),
 }
@@ -393,6 +274,8 @@ impl FnPath {
                 FnIdent::TypeMember(type_member_fn_path.ident)
             }
             FnPath::IrMember(ir_member_fn_path) => FnIdent::IrMember(ir_member_fn_path.ident),
+            FnPath::Variant(variant_fn_path) => FnIdent::Variant(variant_fn_path.ident),
+            FnPath::GlobalVar(global_var_fn_path) => FnIdent::GlobalVar(global_var_fn_path.ident),
             FnPath::User(user_fn_path) => FnIdent::User(user_fn_path.ident),
             FnPath::Op(op_fn_path) => FnIdent::Op(op_fn_path.ident),
         }
@@ -405,6 +288,8 @@ impl FnPath {
                 Some(type_member_fn_path.parent_namespace())
             }
             FnPath::IrMember(ir_member_fn_path) => Some(ir_member_fn_path.parent_namespace()),
+            FnPath::Variant(variant_fn_path) => Some(variant_fn_path.parent_namespace()),
+            FnPath::GlobalVar(global_var_fn_path) => global_var_fn_path.parent_namespace(),
             FnPath::User(user_fn_path) => user_fn_path.parent_namespace(),
             FnPath::Op(op_fn_path) => Some(op_fn_path.parent_namespace()),
         }
@@ -416,6 +301,8 @@ pub enum FnIdent {
     Helper(HelperFnIdent),
     TypeMember(TypeMemberFnIdent),
     IrMember(IrMemberFnIdent),
+    Variant(VariantFnIdent),
+    GlobalVar(GlobalVarFnIdent),
     User(UserFnIdent),
     Op(OpFnIdent),
 }
@@ -427,9 +314,9 @@ impl FnIdent {
             FnIdent::TypeMember(type_member_fn_ident) => {
                 Some(type_member_fn_ident.parent_namespace_kind())
             }
-            FnIdent::IrMember(ir_member_fn_ident) => {
-                Some(ir_member_fn_ident.parent_namespace_kind())
-            }
+            FnIdent::IrMember(_) => Some(IrMemberFnIdent::PARENT_NAMESPACE_KIND),
+            FnIdent::Variant(_) => Some(VariantFnIdent::PARENT_NAMESPACE_KIND),
+            FnIdent::GlobalVar(_) => Some(GlobalVarFnIdent::PARENT_NAMESPACE_KIND),
             FnIdent::User(_) => Some(UserFnIdent::PARENT_NAMESPACE_KIND),
             FnIdent::Op(_) => Some(OpFnIdent::PARENT_NAMESPACE_KIND),
         }
@@ -462,8 +349,9 @@ impl TypeMemberFnPath {
 pub enum TypeMemberFnIdent {
     #[display(fmt = "EmptyLocal")]
     EmptyLocal,
-    #[display(fmt = "SetOutParam")]
-    SetOutParam,
+    ToTag(ToTagTypeMemberFnIdent),
+    #[display(fmt = "SetMutRef")]
+    SetMutRef,
     Cast(CastTypeMemberFnIdent),
     Compare(CompareTypeMemberFnIdent),
 }
@@ -471,11 +359,22 @@ pub enum TypeMemberFnIdent {
 impl TypeMemberFnIdent {
     pub const fn parent_namespace_kind(self) -> NamespaceKind {
         match self {
-            TypeMemberFnIdent::EmptyLocal | TypeMemberFnIdent::SetOutParam => NamespaceKind::Type,
+            TypeMemberFnIdent::EmptyLocal | TypeMemberFnIdent::SetMutRef => NamespaceKind::Type,
+            TypeMemberFnIdent::ToTag(_) => ToTagTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Cast(_) => CastTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Compare(_) => CompareTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+#[display(fmt = "To{}", tag)]
+pub struct ToTagTypeMemberFnIdent {
+    pub tag: ExprTag,
+}
+
+impl ToTagTypeMemberFnIdent {
+    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -508,7 +407,7 @@ pub struct CompareTypeMemberFnIdent {
 }
 
 impl CompareTypeMemberFnIdent {
-    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
+    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
 }
 
 impl fmt::Display for CompareTypeMemberFnIdent {
@@ -538,7 +437,7 @@ pub struct IrMemberFnPath {
 impl IrMemberFnPath {
     pub const fn parent_namespace(self) -> NamespaceIdent {
         NamespaceIdent {
-            kind: self.ident.parent_namespace_kind(),
+            kind: IrMemberFnIdent::PARENT_NAMESPACE_KIND,
             ident: self.parent,
         }
     }
@@ -554,12 +453,7 @@ pub enum IrMemberFnIdent {
 }
 
 impl IrMemberFnIdent {
-    pub const fn parent_namespace_kind(self) -> NamespaceKind {
-        match self {
-            IrMemberFnIdent::GetOutput | IrMemberFnIdent::Goto => NamespaceKind::Ir,
-            IrMemberFnIdent::EmitOp(_) => EmitOpIrMemberFnIdent::PARENT_NAMESPACE_KIND,
-        }
-    }
+    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Ir;
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
@@ -568,7 +462,75 @@ pub struct EmitOpIrMemberFnIdent {
     pub op: OpFnIdent,
 }
 
-impl EmitOpIrMemberFnIdent {
+#[derive(Clone, Copy, Debug, Display)]
+#[display(fmt = "{}::{}", "self.parent_namespace()", ident)]
+pub struct VariantFnPath {
+    pub parent: Ident,
+    pub ident: VariantFnIdent,
+}
+
+impl VariantFnPath {
+    pub const fn parent_namespace(self) -> NamespaceIdent {
+        NamespaceIdent {
+            kind: VariantFnIdent::PARENT_NAMESPACE_KIND,
+            ident: self.parent,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+#[display(fmt = "Variant_{}", ident)]
+pub struct VariantFnIdent {
+    pub ident: Ident,
+}
+
+impl VariantFnIdent {
+    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct GlobalVarFnPath {
+    pub parent: Option<Ident>,
+    pub ident: GlobalVarFnIdent,
+}
+
+impl GlobalVarFnPath {
+    pub const fn parent_namespace(self) -> Option<NamespaceIdent> {
+        match self.parent {
+            Some(parent_ident) => Some(NamespaceIdent {
+                kind: GlobalVarFnIdent::PARENT_NAMESPACE_KIND,
+                ident: parent_ident,
+            }),
+            None => None,
+        }
+    }
+}
+
+impl fmt::Display for GlobalVarFnPath {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        if let Some(parent_namespace_ident) = self.parent_namespace() {
+            write!(f, "{}::", parent_namespace_ident)?;
+        }
+        write!(f, "{}", self.ident)
+    }
+}
+
+impl From<GlobalVarFnIdent> for GlobalVarFnPath {
+    fn from(global_var_fn_ident: GlobalVarFnIdent) -> Self {
+        GlobalVarFnPath {
+            parent: None,
+            ident: global_var_fn_ident,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+#[display(fmt = "Var_{}", ident)]
+pub struct GlobalVarFnIdent {
+    pub ident: Ident,
+}
+
+impl GlobalVarFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
 }
 
@@ -740,8 +702,33 @@ pub struct Param {
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
+pub enum ParamIdent {
+    #[display(fmt = "cx")]
+    Context,
+    IrContext(IrContextParamIdent),
+    User(UserParamIdent),
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum IrContextParamIdent {
+    #[display(fmt = "interpreter")]
+    Interpreter,
+    #[display(fmt = "compiler")]
+    Compiler,
+}
+
+impl IrContextParamIdent {
+    pub fn type_ident(self) -> IrMemberTypeIdent {
+        match self {
+            IrContextParamIdent::Interpreter => IrMemberTypeIdent::InterpreterRef,
+            IrContextParamIdent::Compiler => IrMemberTypeIdent::CompilerRef,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
 #[display(fmt = "param_{}", ident)]
-pub struct ParamIdent {
+pub struct UserParamIdent {
     pub ident: Ident,
 }
 
@@ -828,11 +815,21 @@ impl fmt::Display for LetStmt {
     }
 }
 
-#[derive(Clone, Debug, Display)]
-#[display(fmt = "if ({}) {}", cond, then)]
+#[derive(Clone, Debug)]
 pub struct IfStmt {
     pub cond: Expr,
     pub then: Block,
+    pub else_: Option<Block>,
+}
+
+impl fmt::Display for IfStmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "if ({}) {}", self.cond, self.then)?;
+        if let Some(else_) = &self.else_ {
+            write!(f, " else {}", else_)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -844,7 +841,7 @@ impl fmt::Display for RetStmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "return")?;
         if let Some(value) = &self.value {
-            write!(f, "{}", value)?;
+            write!(f, " {}", value)?;
         }
         write!(f, ";")
     }
@@ -861,15 +858,23 @@ pub enum Expr {
     #[from(types(Block, "Vec<Stmt>"))]
     Block(BlockExpr),
     #[from(types(
-        VariantVarPath,
-        ContextVarIdent,
         ParamIdent,
+        IrContextParamIdent,
+        UserParamIdent,
         LocalVarIdent,
         LocalLabelVarIdent,
         SyntheticVarIdent
     ))]
-    Var(VarPath),
-    #[from(types(HelperFnIdent, TypeMemberFnPath, IrMemberFnPath, UserFnPath, OpFnPath))]
+    Var(VarIdent),
+    #[from(types(
+        HelperFnIdent,
+        TypeMemberFnPath,
+        IrMemberFnPath,
+        VariantFnPath,
+        GlobalVarFnPath,
+        UserFnPath,
+        OpFnPath
+    ))]
     Fn(FnPath),
     #[from]
     Template(Box<TemplateExpr>),
@@ -927,6 +932,18 @@ impl fmt::Display for MaybeGrouped<'_> {
             fmt::Display::fmt(self.0, f)
         }
     }
+}
+
+#[derive(Debug, Display, EnumSetType, Hash, Ord, PartialOrd)]
+pub enum ExprTag {
+    #[display(fmt = "MutRef")]
+    MutRef,
+    #[display(fmt = "Ref")]
+    Ref,
+    #[display(fmt = "Local")]
+    Local,
+    #[display(fmt = "Val")]
+    Val,
 }
 
 #[derive(Clone, Debug, Display, From)]

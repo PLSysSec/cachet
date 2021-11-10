@@ -13,7 +13,7 @@ syn keyword cachetImpure impure
 syn keyword cachetCheck assert assume
 syn keyword cachetKeyword var let out label
 syn keyword cachetStorage mut
-syn keyword cachetConditional if
+syn keyword cachetConditional if else
 syn keyword cachetControlFlow goto
 syn keyword cachetEmit emit
 
