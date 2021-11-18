@@ -74,7 +74,7 @@ impl<K: Eq + Hash, V> Registry<K, V> {
         self.inner.insert(
             key.value,
             Registered {
-                first_defined_at: key.span,
+                first_defined_at: key.span.into(),
                 status: RegisterStatus::RegisteredOnce(value),
             },
         );
@@ -95,7 +95,7 @@ impl<K: Clone + Eq + Hash + Into<Path>, V: Registrable> Registry<K, V> {
         match self.inner.entry(key.value) {
             Entry::Vacant(vacant_entry) => {
                 vacant_entry.insert(Registered {
-                    first_defined_at: key.span,
+                    first_defined_at: key.span.into(),
                     status: RegisterStatus::RegisteredOnce(value),
                 });
                 Ok(())

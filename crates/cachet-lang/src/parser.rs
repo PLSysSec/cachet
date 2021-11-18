@@ -88,7 +88,7 @@ impl FrontendError for ParseError {
             helpers::ParseError::ExtraToken {
                 token: (start, _, end),
             } => Span::new(*start as RawIndex, *end as RawIndex),
-            helpers::ParseError::User { error } => error.span,
+            helpers::ParseError::User { error } => error.span(),
         }
     }
 

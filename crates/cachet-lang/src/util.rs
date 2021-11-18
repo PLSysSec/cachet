@@ -1,22 +1,32 @@
 use std::fmt;
 use std::iter::FromIterator;
 
-use crate::ast::Spanned;
+use crate::ast::{Hole, HoleConfig, HoleSpanned};
 
-pub fn collect_eager<T, U: FromIterator<T>>(mut iter: impl Iterator<Item = T>) -> U {
+pub fn collect_eager<T: Iterator, U: FromIterator<T::Item>>(mut iter: T) -> U {
     let result = U::from_iter(&mut iter);
     for _ in iter {}
     result
 }
 
-pub fn map_spanned<T, U>(
-    x: Spanned<T>,
-    f: impl FnOnce(Spanned<T>) -> Option<U>,
-) -> Option<Spanned<U>> {
+pub fn map_spanned<C: HoleConfig, T, U>(
+    x: HoleSpanned<C, T>,
+    f: impl FnOnce(HoleSpanned<C, T>) -> Option<U>,
+) -> Option<HoleSpanned<C, U>> {
     let span = x.span;
     match f(x) {
         None => None,
-        Some(y) => Some(Spanned::new(span, y)),
+        Some(y) => Some(HoleSpanned { span, value: y }),
+    }
+}
+
+pub fn map_try<C: HoleConfig, T, U>(
+    x: Hole<C, T>,
+    f: impl FnOnce(T) -> Option<U>,
+) -> Option<Hole<C, U>> {
+    match x {
+        Hole::Full(reachable, y) => f(y).map(|z| Hole::Full(reachable, z)),
+        Hole::Empty(reachable) => Some(Hole::Empty(reachable)),
     }
 }
 
@@ -70,8 +80,13 @@ pub fn fmt_join_or<T, W: fmt::Write>(
 }
 
 macro_rules! box_from {
-    ($src:ty => $dst:ty) => {
-        impl ::std::convert::From<$src> for $dst {
+    (
+        $src:ty => $dst:ty
+        $(| $(<$($generic_params:ident),+>)? $(where $($where_clause:tt)+)?)?
+    ) => {
+        impl$($(<$($generic_params),+>)?)? ::std::convert::From<$src> for $dst
+        $($(where $($where_clause)+)?)?
+        {
             fn from(src: $src) -> Self {
                 ::std::convert::From::from(Box::new(src))
             }
@@ -80,9 +95,30 @@ macro_rules! box_from {
 }
 pub(crate) use box_from;
 
+macro_rules! chain_from {
+    (
+        $src:ty => $mid:ty => $dst:ty
+        $(| $(<$($generic_params:ident),+>)? $(where $($where_clause:tt)+)?)?
+    ) => {
+        impl$($(<$($generic_params),+>)?)? ::std::convert::From<$src> for $dst
+        $($(where $($where_clause)+)?)?
+        {
+            fn from(src: $src) -> Self {
+                ::std::convert::From::from(::std::convert::Into::<$mid>::into(src))
+            }
+        }
+    };
+}
+pub(crate) use chain_from;
+
 macro_rules! deref_from {
-    ($src:ty => $dst:ty) => {
-        impl ::std::convert::From<$src> for $dst {
+    (
+        $src:ty => $dst:ty
+        $(| $(<$($generic_params:ident),+>)? $(where $($where_clause:tt)+)?)?
+    ) => {
+        impl$($(<$($generic_params),+>)?)? ::std::convert::From<$src> for $dst
+        $($(where $($where_clause)+)?)?
+        {
             fn from(src: $src) -> Self {
                 ::std::convert::From::from(*src)
             }
@@ -92,8 +128,13 @@ macro_rules! deref_from {
 pub(crate) use deref_from;
 
 macro_rules! deref_index {
-    ($parent:ty[$index:ty] => $output:ty) => {
-        impl ::std::ops::Index<$index> for $parent {
+    (
+        $parent:ty[$index:ty] => $output:ty
+        $(| $(<$($generic_params:ident),+>)? $(where $($where_clause:tt)+)?)?
+    ) => {
+        impl$($(<$($generic_params),+>)?)? ::std::ops::Index<$index> for $parent
+        $($(where $($where_clause)+)?)?
+        {
             type Output = $output;
 
             fn index(&self, index: $index) -> &Self::Output {
@@ -101,7 +142,9 @@ macro_rules! deref_index {
             }
         }
 
-        impl ::std::ops::IndexMut<$index> for $parent {
+        impl$($(<$($generic_params),+>)?)? ::std::ops::IndexMut<$index> for $parent
+        $($(where $($where_clause)+)?)?
+        {
             fn index_mut(&mut self, index: $index) -> &mut Self::Output {
                 &mut self[*index]
             }
@@ -111,8 +154,13 @@ macro_rules! deref_index {
 pub(crate) use deref_index;
 
 macro_rules! field_index {
-    ($parent:ty:$field:ident[$index:ty] => $output:ty) => {
-        impl ::std::ops::Index<$index> for $parent {
+    (
+        $parent:ty:$field:ident[$index:ty] => $output:ty
+        $(| $(<$($generic_params:ident),+>)? $(where $($where_clause:tt)+)?)?
+    ) => {
+        impl$($(<$($generic_params),+>)?)? ::std::ops::Index<$index> for $parent
+        $($(where $($where_clause)+)?)?
+        {
             type Output = $output;
 
             fn index(&self, index: $index) -> &Self::Output {
@@ -120,19 +168,24 @@ macro_rules! field_index {
             }
         }
 
-        impl ::std::ops::IndexMut<$index> for $parent {
+        impl$($(<$($generic_params),+>)?)? ::std::ops::IndexMut<$index> for $parent
+        $($(where $($where_clause)+)?)?
+        {
             fn index_mut(&mut self, index: $index) -> &mut Self::Output {
                 &mut self.$field[index]
             }
         }
 
-        $crate::util::deref_index!($parent[&$index] => $output);
+        $crate::util::deref_index!(
+            $parent[&$index] => $output
+            $(| $(<$($generic_params),+>)? $(where $($where_clause)+)?)?
+        );
     };
 }
 pub(crate) use field_index;
 
 macro_rules! typed_index {
-    ($parent:ty:$field:ident[$index:ident] => $output:ty) => {
+    ($vis:vis $index:ident) => {
         #[derive(
             ::derive_more::Display,
             ::derive_more::From,
@@ -145,7 +198,7 @@ macro_rules! typed_index {
             ::std::hash::Hash,
             ::std::marker::Copy,
         )]
-        pub struct $index(usize);
+        $vis struct $index(usize);
 
         // Use a compact representation for `Debug`-formatting indexes, even in
         // pretty mode.
@@ -154,8 +207,20 @@ macro_rules! typed_index {
                 write!(f, "{}({})", stringify!($index), self.0)
             }
         }
-
-        $crate::util::field_index!($parent:$field[$index] => $output);
     };
 }
 pub(crate) use typed_index;
+
+macro_rules! typed_field_index {
+    (
+        $parent:ty:$field:ident[$vis:vis $index:ident] => $output:ty
+        $(| $(<$($generic_params:ident),+>)? $(where $($where_clause:tt)+)?)?
+    ) => {
+        $crate::util::typed_index!($vis $index);
+        $crate::util::field_index!(
+            $parent:$field[$index] => $output
+            $(| $(<$($generic_params),+>)? $(where $($where_clause)+)?)?
+        );
+    };
+}
+pub(crate) use typed_field_index;

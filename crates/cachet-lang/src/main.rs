@@ -15,10 +15,10 @@ use structopt::StructOpt;
 
 //use cachet_compiler::interpreter::Interpreter;
 
-use cachet_lang::normalizer::normalize;
+//use cachet_lang::normalizer::normalize;
 use cachet_lang::parser::parse;
 use cachet_lang::resolver::{resolve, ResolveErrors};
-use cachet_lang::type_checker::{type_check, TypeCheckErrors};
+//use cachet_lang::type_checker::{type_check, TypeCheckErrors};
 use cachet_lang::FrontendError;
 
 /// The Cachet compiler.
@@ -54,12 +54,14 @@ struct Opt {
     /// Dump name resolution output.
     #[structopt(long)]
     dump_name_resolution: bool,
+    /*
     /// Dump type checking output.
     #[structopt(long)]
     dump_type_checking: bool,
     /// Dump normalization output.
     #[structopt(long)]
     dump_normalization: bool,
+    */
 }
 
 fn main() -> Result<(), Error> {
@@ -96,6 +98,7 @@ fn main() -> Result<(), Error> {
         println!("=== NAME RESOLUTION ===\n\n{:#?}\n\n", env);
     }
 
+    /*
     let env = match type_check(env) {
         Ok(env) => env,
         Err(TypeCheckErrors(errors)) => {
@@ -115,7 +118,6 @@ fn main() -> Result<(), Error> {
         println!("=== NORMALIZATION ===\n\n{:#?}\n\n", env);
     }
 
-    /*
     let interpreter = Interpreter::generate(&env);
 
     if !opt.dry_run {

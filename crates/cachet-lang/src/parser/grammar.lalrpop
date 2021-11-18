@@ -1,5 +1,8 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+// TODO(spinda): Make user parse errors accumulate as we go, returning a big
+// `Option<...>` that gets unwrapped at the end if there are no pending errors.
+
 use codespan::RawIndex;
 use iterate::iterate;
 
@@ -53,21 +56,53 @@ VarTag: VarTag =
     "mut" => VarTag::Mut;
 
 CallableItem: Item =
-    <tags:CallableTags> <kind:CallableKind> <ident:Spanned<Ident>>
-    "(" <params:Comma<Param>> ")" <ret:("->" <Spanned<Path>>)?>
-    <body:Spanned<CallableBody>> => {
-        let fn_item = FnItem {
-            ident,
-            is_unsafe: tags.unsafe_tag.is_some(),
-            params,
-            ret,
-            body,
-        };
+    <tags:CallableTags> <kind:CallableKind> <name:Spanned<Ident>>
+    "(" <params:Comma<Spanned<Param>>> ")" <ret:("->" <Spanned<Path>>)?>
+    <body:Spanned<CallableBody>> =>? {
+        let is_unsafe = tags.unsafe_tag.is_some();
 
-        match kind {
-            CallableKind::Fn => fn_item.into(),
-            CallableKind::Op => OpItem(fn_item).into(),
-        }
+        Ok(match kind {
+            CallableKind::Fn => {
+                let (params, param_order) = catalog_params(params)?;
+
+                FnItem {
+                    name,
+                    parent: Hole::empty(),
+                    is_unsafe,
+                    params,
+                    param_order,
+                    ret: Hole::from_option(ret),
+                    body: body.map(Hole::from_option),
+                }.into()
+            },
+            CallableKind::Op => {
+                let (params, param_order) = catalog_params(params)?;
+
+                if let Some(ret) = ret {
+                    return Err(ParseError::User {
+                        error: Spanned::new(ret.span(), "`op` items can't return a value"),
+                    });
+                }
+
+                let body_span = body.span();
+                let body = match body.value {
+                    Some(body) => Spanned::new(body_span, Hole::full(body)),
+                    None => return Err(ParseError::User {
+                        error: Spanned::new(body_span, "`op` items must have a body"),
+                    }),
+                };
+
+                OpItem {
+                    name,
+                    parent: Hole::empty(),
+                    is_unsafe,
+                    params,
+                    param_order,
+                    ret: Hole::empty(),
+                    body,
+                }.into()
+            }
+        })
     };
 
 #[inline]
@@ -89,20 +124,58 @@ Param: Param = {
     "label" <label:Spanned<Ident>> => Param::Label(label),
 };
 
-VarParam: VarParam =
+VarParam: ParserVarParam =
     <tags:VarTags> <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> =>
         VarParam { ident, is_mut: tags.mut_tag.is_some(), type_ };
 
-OutVarParam: OutVarParam =
+OutVarParam: ParserOutVarParam =
     "out" <ident:Spanned<Ident>> ":" <type_: Spanned<Path>> => OutVarParam { ident, type_ };
 
-CallableBody: Option<Block> = {
-    ";" => None,
-    <block:Block> => Some(block),
+Call<C, Arg>: ParserCall<C> =
+    <target:Spanned<Path>> <args:Spanned<("(" <Comma<Spanned<Arg>>> ")")>> =>
+        Call { target, args };
+
+#[inline]
+FnCallConfig: FnCallConfig = => FnCallConfig;
+#[inline]
+OpCallConfig: OpCallConfig = => OpCallConfig;
+
+FnArg: ParserFnArg = {
+    <expr:RawBlockOrExpr> => {
+        match expr.expr {
+            // Arguments that look like `bar` in `foo(bar)` could be either a
+            // variable expression argument or a label argument. They will have
+            // to be disambiguated during name resolution.
+            Expr::Var(var_expr) if !expr.is_grouped => Arg::Label(var_expr.var),
+            expr => expr.into(),
+        }
+    },
+    <out_var:OutVar> => out_var.into(),
 };
 
+OpArg: ParserOpArg =
+    <fn_arg:Spanned<FnArg>> =>? match fn_arg.value {
+        Arg::Expr(expr) => Ok(expr.into()),
+        Arg::Label(label) => Ok(Arg::Label(label)),
+        Arg::OutVar(_, _) => Err(ParseError::User {
+            error: Spanned::new(fn_arg.span(), "ops can't have out-parameters"),
+        }),
+    };
 
-Block: Block = {
+OutVar: ParserOutVar = {
+    "out" <out_var_path:Spanned<Path>> => OutVar::Out(out_var_path),
+    "out" <out_let_var:LocalVar> => OutVar::OutLet(out_let_var),
+};
+
+CallableBody: Option<ParserBody> = {
+    ";" => None,
+    <block:Block> => Some(Body {
+        locals: Hole::empty(),
+        block,
+    }),
+};
+
+Block: ParserBlock = {
     "{" <stmts:Stmts> <value:Expr?> "}" => Block { stmts, value }, 
     "{" <value:BlockOrExpr?> "}" => Block { stmts: vec![], value },
 
@@ -117,7 +190,7 @@ Block: Block = {
     },
 };
 
-Stmts: Vec<Stmt> = {
+Stmts: Vec<ParserStmt> = {
     <stmt:Stmt> => vec![stmt],
     <stmts:Stmts> ";" => stmts,
     <mut stmts:Stmts> <stmt:Stmt> => {
@@ -140,7 +213,7 @@ Stmts: Vec<Stmt> = {
     },
 };
 
-StmtsBlock: (Vec<Stmt>, Block) = {
+StmtsBlock: (Vec<ParserStmt>, ParserBlock) = {
     <stmts:Stmts> <block:Block> => (stmts, block),
     <prev_block:Block> <block:Block> => (vec![prev_block.into()], block),
     <stmts_block:StmtsBlock> <block:Block> => {
@@ -150,7 +223,7 @@ StmtsBlock: (Vec<Stmt>, Block) = {
     },
 };
 
-Stmt: Stmt = {
+Stmt: ParserStmt = {
     <let_stmt:LetStmt> => let_stmt.into(),
     <if_stmt:IfStmt> => if_stmt.into(),
     <check_stmt:CheckStmt> => check_stmt.into(),
@@ -159,18 +232,22 @@ Stmt: Stmt = {
     <expr:Expr> ";" => expr.into(),
 };
 
-LetStmt: LetStmt =
+LetStmt: ParserLetStmt =
     <lhs:LocalVar> "=" <rhs:Spanned<BlockOrExpr>> ";" => LetStmt { lhs, rhs };
 
-LocalVar: LocalVar =
+LocalVar: ParserLocalVar =
     "let" <tags:VarTags> <ident:Spanned<Ident>> <type_:(":" <Spanned<Path>>)?> =>
-        LocalVar { ident, is_mut: tags.mut_tag.is_some(), type_ };
+        LocalVar {
+            ident,
+            is_mut: tags.mut_tag.is_some(),
+            type_: Hole::from_option(type_),
+        };
 
-IfStmt: IfStmt =
+IfStmt: ParserIfStmt =
     "if" <cond:Spanned<BlockOrExpr>> <then:Block> <else_:("else" <Block>)?> =>
         IfStmt { cond, then, else_ };
 
-CheckStmt: CheckStmt =
+CheckStmt: ParserCheckStmt =
     <kind:CheckStmtKind> <cond:Spanned<BlockOrExpr>> ";" => CheckStmt { kind, cond };
 
 CheckStmtKind: CheckStmtKind = {
@@ -178,17 +255,17 @@ CheckStmtKind: CheckStmtKind = {
     "assume" => CheckStmtKind::Assume,
 };
 
-GotoStmt: GotoStmt =
+GotoStmt: ParserGotoStmt =
     "goto" <label:Spanned<Path>> ";" => GotoStmt { label };
 
-EmitStmt: EmitStmt =
-    "emit" <call_expr:CallExpr> => EmitStmt(call_expr);
+EmitStmt: ParserEmitStmt =
+    "emit" <call:Call<OpCallConfig, OpArg>> => call;
 
 #[inline]
-Expr: Expr = Expr0;
+Expr: ParserExpr = Expr0;
 
 #[inline]
-BlockOrExpr: Expr = BlockOrExpr0;
+BlockOrExpr: ParserExpr = BlockOrExpr0;
 
 #[inline]
 RawExpr: MaybeGrouped = RawExpr0;
@@ -196,10 +273,10 @@ RawExpr: MaybeGrouped = RawExpr0;
 #[inline]
 RawBlockOrExpr: MaybeGrouped = RawBlockOrExpr0;
 
-Expr0: Expr =
+Expr0: ParserExpr =
     <expr:RawExpr0> => expr.expr;
 
-BlockOrExpr0: Expr =
+BlockOrExpr0: ParserExpr =
     <expr:RawBlockOrExpr0> => expr.expr;
 
 RawExpr0: MaybeGrouped = {
@@ -212,10 +289,10 @@ RawBlockOrExpr0: MaybeGrouped = {
     RawExpr0,
 };
 
-Expr1: Expr =
+Expr1: ParserExpr =
     <expr:RawExpr1> => expr.expr;
 
-BlockOrExpr1: Expr =
+BlockOrExpr1: ParserExpr =
     <expr:RawBlockOrExpr1> => expr.expr;
 
 RawExpr1: MaybeGrouped = {
@@ -228,10 +305,10 @@ RawBlockOrExpr1: MaybeGrouped = {
     RawExpr1,
 };
 
-Expr2: Expr =
+Expr2: ParserExpr =
     <expr:RawExpr2> => expr.expr;
 
-BlockOrExpr2: Expr =
+BlockOrExpr2: ParserExpr =
     <expr:RawBlockOrExpr2> => expr.expr;
 
 RawExpr2: MaybeGrouped = {
@@ -244,10 +321,10 @@ RawBlockOrExpr2: MaybeGrouped = {
     RawExpr2,
 };
 
-Expr3: Expr =
+Expr3: ParserExpr =
     <expr:RawExpr3> => expr.expr;
 
-BlockOrExpr3: Expr =
+BlockOrExpr3: ParserExpr =
     <expr:RawBlockOrExpr3> => expr.expr;
 
 RawExpr3: MaybeGrouped = {
@@ -262,7 +339,7 @@ RawBlockOrExpr3: MaybeGrouped = {
     RawExpr3,
 };
 
-BlockExpr: BlockExpr =
+BlockExpr: ParserBlockExpr =
     <kind:BlockExprKind> <block:Block> => BlockExpr {
         kind: Some(kind),
         block,
@@ -272,27 +349,18 @@ BlockExprKind: BlockExprKind = {
     "unsafe" => BlockExprKind::Unsafe,
 };
 
-VarOrCallExpr: Expr = {
+VarOrCallExpr: ParserExpr = {
     <call_expr:CallExpr> => call_expr.into(),
-    <path:Spanned<Path>> => path.into(),
+    <var:Spanned<Path>> => VarExpr { var, type_: Hole::empty() }.into(),
 };
 
-CallExpr: CallExpr =
-    <target:Spanned<Path>> <args:Spanned<("(" <Comma<Spanned<Arg>>> ")")>> =>
-        CallExpr { target, args };
+CallExpr: ParserCallExpr = 
+    <call:Call<FnCallConfig, FnArg>> => CallExpr {
+        call,
+        type_: Hole::empty(),
+    };
 
-Arg: Arg = {
-    <expr:RawBlockOrExpr> => {
-        match expr.expr {
-            Expr::Var(path) if !expr.is_grouped => Arg::VarExprOrLabel(path),
-            expr => expr.into(),
-        }
-    },
-    "out" <out_var_path:Spanned<Path>> => OutVar::Out(out_var_path).into(),
-    "out" <out_let_var:LocalVar> => OutVar::OutLet(out_let_var).into(),
-};
-
-NegateExpr: NegateExpr =
+NegateExpr: ParserNegateExpr =
     <kind:Spanned<NegateExprKind>> <expr:Spanned<BlockOrExpr3>> => NegateExpr { kind, expr };
 
 NegateExprKind: NegateExprKind = {
@@ -300,16 +368,16 @@ NegateExprKind: NegateExprKind = {
     "!" => NegateExprKind::Logical,
 };
 
-CastExpr: CastExpr =
+CastExpr: ParserCastExpr =
     <expr:Spanned<BlockOrExpr2>> "as" <type_:Spanned<Path>> => CastExpr { expr, type_ };
 
-CompareExpr: CompareExpr =
+CompareExpr: ParserCompareExpr =
     <lhs:Spanned<RawBlockOrExpr1>> <kind:Spanned<CompareExprKind>> <rhs:Spanned<BlockOrExpr2>> =>?
     {
         if !lhs.value.is_grouped {
             if let Expr::Compare(_) = lhs.value.expr {
                 return Err(ParseError::User {
-                    error: Spanned::new(kind.span, "comparison operators can't be chained"),
+                    error: Spanned::new(kind.span(), "comparison operators can't be chained"),
                 });
             }
         }
@@ -330,12 +398,12 @@ CompareExprKind: CompareExprKind = {
     ">" => CompareExprKind::Gt,
 };
 
-AssignExpr: AssignExpr =
+AssignExpr: ParserAssignExpr =
     <lhs:Spanned<BlockOrExpr1>> "=" <rhs: Spanned<BlockOrExpr0>> =>? {
         match lhs.value {
-            Expr::Var(lhs) => Ok(AssignExpr { lhs, rhs }),
+            Expr::Var(lhs) => Ok(AssignExpr { lhs: lhs.var, rhs }),
             _ => Err(ParseError::User {
-                error: Spanned::new(lhs.span, "can't assign to this expression"),
+                error: Spanned::new(lhs.span(), "can't assign to this expression"),
             }),
         }
     };

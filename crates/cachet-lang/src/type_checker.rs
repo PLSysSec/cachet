@@ -994,7 +994,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 let enum_item = &self.env.enum_items[enum_variant_index.enum_index];
                 let enum_path = Path::from(enum_item.ident.value);
                 let variant = enum_item.variants[enum_variant_index.variant_index];
-                variant.map(|variant| enum_path.member(variant)).into()
+                variant.map(|variant| enum_path.nest(variant)).into()
             }
             VarIndex::Global(global_var_index) => {
                 self.env.global_var_items[global_var_index].path.into()
