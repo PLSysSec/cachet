@@ -3,6 +3,8 @@
 struct Heap;
 var mut heap: Heap;
 
+var zero: Int32;
+
 enum ValueType {
   Double,
   Int32,
@@ -102,7 +104,82 @@ struct ValueReg;
 
 struct Reg;
 
+enum Condition {
+    Equal,
+    NotEqual,
+}
+
 ir MASM {
+    op BranchTestObject(condition: Condition, valueReg: ValueReg, label branch) {
+        let value = MASM::getValue(valueReg);
+        let valueIsObject = Value::isObject(value);
+
+        if condition == Condition::Equal {
+            if valueIsObject {
+                goto branch;
+            }
+        }
+
+        if condition == Condition::NotEqual {
+            if !valueIsObject {
+                goto branch;
+            }
+        }
+    }
+
+    op UnboxObject(valueReg: ValueReg, objectReg: Reg) {
+        let value = MASM::getValue(valueReg);
+        MASM::setObject(objectReg, Value::toObject(value));
+    }
+
+    op BranchTestObjectShape(
+        condition: Condition, objectReg: Reg, shape: Shape, scratchReg: Reg, spectreRegToZero: Reg,
+        label branch
+    ) {
+        let object = MASM::getObject(objectReg);
+        let objectHasShape = Object::shapeOf(object) == shape;
+
+        MASM::setInt32(scratchReg, zero);
+
+        if condition == Condition::Equal {
+            if objectHasShape {
+                MASM::setInt32(spectreRegToZero, MASM::getInt32(scratchReg));
+                goto branch;
+            }
+        }
+
+        if condition == Condition::NotEqual {
+            if !objectHasShape {
+                MASM::setInt32(spectreRegToZero, MASM::getInt32(scratchReg));
+                goto branch;
+            }
+        }
+    }
+
+    op BranchTestObjectShapeNoSpectreMitigations(
+        condition: Condition, objectReg: Reg, shape: Shape, label branch
+    ) {
+        let object = MASM::getObject(objectReg);
+        let objectHasShape = Object::shapeOf(object) == shape;
+
+        if condition == Condition::Equal {
+            if !objectHasShape {
+                goto branch;
+            }
+        }
+
+        if condition == Condition::NotEqual {
+            if objectHasShape {
+                goto branch;
+            }
+        }
+    }
+
+    op LoadObjectFixedSlot(objectReg: Reg, slot: Int32, outputReg: ValueReg) {
+        let object = MASM::getObject(objectReg);
+        MASM::setValue(outputReg, Object::getFixedSlot(object, slot));
+    }
+
     // #[cfg(spec)]
     // var mut regs: Map<Reg, Value>;
 
@@ -123,6 +200,22 @@ ir MASM {
     fn setValue(valueReg: ValueReg, value: Value);
 
     // #[cfg(spec)]
+    // fn getInt32(reg: Reg) -> Int32 {
+        // Value::toInt32(MASM::getValue(reg))
+    // }
+
+    // #[cfg(impl)]
+    fn getInt32(reg: Reg) -> Int32;
+
+    // #[cfg(spec)]
+    // fn setInt32(reg: Reg, int32: Int32) {
+        // MASM::setValue(reg, Value::fromInt32(int32));
+    // }
+
+    // #[cfg(impl)]
+    fn setInt32(reg: Reg, int32: Int32);
+
+    // #[cfg(spec)]
     // fn getObject(reg: Reg) -> Object {
         // Value::toObject(MASM::getValue(reg))
     // }
@@ -137,30 +230,6 @@ ir MASM {
 
     // #[cfg(impl)]
     fn setObject(reg: Reg, object: Object);
-
-    op BranchTestNotObject(valueReg: ValueReg, label branch) {
-        let value = MASM::getValue(valueReg);
-        if !Value::isObject(value) {
-            goto branch;
-        }
-    }
-
-    op UnboxObject(valueReg: ValueReg, objectReg: Reg) {
-        let value = MASM::getValue(valueReg);
-        MASM::setObject(objectReg, Value::toObject(value));
-    }
-
-    op BranchTestNotObjectShape(objectReg: Reg, shape: Shape, label branch) {
-        let object = MASM::getObject(objectReg);
-        if Object::shapeOf(object) != shape {
-            goto branch;
-        }
-    }
-
-    op LoadObjectFixedSlot(objectReg: Reg, slot: Int32, outputReg: ValueReg) {
-        let object = MASM::getObject(objectReg);
-        MASM::setValue(outputReg, Object::getFixedSlot(object, slot));
-    }
 }
 
 struct ValueId;
@@ -170,6 +239,34 @@ struct Int32Field;
 struct ShapeField;
 
 ir CacheIR emits MASM {
+    op GuardToObject(valueId: ValueId, label failure) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        emit MASM::BranchTestObject(Condition::NotEqual, valueReg, failure);
+    }
+
+    op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let shape = CacheIR::readShapeField(shapeField);
+
+        if CacheIR::objectGuardNeedsSpectreMitigations(objectId) {
+            let scratchReg = CacheIR::allocateReg();
+            emit MASM::BranchTestObjectShape(
+                Condition::NotEqual, objectReg, shape, scratchReg, objectReg, failure
+            );
+            CacheIR::releaseReg(scratchReg);
+        } else {
+            emit MASM::BranchTestObjectShapeNoSpectreMitigations(
+                Condition::NotEqual, objectReg, shape, failure
+            );
+        }
+    }
+
+    op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let slot = CacheIR::readInt32Field(slotField);
+        emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
+    }
+
     // #[cfg(spec)]
     // fn allocateValueReg() -> ValueReg {
         // CacheIR::allocateReg()
@@ -218,25 +315,5 @@ ir CacheIR emits MASM {
     fn readInt32Field(int32Field: Int32Field) -> Int32;
     fn readShapeField(shapeField: ShapeField) -> Shape;
 
-    op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure) {
-        //object = Value::toObject(value);
-        let valueReg = CacheIR::useValueReg(valueId);
-        let objectReg = CacheIR::useObjectReg(objectId);
-        emit MASM::BranchTestNotObject(valueReg, failure);
-        emit MASM::UnboxObject(valueReg, objectReg);
-    }
-
-    op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure) {
-        //guard Object::shapeOf(object) == shape;
-        let objectReg = CacheIR::useObjectReg(objectId);
-        let shape = CacheIR::readShapeField(shapeField);
-        emit MASM::BranchTestNotObjectShape(objectReg, shape, failure);
-    }
-
-    op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
-        //fallible { Object::getFixedSlot(object, slot) }
-        let objectReg = CacheIR::useObjectReg(objectId);
-        let slot = CacheIR::readInt32Field(slotField);
-        emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
-    }
+    fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
 }
