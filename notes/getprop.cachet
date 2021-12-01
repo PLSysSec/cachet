@@ -30,6 +30,10 @@ impl Value {
         Value::typeOf(value) == ValueType::Object
     }
 
+    fn isNull(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Null
+    }
+
     fn fromObject(object: Object) -> Value {
         let value = unsafe { Value::fromObjectUnchecked(object) };
         assume Value::isObject(value);
@@ -122,6 +126,23 @@ ir MASM {
 
         if condition == Condition::NotEqual {
             if !valueIsObject {
+                goto branch;
+            }
+        }
+    }
+
+    op BranchTestNull(condition: Condition, valueReg: ValueReg, label branch) {
+        let value = MASM::getValue(valueReg);
+        let valueIsNull = Value::isNull(value);
+
+        if condition == Condition::Equal {
+            if valueIsNull {
+                goto branch;
+            }
+        }
+
+        if condition == Condition::NotEqual {
+            if !valueIsNull {
                 goto branch;
             }
         }
@@ -239,9 +260,16 @@ struct Int32Field;
 struct ShapeField;
 
 ir CacheIR emits MASM {
-    op GuardToObject(valueId: ValueId, label failure) {
-        let valueReg = CacheIR::useValueReg(valueId);
-        emit MASM::BranchTestObject(Condition::NotEqual, valueReg, failure);
+
+op GuardIsNull(inputId: ValueId, label failure){
+    let inputReg = CacheIR::useValueReg(inputId);
+    emit MASM::BranchTestNull(Condition::NotEqual, inputReg, failure);
+
+}
+
+    op GuardToObject(inputId: ValueId, label failure) {
+        let inputReg = CacheIR::useValueReg(inputId);
+        emit MASM::BranchTestObject(Condition::NotEqual, inputReg, failure);
     }
 
     op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure) {
