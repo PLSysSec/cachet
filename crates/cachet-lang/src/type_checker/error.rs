@@ -22,7 +22,7 @@ pub enum TypeCheckError {
         first_cycle_callable: Spanned<Path>,
         other_cycle_callables: Vec<Spanned<Path>>,
     },
-    #[error("op `{}` must be a member of an IR", .op)]
+    #[error("op `{}` must be nested under an IR", .op)]
     MisplacedOpItem { op: Spanned<Path> },
     #[error("op `{}` can't have out-parameter `{}`", .op, .out_param)]
     OpHasOutParam { op: Path, out_param: Spanned<Ident> },

@@ -5,16 +5,17 @@ use std::ops::{Index, IndexMut};
 use derive_more::From;
 use typed_index_collections::TiVec;
 
-use crate::ast::{Ident, Path, Spanned};
+use crate::ast::{
+    BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path,
+    Spanned,
+};
+use crate::type_checker;
 pub use crate::type_checker::{
-    BlockExprKind as BlockKind, BuiltInType, BuiltInTypeMap, BuiltInVar, BuiltInVarMap,
-    CallableIndex, CastExprKind, CheckStmtKind, CompareExprKind, DeclIndex, EnumIndex, EnumItem,
-    EnumVariantIndex, FnIndex, FnParamIndex, FnParams, GlobalVarIndex, GlobalVarItem, GotoStmt,
-    IrIndex, IrItem, LabelIndex, LabelParamIndex, LocalLabelIndex, LocalVar, LocalVarIndex,
-    NegateExprKind, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, OutVarParam,
-    OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex, StructItem, TypeIndex, Typed,
-    VarExpr, VarIndex, VarParam, VarParamIndex, VariantIndex, BUILT_IN_TYPES, BUILT_IN_VARS,
-    NUM_BUILT_IN_TYPES, NUM_BUILT_IN_VARS,
+    CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex,
+    GlobalVarItem, GotoStmt, IrIndex, IrItem, LabelIndex, LabelParamIndex, LocalLabelIndex,
+    LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg,
+    OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex, StructItem,
+    TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 use crate::util::{box_from, deref_from, deref_index, field_index};
 
@@ -24,8 +25,8 @@ pub struct Env {
     pub struct_items: TiVec<StructIndex, StructItem>,
     pub ir_items: TiVec<IrIndex, IrItem>,
     pub global_var_items: TiVec<GlobalVarIndex, GlobalVarItem>,
-    pub fn_items: TiVec<FnIndex, FnItem>,
-    pub op_items: TiVec<OpIndex, OpItem>,
+    pub fn_items: TiVec<FnIndex, CallableItem>,
+    pub op_items: TiVec<OpIndex, CallableItem>,
     pub decl_order: Vec<DeclIndex>,
 }
 
@@ -33,11 +34,11 @@ field_index!(Env:enum_items[EnumIndex] => EnumItem);
 field_index!(Env:struct_items[StructIndex] => StructItem);
 field_index!(Env:ir_items[IrIndex] => IrItem);
 field_index!(Env:global_var_items[GlobalVarIndex] => GlobalVarItem);
-field_index!(Env:fn_items[FnIndex] => FnItem);
-field_index!(Env:op_items[OpIndex] => OpItem);
+field_index!(Env:fn_items[FnIndex] => CallableItem);
+field_index!(Env:op_items[OpIndex] => CallableItem);
 
 impl Index<EnumVariantIndex> for Env {
-    type Output = Spanned<Ident>;
+    type Output = Spanned<Path>;
 
     fn index(&self, index: EnumVariantIndex) -> &Self::Output {
         &self.enum_items[index.enum_index][index.variant_index]
@@ -50,44 +51,56 @@ impl IndexMut<EnumVariantIndex> for Env {
     }
 }
 
-deref_index!(Env[&EnumVariantIndex] => Spanned<Ident>);
+deref_index!(Env[&EnumVariantIndex] => Spanned<Path>);
 
 #[derive(Clone, Debug)]
-pub struct FnItem {
+pub struct CallableItem {
     pub path: Spanned<Path>,
     pub parent: Option<ParentIndex>,
     pub is_unsafe: bool,
-    pub params: FnParams,
-    pub param_order: Vec<FnParamIndex>,
+    pub params: Params,
+    pub param_order: Vec<ParamIndex>,
     pub ret: TypeIndex,
     pub body: Option<Body>,
 }
 
-impl Typed for FnItem {
+impl Typed for CallableItem {
+    fn type_(&self) -> TypeIndex {
+        self.ret
+    }
+}
+
+#[derive(Clone, Debug, From)]
+pub enum Arg {
+    Expr(AtomExpr),
+    OutVar(OutVarArg),
+    Label(LabelIndex),
+}
+
+deref_from!(&LabelIndex => Arg);
+
+#[derive(Clone, Debug)]
+pub struct Call {
+    pub target: CallableIndex,
+    pub is_unsafe: bool,
+    pub args: Vec<Arg>,
+    pub ret: TypeIndex,
+}
+
+impl Typed for Call {
     fn type_(&self) -> TypeIndex {
         self.ret
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct OpItem {
-    pub path: Spanned<Path>,
-    pub parent: IrIndex,
-    pub is_unsafe: bool,
-    pub params: Params,
-    pub param_order: Vec<ParamIndex>,
-    pub body: Body,
-}
-
-#[derive(Clone, Debug)]
 pub struct Body {
-    pub local_vars: TiVec<LocalVarIndex, LocalVar>,
-    pub local_labels: TiVec<LocalLabelIndex, Spanned<Ident>>,
+    pub locals: Locals,
     pub stmts: Vec<Stmt>,
 }
 
-field_index!(Body:local_vars[LocalVarIndex] => LocalVar);
-field_index!(Body:local_labels[LocalLabelIndex] => Spanned<Ident>);
+field_index!(Body:locals[LocalVarIndex] => LocalVar);
+field_index!(Body:locals[LocalLabelIndex] => Spanned<Ident>);
 
 #[derive(Clone, Debug, From)]
 pub enum Stmt {
@@ -95,14 +108,11 @@ pub enum Stmt {
     If(IfStmt),
     Check(CheckStmt),
     Goto(GotoStmt),
-    Emit(EmitStmt),
+    Call(Call),
     Block(BlockStmt),
-    Call(FnCall),
     Assign(AssignStmt),
     Ret(RetStmt),
 }
-
-deref_from!(&GotoStmt => Stmt);
 
 #[derive(Clone, Debug)]
 pub struct LetStmt {
@@ -119,15 +129,8 @@ pub struct IfStmt {
 
 #[derive(Clone, Debug)]
 pub struct CheckStmt {
-    pub kind: CheckStmtKind,
+    pub kind: CheckKind,
     pub cond: Expr,
-}
-
-#[derive(Clone, Debug)]
-pub struct EmitStmt {
-    pub target: OpIndex,
-    pub is_unsafe: bool,
-    pub args: Vec<Arg>,
 }
 
 #[derive(Clone, Debug)]
@@ -147,36 +150,6 @@ pub struct RetStmt {
     pub value: Expr,
 }
 
-#[derive(Clone, Debug)]
-pub struct FnCall {
-    pub target: FnIndex,
-    pub is_unsafe: bool,
-    pub args: Vec<FnArg>,
-    pub ret: TypeIndex,
-}
-
-impl Typed for FnCall {
-    fn type_(&self) -> TypeIndex {
-        self.ret
-    }
-}
-
-#[derive(Clone, Debug, From)]
-pub enum FnArg {
-    #[from(types(AtomExpr, LabelIndex, "&LabelIndex"))]
-    Arg(Arg),
-    #[from]
-    OutVar(OutVarArg),
-}
-
-#[derive(Clone, Debug, From)]
-pub enum Arg {
-    Expr(AtomExpr),
-    Label(LabelIndex),
-}
-
-deref_from!(&LabelIndex => Arg);
-
 #[derive(Clone, Debug, From)]
 pub enum Expr {
     #[from]
@@ -184,7 +157,7 @@ pub enum Expr {
     #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
     #[from]
-    Call(FnCall),
+    Call(Call),
     #[from]
     Negate(Box<NegateExpr>),
     #[from]
@@ -307,7 +280,7 @@ impl Typed for BlockExpr {
 
 #[derive(Clone, Debug)]
 pub struct NegateExpr<E = Expr> {
-    pub kind: NegateExprKind,
+    pub kind: NegateKind,
     pub expr: E,
 }
 
@@ -345,7 +318,7 @@ impl TryFrom<NegateExpr> for NegateExpr<AtomExpr> {
 
 #[derive(Clone, Debug)]
 pub struct CastExpr<E = Expr> {
-    pub kind: CastExprKind,
+    pub kind: CastKind,
     pub expr: E,
     pub type_: TypeIndex,
 }
@@ -387,13 +360,17 @@ impl TryFrom<CastExpr> for CastExpr<AtomExpr> {
 
 #[derive(Clone, Debug)]
 pub struct CompareExpr {
-    pub kind: CompareExprKind,
+    pub kind: CompareKind,
     pub lhs: AtomExpr,
     pub rhs: AtomExpr,
 }
 
+impl CompareExpr {
+    pub const TYPE: BuiltInType = type_checker::CompareExpr::TYPE;
+}
+
 impl Typed for CompareExpr {
     fn type_(&self) -> TypeIndex {
-        BuiltInType::Bool.into()
+        CompareExpr::TYPE.into()
     }
 }

@@ -3,7 +3,7 @@
 use codespan::RawIndex;
 use iterate::iterate;
 
-use crate::ast::{Ident, Path, Span, Spanned};
+use crate::ast::*;
 
 use crate::parser::ast::*;
 use crate::parser::helpers::*;
@@ -11,6 +11,7 @@ use crate::parser::helpers::*;
 grammar;
 
 extern {
+    // TODO(spinda): Collect user errors as we go and discharge them at the end. 
     type Error = UserParseError;
 }
 
@@ -56,7 +57,7 @@ CallableItem: Item =
     <tags:CallableTags> <kind:CallableKind> <ident:Spanned<Ident>>
     "(" <params:Comma<Param>> ")" <ret:("->" <Spanned<Path>>)?>
     <body:Spanned<CallableBody>> => {
-        let fn_item = FnItem {
+        let callable_item = CallableItem {
             ident,
             is_unsafe: tags.unsafe_tag.is_some(),
             params,
@@ -65,8 +66,8 @@ CallableItem: Item =
         };
 
         match kind {
-            CallableKind::Fn => fn_item.into(),
-            CallableKind::Op => OpItem(fn_item).into(),
+            CallableKind::Fn => Item::Fn(callable_item),
+            CallableKind::Op => Item::Op(callable_item),
         }
     };
 
@@ -83,6 +84,11 @@ CallableKind: CallableKind = {
     "op" => CallableKind::Op,
 };
 
+CallableBody: Option<Block> = {
+    ";" => None,
+    <block:Block> => Some(block),
+};
+
 Param: Param = {
     <var_param:VarParam> => var_param.into(),
     <out_var_param:OutVarParam> => out_var_param.into(),
@@ -96,11 +102,24 @@ VarParam: VarParam =
 OutVarParam: OutVarParam =
     "out" <ident:Spanned<Ident>> ":" <type_: Spanned<Path>> => OutVarParam { ident, type_ };
 
-CallableBody: Option<Block> = {
-    ";" => None,
-    <block:Block> => Some(block),
+Arg: Arg = {
+    <expr:RawBlockOrExpr> => {
+        match expr.expr {
+            Expr::Var(path) if !expr.is_grouped => Arg::VarExprOrLabel(path),
+            expr => expr.into(),
+        }
+    },
+    "out" <out_var_path:Spanned<Path>> => OutVar::Out(out_var_path).into(),
+    "out" <out_let_var:LocalVar> => OutVar::OutLet(out_let_var).into(),
 };
 
+Call: Call =
+    <target:Spanned<Path>> <args:Spanned<("(" <Comma<Spanned<Arg>>> ")")>> =>
+        Call { target, args };
+
+LocalVar: LocalVar =
+    "let" <tags:VarTags> <ident:Spanned<Ident>> <type_:(":" <Spanned<Path>>)?> =>
+        LocalVar { ident, is_mut: tags.mut_tag.is_some(), type_ };
 
 Block: Block = {
     "{" <stmts:Stmts> <value:Expr?> "}" => Block { stmts, value }, 
@@ -155,34 +174,30 @@ Stmt: Stmt = {
     <if_stmt:IfStmt> => if_stmt.into(),
     <check_stmt:CheckStmt> => check_stmt.into(),
     <goto_stmt:GotoStmt> => goto_stmt.into(),
-    <emit_stmt:EmitStmt> => emit_stmt.into(),
+    <emit_stmt:EmitStmt> => emit_stmt,
     <expr:Expr> ";" => expr.into(),
 };
 
 LetStmt: LetStmt =
     <lhs:LocalVar> "=" <rhs:Spanned<BlockOrExpr>> ";" => LetStmt { lhs, rhs };
 
-LocalVar: LocalVar =
-    "let" <tags:VarTags> <ident:Spanned<Ident>> <type_:(":" <Spanned<Path>>)?> =>
-        LocalVar { ident, is_mut: tags.mut_tag.is_some(), type_ };
-
 IfStmt: IfStmt =
     "if" <cond:Spanned<BlockOrExpr>> <then:Block> <else_:("else" <Block>)?> =>
         IfStmt { cond, then, else_ };
 
 CheckStmt: CheckStmt =
-    <kind:CheckStmtKind> <cond:Spanned<BlockOrExpr>> ";" => CheckStmt { kind, cond };
+    <kind:CheckKind> <cond:Spanned<BlockOrExpr>> ";" => CheckStmt { kind, cond };
 
-CheckStmtKind: CheckStmtKind = {
-    "assert" => CheckStmtKind::Assert,
-    "assume" => CheckStmtKind::Assume,
+CheckKind: CheckKind = {
+    "assert" => CheckKind::Assert,
+    "assume" => CheckKind::Assume,
 };
 
 GotoStmt: GotoStmt =
     "goto" <label:Spanned<Path>> ";" => GotoStmt { label };
 
-EmitStmt: EmitStmt =
-    "emit" <call_expr:CallExpr> => EmitStmt(call_expr);
+EmitStmt: Stmt =
+    "emit" <call:Call> => call.into();
 
 #[inline]
 Expr: Expr = Expr0;
@@ -253,7 +268,8 @@ BlockOrExpr3: Expr =
 RawExpr3: MaybeGrouped = {
     "(" <expr:BlockOrExpr0> ")" => MaybeGrouped::grouped(expr),
     <block_expr:BlockExpr> => MaybeGrouped::ungrouped(block_expr.into()),
-    <var_or_call_expr:VarOrCallExpr> => MaybeGrouped::ungrouped(var_or_call_expr),
+    <call:Call> => MaybeGrouped::ungrouped(call.into()),
+    <path:Spanned<Path>> => MaybeGrouped::ungrouped(path.into()),
     <negate_expr:NegateExpr> => MaybeGrouped::ungrouped(negate_expr.into()),
 };
 
@@ -263,48 +279,28 @@ RawBlockOrExpr3: MaybeGrouped = {
 };
 
 BlockExpr: BlockExpr =
-    <kind:BlockExprKind> <block:Block> => BlockExpr {
+    <kind:BlockKind> <block:Block> => BlockExpr {
         kind: Some(kind),
         block,
     };
 
-BlockExprKind: BlockExprKind = {
-    "unsafe" => BlockExprKind::Unsafe,
-};
-
-VarOrCallExpr: Expr = {
-    <call_expr:CallExpr> => call_expr.into(),
-    <path:Spanned<Path>> => path.into(),
-};
-
-CallExpr: CallExpr =
-    <target:Spanned<Path>> <args:Spanned<("(" <Comma<Spanned<Arg>>> ")")>> =>
-        CallExpr { target, args };
-
-Arg: Arg = {
-    <expr:RawBlockOrExpr> => {
-        match expr.expr {
-            Expr::Var(path) if !expr.is_grouped => Arg::VarExprOrLabel(path),
-            expr => expr.into(),
-        }
-    },
-    "out" <out_var_path:Spanned<Path>> => OutVar::Out(out_var_path).into(),
-    "out" <out_let_var:LocalVar> => OutVar::OutLet(out_let_var).into(),
+BlockKind: BlockKind = {
+    "unsafe" => BlockKind::Unsafe,
 };
 
 NegateExpr: NegateExpr =
-    <kind:Spanned<NegateExprKind>> <expr:Spanned<BlockOrExpr3>> => NegateExpr { kind, expr };
+    <kind:Spanned<NegateKind>> <expr:Spanned<BlockOrExpr3>> => NegateExpr { kind, expr };
 
-NegateExprKind: NegateExprKind = {
-    "-" => NegateExprKind::Arithmetic,
-    "!" => NegateExprKind::Logical,
+NegateKind: NegateKind = {
+    "-" => NegateKind::Arithmetic,
+    "!" => NegateKind::Logical,
 };
 
 CastExpr: CastExpr =
     <expr:Spanned<BlockOrExpr2>> "as" <type_:Spanned<Path>> => CastExpr { expr, type_ };
 
 CompareExpr: CompareExpr =
-    <lhs:Spanned<RawBlockOrExpr1>> <kind:Spanned<CompareExprKind>> <rhs:Spanned<BlockOrExpr2>> =>?
+    <lhs:Spanned<RawBlockOrExpr1>> <kind:Spanned<CompareKind>> <rhs:Spanned<BlockOrExpr2>> =>?
     {
         if !lhs.value.is_grouped {
             if let Expr::Compare(_) = lhs.value.expr {
@@ -321,13 +317,13 @@ CompareExpr: CompareExpr =
         })
     };
 
-CompareExprKind: CompareExprKind = {
-    "==" => CompareExprKind::Eq,
-    "!=" => CompareExprKind::Neq,
-    "<=" => CompareExprKind::Lte,
-    ">=" => CompareExprKind::Gte,
-    "<" => CompareExprKind::Lt,
-    ">" => CompareExprKind::Gt,
+CompareKind: CompareKind = {
+    "==" => CompareKind::Eq,
+    "!=" => CompareKind::Neq,
+    "<=" => CompareKind::Lte,
+    ">=" => CompareKind::Gte,
+    "<" => CompareKind::Lt,
+    ">" => CompareKind::Gt,
 };
 
 AssignExpr: AssignExpr =

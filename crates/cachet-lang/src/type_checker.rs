@@ -1,10 +1,5 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-// TODO(spinda): Check that `goto` statements don't appear in functions.
-
-// TODO(spinda): Check that `emit` statements only appear in ops that emit other
-// ops.
-
 mod ast;
 mod error;
 mod graphs;
@@ -16,18 +11,16 @@ use iterate::iterate;
 use lazy_static::lazy_static;
 use typed_index_collections::{TiSlice, TiVec};
 
-use crate::ast::{Ident, MaybeSpanned, Path, Span, Spanned};
+use crate::ast::{
+    BlockKind, BuiltInType, BuiltInVar, CastKind, Ident, MaybeSpanned, NegateKind, Path, Span,
+    Spanned,
+};
 use crate::resolver;
-use crate::util::collect_eager;
 use crate::FrontendError;
 
 pub use crate::type_checker::ast::*;
 pub use crate::type_checker::error::*;
 use crate::type_checker::graphs::{CallGraph, TypeGraph};
-
-lazy_static! {
-    static ref UNKNOWN_TYPE_IDENT: Ident = Ident::from("<Unknown>");
-}
 
 pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     // Set up an internal placeholder type used to "turn off" type-checking for
@@ -43,42 +36,18 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
 
     let mut type_checker = TypeChecker::new(&env, unknown_type_index);
 
-    let type_order = type_checker.flatten_type_graph();
+    let fn_items = type_checker.type_check_fn_items();
+    let op_items = type_checker.type_check_op_items();
 
-    let fn_items: TiVec<FnIndex, _> = env
-        .fn_items
-        .keys()
-        .map(|fn_index| type_checker.type_check_fn_item(fn_index))
-        .collect();
+    let decl_order = type_checker.finish()?;
 
-    let op_items: Option<TiVec<OpIndex, _>> = collect_eager(
-        env.op_items
-            .keys()
-            .map(|op_index| type_checker.type_check_op_item(op_index)),
-    );
-
-    let callable_order = type_checker.flatten_call_graph();
-
-    if !type_checker.errors.is_empty() {
-        type_checker.errors.sort_by_key(|error| error.span());
-        return Err(TypeCheckErrors(type_checker.errors));
-    }
-
-    let decl_order = type_order
-        .into_iter()
-        .filter_map(|type_index| {
-            if type_index == unknown_type_index {
-                None
-            } else {
-                DeclIndex::try_from(type_index).ok()
-            }
-        })
-        .chain(env.global_var_items.keys().map(DeclIndex::from))
-        .chain(callable_order.into_iter().map(DeclIndex::from))
-        .collect();
-
-    // Strip out the internal "unknown" type before returning.
-    env.struct_items.pop();
+    // Strip out the internal "unknown" type, so it doesn't escape the
+    // type-checking phase.
+    let popped_type_index = env
+        .struct_items
+        .pop_key_value()
+        .map(|(struct_index, _)| struct_index.into());
+    debug_assert_eq!(popped_type_index, Some(unknown_type_index));
 
     Ok(Env {
         enum_items: env.enum_items,
@@ -86,13 +55,17 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
         ir_items: env.ir_items,
         global_var_items: env.global_var_items,
         fn_items,
-        op_items: op_items.unwrap(),
+        op_items,
         decl_order,
     })
 }
 
+lazy_static! {
+    static ref UNKNOWN_TYPE_IDENT: Ident = Ident::from("<Unknown>");
+}
+
 fn build_cast_chain(
-    kind: CastExprKind,
+    kind: CastKind,
     expr: Expr,
     cast_route: impl Iterator<Item = TypeIndex>,
 ) -> Expr {
@@ -108,148 +81,43 @@ fn build_cast_chain(
 
 struct TypeChecker<'a> {
     errors: Vec<TypeCheckError>,
-    call_graph: CallGraph,
     env: &'a resolver::Env,
     unknown_type: TypeIndex,
+    call_graph: CallGraph,
 }
 
 impl<'a> TypeChecker<'a> {
     fn new(env: &'a resolver::Env, unknown_type_index: TypeIndex) -> Self {
         TypeChecker {
             errors: Vec::new(),
-            call_graph: CallGraph::new(env.fn_items.len(), env.op_items.len()),
             env,
             unknown_type: unknown_type_index,
+            call_graph: CallGraph::new(env.fn_items.len(), env.op_items.len()),
         }
     }
 
-    fn type_check_fn_item(&mut self, fn_index: FnIndex) -> FnItem {
-        let (body, ret) = self.type_check_body(fn_index.into());
-
-        let fn_item = &self.env.fn_items[fn_index];
-
-        let params = FnParams {
-            params: Params {
-                var_params: fn_item.params.var_params.clone(),
-                label_params: fn_item.params.label_params.clone(),
-            },
-            out_var_params: fn_item.params.out_var_params.clone(),
-        };
-
-        let param_order = fn_item
-            .param_order
-            .iter()
-            .map(|fn_param_index| match fn_param_index {
-                resolver::ParamIndex::Var(var_param_index) => var_param_index.into(),
-                resolver::ParamIndex::OutVar(out_var_param_index) => out_var_param_index.into(),
-                resolver::ParamIndex::Label(label_param_index) => label_param_index.into(),
-            })
-            .collect();
-
-        FnItem {
-            path: fn_item.path,
-            parent: fn_item.parent,
-            is_unsafe: fn_item.is_unsafe,
-            params,
-            param_order,
-            ret,
-            body,
+    fn finish(mut self) -> Result<Vec<DeclIndex>, TypeCheckErrors> {
+        if !self.errors.is_empty() {
+            self.errors.sort_by_key(|error| error.span());
+            return Err(TypeCheckErrors(self.errors));
         }
-    }
 
-    fn type_check_op_item(&mut self, op_index: OpIndex) -> Option<OpItem> {
-        let (body, ret) = self.type_check_body(op_index.into());
-
-        let op_item = &self.env.op_items[op_index];
-
-        let ir_index = match op_item.parent {
-            Some(ParentIndex::Ir(ir_index)) => Some(ir_index),
-            _ => {
-                self.errors
-                    .push(TypeCheckError::MisplacedOpItem { op: op_item.path });
-                None
-            }
-        };
-
-        let params = Params {
-            var_params: op_item.params.var_params.clone(),
-            label_params: op_item.params.label_params.clone(),
-        };
-
-        let param_order = op_item
-            .param_order
-            .iter()
-            .filter_map(|fn_param_index| match fn_param_index {
-                resolver::ParamIndex::Var(var_param_index) => Some(var_param_index.into()),
-                resolver::ParamIndex::OutVar(out_var_param_index) => {
-                    self.errors.push(TypeCheckError::OpHasOutParam {
-                        op: op_item.path.value,
-                        out_param: op_item.params[out_var_param_index].ident,
-                    });
+        let unknown_type_index = self.unknown_type;
+        let decl_order = self
+            .flatten_type_graph()
+            .into_iter()
+            .filter_map(|type_index| {
+                if type_index == unknown_type_index {
                     None
+                } else {
+                    DeclIndex::try_from(type_index).ok()
                 }
-                resolver::ParamIndex::Label(label_param_index) => Some(label_param_index.into()),
             })
+            .chain(self.env.global_var_items.keys().map(DeclIndex::from))
+            .chain(self.flatten_call_graph().into_iter().map(DeclIndex::from))
             .collect();
 
-        if let Some(ret) = &op_item.ret {
-            self.errors.push(TypeCheckError::OpReturnsValue {
-                op: op_item.path.value,
-                ret_span: ret.span,
-            });
-        } else {
-            debug_assert_eq!(ret, BuiltInType::Unit.into());
-        }
-
-        if body.is_none() {
-            self.errors.push(TypeCheckError::MissingOpBody {
-                op: op_item.path.value,
-                body_span: op_item.body.span,
-            });
-        }
-
-        Some(OpItem {
-            path: op_item.path,
-            parent: ir_index?,
-            is_unsafe: op_item.is_unsafe,
-            params,
-            param_order,
-            body: body?,
-        })
-    }
-
-    fn type_check_body(&mut self, callable_index: CallableIndex) -> (Option<Body>, TypeIndex) {
-        let fn_item = &self.env[callable_index];
-
-        let ret = fn_item.type_();
-
-        let body = fn_item.body.value.as_ref().map(|body| {
-            let mut local_vars = body.local_vars.clone();
-
-            let mut scoped_type_checker =
-                ScopedTypeChecker::new(self, callable_index, &mut local_vars);
-            let block = scoped_type_checker.type_check_block_expecting_type(
-                Spanned::new(fn_item.body.span, &body.block),
-                ret,
-            );
-
-            Body {
-                local_vars: local_vars
-                    .into_iter()
-                    .map(|local_var| LocalVar {
-                        ident: local_var.ident,
-                        is_mut: local_var.is_mut,
-                        type_: local_var.type_.expect(
-                            "the types of all local variables should be inferred by this point",
-                        ),
-                    })
-                    .collect(),
-                local_labels: body.local_labels.clone(),
-                block,
-            }
-        });
-
-        (body, ret)
+        Ok(decl_order)
     }
 
     fn flatten_type_graph(&mut self) -> Vec<TypeIndex> {
@@ -262,8 +130,8 @@ impl<'a> TypeChecker<'a> {
                     TypeIndex::BuiltIn(_) => {
                         unreachable!("built-in types can't participate in cycles")
                     }
-                    TypeIndex::Enum(enum_index) => self.env.enum_items[enum_index].ident,
-                    TypeIndex::Struct(struct_index) => self.env.struct_items[struct_index].ident,
+                    TypeIndex::Enum(enum_index) => self.env[enum_index].ident,
+                    TypeIndex::Struct(struct_index) => self.env[struct_index].ident,
                 })
                 .collect();
 
@@ -308,6 +176,66 @@ impl<'a> TypeChecker<'a> {
         callable_sccs.iter_post_order().collect()
     }
 
+    fn type_check_fn_items(&mut self) -> TiVec<FnIndex, CallableItem> {
+        self.type_check_callable_items(self.env.fn_items.keys())
+    }
+
+    fn type_check_op_items(&mut self) -> TiVec<OpIndex, CallableItem> {
+        self.type_check_callable_items(self.env.op_items.keys())
+    }
+
+    fn type_check_callable_items<I: Into<CallableIndex>>(
+        &mut self,
+        callable_indexes: impl Iterator<Item = I>,
+    ) -> TiVec<I, CallableItem> {
+        callable_indexes
+            .map(|callable_index| self.type_check_callable_item(callable_index.into()))
+            .collect()
+    }
+
+    fn type_check_callable_item(&mut self, callable_index: CallableIndex) -> CallableItem {
+        let callable_item = &self.env[callable_index];
+
+        let ret = callable_item.type_();
+
+        let body = callable_item.body.value.as_ref().map(|body| {
+            let mut local_vars = body.locals.local_vars.clone();
+
+            let mut scoped_type_checker =
+                ScopedTypeChecker::new(self, callable_index, &mut local_vars);
+            let block = scoped_type_checker.type_check_block_expecting_type(
+                Spanned::new(callable_item.body.span, &body.block),
+                ret,
+            );
+
+            let locals = Locals {
+                local_vars: local_vars
+                    .into_iter()
+                    .map(|local_var| LocalVar {
+                        ident: local_var.ident,
+                        is_mut: local_var.is_mut,
+                        type_: local_var.type_.expect(
+                            "the types of all local variables should be inferred by this point",
+                        ),
+                    })
+                    .collect(),
+                local_labels: body.locals.local_labels.clone(),
+            };
+
+            Body { locals, block }
+        });
+
+        CallableItem {
+            path: callable_item.path,
+            parent: callable_item.parent,
+            is_unsafe: callable_item.is_unsafe,
+            params: callable_item.params.clone(),
+            param_order: callable_item.param_order.clone(),
+            ret,
+            body,
+        }
+    }
+
     fn expect_expr_type(&mut self, expr: Spanned<Expr>, type_index: TypeIndex) -> Expr {
         let expr_span = expr.span;
         let (success, expr) = self.try_build_upcast_chain(expr.value, type_index);
@@ -328,7 +256,7 @@ impl<'a> TypeChecker<'a> {
         };
         (
             true,
-            build_cast_chain(CastExprKind::Upcast, expr, upcast_route.into_iter()),
+            build_cast_chain(CastKind::Upcast, expr, upcast_route.into_iter()),
         )
     }
 
@@ -436,234 +364,17 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         }
     }
 
-    fn type_check_block_expecting_type(
-        &mut self,
-        block: Spanned<&resolver::Block>,
-        expected_type_index: TypeIndex,
-    ) -> Block {
-        let block_span = block.span;
-        let mut block = self.type_check_block(block.value);
-        block.value =
-            self.expect_expr_type(Spanned::new(block_span, block.value), expected_type_index);
-        block
-    }
-
-    fn type_check_block(&mut self, block: &resolver::Block) -> Block {
-        let stmts = block
-            .stmts
-            .iter()
-            .map(|stmt| self.type_check_stmt(stmt))
-            .collect();
-
-        let value = match &block.value {
-            None => BuiltInVar::Unit.into(),
-            Some(value) => self.type_check_expr(value),
-        };
-
-        Block { stmts, value }
-    }
-
-    fn type_check_stmt(&mut self, stmt: &resolver::Stmt) -> Stmt {
-        match stmt {
-            resolver::Stmt::Let(let_stmt) => self.type_check_let_stmt(let_stmt).into(),
-            resolver::Stmt::If(if_stmt) => self.type_check_if_stmt(if_stmt).into(),
-            resolver::Stmt::Check(check_stmt) => self.type_check_check_stmt(check_stmt).into(),
-            resolver::Stmt::Goto(goto_stmt) => goto_stmt.into(),
-            resolver::Stmt::Emit(emit_stmt) => self.type_check_emit_stmt(emit_stmt).into(),
-            resolver::Stmt::Expr(expr) => self.type_check_expr(expr).into(),
-        }
-    }
-
-    fn type_check_let_stmt(&mut self, let_stmt: &resolver::LetStmt) -> LetStmt {
-        let rhs = let_stmt.rhs.as_ref().map(|rhs| self.type_check_expr(rhs));
-
-        let lhs = &mut self.local_vars[let_stmt.lhs];
-
-        let rhs = match lhs.type_ {
-            Some(lhs_type_index) => self.expect_expr_type(rhs, lhs_type_index),
-            None => {
-                lhs.type_ = Some(rhs.value.type_());
-                rhs.value
-            }
-        };
-
-        LetStmt {
-            lhs: let_stmt.lhs,
-            rhs,
-        }
-    }
-
-    fn type_check_if_stmt(&mut self, if_stmt: &resolver::IfStmt) -> IfStmt {
-        let cond =
-            self.type_check_expr_expecting_type(if_stmt.cond.as_ref(), BuiltInType::Bool.into());
-
-        let then = self.type_check_block(&if_stmt.then);
-
-        let else_ = if_stmt.else_.as_ref().map(|else_| self.type_check_block(else_));
-
-        IfStmt { cond, then, else_ }
-    }
-
-    fn type_check_check_stmt(&mut self, check_stmt: &resolver::CheckStmt) -> CheckStmt {
-        let cond = self
-            .type_check_expr_expecting_type(check_stmt.cond.as_ref(), BuiltInType::Bool.into());
-
-        CheckStmt {
-            kind: check_stmt.kind,
-            cond,
-        }
-    }
-
-    fn type_check_emit_stmt(&mut self, emit_stmt: &resolver::EmitStmt) -> EmitStmt {
-        let (is_unsafe, fn_args, _) = self.type_check_call(
-            emit_stmt.target.map(CallableIndex::from),
-            emit_stmt.args.as_ref().map(Vec::as_slice),
-        );
-
-        let args = fn_args
-            .into_iter()
-            .map(|fn_arg| match fn_arg {
-                FnArg::Arg(arg) => arg,
-                // Ops can't have out-parameters. Any attempt to pass an
-                // out-variable argument in an `emit` statement will have raised
-                // an argument kind mismatch error in type-checking the call
-                // arguments, so we can discard those arguments by the time they
-                // reach this point.
-                FnArg::OutVar(_) => Expr::from(BuiltInVar::Unit).into(),
-            })
-            .collect();
-
-        EmitStmt {
-            target: emit_stmt.target.value,
-            is_unsafe,
-            args,
-        }
-    }
-
-    fn type_check_expr_expecting_type(
-        &mut self,
-        expr: Spanned<&resolver::Expr>,
-        expected_type_index: TypeIndex,
-    ) -> Expr {
-        let expr = expr.map(|expr| self.type_check_expr(expr));
-        self.expect_expr_type(expr, expected_type_index)
-    }
-
-    fn type_check_expr(&mut self, expr: &resolver::Expr) -> Expr {
-        match expr {
-            resolver::Expr::Block(block_expr) => self.type_check_block_expr(block_expr).into(),
-            resolver::Expr::Var(index) => self.type_check_var_expr(*index).into(),
-            resolver::Expr::Call(call_expr) => self.type_check_call_expr(call_expr).into(),
-            resolver::Expr::Negate(negate_expr) => self.type_check_negate_expr(negate_expr).into(),
-            resolver::Expr::Cast(cast_expr) => self.type_check_cast_expr(cast_expr),
-            resolver::Expr::Compare(compare_expr) => {
-                self.type_check_compare_expr(compare_expr).into()
-            }
-            resolver::Expr::Assign(assign_expr) => self.type_check_assign_expr(assign_expr).into(),
-        }
-    }
-
-    fn type_check_block_expr(&mut self, block_expr: &resolver::BlockExpr) -> BlockExpr {
-        let block = match block_expr.kind {
-            None => self.type_check_block(&block_expr.block),
-            Some(kind) => self
-                .recurse(kind == BlockExprKind::Unsafe)
-                .type_check_block(&block_expr.block),
-        };
-
-        BlockExpr {
-            kind: block_expr.kind,
-            block,
-        }
-    }
-
-    fn type_check_var_expr(&mut self, var_index: Spanned<VarIndex>) -> VarExpr {
-        let var_type_index = self.get_var_type(var_index);
-
-        VarExpr {
-            var: var_index.value,
-            type_: var_type_index,
-        }
-    }
-
-    fn type_check_call_expr(&mut self, call_expr: &resolver::CallExpr) -> CallExpr {
-        let (is_unsafe, args, ret) = self.type_check_call(
-            call_expr.target.map(CallableIndex::from),
-            call_expr.args.as_ref().map(Vec::as_slice),
-        );
-
-        CallExpr {
-            target: call_expr.target.value,
-            is_unsafe,
-            args,
-            ret,
-        }
-    }
-
-    fn type_check_call(
-        &mut self,
-        target: Spanned<CallableIndex>,
-        args: Spanned<&[Spanned<resolver::Arg>]>,
-    ) -> (bool, Vec<FnArg>, TypeIndex) {
-        self.type_checker
-            .call_graph
-            .record_call(self.callable_index, target);
-
-        let fn_item = &self.env[target.value];
-
-        if fn_item.is_unsafe && !self.is_unsafe {
-            self.type_checker
-                .errors
-                .push(TypeCheckError::UnsafeCallInSafeContext {
-                    target: Spanned::new(target.span, fn_item.path.value),
-                    target_defined_at: fn_item.path.span,
-                });
-        }
-
-        let expected_arg_count = fn_item.param_order.len();
-        let found_arg_count = args.value.len();
-        if found_arg_count != expected_arg_count {
-            self.type_checker
-                .errors
-                .push(TypeCheckError::ArgCountMismatch {
-                    expected_arg_count,
-                    found_arg_count,
-                    target: Spanned::new(target.span, fn_item.path.value),
-                    target_defined_at: fn_item.path.span,
-                    args_span: args.span,
-                });
-        }
-
-        // Extend the parameter order past the end so that excess arguments
-        // still get type-checked.
-        let param_order = fn_item
-            .param_order
-            .iter()
-            .copied()
-            .map(Some)
-            .chain(iter::repeat(None));
-
-        let args: Vec<_> = param_order
-            .zip(args.value.iter())
-            .map(|(param_index, arg)| self.type_check_arg(target.value, param_index, arg.as_ref()))
-            .collect();
-
-        let ret = fn_item.type_();
-
-        (fn_item.is_unsafe, args, ret)
-    }
-
     fn type_check_arg(
         &mut self,
         target: CallableIndex,
         param_index: Option<resolver::ParamIndex>,
         arg: Spanned<&resolver::Arg>,
-    ) -> FnArg {
-        let fn_item = &self.env[target];
+    ) -> Arg {
+        let callable_item = &self.env[target];
 
         let param_summary = param_index.map(|param_index| match param_index {
             resolver::ParamIndex::Var(var_param_index) => {
-                let var_param = &fn_item.params[var_param_index];
+                let var_param = &callable_item.params[var_param_index];
                 ParamSummary {
                     ident: var_param.ident,
                     type_: Some(var_param.type_),
@@ -671,7 +382,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 }
             }
             resolver::ParamIndex::OutVar(out_var_param_index) => {
-                let out_var_param = &fn_item.params[out_var_param_index];
+                let out_var_param = &callable_item.params[out_var_param_index];
                 ParamSummary {
                     ident: out_var_param.ident,
                     type_: Some(out_var_param.type_),
@@ -679,28 +390,29 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 }
             }
             resolver::ParamIndex::Label(label_param_index) => ParamSummary {
-                ident: fn_item.params[label_param_index],
+                ident: callable_item.params[label_param_index],
                 type_: None,
                 expected_arg_kind: ArgKind::Label,
             },
         });
 
-        let (found_arg_kind, fn_arg) = match &arg.value {
+        let arg_span = arg.span;
+        let (found_arg_kind, arg) = match &arg.value {
             resolver::Arg::Expr(expr) => (
                 ArgKind::Expr,
                 self.type_check_expr_arg(
-                    fn_item.path.value,
+                    callable_item.path.value,
                     param_summary.as_ref(),
-                    Spanned::new(arg.span, expr),
+                    Spanned::new(arg_span, expr),
                 )
                 .into(),
             ),
             resolver::Arg::OutVar(out_var) => (
                 ArgKind::OutVar,
                 self.type_check_out_var_arg(
-                    fn_item.path.value,
+                    callable_item.path.value,
                     param_summary.as_ref(),
-                    Spanned::new(arg.span, *out_var),
+                    Spanned::new(arg_span, *out_var),
                 )
                 .into(),
             ),
@@ -717,14 +429,14 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 self.errors.push(TypeCheckError::ArgKindMismatch {
                     expected_arg_kind,
                     found_arg_kind,
-                    arg_span: arg.span,
-                    target: fn_item.path.value,
+                    arg_span,
+                    target: callable_item.path.value,
                     param: param_ident,
                 });
             }
         }
 
-        fn_arg
+        arg
     }
 
     fn type_check_expr_arg(
@@ -810,6 +522,190 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         }
     }
 
+    fn type_check_call(&mut self, call: &resolver::Call) -> Call {
+        self.type_checker
+            .call_graph
+            .record_call(self.callable_index, call.target);
+
+        let callable_item = &self.env[call.target.value];
+
+        if callable_item.is_unsafe && !self.is_unsafe {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::UnsafeCallInSafeContext {
+                    target: Spanned::new(call.target.span, callable_item.path.value),
+                    target_defined_at: callable_item.path.span,
+                });
+        }
+
+        let expected_arg_count = callable_item.param_order.len();
+        let found_arg_count = call.args.value.len();
+        if found_arg_count != expected_arg_count {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::ArgCountMismatch {
+                    expected_arg_count,
+                    found_arg_count,
+                    target: Spanned::new(call.target.span, callable_item.path.value),
+                    target_defined_at: callable_item.path.span,
+                    args_span: call.args.span,
+                });
+        }
+
+        // Extend the parameter order past the end so that excess arguments
+        // still get type-checked.
+        let param_order = callable_item
+            .param_order
+            .iter()
+            .copied()
+            .map(Some)
+            .chain(iter::repeat(None));
+
+        let args: Vec<_> = param_order
+            .zip(call.args.value.iter())
+            .map(|(param_index, arg)| {
+                self.type_check_arg(call.target.value, param_index, arg.as_ref())
+            })
+            .collect();
+
+        Call {
+            target: call.target.value,
+            is_unsafe: callable_item.is_unsafe,
+            args,
+            ret: callable_item.type_(),
+        }
+    }
+
+    fn type_check_block_expecting_type(
+        &mut self,
+        block: Spanned<&resolver::Block>,
+        expected_type_index: TypeIndex,
+    ) -> Block {
+        let block_span = block.span;
+        let mut block = self.type_check_block(block.value);
+        block.value =
+            self.expect_expr_type(Spanned::new(block_span, block.value), expected_type_index);
+        block
+    }
+
+    fn type_check_block(&mut self, block: &resolver::Block) -> Block {
+        let stmts = block
+            .stmts
+            .iter()
+            .map(|stmt| self.type_check_stmt(stmt))
+            .collect();
+
+        let value = match &block.value {
+            None => BuiltInVar::Unit.into(),
+            Some(value) => self.type_check_expr(value),
+        };
+
+        Block { stmts, value }
+    }
+
+    fn type_check_stmt(&mut self, stmt: &resolver::Stmt) -> Stmt {
+        match stmt {
+            resolver::Stmt::Let(let_stmt) => self.type_check_let_stmt(let_stmt).into(),
+            resolver::Stmt::If(if_stmt) => self.type_check_if_stmt(if_stmt).into(),
+            resolver::Stmt::Check(check_stmt) => self.type_check_check_stmt(check_stmt).into(),
+            resolver::Stmt::Goto(goto_stmt) => GotoStmt {
+                label: goto_stmt.label,
+            }
+            .into(),
+            resolver::Stmt::Emit(call) => self.type_check_call(call).into(),
+            resolver::Stmt::Expr(expr) => self.type_check_expr(expr).into(),
+        }
+    }
+
+    fn type_check_let_stmt(&mut self, let_stmt: &resolver::LetStmt) -> LetStmt {
+        let rhs = let_stmt.rhs.as_ref().map(|rhs| self.type_check_expr(rhs));
+
+        let lhs = &mut self.local_vars[let_stmt.lhs];
+
+        let rhs = match lhs.type_ {
+            Some(lhs_type_index) => self.expect_expr_type(rhs, lhs_type_index),
+            None => {
+                lhs.type_ = Some(rhs.value.type_());
+                rhs.value
+            }
+        };
+
+        LetStmt {
+            lhs: let_stmt.lhs,
+            rhs,
+        }
+    }
+
+    fn type_check_if_stmt(&mut self, if_stmt: &resolver::IfStmt) -> IfStmt {
+        let cond =
+            self.type_check_expr_expecting_type(if_stmt.cond.as_ref(), BuiltInType::Bool.into());
+
+        let then = self.type_check_block(&if_stmt.then);
+
+        let else_ = if_stmt
+            .else_
+            .as_ref()
+            .map(|else_| self.type_check_block(else_));
+
+        IfStmt { cond, then, else_ }
+    }
+
+    fn type_check_check_stmt(&mut self, check_stmt: &resolver::CheckStmt) -> CheckStmt {
+        let cond = self
+            .type_check_expr_expecting_type(check_stmt.cond.as_ref(), BuiltInType::Bool.into());
+
+        CheckStmt {
+            kind: check_stmt.kind,
+            cond,
+        }
+    }
+
+    fn type_check_expr_expecting_type(
+        &mut self,
+        expr: Spanned<&resolver::Expr>,
+        expected_type_index: TypeIndex,
+    ) -> Expr {
+        let expr = expr.map(|expr| self.type_check_expr(expr));
+        self.expect_expr_type(expr, expected_type_index)
+    }
+
+    fn type_check_expr(&mut self, expr: &resolver::Expr) -> Expr {
+        match expr {
+            resolver::Expr::Block(block_expr) => self.type_check_block_expr(block_expr).into(),
+            resolver::Expr::Var(index) => self.type_check_var_expr(*index).into(),
+            resolver::Expr::Call(call) => self.type_check_call(call).into(),
+            resolver::Expr::Negate(negate_expr) => self.type_check_negate_expr(negate_expr).into(),
+            resolver::Expr::Cast(cast_expr) => self.type_check_cast_expr(cast_expr),
+            resolver::Expr::Compare(compare_expr) => {
+                self.type_check_compare_expr(compare_expr).into()
+            }
+            resolver::Expr::Assign(assign_expr) => self.type_check_assign_expr(assign_expr).into(),
+        }
+    }
+
+    fn type_check_block_expr(&mut self, block_expr: &resolver::BlockExpr) -> BlockExpr {
+        let block = match block_expr.kind {
+            None => self.type_check_block(&block_expr.block),
+            Some(kind) => self
+                .recurse(kind == BlockKind::Unsafe)
+                .type_check_block(&block_expr.block),
+        };
+
+        BlockExpr {
+            kind: block_expr.kind,
+            block,
+        }
+    }
+
+    fn type_check_var_expr(&mut self, var_index: Spanned<VarIndex>) -> VarExpr {
+        let var_type_index = self.get_var_type(var_index);
+
+        VarExpr {
+            var: var_index.value,
+            type_: var_type_index,
+        }
+    }
+
     fn type_check_negate_expr(&mut self, negate_expr: &resolver::NegateExpr) -> NegateExpr {
         let expr = negate_expr
             .expr
@@ -818,7 +714,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let expr_type_index = expr.value.type_();
 
         let expr = match negate_expr.kind.value {
-            NegateExprKind::Arithmetic => {
+            NegateKind::Arithmetic => {
                 if !self.is_numeric_type(expr_type_index) {
                     self.type_checker
                         .errors
@@ -831,7 +727,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
                 match expr_type_index {
                     TypeIndex::BuiltIn(BuiltInType::Bool) => CastExpr {
-                        kind: CastExprKind::Upcast,
+                        kind: CastKind::Upcast,
                         expr: expr.value,
                         type_: BuiltInType::Int32.into(),
                     }
@@ -839,7 +735,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     _ => expr.value,
                 }
             }
-            NegateExprKind::Logical => self.expect_expr_type(expr, BuiltInType::Bool.into()),
+            NegateKind::Logical => self.expect_expr_type(expr, BuiltInType::Bool.into()),
         };
 
         NegateExpr {
@@ -876,7 +772,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             }
 
             return build_cast_chain(
-                CastExprKind::Downcast,
+                CastKind::Downcast,
                 expr,
                 iterate![
                     ..downcast_route.into_iter().rev().skip(1),
@@ -894,7 +790,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         // Emit an incorrectly-typed cast expression so that anything depending
         // on its type for inference lines up correctly.
         CastExpr {
-            kind: CastExprKind::Upcast,
+            kind: CastKind::Upcast,
             expr,
             type_: target_type_index.value,
         }
@@ -913,12 +809,12 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         {
             (
                 lhs,
-                build_cast_chain(CastExprKind::Upcast, rhs, rhs_upcast_route.into_iter()),
+                build_cast_chain(CastKind::Upcast, rhs, rhs_upcast_route.into_iter()),
             )
         } else if let Some(lhs_upcast_route) = self.try_match_types(rhs_type_index, lhs_type_index)
         {
             (
-                build_cast_chain(CastExprKind::Upcast, lhs, lhs_upcast_route.into_iter()),
+                build_cast_chain(CastKind::Upcast, lhs, lhs_upcast_route.into_iter()),
                 rhs,
             )
         } else {
@@ -990,12 +886,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     fn get_var_path(&self, var_index: VarIndex) -> MaybeSpanned<Path> {
         match var_index {
             VarIndex::BuiltIn(built_in_var) => Path::from(built_in_var.ident()).into(),
-            VarIndex::EnumVariant(enum_variant_index) => {
-                let enum_item = &self.env.enum_items[enum_variant_index.enum_index];
-                let enum_path = Path::from(enum_item.ident.value);
-                let variant = enum_item.variants[enum_variant_index.variant_index];
-                variant.map(|variant| enum_path.member(variant)).into()
-            }
+            VarIndex::EnumVariant(enum_variant_index) => self.env[enum_variant_index].into(),
             VarIndex::Global(global_var_index) => {
                 self.env.global_var_items[global_var_index].path.into()
             }

@@ -9,7 +9,8 @@ use typed_index_collections::{TiSlice, TiVec};
 
 use crate::type_checker;
 
-use crate::ast::{Ident, Span, Spanned};
+use crate::ast::{BuiltInType, BuiltInVar, Ident, Span, Spanned};
+
 pub use crate::normalizer::ast::*;
 
 lazy_static! {
@@ -22,36 +23,13 @@ pub fn normalize(env: type_checker::Env) -> Env {
     let fn_items: TiVec<FnIndex, _> = env
         .fn_items
         .into_iter()
-        .map(|fn_item| {
-            let body = fn_item.body.map(|body| {
-                normalize_body(global_var_items, &fn_item.params.params.var_params, body)
-            });
-            FnItem {
-                path: fn_item.path,
-                parent: fn_item.parent,
-                is_unsafe: fn_item.is_unsafe,
-                params: fn_item.params,
-                param_order: fn_item.param_order,
-                ret: fn_item.ret,
-                body,
-            }
-        })
+        .map(|fn_item| normalize_callable_item(global_var_items, fn_item))
         .collect();
 
     let op_items: TiVec<OpIndex, _> = env
         .op_items
         .into_iter()
-        .map(|op_item| {
-            let body = normalize_body(global_var_items, &op_item.params.var_params, op_item.body);
-            OpItem {
-                path: op_item.path,
-                parent: op_item.parent,
-                is_unsafe: op_item.is_unsafe,
-                params: op_item.params,
-                param_order: op_item.param_order,
-                body,
-            }
-        })
+        .map(|op_item| normalize_callable_item(global_var_items, op_item))
         .collect();
 
     Env {
@@ -65,20 +43,31 @@ pub fn normalize(env: type_checker::Env) -> Env {
     }
 }
 
-fn normalize_body(
+fn normalize_callable_item(
     global_var_items: &TiSlice<GlobalVarIndex, GlobalVarItem>,
-    var_params: &TiSlice<VarParamIndex, VarParam>,
-    body: type_checker::Body,
-) -> Body {
-    let mut local_vars = body.local_vars;
+    callable_item: type_checker::CallableItem,
+) -> CallableItem {
+    let body = callable_item.body.map(|mut body| {
+        let mut normalizer = Normalizer::new(
+            global_var_items,
+            &callable_item.params.var_params,
+            &mut body.locals.local_vars,
+        );
+        let stmts = normalizer.normalize_body_block(body.block);
+        Body {
+            locals: body.locals,
+            stmts,
+        }
+    });
 
-    let mut normalizer = Normalizer::new(global_var_items, var_params, &mut local_vars);
-    let stmts = normalizer.normalize_body_block(body.block);
-
-    Body {
-        local_vars,
-        local_labels: body.local_labels,
-        stmts,
+    CallableItem {
+        path: callable_item.path,
+        parent: callable_item.parent,
+        is_unsafe: callable_item.is_unsafe,
+        params: callable_item.params,
+        param_order: callable_item.param_order,
+        ret: callable_item.ret,
+        body,
     }
 }
 
@@ -172,13 +161,70 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         }
     }
 
+    fn normalize_arg(&mut self, arg: type_checker::Arg) -> Arg {
+        match arg {
+            type_checker::Arg::Expr(expr) => self.normalize_atom_expr(expr).into(),
+            type_checker::Arg::OutVar(out_var_arg) => out_var_arg.into(),
+            type_checker::Arg::Label(label_index) => label_index.into(),
+        }
+    }
+
+    fn normalize_call(&mut self, call: type_checker::Call) -> (Vec<Stmt>, Call) {
+        let mut stmts = Vec::new();
+        let mut scoped_normalizer = self.recurse(&mut stmts);
+
+        let args = call
+            .args
+            .into_iter()
+            .map(|arg| scoped_normalizer.normalize_arg(arg))
+            .collect();
+
+        (
+            stmts,
+            Call {
+                target: call.target,
+                is_unsafe: call.is_unsafe,
+                args,
+                ret: call.ret,
+            },
+        )
+    }
+
+    fn normalize_used_call(&mut self, call: type_checker::Call) -> Expr {
+        let (stmts, call) = self.normalize_call(call);
+        let value = call.into();
+
+        if stmts.is_empty() {
+            value
+        } else {
+            BlockExpr {
+                kind: None,
+                stmts,
+                value,
+            }
+            .into()
+        }
+    }
+
+    fn normalize_unused_call(&mut self, call: type_checker::Call) {
+        let (mut stmts, call) = self.normalize_call(call);
+        let stmt = call.into();
+
+        self.stmts.push(if stmts.is_empty() {
+            stmt
+        } else {
+            stmts.push(stmt);
+            BlockStmt { kind: None, stmts }.into()
+        });
+    }
+
     fn normalize_stmt(&mut self, stmt: type_checker::Stmt) {
         match stmt {
             type_checker::Stmt::Let(let_stmt) => self.normalize_let_stmt(let_stmt),
             type_checker::Stmt::If(if_stmt) => self.normalize_if_stmt(if_stmt),
             type_checker::Stmt::Check(check_stmt) => self.normalize_check_stmt(check_stmt),
             type_checker::Stmt::Goto(goto_stmt) => self.stmts.push(goto_stmt.into()),
-            type_checker::Stmt::Emit(emit_stmt) => self.normalize_emit_stmt(emit_stmt),
+            type_checker::Stmt::Emit(call) => self.normalize_unused_call(call),
             type_checker::Stmt::Expr(expr) => self.normalize_unused_expr(expr),
         }
     }
@@ -198,7 +244,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_if_stmt(&mut self, if_stmt: type_checker::IfStmt) {
         let cond = self.normalize_expr(if_stmt.cond);
         let then = self.normalize_unused_block(if_stmt.then);
-        let else_ = if_stmt.else_.map(|else_| self.normalize_unused_block(else_));
+        let else_ = if_stmt
+            .else_
+            .map(|else_| self.normalize_unused_block(else_));
 
         self.stmts.push(IfStmt { cond, then, else_ }.into());
     }
@@ -213,45 +261,6 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             }
             .into(),
         );
-    }
-
-    fn normalize_emit_stmt(&mut self, emit_stmt: type_checker::EmitStmt) {
-        let mut stmts = Vec::new();
-        let mut scoped_normalizer = self.recurse(&mut stmts);
-
-        let args = emit_stmt
-            .args
-            .into_iter()
-            .map(|arg| scoped_normalizer.normalize_arg(arg))
-            .collect();
-
-        let stmt = EmitStmt {
-            target: emit_stmt.target,
-            is_unsafe: emit_stmt.is_unsafe,
-            args,
-        }
-        .into();
-
-        self.stmts.push(if stmts.is_empty() {
-            stmt
-        } else {
-            stmts.push(stmt);
-            BlockStmt { kind: None, stmts }.into()
-        });
-    }
-
-    fn normalize_fn_arg(&mut self, fn_arg: type_checker::FnArg) -> FnArg {
-        match fn_arg {
-            type_checker::FnArg::Arg(arg) => self.normalize_arg(arg).into(),
-            type_checker::FnArg::OutVar(out_var_arg) => out_var_arg.into(),
-        }
-    }
-
-    fn normalize_arg(&mut self, arg: type_checker::Arg) -> Arg {
-        match arg {
-            type_checker::Arg::Expr(expr) => self.normalize_atom_expr(expr).into(),
-            type_checker::Arg::Label(label_index) => label_index.into(),
-        }
     }
 
     fn normalize_expr(&mut self, expr: type_checker::Expr) -> Expr {
@@ -309,7 +318,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         match expr {
             type_checker::Expr::Block(block_expr) => self.normalize_used_block_expr(*block_expr),
             type_checker::Expr::Var(var_expr) => var_expr.into(),
-            type_checker::Expr::Call(call_expr) => self.normalize_used_call_expr(call_expr),
+            type_checker::Expr::Call(call) => self.normalize_used_call(call),
             type_checker::Expr::Negate(negate_expr) => {
                 self.normalize_used_negate_expr(*negate_expr).into()
             }
@@ -329,7 +338,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         match expr {
             type_checker::Expr::Block(block_expr) => self.normalize_unused_block_expr(*block_expr),
             type_checker::Expr::Var(_) => (),
-            type_checker::Expr::Call(call_expr) => self.normalize_unused_call_expr(call_expr),
+            type_checker::Expr::Call(call) => self.normalize_unused_call(call),
             type_checker::Expr::Negate(negate_expr) => {
                 self.normalize_unused_negate_expr(*negate_expr)
             }
@@ -376,55 +385,6 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
                 .into(),
             );
         }
-    }
-
-    fn normalize_used_call_expr(&mut self, call_expr: type_checker::CallExpr) -> Expr {
-        let (stmts, fn_call) = self.normalize_call_expr(call_expr);
-        let value = fn_call.into();
-
-        if stmts.is_empty() {
-            value
-        } else {
-            BlockExpr {
-                kind: None,
-                stmts,
-                value,
-            }
-            .into()
-        }
-    }
-
-    fn normalize_unused_call_expr(&mut self, call_expr: type_checker::CallExpr) {
-        let (mut stmts, fn_call) = self.normalize_call_expr(call_expr);
-        let stmt = fn_call.into();
-
-        self.stmts.push(if stmts.is_empty() {
-            stmt
-        } else {
-            stmts.push(stmt);
-            BlockStmt { kind: None, stmts }.into()
-        });
-    }
-
-    fn normalize_call_expr(&mut self, call_expr: type_checker::CallExpr) -> (Vec<Stmt>, FnCall) {
-        let mut stmts = Vec::new();
-        let mut scoped_normalizer = self.recurse(&mut stmts);
-
-        let args = call_expr
-            .args
-            .into_iter()
-            .map(|fn_arg| scoped_normalizer.normalize_fn_arg(fn_arg))
-            .collect();
-
-        (
-            stmts,
-            FnCall {
-                target: call_expr.target,
-                is_unsafe: call_expr.is_unsafe,
-                args,
-                ret: call_expr.ret,
-            },
-        )
     }
 
     fn normalize_used_negate_expr(&mut self, negate_expr: type_checker::NegateExpr) -> NegateExpr {

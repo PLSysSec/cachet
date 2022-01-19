@@ -38,11 +38,6 @@ impl VarTags {
     }
 }
 
-pub enum CallableKind {
-    Fn,
-    Op,
-}
-
 #[derive(Default)]
 pub struct CallableTags {
     pub unsafe_tag: Option<Span>,
@@ -75,6 +70,11 @@ impl CallableTags {
 
         Ok(accum)
     }
+}
+
+pub enum CallableKind {
+    Fn,
+    Op,
 }
 
 pub struct MaybeGrouped {

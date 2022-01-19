@@ -4,11 +4,10 @@ use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use typed_index_collections::TiSlice;
 
-use crate::ast::{Span, Spanned};
+use crate::ast::{BuiltInType, Span, Spanned, BUILT_IN_TYPES, NUM_BUILT_IN_TYPES};
 
 use crate::type_checker::ast::{
-    BuiltInType, CallableIndex, EnumIndex, EnumItem, FnIndex, OpIndex, StructIndex,
-    StructItem, TypeIndex, BUILT_IN_TYPES, NUM_BUILT_IN_TYPES,
+    CallableIndex, EnumIndex, EnumItem, FnIndex, OpIndex, StructIndex, StructItem, TypeIndex,
 };
 
 pub struct TypeGraph {
