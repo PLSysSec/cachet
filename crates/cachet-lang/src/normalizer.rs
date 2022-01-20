@@ -275,6 +275,8 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_atom_expr(&mut self, expr: type_checker::Expr) -> AtomExpr {
         match self.normalize_expr(expr).try_into() {
             Ok(atom_expr) => match atom_expr {
+                // If the variable is mutable, we need to save its value at the
+                // correct point in evaluation.
                 AtomExpr::Var(var_expr) if self.is_mut_var(var_expr.var) => {
                     self.push_tmp_expr(var_expr.into()).into()
                 }

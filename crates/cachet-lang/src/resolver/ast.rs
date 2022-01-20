@@ -10,7 +10,7 @@ use crate::ast::{
     NegateKind, Path, Spanned,
 };
 pub use crate::parser::VariantIndex;
-use crate::util::{box_from, deref_from, deref_index, field_index, typed_index};
+use crate::util::{box_from, deref_from, deref_index, field_index, typed_field_index};
 
 #[derive(Clone, Debug)]
 pub struct Env {
@@ -22,12 +22,12 @@ pub struct Env {
     pub op_items: TiVec<OpIndex, CallableItem>,
 }
 
-typed_index!(Env:enum_items[EnumIndex] => EnumItem);
-typed_index!(Env:struct_items[StructIndex] => StructItem);
-typed_index!(Env:ir_items[IrIndex] => IrItem);
-typed_index!(Env:global_var_items[GlobalVarIndex] => GlobalVarItem);
-typed_index!(Env:fn_items[FnIndex] => CallableItem);
-typed_index!(Env:op_items[OpIndex] => CallableItem);
+typed_field_index!(Env:enum_items[pub EnumIndex] => EnumItem);
+typed_field_index!(Env:struct_items[pub StructIndex] => StructItem);
+typed_field_index!(Env:ir_items[pub IrIndex] => IrItem);
+typed_field_index!(Env:global_var_items[pub GlobalVarIndex] => GlobalVarItem);
+typed_field_index!(Env:fn_items[pub FnIndex] => CallableItem);
+typed_field_index!(Env:op_items[pub OpIndex] => CallableItem);
 
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
 pub enum TypeIndex {
@@ -242,9 +242,9 @@ pub struct Params {
     pub label_params: TiVec<LabelParamIndex, Spanned<Ident>>,
 }
 
-typed_index!(Params:var_params[VarParamIndex] => VarParam);
-typed_index!(Params:out_var_params[OutVarParamIndex] => OutVarParam);
-typed_index!(Params:label_params[LabelParamIndex] => Spanned<Ident>);
+typed_field_index!(Params:var_params[pub VarParamIndex] => VarParam);
+typed_field_index!(Params:out_var_params[pub OutVarParamIndex] => OutVarParam);
+typed_field_index!(Params:label_params[pub LabelParamIndex] => Spanned<Ident>);
 
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
 pub enum ParamIndex {
@@ -319,8 +319,8 @@ pub struct Locals {
     pub local_labels: TiVec<LocalLabelIndex, Spanned<Ident>>,
 }
 
-typed_index!(Locals:local_vars[LocalVarIndex] => LocalVar);
-typed_index!(Locals:local_labels[LocalLabelIndex] => Spanned<Ident>);
+typed_field_index!(Locals:local_vars[pub LocalVarIndex] => LocalVar);
+typed_field_index!(Locals:local_labels[pub LocalLabelIndex] => Spanned<Ident>);
 
 #[derive(Clone, Debug)]
 pub struct LocalVar {
@@ -402,25 +402,25 @@ pub enum Expr {
     Assign(Box<AssignExpr>),
 }
 
-impl From<Block> for Expr {
-    fn from(block: Block) -> Self {
-        BlockExpr::from(block).into()
-    }
-}
-
-impl From<Spanned<&VarIndex>> for Expr {
-    fn from(var_index: Spanned<&VarIndex>) -> Self {
-        var_index.copied().into()
-    }
-}
-
 box_from!(BlockExpr => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 
+impl From<Block> for Expr {
+    fn from(block: Block) -> Self {
+        BlockExpr::from(block).into()
+    }
+}
+
 deref_from!(&Spanned<VarIndex> => Expr);
+
+impl From<Spanned<&VarIndex>> for Expr {
+    fn from(var_index: Spanned<&VarIndex>) -> Self {
+        var_index.copied().into()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct BlockExpr {

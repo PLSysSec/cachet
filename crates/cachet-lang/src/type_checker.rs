@@ -280,7 +280,7 @@ impl<'a> TypeChecker<'a> {
             curr_type_index = match curr_type_index {
                 TypeIndex::BuiltIn(_) => return None,
                 TypeIndex::Enum(_) => return None,
-                TypeIndex::Struct(struct_index) => self.env.struct_items[struct_index].supertype?,
+                TypeIndex::Struct(struct_index) => self.env[struct_index].supertype?,
             };
 
             if curr_type_index == subtype_index {
@@ -301,8 +301,8 @@ impl<'a> TypeChecker<'a> {
     fn get_type_ident(&self, type_index: TypeIndex) -> Ident {
         match type_index {
             TypeIndex::BuiltIn(built_in_type) => built_in_type.ident(),
-            TypeIndex::Enum(enum_index) => self.env.enum_items[enum_index].ident.value,
-            TypeIndex::Struct(struct_index) => self.env.struct_items[struct_index].ident.value,
+            TypeIndex::Enum(enum_index) => self.env[enum_index].ident.value,
+            TypeIndex::Struct(struct_index) => self.env[struct_index].ident.value,
         }
     }
 
@@ -888,7 +888,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             VarIndex::BuiltIn(built_in_var) => Path::from(built_in_var.ident()).into(),
             VarIndex::EnumVariant(enum_variant_index) => self.env[enum_variant_index].into(),
             VarIndex::Global(global_var_index) => {
-                self.env.global_var_items[global_var_index].path.into()
+                self.env[global_var_index].path.into()
             }
             VarIndex::Param(var_param_index) => self.env[self.callable_index].params
                 [var_param_index]
@@ -912,7 +912,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             VarIndex::BuiltIn(built_in_var) => built_in_var.type_(),
             VarIndex::EnumVariant(enum_variant_index) => enum_variant_index.type_(),
             VarIndex::Global(global_var_index) => {
-                self.env.global_var_items[global_var_index].type_
+                self.env[global_var_index].type_
             }
             VarIndex::Param(var_param_index) => {
                 self.env[self.callable_index].params[var_param_index].type_

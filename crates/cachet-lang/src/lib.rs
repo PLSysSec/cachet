@@ -7,7 +7,7 @@ use codespan_reporting::diagnostic::Diagnostic;
 use crate::ast::Span;
 
 pub mod ast;
-// TODO(spinda): pub mod flattener;
+pub mod flattener;
 // TODO(spinda): pub mod liveness_checker;
 // TODO(spinda): pub mod mut_checker;
 pub mod normalizer;

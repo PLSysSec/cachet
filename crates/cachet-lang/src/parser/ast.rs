@@ -4,7 +4,7 @@ use derive_more::From;
 use typed_index_collections::TiVec;
 
 use crate::ast::{BlockKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned};
-use crate::util::{box_from, typed_index};
+use crate::util::{box_from, typed_field_index};
 
 #[derive(Clone, Debug, From)]
 pub enum Item {
@@ -28,7 +28,7 @@ pub struct EnumItem {
     pub variants: TiVec<VariantIndex, Spanned<Ident>>,
 }
 
-typed_index!(EnumItem:variants[VariantIndex] => Spanned<Ident>);
+typed_field_index!(EnumItem:variants[pub VariantIndex] => Spanned<Ident>);
 
 #[derive(Clone, Debug)]
 pub struct StructItem {

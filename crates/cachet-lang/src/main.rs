@@ -15,6 +15,7 @@ use structopt::StructOpt;
 
 //use cachet_compiler::interpreter::Interpreter;
 
+use cachet_lang::flattener::flatten;
 use cachet_lang::normalizer::normalize;
 use cachet_lang::parser::parse;
 use cachet_lang::resolver::{resolve, ResolveErrors};
@@ -48,18 +49,21 @@ struct Opt {
     #[structopt(long)]
     dry_run: bool,
     */
-    /// Dump parsing output.
+    /// Dump parser output.
     #[structopt(long)]
-    dump_parsing: bool,
-    /// Dump name resolution output.
+    dump_parser: bool,
+    /// Dump name resolver output.
     #[structopt(long)]
-    dump_name_resolution: bool,
-    /// Dump type checking output.
+    dump_resolver: bool,
+    /// Dump type checker output.
     #[structopt(long)]
-    dump_type_checking: bool,
-    /// Dump normalization output.
+    dump_type_checker: bool,
+    /// Dump normalizer output.
     #[structopt(long)]
-    dump_normalization: bool,
+    dump_normalizer: bool,
+    /// Dump flattener output.
+    #[structopt(long)]
+    dump_flattener: bool,
 }
 
 fn main() -> Result<(), Error> {
@@ -78,8 +82,8 @@ fn main() -> Result<(), Error> {
             )));
         }
     };
-    if opt.dump_parsing {
-        println!("=== PARSING ===\n\n{:#?}\n\n", items);
+    if opt.dump_parser {
+        println!("=== PARSER ===\n\n{:#?}\n\n", items);
     }
 
     let env = match resolve(items) {
@@ -92,8 +96,8 @@ fn main() -> Result<(), Error> {
             )));
         }
     };
-    if opt.dump_name_resolution {
-        println!("=== NAME RESOLUTION ===\n\n{:#?}\n\n", env);
+    if opt.dump_resolver {
+        println!("=== RESOLVER ===\n\n{:#?}\n\n", env);
     }
 
     let env = match type_check(env) {
@@ -106,13 +110,13 @@ fn main() -> Result<(), Error> {
             )));
         }
     };
-    if opt.dump_type_checking {
-        println!("=== TYPE CHECKING ===\n\n{:#?}\n\n", env);
+    if opt.dump_type_checker {
+        println!("=== TYPE CHECKER ===\n\n{:#?}\n\n", env);
     }
 
     let env = normalize(env);
-    if opt.dump_normalization {
-        println!("=== NORMALIZATION ===\n\n{:#?}\n\n", env);
+    if opt.dump_normalizer {
+        println!("=== NORMALIZER ===\n\n{:#?}\n\n", env);
     }
 
     /*
@@ -138,6 +142,11 @@ fn main() -> Result<(), Error> {
         .with_context(|| format!("Failed to write {}", defs_output.display()))?;
     }
     */
+
+    let env = flatten(env);
+    if opt.dump_flattener {
+        println!("=== FLATTENER ===\n\n{:#?}\n\n", env);
+    }
 
     Ok(())
 }

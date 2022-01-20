@@ -20,24 +20,24 @@ pub use crate::type_checker::{
 use crate::util::{box_from, deref_from, deref_index, field_index};
 
 #[derive(Clone, Debug)]
-pub struct Env {
+pub struct Env<B = ()> {
     pub enum_items: TiVec<EnumIndex, EnumItem>,
     pub struct_items: TiVec<StructIndex, StructItem>,
     pub ir_items: TiVec<IrIndex, IrItem>,
     pub global_var_items: TiVec<GlobalVarIndex, GlobalVarItem>,
-    pub fn_items: TiVec<FnIndex, CallableItem>,
-    pub op_items: TiVec<OpIndex, CallableItem>,
+    pub fn_items: TiVec<FnIndex, CallableItem<B>>,
+    pub op_items: TiVec<OpIndex, CallableItem<B>>,
     pub decl_order: Vec<DeclIndex>,
 }
 
-field_index!(Env:enum_items[EnumIndex] => EnumItem);
-field_index!(Env:struct_items[StructIndex] => StructItem);
-field_index!(Env:ir_items[IrIndex] => IrItem);
-field_index!(Env:global_var_items[GlobalVarIndex] => GlobalVarItem);
-field_index!(Env:fn_items[FnIndex] => CallableItem);
-field_index!(Env:op_items[OpIndex] => CallableItem);
+field_index!(Env<B>:enum_items[EnumIndex] => EnumItem | <B>);
+field_index!(Env<B>:struct_items[StructIndex] => StructItem | <B>);
+field_index!(Env<B>:ir_items[IrIndex] => IrItem | <B>);
+field_index!(Env<B>:global_var_items[GlobalVarIndex] => GlobalVarItem | <B>);
+field_index!(Env<B>:fn_items[FnIndex] => CallableItem<B> | <B>);
+field_index!(Env<B>:op_items[OpIndex] => CallableItem<B> | <B>);
 
-impl Index<EnumVariantIndex> for Env {
+impl<B> Index<EnumVariantIndex> for Env<B> {
     type Output = Spanned<Path>;
 
     fn index(&self, index: EnumVariantIndex) -> &Self::Output {
@@ -45,26 +45,26 @@ impl Index<EnumVariantIndex> for Env {
     }
 }
 
-impl IndexMut<EnumVariantIndex> for Env {
+impl<B> IndexMut<EnumVariantIndex> for Env<B> {
     fn index_mut(&mut self, index: EnumVariantIndex) -> &mut Self::Output {
         &mut self.enum_items[index.enum_index][index.variant_index]
     }
 }
 
-deref_index!(Env[&EnumVariantIndex] => Spanned<Path>);
+deref_index!(Env<B>[&EnumVariantIndex] => Spanned<Path> | <B>);
 
 #[derive(Clone, Debug)]
-pub struct CallableItem {
+pub struct CallableItem<B = ()> {
     pub path: Spanned<Path>,
     pub parent: Option<ParentIndex>,
     pub is_unsafe: bool,
     pub params: Params,
     pub param_order: Vec<ParamIndex>,
     pub ret: TypeIndex,
-    pub body: Option<Body>,
+    pub body: Option<Body<B>>,
 }
 
-impl Typed for CallableItem {
+impl<B> Typed for CallableItem<B> {
     fn type_(&self) -> TypeIndex {
         self.ret
     }
@@ -94,82 +94,94 @@ impl Typed for Call {
 }
 
 #[derive(Clone, Debug)]
-pub struct Body {
+pub struct Body<B = ()> {
     pub locals: Locals,
-    pub stmts: Vec<Stmt>,
+    pub stmts: Vec<Stmt<B>>,
 }
 
-field_index!(Body:locals[LocalVarIndex] => LocalVar);
-field_index!(Body:locals[LocalLabelIndex] => Spanned<Ident>);
+field_index!(Body<B>:locals[LocalVarIndex] => LocalVar | <B>);
+field_index!(Body<B>:locals[LocalLabelIndex] => Spanned<Ident> | <B>);
 
 #[derive(Clone, Debug, From)]
-pub enum Stmt {
-    Let(LetStmt),
-    If(IfStmt),
-    Check(CheckStmt),
-    Goto(GotoStmt),
-    Call(Call),
-    Block(BlockStmt),
-    Assign(AssignStmt),
-    Ret(RetStmt),
-}
-
-#[derive(Clone, Debug)]
-pub struct LetStmt {
-    pub lhs: LocalVarIndex,
-    pub rhs: Expr,
-}
-
-#[derive(Clone, Debug)]
-pub struct IfStmt {
-    pub cond: Expr,
-    pub then: Vec<Stmt>,
-    pub else_: Option<Vec<Stmt>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct CheckStmt {
-    pub kind: CheckKind,
-    pub cond: Expr,
-}
-
-#[derive(Clone, Debug)]
-pub struct BlockStmt {
-    pub kind: Option<BlockKind>,
-    pub stmts: Vec<Stmt>,
-}
-
-#[derive(Clone, Debug)]
-pub struct AssignStmt {
-    pub lhs: VarIndex,
-    pub rhs: Expr,
-}
-
-#[derive(Clone, Debug)]
-pub struct RetStmt {
-    pub value: Expr,
-}
-
-#[derive(Clone, Debug, From)]
-pub enum Expr {
+pub enum Stmt<B = ()> {
     #[from]
-    Block(Box<BlockExpr>),
+    Let(LetStmt<B>),
+    #[from]
+    If(IfStmt<B>),
+    #[from]
+    Check(CheckStmt<B>),
+    #[from]
+    Goto(GotoStmt),
+    #[from]
+    Call(Call),
+    Block(B, BlockStmt<B>),
+    #[from]
+    Assign(AssignStmt<B>),
+    #[from]
+    Ret(RetStmt<B>),
+}
+
+impl<B: Default> From<BlockStmt<B>> for Stmt<B> {
+    fn from(block_stmt: BlockStmt<B>) -> Self {
+        Stmt::Block(B::default(), block_stmt)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct LetStmt<B = ()> {
+    pub lhs: LocalVarIndex,
+    pub rhs: Expr<B>,
+}
+
+#[derive(Clone, Debug)]
+pub struct IfStmt<B = ()> {
+    pub cond: Expr<B>,
+    pub then: Vec<Stmt<B>>,
+    pub else_: Option<Vec<Stmt<B>>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CheckStmt<B = ()> {
+    pub kind: CheckKind,
+    pub cond: Expr<B>,
+}
+
+#[derive(Clone, Debug)]
+pub struct BlockStmt<B = ()> {
+    pub kind: Option<BlockKind>,
+    pub stmts: Vec<Stmt<B>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct AssignStmt<B = ()> {
+    pub lhs: VarIndex,
+    pub rhs: Expr<B>,
+}
+
+#[derive(Clone, Debug)]
+pub struct RetStmt<B = ()> {
+    pub value: Expr<B>,
+}
+
+#[derive(Clone, Debug, From)]
+pub enum Expr<B = ()> {
+    Block(B, Box<BlockExpr<B>>),
     #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
     #[from]
     Call(Call),
     #[from]
-    Negate(Box<NegateExpr>),
+    Negate(Box<NegateExpr<Expr<B>>>),
     #[from]
-    Cast(Box<CastExpr>),
+    Cast(Box<CastExpr<Expr<B>>>),
     #[from]
     Compare(CompareExpr),
 }
 
-impl Typed for Expr {
+impl<B> Typed for Expr<B> {
     fn type_(&self) -> TypeIndex {
         match self {
-            Expr::Block(block_expr) => block_expr.type_(),
+            Expr::Block(_, block_expr) => block_expr.type_(),
             Expr::Var(var_expr) => var_expr.type_(),
             Expr::Call(fn_call) => fn_call.type_(),
             Expr::Negate(negate_expr) => negate_expr.type_(),
@@ -179,11 +191,17 @@ impl Typed for Expr {
     }
 }
 
-box_from!(BlockExpr => Expr);
-box_from!(NegateExpr => Expr);
-box_from!(CastExpr => Expr);
+impl<B: Default> From<Box<BlockExpr<B>>> for Expr<B> {
+    fn from(block_expr: Box<BlockExpr<B>>) -> Expr<B> {
+        Expr::Block(B::default(), block_expr)
+    }
+}
 
-impl From<AtomExpr> for Expr {
+box_from!(BlockExpr<B> => Expr<B> | <B> where B: Default);
+box_from!(NegateExpr<Expr<B>> => Expr<B> | <B>);
+box_from!(CastExpr<Expr<B>> => Expr<B> | <B>);
+
+impl<B> From<AtomExpr> for Expr<B> {
     fn from(atom_expr: AtomExpr) -> Self {
         match atom_expr {
             AtomExpr::Var(var_expr) => var_expr.into(),
@@ -194,15 +212,15 @@ impl From<AtomExpr> for Expr {
     }
 }
 
-impl From<NegateExpr<AtomExpr>> for Expr {
+impl<B> From<NegateExpr<AtomExpr>> for Expr<B> {
     fn from(negate_expr: NegateExpr<AtomExpr>) -> Self {
-        Expr::from(NegateExpr::<Expr>::from(negate_expr))
+        Expr::from(NegateExpr::<Expr<B>>::from(negate_expr))
     }
 }
 
-impl From<CastExpr<AtomExpr>> for Expr {
+impl<B> From<CastExpr<AtomExpr>> for Expr<B> {
     fn from(cast_expr: CastExpr<AtomExpr>) -> Self {
-        Expr::from(CastExpr::<Expr>::from(cast_expr))
+        Expr::from(CastExpr::<Expr<B>>::from(cast_expr))
     }
 }
 
@@ -233,12 +251,12 @@ box_from!(NegateExpr<AtomExpr> => AtomExpr);
 box_from!(CastExpr<AtomExpr> => AtomExpr);
 box_from!(CompareExpr => AtomExpr);
 
-impl TryFrom<Expr> for AtomExpr {
-    type Error = Expr;
+impl<B> TryFrom<Expr<B>> for AtomExpr {
+    type Error = Expr<B>;
 
-    fn try_from(expr: Expr) -> Result<Self, Self::Error> {
+    fn try_from(expr: Expr<B>) -> Result<Self, Self::Error> {
         match expr {
-            expr @ (Expr::Block(_) | Expr::Call(_)) => Err(expr),
+            expr @ (Expr::Block(_, _) | Expr::Call(_)) => Err(expr),
             Expr::Var(var_expr) => Ok(var_expr.into()),
             Expr::Negate(negate_expr) => Ok((*negate_expr).try_into()?),
             Expr::Cast(cast_expr) => Ok((*cast_expr).try_into()?),
@@ -247,32 +265,32 @@ impl TryFrom<Expr> for AtomExpr {
     }
 }
 
-impl TryFrom<NegateExpr> for AtomExpr {
-    type Error = NegateExpr;
+impl<B> TryFrom<NegateExpr<Expr<B>>> for AtomExpr {
+    type Error = NegateExpr<Expr<B>>;
 
-    fn try_from(negate_expr: NegateExpr) -> Result<Self, Self::Error> {
+    fn try_from(negate_expr: NegateExpr<Expr<B>>) -> Result<Self, Self::Error> {
         Ok(AtomExpr::from(NegateExpr::<AtomExpr>::try_from(
             negate_expr,
         )?))
     }
 }
 
-impl TryFrom<CastExpr> for AtomExpr {
-    type Error = CastExpr;
+impl<B> TryFrom<CastExpr<Expr<B>>> for AtomExpr {
+    type Error = CastExpr<Expr<B>>;
 
-    fn try_from(cast_expr: CastExpr) -> Result<Self, Self::Error> {
+    fn try_from(cast_expr: CastExpr<Expr<B>>) -> Result<Self, Self::Error> {
         Ok(AtomExpr::from(CastExpr::<AtomExpr>::try_from(cast_expr)?))
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct BlockExpr {
+pub struct BlockExpr<B = ()> {
     pub kind: Option<BlockKind>,
-    pub stmts: Vec<Stmt>,
-    pub value: Expr,
+    pub stmts: Vec<Stmt<B>>,
+    pub value: Expr<B>,
 }
 
-impl Typed for BlockExpr {
+impl<B> Typed for BlockExpr<B> {
     fn type_(&self) -> TypeIndex {
         self.value.type_()
     }
@@ -290,7 +308,7 @@ impl<E: Typed> Typed for NegateExpr<E> {
     }
 }
 
-impl From<NegateExpr<AtomExpr>> for NegateExpr {
+impl<B> From<NegateExpr<AtomExpr>> for NegateExpr<Expr<B>> {
     fn from(negate_expr: NegateExpr<AtomExpr>) -> Self {
         NegateExpr {
             kind: negate_expr.kind,
@@ -299,10 +317,10 @@ impl From<NegateExpr<AtomExpr>> for NegateExpr {
     }
 }
 
-impl TryFrom<NegateExpr> for NegateExpr<AtomExpr> {
-    type Error = NegateExpr;
+impl<B> TryFrom<NegateExpr<Expr<B>>> for NegateExpr<AtomExpr> {
+    type Error = NegateExpr<Expr<B>>;
 
-    fn try_from(negate_expr: NegateExpr) -> Result<Self, Self::Error> {
+    fn try_from(negate_expr: NegateExpr<Expr<B>>) -> Result<Self, Self::Error> {
         match negate_expr.expr.try_into() {
             Ok(expr) => Ok(NegateExpr {
                 kind: negate_expr.kind,
@@ -329,7 +347,7 @@ impl<E> Typed for CastExpr<E> {
     }
 }
 
-impl From<CastExpr<AtomExpr>> for CastExpr {
+impl<B> From<CastExpr<AtomExpr>> for CastExpr<Expr<B>> {
     fn from(cast_expr: CastExpr<AtomExpr>) -> Self {
         CastExpr {
             kind: cast_expr.kind,
@@ -339,10 +357,10 @@ impl From<CastExpr<AtomExpr>> for CastExpr {
     }
 }
 
-impl TryFrom<CastExpr> for CastExpr<AtomExpr> {
-    type Error = CastExpr;
+impl<B> TryFrom<CastExpr<Expr<B>>> for CastExpr<AtomExpr> {
+    type Error = CastExpr<Expr<B>>;
 
-    fn try_from(cast_expr: CastExpr) -> Result<Self, Self::Error> {
+    fn try_from(cast_expr: CastExpr<Expr<B>>) -> Result<Self, Self::Error> {
         match cast_expr.expr.try_into() {
             Ok(expr) => Ok(CastExpr {
                 kind: cast_expr.kind,
