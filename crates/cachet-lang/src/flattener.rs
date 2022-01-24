@@ -46,7 +46,7 @@ fn flatten_callable_item(callable_item: normalizer::CallableItem) -> CallableIte
 }
 
 fn flatten_body(body: normalizer::Body) -> Body {
-    let stmts = flatten_block_stmts(body.stmts);
+    let stmts = flatten_block(body.stmts);
 
     Body {
         locals: body.locals,
@@ -54,7 +54,7 @@ fn flatten_body(body: normalizer::Body) -> Body {
     }
 }
 
-fn flatten_block_stmts(stmts: Vec<normalizer::Stmt>) -> Vec<Stmt> {
+fn flatten_block(stmts: Vec<normalizer::Stmt>) -> Vec<Stmt> {
     let mut flattener = Flattener::new();
     flattener.flatten_stmts(stmts);
     flattener.stmts
@@ -90,11 +90,14 @@ impl Flattener {
             normalizer::Stmt::Goto(goto_stmt) => {
                 self.stmts.push(goto_stmt.into());
             }
-            normalizer::Stmt::Call(call) => {
-                self.stmts.push(call.into());
+            normalizer::Stmt::Emit(emit_stmt) => {
+                self.stmts.push(emit_stmt.into());
             }
             normalizer::Stmt::Block(_, block_stmt) => {
                 self.flatten_block_stmt(block_stmt);
+            }
+            normalizer::Stmt::Invoke(invoke_stmt) => {
+                self.stmts.push(invoke_stmt.into());
             }
             normalizer::Stmt::Assign(assign_stmt) => {
                 self.flatten_assign_stmt(assign_stmt);
@@ -120,9 +123,9 @@ impl Flattener {
     fn flatten_if_stmt(&mut self, if_stmt: normalizer::IfStmt) {
         let cond = self.flatten_expr(if_stmt.cond);
 
-        let then = flatten_block_stmts(if_stmt.then);
+        let then = flatten_block(if_stmt.then);
 
-        let else_ = if_stmt.else_.map(flatten_block_stmts);
+        let else_ = if_stmt.else_.map(flatten_block);
 
         self.stmts.push(IfStmt { cond, then, else_ }.into());
     }
@@ -165,7 +168,7 @@ impl Flattener {
         match expr {
             normalizer::Expr::Block(_, block_expr) => self.flatten_block_expr(*block_expr),
             normalizer::Expr::Var(var_expr) => var_expr.into(),
-            normalizer::Expr::Call(call) => call.into(),
+            normalizer::Expr::Invoke(invoke_expr) => invoke_expr.into(),
             normalizer::Expr::Negate(negate_expr) => self.flatten_negate_expr(*negate_expr).into(),
             normalizer::Expr::Cast(cast_expr) => self.flatten_cast_expr(*cast_expr).into(),
             normalizer::Expr::Compare(compare_expr) => compare_expr.into(),

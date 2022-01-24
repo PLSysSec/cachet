@@ -95,6 +95,8 @@ impl IndexMut<CallableIndex> for Env {
     }
 }
 
+deref_index!(Env[&CallableIndex] => CallableItem);
+
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
 pub enum ParentIndex {
     #[from(types(
@@ -198,7 +200,7 @@ pub struct StructItem {
 #[derive(Clone, Debug)]
 pub struct IrItem {
     pub ident: Spanned<Ident>,
-    pub emits: Option<IrIndex>,
+    pub emits: Option<Spanned<IrIndex>>,
 }
 
 #[derive(Clone, Debug)]
@@ -354,7 +356,6 @@ pub enum Stmt {
     Check(CheckStmt),
     #[from]
     Goto(GotoStmt),
-    #[from]
     Emit(Call),
     #[from(types(Block))]
     Expr(Expr),
@@ -381,7 +382,7 @@ pub struct CheckStmt {
 
 #[derive(Clone, Debug)]
 pub struct GotoStmt {
-    pub label: LabelIndex,
+    pub label: Spanned<LabelIndex>,
 }
 
 #[derive(Clone, Debug, From)]
@@ -390,8 +391,7 @@ pub enum Expr {
     Block(Box<BlockExpr>),
     #[from]
     Var(Spanned<VarIndex>),
-    #[from]
-    Call(Call),
+    Invoke(Call),
     #[from]
     Negate(Box<NegateExpr>),
     #[from]

@@ -134,7 +134,6 @@ pub enum Stmt {
     Check(CheckStmt),
     #[from]
     Goto(GotoStmt),
-    #[from]
     Emit(Call),
     #[from(types(Block))]
     Expr(Expr),
@@ -166,12 +165,18 @@ pub struct GotoStmt {
 
 #[derive(Clone, Debug, From)]
 pub enum Expr {
+    #[from]
     Block(Box<BlockExpr>),
+    #[from]
     Var(Spanned<Path>),
-    Call(Call),
+    Invoke(Call),
+    #[from]
     Negate(Box<NegateExpr>),
+    #[from]
     Cast(Box<CastExpr>),
+    #[from]
     Compare(Box<CompareExpr>),
+    #[from]
     Assign(Box<AssignExpr>),
 }
 

@@ -9,7 +9,7 @@ use std::ops::{Deref, DerefMut};
 
 use iterate::iterate;
 use lazy_static::lazy_static;
-use typed_index_collections::{TiSlice, TiVec};
+use typed_index_collections::TiVec;
 
 use crate::ast::{
     BlockKind, BuiltInType, BuiltInVar, CastKind, Ident, MaybeSpanned, NegateKind, Path, Span,
@@ -198,18 +198,30 @@ impl<'a> TypeChecker<'a> {
 
         let ret = callable_item.type_();
 
-        let body = callable_item.body.value.as_ref().map(|body| {
-            let mut local_vars = body.locals.local_vars.clone();
+        let (interprets, emits) = match callable_item.parent {
+            Some(ParentIndex::Ir(ir_index)) => {
+                let emits = self.env[ir_index].emits;
+                let interprets = match emits {
+                    Some(_) => None,
+                    None => Some(ir_index),
+                };
+                (interprets, emits)
+            }
+            _ => (None, None),
+        };
 
+        let body = callable_item.body.value.as_ref().map(|body| {
+            let mut locals = body.locals.clone();
             let mut scoped_type_checker =
-                ScopedTypeChecker::new(self, callable_index, &mut local_vars);
+                ScopedTypeChecker::new(self, callable_index, interprets, emits, &mut locals);
             let block = scoped_type_checker.type_check_block_expecting_type(
                 Spanned::new(callable_item.body.span, &body.block),
                 ret,
             );
 
             let locals = Locals {
-                local_vars: local_vars
+                local_vars: locals
+                    .local_vars
                     .into_iter()
                     .map(|local_var| LocalVar {
                         ident: local_var.ident,
@@ -219,7 +231,7 @@ impl<'a> TypeChecker<'a> {
                         ),
                     })
                     .collect(),
-                local_labels: body.locals.local_labels.clone(),
+                local_labels: locals.local_labels,
             };
 
             Body { locals, block }
@@ -232,6 +244,8 @@ impl<'a> TypeChecker<'a> {
             params: callable_item.params.clone(),
             param_order: callable_item.param_order.clone(),
             ret,
+            interprets,
+            emits: emits.map(|emits| emits.value),
             body,
         }
     }
@@ -322,8 +336,11 @@ struct ParamSummary {
 struct ScopedTypeChecker<'a, 'b> {
     type_checker: &'b mut TypeChecker<'a>,
     callable_index: CallableIndex,
+    callable_item: &'b resolver::CallableItem,
     is_unsafe: bool,
-    local_vars: &'b mut TiSlice<LocalVarIndex, resolver::LocalVar>,
+    interprets: Option<IrIndex>,
+    emits: Option<Spanned<IrIndex>>,
+    locals: &'b mut resolver::Locals,
 }
 
 impl<'a, 'b> Deref for ScopedTypeChecker<'a, 'b> {
@@ -344,14 +361,19 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     fn new(
         type_checker: &'b mut TypeChecker<'a>,
         callable_index: CallableIndex,
-        local_vars: &'b mut TiSlice<LocalVarIndex, resolver::LocalVar>,
+        interprets: Option<IrIndex>,
+        emits: Option<Spanned<IrIndex>>,
+        locals: &'b mut resolver::Locals,
     ) -> Self {
-        let is_unsafe = type_checker.env[callable_index].is_unsafe;
+        let callable_item = &type_checker.env[callable_index];
         ScopedTypeChecker {
             type_checker,
             callable_index,
-            is_unsafe,
-            local_vars,
+            callable_item,
+            is_unsafe: callable_item.is_unsafe,
+            interprets,
+            emits,
+            locals,
         }
     }
 
@@ -359,8 +381,11 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         ScopedTypeChecker {
             type_checker: self.type_checker,
             callable_index: self.callable_index,
+            callable_item: self.callable_item,
             is_unsafe: self.is_unsafe || is_unsafe,
-            local_vars: self.local_vars,
+            interprets: self.interprets,
+            emits: self.emits,
+            locals: self.locals,
         }
     }
 
@@ -492,7 +517,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             OutVar::Out(out_var_index) => self.get_var_type(out_var_index),
             // If this is an `out let foo`-style argument with no type
             // ascription, infer the type from the parameter.
-            OutVar::OutLet(out_let_var_index) => *self.local_vars[out_let_var_index]
+            OutVar::OutLet(out_let_var_index) => *self.locals[out_let_var_index]
                 .type_
                 .get_or_insert(param_type_index),
         };
@@ -572,7 +597,6 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             target: call.target.value,
             is_unsafe: callable_item.is_unsafe,
             args,
-            ret: callable_item.type_(),
         }
     }
 
@@ -592,7 +616,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let stmts = block
             .stmts
             .iter()
-            .map(|stmt| self.type_check_stmt(stmt))
+            .filter_map(|stmt| self.type_check_stmt(stmt))
             .collect();
 
         let value = match &block.value {
@@ -603,24 +627,25 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         Block { stmts, value }
     }
 
-    fn type_check_stmt(&mut self, stmt: &resolver::Stmt) -> Stmt {
+    fn type_check_stmt(&mut self, stmt: &resolver::Stmt) -> Option<Stmt> {
         match stmt {
-            resolver::Stmt::Let(let_stmt) => self.type_check_let_stmt(let_stmt).into(),
-            resolver::Stmt::If(if_stmt) => self.type_check_if_stmt(if_stmt).into(),
-            resolver::Stmt::Check(check_stmt) => self.type_check_check_stmt(check_stmt).into(),
-            resolver::Stmt::Goto(goto_stmt) => GotoStmt {
-                label: goto_stmt.label,
+            resolver::Stmt::Let(let_stmt) => Some(self.type_check_let_stmt(let_stmt).into()),
+            resolver::Stmt::If(if_stmt) => Some(self.type_check_if_stmt(if_stmt).into()),
+            resolver::Stmt::Check(check_stmt) => {
+                Some(self.type_check_check_stmt(check_stmt).into())
             }
-            .into(),
-            resolver::Stmt::Emit(call) => self.type_check_call(call).into(),
-            resolver::Stmt::Expr(expr) => self.type_check_expr(expr).into(),
+            resolver::Stmt::Goto(goto_stmt) => {
+                self.type_check_goto_stmt(goto_stmt).map(Into::into)
+            }
+            resolver::Stmt::Emit(call) => self.type_check_emit_stmt(call).map(Into::into),
+            resolver::Stmt::Expr(expr) => Some(self.type_check_expr(expr).into()),
         }
     }
 
     fn type_check_let_stmt(&mut self, let_stmt: &resolver::LetStmt) -> LetStmt {
         let rhs = let_stmt.rhs.as_ref().map(|rhs| self.type_check_expr(rhs));
 
-        let lhs = &mut self.local_vars[let_stmt.lhs];
+        let lhs = &mut self.locals[let_stmt.lhs];
 
         let rhs = match lhs.type_ {
             Some(lhs_type_index) => self.expect_expr_type(rhs, lhs_type_index),
@@ -660,6 +685,56 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         }
     }
 
+    fn type_check_goto_stmt(&mut self, goto_stmt: &resolver::GotoStmt) -> Option<GotoStmt> {
+        let ir_index = self.interprets;
+        if ir_index.is_none() {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::MisplacedGotoStmt {
+                    source_callable: self.callable_item.path,
+                    target_label: goto_stmt
+                        .label
+                        .map(|label_index| self.get_label_ident(label_index).value),
+                });
+        }
+
+        Some(GotoStmt {
+            label: goto_stmt.label.value,
+            ir: ir_index?,
+        })
+    }
+
+    fn type_check_emit_stmt(&mut self, call: &resolver::Call) -> Option<EmitStmt> {
+        let callable_item = &self.env[call.target.value];
+        let ir_index = match callable_item.parent {
+            Some(ParentIndex::Ir(ir_index)) => {
+                if Some(ir_index) == self.emits.map(|emits| emits.value) {
+                    Some(ir_index)
+                } else {
+                    self.type_checker
+                        .errors
+                        .push(TypeCheckError::EmitIrMismatch {
+                            source_callable: self.callable_item.path.value,
+                            target_op: Spanned::new(call.target.span, callable_item.path.value),
+                            expected_ir: self
+                                .emits
+                                .map(|emits| emits.map(|emits| self.env[emits].ident.value)),
+                            found_ir: self.env[ir_index].ident.value,
+                        });
+                    None
+                }
+            }
+            _ => panic!("emitted op with no parent IR"),
+        };
+
+        let call = self.type_check_call(call);
+
+        Some(EmitStmt {
+            call,
+            ir: ir_index?,
+        })
+    }
+
     fn type_check_expr_expecting_type(
         &mut self,
         expr: Spanned<&resolver::Expr>,
@@ -673,7 +748,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         match expr {
             resolver::Expr::Block(block_expr) => self.type_check_block_expr(block_expr).into(),
             resolver::Expr::Var(index) => self.type_check_var_expr(*index).into(),
-            resolver::Expr::Call(call) => self.type_check_call(call).into(),
+            resolver::Expr::Invoke(call) => self.type_check_invoke_expr(call).into(),
             resolver::Expr::Negate(negate_expr) => self.type_check_negate_expr(negate_expr).into(),
             resolver::Expr::Cast(cast_expr) => self.type_check_cast_expr(cast_expr),
             resolver::Expr::Compare(compare_expr) => {
@@ -704,6 +779,12 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             var: var_index.value,
             type_: var_type_index,
         }
+    }
+
+    fn type_check_invoke_expr(&mut self, call: &resolver::Call) -> InvokeExpr {
+        let ret = self.env[call.target.value].type_();
+        let call = self.type_check_call(call);
+        InvokeExpr { call, ret }
     }
 
     fn type_check_negate_expr(&mut self, negate_expr: &resolver::NegateExpr) -> NegateExpr {
@@ -887,23 +968,19 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         match var_index {
             VarIndex::BuiltIn(built_in_var) => Path::from(built_in_var.ident()).into(),
             VarIndex::EnumVariant(enum_variant_index) => self.env[enum_variant_index].into(),
-            VarIndex::Global(global_var_index) => {
-                self.env[global_var_index].path.into()
-            }
-            VarIndex::Param(var_param_index) => self.env[self.callable_index].params
-                [var_param_index]
+            VarIndex::Global(global_var_index) => self.env[global_var_index].path.into(),
+            VarIndex::Param(var_param_index) => self.callable_item.params[var_param_index]
                 .ident
                 .map(Path::from)
                 .into(),
-            VarIndex::OutParam(out_var_param_index) => self.env[self.callable_index].params
+            VarIndex::OutParam(out_var_param_index) => self.callable_item.params
                 [out_var_param_index]
                 .ident
                 .map(Path::from)
                 .into(),
-            VarIndex::Local(local_var_index) => self.local_vars[local_var_index]
-                .ident
-                .map(Path::from)
-                .into(),
+            VarIndex::Local(local_var_index) => {
+                self.locals[local_var_index].ident.map(Path::from).into()
+            }
         }
     }
 
@@ -911,32 +988,21 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         match var_index.value {
             VarIndex::BuiltIn(built_in_var) => built_in_var.type_(),
             VarIndex::EnumVariant(enum_variant_index) => enum_variant_index.type_(),
-            VarIndex::Global(global_var_index) => {
-                self.env[global_var_index].type_
-            }
-            VarIndex::Param(var_param_index) => {
-                self.env[self.callable_index].params[var_param_index].type_
-            }
+            VarIndex::Global(global_var_index) => self.env[global_var_index].type_,
+            VarIndex::Param(var_param_index) => self.callable_item.params[var_param_index].type_,
             VarIndex::OutParam(out_var_param_index) => {
-                self.env[self.callable_index].params[out_var_param_index].type_
+                self.callable_item.params[out_var_param_index].type_
             }
-            VarIndex::Local(local_var_index) => {
-                let local_var = &self.local_vars[local_var_index];
-                match local_var.type_ {
-                    Some(local_var_type) => local_var_type,
-                    None => {
-                        self.type_checker
-                            .errors
-                            .push(TypeCheckError::LocalVarUsedBeforeDef {
-                                var: Spanned::new(var_index.span, local_var.ident.value),
-                                defined_at: local_var.ident.span,
-                            });
-                        // Raising the error above will prevent the internal
-                        // "unknown" type from escaping the type-checking phase.
-                        self.unknown_type
-                    }
-                }
-            }
+            VarIndex::Local(local_var_index) => self.locals[local_var_index]
+                .type_
+                .expect("local variable used before its definition"),
+        }
+    }
+
+    fn get_label_ident(&self, label_index: LabelIndex) -> Spanned<Ident> {
+        match label_index {
+            LabelIndex::Param(label_param_index) => self.callable_item.params[label_param_index],
+            LabelIndex::Local(local_label_index) => self.locals[local_label_index],
         }
     }
 }

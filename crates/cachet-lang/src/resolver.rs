@@ -524,11 +524,11 @@ impl Resolver {
 
     fn resolve_ir_item(&mut self, ir_item: parser::IrItem) -> Option<IrItem> {
         let emits = match ir_item.emits {
+            Some(emits) => map_spanned(emits, |emits| {
+                self.lookup_ir_global(emits).found(&mut self.errors)
+            })
+            .map(Some),
             None => Some(None),
-            Some(emits) => self
-                .lookup_ir_global(emits)
-                .found(&mut self.errors)
-                .map(Some),
         };
 
         Some(IrItem {
@@ -571,7 +571,7 @@ impl Resolver {
         let (params, param_order) = scoped_resolver.resolve_params(callable_item.item.params);
         let body = map_spanned(callable_item.item.body, move |body| match body.value {
             Some(block) => scoped_resolver
-                .resolve_top_level_block(block)
+                .resolve_body_block(block)
                 .map(move |block| {
                     Some(
                         Body {
@@ -877,8 +877,16 @@ impl<'a> ScopedResolver<'a> {
         })
     }
 
-    /// This is deliberately *not* called `resolve_block`, to force explicit
-    /// disambiguation between calls to `resolve_top_level_block` and
+    fn resolve_body_block(&mut self, block: parser::Block) -> Option<Block> {
+        self.resolve_block_impl(block)
+    }
+
+    fn resolve_nested_block(&mut self, block: parser::Block) -> Option<Block> {
+        self.recurse().resolve_block_impl(block)
+    }
+
+    /// This is deliberately *not* named `resolve_block`, to force explicit
+    /// disambiguation between calls to `resolve_body_block` and
     /// `resolve_nested_block`. `resolve_block_impl` should not be called
     /// directly.
     fn resolve_block_impl(&mut self, block: parser::Block) -> Option<Block> {
@@ -896,14 +904,6 @@ impl<'a> ScopedResolver<'a> {
         })
     }
 
-    fn resolve_top_level_block(&mut self, block: parser::Block) -> Option<Block> {
-        self.resolve_block_impl(block)
-    }
-
-    fn resolve_nested_block(&mut self, block: parser::Block) -> Option<Block> {
-        self.recurse().resolve_block_impl(block)
-    }
-
     fn resolve_stmt(&mut self, stmt: parser::Stmt) -> Option<Stmt> {
         match stmt {
             parser::Stmt::Let(let_stmt) => self.resolve_let_stmt(let_stmt).map(Stmt::from),
@@ -916,7 +916,7 @@ impl<'a> ScopedResolver<'a> {
                         .lookup_op_scoped(target)
                         .map_found(Into::into)
                 })
-                .map(Stmt::from),
+                .map(Stmt::Emit),
             parser::Stmt::Expr(expr) => self.resolve_expr(expr).map(Stmt::from),
         }
     }
@@ -961,11 +961,14 @@ impl<'a> ScopedResolver<'a> {
     }
 
     fn resolve_goto_stmt(&mut self, goto_stmt: parser::GotoStmt) -> Option<GotoStmt> {
-        let label = self
-            .lookup_label_scoped(goto_stmt.label)
-            .found(&mut self.errors);
+        let label_index = map_spanned(goto_stmt.label, |label_ident| {
+            self.lookup_label_scoped(label_ident)
+                .found(&mut self.errors)
+        });
 
-        Some(GotoStmt { label: label? })
+        Some(GotoStmt {
+            label: label_index?,
+        })
     }
 
     fn resolve_expr(&mut self, expr: parser::Expr) -> Option<Expr> {
@@ -974,13 +977,13 @@ impl<'a> ScopedResolver<'a> {
                 self.resolve_block_expr(*block_expr).map(Expr::from)
             }
             parser::Expr::Var(var_path) => self.resolve_var_expr(var_path).map(Expr::from),
-            parser::Expr::Call(call) => self
+            parser::Expr::Invoke(call) => self
                 .resolve_call(call, |scoped_resolver, target| {
                     scoped_resolver
                         .lookup_fn_scoped(target)
                         .map_found(Into::into)
                 })
-                .map(Expr::from),
+                .map(Expr::Invoke),
             parser::Expr::Negate(negate_expr) => {
                 self.resolve_negate_expr(*negate_expr).map(Expr::from)
             }

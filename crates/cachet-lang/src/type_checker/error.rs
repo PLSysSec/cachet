@@ -22,14 +22,24 @@ pub enum TypeCheckError {
         first_cycle_callable: Spanned<Path>,
         other_cycle_callables: Vec<Spanned<Path>>,
     },
-    #[error("op `{}` must be nested under an IR", .op)]
-    MisplacedOpItem { op: Spanned<Path> },
-    #[error("op `{}` can't have out-parameter `{}`", .op, .out_param)]
+    #[error("op `{op}` can't have out-parameter `{out_param}`")]
     OpHasOutParam { op: Path, out_param: Spanned<Ident> },
-    #[error("op `{}` can't return a value", .op)]
+    #[error("op `{op}` can't return a value")]
     OpReturnsValue { op: Path, ret_span: Span },
-    #[error("op `{}` is missing a body", .op)]
+    #[error("op `{op}` is missing a body")]
     MissingOpBody { op: Path, body_span: Span },
+    #[error("can't jump to `{target_label}` from within `{source_callable}`")]
+    MisplacedGotoStmt {
+        source_callable: Spanned<Path>,
+        target_label: Spanned<Ident>,
+    },
+    #[error("can't emit `{target_op}` inside `{source_callable}`")]
+    EmitIrMismatch {
+        source_callable: Path,
+        target_op: Spanned<Path>,
+        expected_ir: Option<Spanned<Ident>>,
+        found_ir: Ident,
+    },
     #[error("mismatched types")]
     ExprTypeMismatch {
         expected_type: Ident,
@@ -104,14 +114,6 @@ pub enum TypeCheckError {
         lhs_defined_at: Option<Span>,
         rhs_span: Span,
     },
-    /// This error should only arise from mistakes in internal code or misuse of
-    /// this crate's API, and shouldn't be possible to hit from user source code
-    /// input.
-    #[error("local variable used before its definition")]
-    LocalVarUsedBeforeDef {
-        var: Spanned<Ident>,
-        defined_at: Span,
-    },
 }
 
 impl FrontendError for TypeCheckError {
@@ -124,10 +126,11 @@ impl FrontendError for TypeCheckError {
                 first_cycle_callable,
                 ..
             } => first_cycle_callable.span,
-            TypeCheckError::MisplacedOpItem { op } => op.span,
             TypeCheckError::OpHasOutParam { out_param, .. } => out_param.span,
             TypeCheckError::OpReturnsValue { ret_span, .. } => *ret_span,
             TypeCheckError::MissingOpBody { body_span, .. } => *body_span,
+            TypeCheckError::MisplacedGotoStmt { target_label, .. } => target_label.span,
+            TypeCheckError::EmitIrMismatch { target_op, .. } => target_op.span,
             TypeCheckError::ExprTypeMismatch { expr_span, .. } => *expr_span,
             TypeCheckError::InvalidCast { expr_span, .. } => *expr_span,
             TypeCheckError::UnsafeCallInSafeContext { target, .. } => target.span,
@@ -138,7 +141,6 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::BinaryOperatorTypeMismatch { operator_span, .. } => *operator_span,
             TypeCheckError::NumericOperatorTypeMismatch { operand_span, .. } => *operand_span,
             TypeCheckError::AssignTypeMismatch { rhs_span, .. } => *rhs_span,
-            TypeCheckError::LocalVarUsedBeforeDef { var, .. } => var.span,
         }
     }
 
@@ -176,13 +178,25 @@ impl FrontendError for TypeCheckError {
                     first_cycle_callable
                 );
             }
-            TypeCheckError::MisplacedOpItem { .. } => {
-                label.message = "misplaced `op` item".to_owned();
-            }
             TypeCheckError::OpHasOutParam { .. }
             | TypeCheckError::OpReturnsValue { .. }
             | TypeCheckError::MissingOpBody { .. } => {
                 label.message = "allowed for functions but not for ops".to_owned();
+            }
+            TypeCheckError::MisplacedGotoStmt { .. } => {
+                label.message = "`goto` statements may only appear in interpreted ops".to_owned();
+            }
+            TypeCheckError::EmitIrMismatch {
+                expected_ir,
+                found_ir,
+                ..
+            } => {
+                label.message = match expected_ir {
+                    Some(expected_ir) => {
+                        format!("expected `{}` op, found `{}` op", expected_ir, found_ir)
+                    }
+                    None => format!("unexpected `{}` op", found_ir),
+                };
             }
             TypeCheckError::ExprTypeMismatch {
                 expected_type,
@@ -242,9 +256,6 @@ impl FrontendError for TypeCheckError {
             } => {
                 label.message = format!("expected `{}`, found `{}`", expected_type, found_type);
             }
-            TypeCheckError::LocalVarUsedBeforeDef { var, .. } => {
-                label.message = format!("variable `{}` used here", var);
-            }
         }
 
         let mut labels = vec![label];
@@ -291,8 +302,26 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::OpHasOutParam { .. } => (),
             TypeCheckError::OpReturnsValue { .. } => (),
             TypeCheckError::MissingOpBody { .. } => (),
+            TypeCheckError::MisplacedGotoStmt {
+                source_callable, ..
+            } => {
+                labels.push(
+                    Label::secondary(file_id, source_callable.span)
+                        .with_message(format!("`{}` defined here", source_callable)),
+                );
+            }
+            TypeCheckError::EmitIrMismatch {
+                source_callable,
+                expected_ir,
+                ..
+            } => {
+                if let Some(expected_ir) = expected_ir {
+                    labels.push(Label::secondary(file_id, expected_ir.span).with_message(
+                        format!("`{}` emits `{}` ops", source_callable, expected_ir),
+                    ));
+                }
+            }
             TypeCheckError::ExprTypeMismatch { .. } => (),
-            TypeCheckError::MisplacedOpItem { .. } => (),
             TypeCheckError::InvalidCast { .. } => (),
             TypeCheckError::UnsafeCallInSafeContext {
                 target,
@@ -365,16 +394,6 @@ impl FrontendError for TypeCheckError {
                             .with_message(format!("variable `{}` defined here", lhs)),
                     );
                 }
-            }
-            TypeCheckError::LocalVarUsedBeforeDef {
-                var,
-                defined_at,
-                ..
-            } => {
-                labels.push(
-                    Label::secondary(file_id, *defined_at)
-                        .with_message(format!("variable `{}` defined here", var)),
-                );
             }
         }
 

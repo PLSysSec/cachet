@@ -197,7 +197,7 @@ GotoStmt: GotoStmt =
     "goto" <label:Spanned<Path>> ";" => GotoStmt { label };
 
 EmitStmt: Stmt =
-    "emit" <call:Call> => call.into();
+    "emit" <call:Call> => Stmt::Emit(call);
 
 #[inline]
 Expr: Expr = Expr0;
@@ -268,7 +268,7 @@ BlockOrExpr3: Expr =
 RawExpr3: MaybeGrouped = {
     "(" <expr:BlockOrExpr0> ")" => MaybeGrouped::grouped(expr),
     <block_expr:BlockExpr> => MaybeGrouped::ungrouped(block_expr.into()),
-    <call:Call> => MaybeGrouped::ungrouped(call.into()),
+    <call:Call> => MaybeGrouped::ungrouped(Expr::Invoke(call)),
     <path:Spanned<Path>> => MaybeGrouped::ungrouped(path.into()),
     <negate_expr:NegateExpr> => MaybeGrouped::ungrouped(negate_expr.into()),
 };

@@ -26,3 +26,19 @@ pub fn fmt_join_trailing<T: fmt::Display>(
     }
     Ok(())
 }
+
+macro_rules! chain_from {
+    (
+        $src:ty => $mid:ty => $dst:ty
+        $(| $(<$($generic_params:ident),+>)? $(where $($where_clause:tt)+)?)?
+    ) => {
+        impl$($(<$($generic_params),+>)?)? ::std::convert::From<$src> for $dst
+        $($(where $($where_clause)+)?)?
+        {
+            fn from(src: $src) -> Self {
+                ::std::convert::From::from(::std::convert::Into::<$mid>::into(src))
+            }
+        }
+    };
+}
+pub(crate) use chain_from;

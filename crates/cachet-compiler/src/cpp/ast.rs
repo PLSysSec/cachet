@@ -1,5 +1,7 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+#![allow(dead_code)]
+
 use std::fmt::{self, Write};
 use std::iter::FromIterator;
 
@@ -7,12 +9,10 @@ use derive_more::{Display, From};
 use enumset::EnumSetType;
 use indent_write::fmt::IndentWriter;
 
-use cachet_lang::ast::Ident;
-pub use cachet_lang::normalizer::{
-    CastExprKind, CompareExprKind, LocalLabelIndex, LocalVarIndex, NegateExprKind,
-};
+use cachet_lang::ast::{CastKind, CompareKind, Ident, NegateKind};
+pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 
-use crate::util::{fmt_join, fmt_join_trailing};
+use crate::util::{chain_from, fmt_join, fmt_join_trailing};
 
 #[derive(Clone, Copy, Debug, Display)]
 #[display(fmt = "{}_{}", kind, ident)]
@@ -146,10 +146,8 @@ impl IrMemberTypePath {
 pub enum IrMemberTypeIdent {
     #[display(fmt = "LabelRef")]
     LabelRef,
-    #[display(fmt = "InterpreterRef")]
-    InterpreterRef,
-    #[display(fmt = "CompilerRef")]
-    CompilerRef,
+    #[display(fmt = "OpsRef")]
+    OpsRef,
 }
 
 impl IrMemberTypeIdent {
@@ -211,7 +209,7 @@ pub enum ValueCategory {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum VarIdent {
-    #[from(types(IrContextParamIdent, UserParamIdent))]
+    #[from(types(UserParamIdent))]
     Param(ParamIdent),
     #[from]
     Local(LocalVarIdent),
@@ -314,7 +312,9 @@ impl FnIdent {
             FnIdent::TypeMember(type_member_fn_ident) => {
                 Some(type_member_fn_ident.parent_namespace_kind())
             }
-            FnIdent::IrMember(_) => Some(IrMemberFnIdent::PARENT_NAMESPACE_KIND),
+            FnIdent::IrMember(ir_member_fn_ident) => {
+                Some(ir_member_fn_ident.parent_namespace_kind())
+            }
             FnIdent::Variant(_) => Some(VariantFnIdent::PARENT_NAMESPACE_KIND),
             FnIdent::GlobalVar(_) => Some(GlobalVarFnIdent::PARENT_NAMESPACE_KIND),
             FnIdent::User(_) => Some(UserFnIdent::PARENT_NAMESPACE_KIND),
@@ -379,7 +379,7 @@ impl ToTagTypeMemberFnIdent {
 
 #[derive(Clone, Copy, Debug)]
 pub struct CastTypeMemberFnIdent {
-    pub kind: CastExprKind,
+    pub kind: CastKind,
     pub supertype: Ident,
 }
 
@@ -393,8 +393,8 @@ impl fmt::Display for CastTypeMemberFnIdent {
             f,
             "{}_{}",
             match self.kind {
-                CastExprKind::Downcast => "From",
-                CastExprKind::Upcast => "To",
+                CastKind::Downcast => "From",
+                CastKind::Upcast => "To",
             },
             self.supertype
         )
@@ -403,7 +403,7 @@ impl fmt::Display for CastTypeMemberFnIdent {
 
 #[derive(Clone, Copy, Debug, From)]
 pub struct CompareTypeMemberFnIdent {
-    pub kind: CompareExprKind,
+    pub kind: CompareKind,
 }
 
 impl CompareTypeMemberFnIdent {
@@ -416,12 +416,12 @@ impl fmt::Display for CompareTypeMemberFnIdent {
             f,
             "Compare{}",
             match self.kind {
-                CompareExprKind::Eq => "Eq",
-                CompareExprKind::Neq => "Neq",
-                CompareExprKind::Lte => "Lte",
-                CompareExprKind::Gte => "Gte",
-                CompareExprKind::Lt => "Lt",
-                CompareExprKind::Gt => "Gt",
+                CompareKind::Eq => "Eq",
+                CompareKind::Neq => "Neq",
+                CompareKind::Lte => "Lte",
+                CompareKind::Gte => "Gte",
+                CompareKind::Lt => "Lt",
+                CompareKind::Gt => "Gt",
             }
         )
     }
@@ -437,7 +437,7 @@ pub struct IrMemberFnPath {
 impl IrMemberFnPath {
     pub const fn parent_namespace(self) -> NamespaceIdent {
         NamespaceIdent {
-            kind: IrMemberFnIdent::PARENT_NAMESPACE_KIND,
+            kind: self.ident.parent_namespace_kind(),
             ident: self.parent,
         }
     }
@@ -447,20 +447,31 @@ impl IrMemberFnPath {
 pub enum IrMemberFnIdent {
     #[display(fmt = "GetOutput")]
     GetOutput,
-    EmitOp(EmitOpIrMemberFnIdent),
     #[display(fmt = "Goto")]
     Goto,
+    Emit(EmitIrMemberFnIdent),
 }
 
 impl IrMemberFnIdent {
-    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Ir;
+    pub const fn parent_namespace_kind(self) -> NamespaceKind {
+        match self {
+            IrMemberFnIdent::GetOutput | IrMemberFnIdent::Goto => NamespaceKind::Ir,
+            IrMemberFnIdent::Emit(_) => EmitIrMemberFnIdent::PARENT_NAMESPACE_KIND,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "Emit{}", op)]
-pub struct EmitOpIrMemberFnIdent {
-    pub op: OpFnIdent,
+#[display(fmt = "Emit{}", ident)]
+pub struct EmitIrMemberFnIdent {
+    pub ident: OpFnIdent,
 }
+
+impl EmitIrMemberFnIdent {
+    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
+}
+
+chain_from!(Ident => OpFnIdent => EmitIrMemberFnIdent);
 
 #[derive(Clone, Copy, Debug, Display)]
 #[display(fmt = "{}::{}", "self.parent_namespace()", ident)]
@@ -705,25 +716,9 @@ pub struct Param {
 pub enum ParamIdent {
     #[display(fmt = "cx")]
     Context,
-    IrContext(IrContextParamIdent),
+    #[display(fmt = "ops")]
+    Ops,
     User(UserParamIdent),
-}
-
-#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
-pub enum IrContextParamIdent {
-    #[display(fmt = "interpreter")]
-    Interpreter,
-    #[display(fmt = "compiler")]
-    Compiler,
-}
-
-impl IrContextParamIdent {
-    pub fn type_ident(self) -> IrMemberTypeIdent {
-        match self {
-            IrContextParamIdent::Interpreter => IrMemberTypeIdent::InterpreterRef,
-            IrContextParamIdent::Compiler => IrMemberTypeIdent::CompilerRef,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
@@ -732,7 +727,7 @@ pub struct UserParamIdent {
     pub ident: Ident,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, Default, From)]
 pub struct Block {
     pub stmts: Vec<Stmt>,
 }
@@ -859,7 +854,6 @@ pub enum Expr {
     Block(BlockExpr),
     #[from(types(
         ParamIdent,
-        IrContextParamIdent,
         UserParamIdent,
         LocalVarIdent,
         LocalLabelVarIdent,
@@ -873,7 +867,7 @@ pub enum Expr {
         VariantFnPath,
         GlobalVarFnPath,
         UserFnPath,
-        OpFnPath
+        OpFnPath,
     ))]
     Fn(FnPath),
     #[from]
@@ -1058,7 +1052,7 @@ pub enum FunctionalCastStyle {
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "{}{}", kind, "MaybeGrouped(&self.expr)")]
 pub struct NegateExpr {
-    pub kind: NegateExprKind,
+    pub kind: NegateKind,
     pub expr: Expr,
 }
 
@@ -1076,7 +1070,7 @@ impl From<NegateExpr> for Expr {
     "MaybeGrouped(&self.rhs)"
 )]
 pub struct CompareExpr {
-    pub kind: CompareExprKind,
+    pub kind: CompareKind,
     pub lhs: Expr,
     pub rhs: Expr,
 }

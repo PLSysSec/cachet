@@ -185,14 +185,17 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
                 target: call.target,
                 is_unsafe: call.is_unsafe,
                 args,
-                ret: call.ret,
             },
         )
     }
 
-    fn normalize_used_call(&mut self, call: type_checker::Call) -> Expr {
+    fn normalize_used_call(
+        &mut self,
+        call: type_checker::Call,
+        expr_ctor: impl FnOnce(Call) -> Expr,
+    ) -> Expr {
         let (stmts, call) = self.normalize_call(call);
-        let value = call.into();
+        let value = expr_ctor(call);
 
         if stmts.is_empty() {
             value
@@ -206,9 +209,13 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         }
     }
 
-    fn normalize_unused_call(&mut self, call: type_checker::Call) {
+    fn normalize_unused_call(
+        &mut self,
+        call: type_checker::Call,
+        stmt_ctor: impl FnOnce(Call) -> Stmt,
+    ) {
         let (mut stmts, call) = self.normalize_call(call);
-        let stmt = call.into();
+        let stmt = stmt_ctor(call);
 
         self.stmts.push(if stmts.is_empty() {
             stmt
@@ -224,7 +231,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Stmt::If(if_stmt) => self.normalize_if_stmt(if_stmt),
             type_checker::Stmt::Check(check_stmt) => self.normalize_check_stmt(check_stmt),
             type_checker::Stmt::Goto(goto_stmt) => self.stmts.push(goto_stmt.into()),
-            type_checker::Stmt::Emit(call) => self.normalize_unused_call(call),
+            type_checker::Stmt::Emit(emit_stmt) => self.normalize_emit_stmt(emit_stmt),
             type_checker::Stmt::Expr(expr) => self.normalize_unused_expr(expr),
         }
     }
@@ -261,6 +268,16 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             }
             .into(),
         );
+    }
+
+    fn normalize_emit_stmt(&mut self, emit_stmt: type_checker::EmitStmt) {
+        self.normalize_unused_call(emit_stmt.call, |call| {
+            EmitStmt {
+                call,
+                ir: emit_stmt.ir,
+            }
+            .into()
+        });
     }
 
     fn normalize_expr(&mut self, expr: type_checker::Expr) -> Expr {
@@ -320,7 +337,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         match expr {
             type_checker::Expr::Block(block_expr) => self.normalize_used_block_expr(*block_expr),
             type_checker::Expr::Var(var_expr) => var_expr.into(),
-            type_checker::Expr::Call(call) => self.normalize_used_call(call),
+            type_checker::Expr::Invoke(invoke_expr) => {
+                self.normalize_used_invoke_expr(invoke_expr)
+            }
             type_checker::Expr::Negate(negate_expr) => {
                 self.normalize_used_negate_expr(*negate_expr).into()
             }
@@ -340,7 +359,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         match expr {
             type_checker::Expr::Block(block_expr) => self.normalize_unused_block_expr(*block_expr),
             type_checker::Expr::Var(_) => (),
-            type_checker::Expr::Call(call) => self.normalize_unused_call(call),
+            type_checker::Expr::Invoke(invoke_expr) => {
+                self.normalize_unused_invoke_expr(invoke_expr)
+            }
             type_checker::Expr::Negate(negate_expr) => {
                 self.normalize_unused_negate_expr(*negate_expr)
             }
@@ -387,6 +408,26 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
                 .into(),
             );
         }
+    }
+
+    fn normalize_used_invoke_expr(&mut self, invoke_expr: type_checker::InvokeExpr) -> Expr {
+        self.normalize_used_call(invoke_expr.call, |call| {
+            InvokeExpr {
+                call,
+                ret: invoke_expr.ret,
+            }
+            .into()
+        })
+    }
+
+    fn normalize_unused_invoke_expr(&mut self, invoke_expr: type_checker::InvokeExpr) {
+        self.normalize_unused_call(invoke_expr.call, |call| {
+            InvokeStmt {
+                call,
+                ret: invoke_expr.ret,
+            }
+            .into()
+        });
     }
 
     fn normalize_used_negate_expr(&mut self, negate_expr: type_checker::NegateExpr) -> NegateExpr {

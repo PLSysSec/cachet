@@ -53,6 +53,28 @@ impl<B> IndexMut<EnumVariantIndex> for Env<B> {
 
 deref_index!(Env<B>[&EnumVariantIndex] => Spanned<Path> | <B>);
 
+impl Index<CallableIndex> for Env {
+    type Output = CallableItem;
+
+    fn index(&self, index: CallableIndex) -> &Self::Output {
+        match index {
+            CallableIndex::Fn(fn_index) => &self.fn_items[fn_index],
+            CallableIndex::Op(op_index) => &self.op_items[op_index],
+        }
+    }
+}
+
+impl IndexMut<CallableIndex> for Env {
+    fn index_mut(&mut self, index: CallableIndex) -> &mut Self::Output {
+        match index {
+            CallableIndex::Fn(fn_index) => &mut self.fn_items[fn_index],
+            CallableIndex::Op(op_index) => &mut self.op_items[op_index],
+        }
+    }
+}
+
+deref_index!(Env[&CallableIndex] => CallableItem);
+
 #[derive(Clone, Debug)]
 pub struct CallableItem<B = ()> {
     pub path: Spanned<Path>,
@@ -84,13 +106,6 @@ pub struct Call {
     pub target: CallableIndex,
     pub is_unsafe: bool,
     pub args: Vec<Arg>,
-    pub ret: TypeIndex,
-}
-
-impl Typed for Call {
-    fn type_(&self) -> TypeIndex {
-        self.ret
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -113,8 +128,10 @@ pub enum Stmt<B = ()> {
     #[from]
     Goto(GotoStmt),
     #[from]
-    Call(Call),
+    Emit(EmitStmt),
     Block(B, BlockStmt<B>),
+    #[from]
+    Invoke(InvokeStmt),
     #[from]
     Assign(AssignStmt<B>),
     #[from]
@@ -147,10 +164,18 @@ pub struct CheckStmt<B = ()> {
 }
 
 #[derive(Clone, Debug)]
+pub struct EmitStmt {
+    pub call: Call,
+    pub ir: IrIndex,
+}
+
+#[derive(Clone, Debug)]
 pub struct BlockStmt<B = ()> {
     pub kind: Option<BlockKind>,
     pub stmts: Vec<Stmt<B>>,
 }
+
+pub type InvokeStmt = InvokeExpr;
 
 #[derive(Clone, Debug)]
 pub struct AssignStmt<B = ()> {
@@ -169,7 +194,7 @@ pub enum Expr<B = ()> {
     #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
     #[from]
-    Call(Call),
+    Invoke(InvokeExpr),
     #[from]
     Negate(Box<NegateExpr<Expr<B>>>),
     #[from]
@@ -183,7 +208,7 @@ impl<B> Typed for Expr<B> {
         match self {
             Expr::Block(_, block_expr) => block_expr.type_(),
             Expr::Var(var_expr) => var_expr.type_(),
-            Expr::Call(fn_call) => fn_call.type_(),
+            Expr::Invoke(invoke_expr) => invoke_expr.type_(),
             Expr::Negate(negate_expr) => negate_expr.type_(),
             Expr::Cast(cast_expr) => cast_expr.type_(),
             Expr::Compare(compare_expr) => compare_expr.type_(),
@@ -256,7 +281,7 @@ impl<B> TryFrom<Expr<B>> for AtomExpr {
 
     fn try_from(expr: Expr<B>) -> Result<Self, Self::Error> {
         match expr {
-            expr @ (Expr::Block(_, _) | Expr::Call(_)) => Err(expr),
+            expr @ (Expr::Block(_, _) | Expr::Invoke(_)) => Err(expr),
             Expr::Var(var_expr) => Ok(var_expr.into()),
             Expr::Negate(negate_expr) => Ok((*negate_expr).try_into()?),
             Expr::Cast(cast_expr) => Ok((*cast_expr).try_into()?),
@@ -293,6 +318,18 @@ pub struct BlockExpr<B = ()> {
 impl<B> Typed for BlockExpr<B> {
     fn type_(&self) -> TypeIndex {
         self.value.type_()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct InvokeExpr {
+    pub call: Call,
+    pub ret: TypeIndex,
+}
+
+impl Typed for InvokeExpr {
+    fn type_(&self) -> TypeIndex {
+        self.ret
     }
 }
 

@@ -13,7 +13,7 @@ use crate::ast::{
 use crate::resolver;
 pub use crate::resolver::{
     CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem,
-    GotoStmt, IrIndex, IrItem, LabelIndex, LabelParamIndex, LocalLabelIndex, LocalVarIndex,
+    IrIndex, IrItem, LabelIndex, LabelParamIndex, LocalLabelIndex, LocalVarIndex,
     OpIndex, OutVar, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex,
     StructItem, TypeIndex, Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
@@ -52,6 +52,28 @@ impl IndexMut<EnumVariantIndex> for Env {
 }
 
 deref_index!(Env[&EnumVariantIndex] => Spanned<Path>);
+
+impl Index<CallableIndex> for Env {
+    type Output = CallableItem;
+
+    fn index(&self, index: CallableIndex) -> &Self::Output {
+        match index {
+            CallableIndex::Fn(fn_index) => &self.fn_items[fn_index],
+            CallableIndex::Op(op_index) => &self.op_items[op_index],
+        }
+    }
+}
+
+impl IndexMut<CallableIndex> for Env {
+    fn index_mut(&mut self, index: CallableIndex) -> &mut Self::Output {
+        match index {
+            CallableIndex::Fn(fn_index) => &mut self.fn_items[fn_index],
+            CallableIndex::Op(op_index) => &mut self.op_items[op_index],
+        }
+    }
+}
+
+deref_index!(Env[&CallableIndex] => CallableItem);
 
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
 pub enum DeclIndex {
@@ -133,6 +155,8 @@ pub struct CallableItem {
     pub params: Params,
     pub param_order: Vec<ParamIndex>,
     pub ret: TypeIndex,
+    pub interprets: Option<IrIndex>,
+    pub emits: Option<IrIndex>,
     pub body: Option<Body>,
 }
 
@@ -169,13 +193,6 @@ pub struct Call {
     pub target: CallableIndex,
     pub is_unsafe: bool,
     pub args: Vec<Arg>,
-    pub ret: TypeIndex,
-}
-
-impl Typed for Call {
-    fn type_(&self) -> TypeIndex {
-        self.ret
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -238,7 +255,7 @@ pub enum Stmt {
     #[from]
     Goto(GotoStmt),
     #[from]
-    Emit(Call),
+    Emit(EmitStmt),
     #[from(types(Block))]
     Expr(Expr),
 }
@@ -262,6 +279,18 @@ pub struct CheckStmt {
     pub cond: Expr,
 }
 
+#[derive(Clone, Debug)]
+pub struct GotoStmt {
+    pub label: LabelIndex,
+    pub ir: IrIndex,
+}
+
+#[derive(Clone, Debug)]
+pub struct EmitStmt {
+    pub call: Call,
+    pub ir: IrIndex,
+}
+
 #[derive(Clone, Debug, From)]
 pub enum Expr {
     #[from]
@@ -269,7 +298,7 @@ pub enum Expr {
     #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
     #[from]
-    Call(Call),
+    Invoke(InvokeExpr),
     #[from]
     Negate(Box<NegateExpr>),
     #[from]
@@ -285,7 +314,7 @@ impl Typed for Expr {
         match self {
             Expr::Block(block_expr) => block_expr.type_(),
             Expr::Var(var_expr) => var_expr.type_(),
-            Expr::Call(call_expr) => call_expr.type_(),
+            Expr::Invoke(call_expr) => call_expr.type_(),
             Expr::Negate(negate_expr) => negate_expr.type_(),
             Expr::Cast(cast_expr) => cast_expr.type_(),
             Expr::Compare(compare_expr) => compare_expr.type_(),
@@ -346,6 +375,18 @@ impl From<BuiltInVar> for VarExpr {
 }
 
 deref_from!(&BuiltInVar => VarExpr);
+
+#[derive(Clone, Debug)]
+pub struct InvokeExpr {
+    pub call: Call,
+    pub ret: TypeIndex,
+}
+
+impl Typed for InvokeExpr {
+    fn type_(&self) -> TypeIndex {
+        self.ret
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct NegateExpr {
