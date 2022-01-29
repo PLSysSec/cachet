@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use std::fmt::{self, Write};
+use std::fmt::{self, Display, Write};
 use std::iter::FromIterator;
 
 use derive_more::{Display, From};
@@ -12,7 +12,7 @@ use indent_write::fmt::IndentWriter;
 use cachet_lang::ast::{CastKind, CompareKind, Ident, NegateKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 
-use crate::util::{chain_from, fmt_join, fmt_join_trailing};
+use crate::util::{box_from, chain_from, fmt_join, fmt_join_trailing};
 
 #[derive(Clone, Copy, Debug, Display)]
 #[display(fmt = "{}_{}", kind, ident)]
@@ -44,6 +44,10 @@ pub enum Type {
     #[from]
     Ref(Box<RefType>),
 }
+
+box_from!(TemplateType => Type);
+box_from!(ConstType => Type);
+box_from!(RefType => Type);
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum TypePath {
@@ -160,17 +164,11 @@ pub struct TemplateType {
     pub args: Vec<Type>,
 }
 
-impl fmt::Display for TemplateType {
+impl Display for TemplateType {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}<", self.inner)?;
         fmt_join(f, ", ", self.args.iter())?;
         write!(f, ">")
-    }
-}
-
-impl From<TemplateType> for Type {
-    fn from(template_type: TemplateType) -> Self {
-        Box::new(template_type).into()
     }
 }
 
@@ -180,23 +178,11 @@ pub struct ConstType {
     inner: Type,
 }
 
-impl From<ConstType> for Type {
-    fn from(const_type: ConstType) -> Self {
-        Box::new(const_type).into()
-    }
-}
-
 #[derive(Clone, Debug, Display, From)]
 #[display(fmt = "{}{}", inner, value_category)]
 pub struct RefType {
     pub inner: Type,
     pub value_category: ValueCategory,
-}
-
-impl From<RefType> for Type {
-    fn from(ref_type: RefType) -> Self {
-        Box::new(ref_type).into()
-    }
 }
 
 #[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
@@ -209,14 +195,29 @@ pub enum ValueCategory {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum VarIdent {
-    #[from(types(UserParamIdent))]
-    Param(ParamIdent),
+    #[from(types(UserParamVarIdent))]
+    Param(ParamVarIdent),
     #[from]
     Local(LocalVarIdent),
     #[from]
     LocalLabel(LocalLabelVarIdent),
-    #[from]
-    Synthetic(SyntheticVarIdent),
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+pub enum ParamVarIdent {
+    #[display(fmt = "cx")]
+    Context,
+    #[display(fmt = "ops")]
+    Ops,
+    #[display(fmt = "in")]
+    In,
+    User(UserParamVarIdent),
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+#[display(fmt = "param_{}", ident)]
+pub struct UserParamVarIdent {
+    pub ident: Ident,
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -233,35 +234,13 @@ pub struct LocalLabelVarIdent {
     pub index: LocalLabelIndex,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}_{}_{}", kind, ident, index)]
-pub struct SyntheticVarIdent {
-    pub kind: SyntheticVarKind,
-    pub ident: Ident,
-    pub index: usize,
-}
-
-#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
-pub enum SyntheticVarKind {
-    #[display(fmt = "result")]
-    Result,
-    #[display(fmt = "ret")]
-    Ret,
-    #[display(fmt = "out")]
-    Out,
-    #[display(fmt = "tmp")]
-    Tmp,
-}
-
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum FnPath {
     Helper(HelperFnIdent),
     TypeMember(TypeMemberFnPath),
     IrMember(IrMemberFnPath),
-    Variant(VariantFnPath),
     GlobalVar(GlobalVarFnPath),
     User(UserFnPath),
-    Op(OpFnPath),
 }
 
 impl FnPath {
@@ -272,10 +251,8 @@ impl FnPath {
                 FnIdent::TypeMember(type_member_fn_path.ident)
             }
             FnPath::IrMember(ir_member_fn_path) => FnIdent::IrMember(ir_member_fn_path.ident),
-            FnPath::Variant(variant_fn_path) => FnIdent::Variant(variant_fn_path.ident),
             FnPath::GlobalVar(global_var_fn_path) => FnIdent::GlobalVar(global_var_fn_path.ident),
             FnPath::User(user_fn_path) => FnIdent::User(user_fn_path.ident),
-            FnPath::Op(op_fn_path) => FnIdent::Op(op_fn_path.ident),
         }
     }
 
@@ -286,10 +263,8 @@ impl FnPath {
                 Some(type_member_fn_path.parent_namespace())
             }
             FnPath::IrMember(ir_member_fn_path) => Some(ir_member_fn_path.parent_namespace()),
-            FnPath::Variant(variant_fn_path) => Some(variant_fn_path.parent_namespace()),
             FnPath::GlobalVar(global_var_fn_path) => global_var_fn_path.parent_namespace(),
             FnPath::User(user_fn_path) => user_fn_path.parent_namespace(),
-            FnPath::Op(op_fn_path) => Some(op_fn_path.parent_namespace()),
         }
     }
 }
@@ -299,10 +274,8 @@ pub enum FnIdent {
     Helper(HelperFnIdent),
     TypeMember(TypeMemberFnIdent),
     IrMember(IrMemberFnIdent),
-    Variant(VariantFnIdent),
     GlobalVar(GlobalVarFnIdent),
     User(UserFnIdent),
-    Op(OpFnIdent),
 }
 
 impl FnIdent {
@@ -315,10 +288,8 @@ impl FnIdent {
             FnIdent::IrMember(ir_member_fn_ident) => {
                 Some(ir_member_fn_ident.parent_namespace_kind())
             }
-            FnIdent::Variant(_) => Some(VariantFnIdent::PARENT_NAMESPACE_KIND),
             FnIdent::GlobalVar(_) => Some(GlobalVarFnIdent::PARENT_NAMESPACE_KIND),
             FnIdent::User(_) => Some(UserFnIdent::PARENT_NAMESPACE_KIND),
-            FnIdent::Op(_) => Some(OpFnIdent::PARENT_NAMESPACE_KIND),
         }
     }
 }
@@ -354,6 +325,7 @@ pub enum TypeMemberFnIdent {
     SetMutRef,
     Cast(CastTypeMemberFnIdent),
     Compare(CompareTypeMemberFnIdent),
+    Variant(VariantTypeMemberFnIdent),
 }
 
 impl TypeMemberFnIdent {
@@ -363,6 +335,7 @@ impl TypeMemberFnIdent {
             TypeMemberFnIdent::ToTag(_) => ToTagTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Cast(_) => CastTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Compare(_) => CompareTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
+            TypeMemberFnIdent::Variant(_) => VariantTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
         }
     }
 }
@@ -387,7 +360,7 @@ impl CastTypeMemberFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
 }
 
-impl fmt::Display for CastTypeMemberFnIdent {
+impl Display for CastTypeMemberFnIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
@@ -410,7 +383,7 @@ impl CompareTypeMemberFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
 }
 
-impl fmt::Display for CompareTypeMemberFnIdent {
+impl Display for CompareTypeMemberFnIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
@@ -425,6 +398,16 @@ impl fmt::Display for CompareTypeMemberFnIdent {
             }
         )
     }
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+#[display(fmt = "Variant_{}", ident)]
+pub struct VariantTypeMemberFnIdent {
+    pub ident: Ident,
+}
+
+impl VariantTypeMemberFnIdent {
+    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
@@ -464,40 +447,14 @@ impl IrMemberFnIdent {
 #[derive(Clone, Copy, Debug, Display, From)]
 #[display(fmt = "Emit{}", ident)]
 pub struct EmitIrMemberFnIdent {
-    pub ident: OpFnIdent,
+    pub ident: OpUserFnIdent,
 }
 
 impl EmitIrMemberFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
 }
 
-chain_from!(Ident => OpFnIdent => EmitIrMemberFnIdent);
-
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}::{}", "self.parent_namespace()", ident)]
-pub struct VariantFnPath {
-    pub parent: Ident,
-    pub ident: VariantFnIdent,
-}
-
-impl VariantFnPath {
-    pub const fn parent_namespace(self) -> NamespaceIdent {
-        NamespaceIdent {
-            kind: VariantFnIdent::PARENT_NAMESPACE_KIND,
-            ident: self.parent,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "Variant_{}", ident)]
-pub struct VariantFnIdent {
-    pub ident: Ident,
-}
-
-impl VariantFnIdent {
-    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
-}
+chain_from!(Ident => OpUserFnIdent => EmitIrMemberFnIdent);
 
 #[derive(Clone, Copy, Debug)]
 pub struct GlobalVarFnPath {
@@ -517,7 +474,7 @@ impl GlobalVarFnPath {
     }
 }
 
-impl fmt::Display for GlobalVarFnPath {
+impl Display for GlobalVarFnPath {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         if let Some(parent_namespace_ident) = self.parent_namespace() {
             write!(f, "{}::", parent_namespace_ident)?;
@@ -563,7 +520,7 @@ impl UserFnPath {
     }
 }
 
-impl fmt::Display for UserFnPath {
+impl Display for UserFnPath {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         if let Some(parent_namespace_ident) = self.parent_namespace() {
             write!(f, "{}::", parent_namespace_ident)?;
@@ -581,48 +538,36 @@ impl From<UserFnIdent> for UserFnPath {
     }
 }
 
+chain_from!(FnUserFnIdent => UserFnIdent => UserFnPath);
+
 #[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "Fn_{}", ident)]
-pub struct UserFnIdent {
-    pub ident: Ident,
+pub enum UserFnIdent {
+    Fn(FnUserFnIdent),
+    Op(OpUserFnIdent),
 }
 
 impl UserFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}::{}", "self.parent_namespace()", ident)]
-pub struct OpFnPath {
-    pub parent: Ident,
-    pub ident: OpFnIdent,
-}
-
-impl OpFnPath {
-    pub const fn parent_namespace(self) -> NamespaceIdent {
-        NamespaceIdent {
-            kind: OpFnIdent::PARENT_NAMESPACE_KIND,
-            ident: self.parent,
-        }
-    }
+#[derive(Clone, Copy, Debug, Display, From)]
+#[display(fmt = "Fn_{}", ident)]
+pub struct FnUserFnIdent {
+    pub ident: Ident,
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
 #[display(fmt = "Op_{}", ident)]
-pub struct OpFnIdent {
+pub struct OpUserFnIdent {
     pub ident: Ident,
 }
 
-impl OpFnIdent {
-    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
-}
-
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, Default, From)]
 pub struct Code {
     pub items: Vec<Item>,
 }
 
-impl fmt::Display for Code {
+impl Display for Code {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt_join(f, "\n\n", self.items.iter())
     }
@@ -651,7 +596,7 @@ pub struct CommentItem {
     pub text: String,
 }
 
-impl fmt::Display for CommentItem {
+impl Display for CommentItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(IndentWriter::new("// ", f), "{}", self.text)
     }
@@ -663,7 +608,7 @@ pub struct NamespaceItem {
     pub items: Vec<Item>,
 }
 
-impl fmt::Display for NamespaceItem {
+impl Display for NamespaceItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "namespace {} {{\n\n", self.ident)?;
         fmt_join_trailing(f, "\n\n", self.items.iter())?;
@@ -681,7 +626,7 @@ pub struct FnItem {
     pub body: Option<Block>,
 }
 
-impl fmt::Display for FnItem {
+impl Display for FnItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         if self.is_inline {
             write!(f, "inline ")?;
@@ -708,23 +653,8 @@ impl fmt::Display for FnItem {
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "{} {}", type_, ident)]
 pub struct Param {
-    pub ident: ParamIdent,
+    pub ident: ParamVarIdent,
     pub type_: Type,
-}
-
-#[derive(Clone, Copy, Debug, Display, From)]
-pub enum ParamIdent {
-    #[display(fmt = "cx")]
-    Context,
-    #[display(fmt = "ops")]
-    Ops,
-    User(UserParamIdent),
-}
-
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "param_{}", ident)]
-pub struct UserParamIdent {
-    pub ident: Ident,
 }
 
 #[derive(Clone, Debug, Default, From)]
@@ -732,7 +662,7 @@ pub struct Block {
     pub stmts: Vec<Stmt>,
 }
 
-impl fmt::Display for Block {
+impl Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{{\n")?;
 
@@ -778,7 +708,7 @@ impl FromIterator<Stmt> for Stmt {
     }
 }
 
-#[derive(Clone, Debug, Display, From)]
+#[derive(Clone, Debug, Default, Display, From)]
 #[from(types("Vec<Stmt>"))]
 pub struct BlockStmt {
     pub block: Block,
@@ -800,7 +730,7 @@ pub struct LetStmt {
     pub rhs: Option<Expr>,
 }
 
-impl fmt::Display for LetStmt {
+impl Display for LetStmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{} {}", self.type_, self.lhs)?;
         if let Some(rhs) = &self.rhs {
@@ -817,7 +747,7 @@ pub struct IfStmt {
     pub else_: Option<Block>,
 }
 
-impl fmt::Display for IfStmt {
+impl Display for IfStmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "if ({}) {}", self.cond, self.then)?;
         if let Some(else_) = &self.else_ {
@@ -832,7 +762,7 @@ pub struct RetStmt {
     pub value: Option<Expr>,
 }
 
-impl fmt::Display for RetStmt {
+impl Display for RetStmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "return")?;
         if let Some(value) = &self.value {
@@ -852,22 +782,14 @@ pub struct ExprStmt {
 pub enum Expr {
     #[from(types(Block, "Vec<Stmt>"))]
     Block(BlockExpr),
-    #[from(types(
-        ParamIdent,
-        UserParamIdent,
-        LocalVarIdent,
-        LocalLabelVarIdent,
-        SyntheticVarIdent
-    ))]
+    #[from(types(ParamVarIdent, UserParamVarIdent, LocalVarIdent, LocalLabelVarIdent,))]
     Var(VarIdent),
     #[from(types(
         HelperFnIdent,
         TypeMemberFnPath,
         IrMemberFnPath,
-        VariantFnPath,
         GlobalVarFnPath,
         UserFnPath,
-        OpFnPath,
     ))]
     Fn(FnPath),
     #[from]
@@ -888,6 +810,15 @@ pub enum Expr {
     Comma(Box<CommaExpr>),
 }
 
+box_from!(TemplateExpr => Expr);
+box_from!(MemberExpr => Expr);
+box_from!(CallExpr => Expr);
+box_from!(CastExpr => Expr);
+box_from!(NegateExpr => Expr);
+box_from!(CompareExpr => Expr);
+box_from!(AssignExpr => Expr);
+box_from!(CommaExpr => Expr);
+
 impl FromIterator<Stmt> for Expr {
     fn from_iter<T>(iter: T) -> Self
     where
@@ -899,7 +830,7 @@ impl FromIterator<Stmt> for Expr {
 
 struct MaybeGrouped<'a>(&'a Expr);
 
-impl fmt::Display for MaybeGrouped<'_> {
+impl Display for MaybeGrouped<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let needs_group = match self.0 {
             // Note: BlockExpr and CommaExpr are always inherently grouped for
@@ -911,9 +842,8 @@ impl fmt::Display for MaybeGrouped<'_> {
             | Expr::Template(_)
             | Expr::Member(_)
             | Expr::Call(_)
-            | Expr::Negate(_)
             | Expr::Comma(_) => false,
-            Expr::Compare(_) | Expr::Assign(_) => true,
+            Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) => true,
             Expr::Cast(cast_expr) => match cast_expr.kind {
                 CastStyle::Functional(_) => false,
                 CastStyle::C => true,
@@ -923,7 +853,7 @@ impl fmt::Display for MaybeGrouped<'_> {
         if needs_group {
             write!(f, "({})", self.0)
         } else {
-            fmt::Display::fmt(self.0, f)
+            Display::fmt(self.0, f)
         }
     }
 }
@@ -940,7 +870,7 @@ pub enum ExprTag {
     Val,
 }
 
-#[derive(Clone, Debug, Display, From)]
+#[derive(Clone, Debug, Default, Display, From)]
 #[display(fmt = "({})", block)]
 #[from(types("Vec<Stmt>"))]
 pub struct BlockExpr {
@@ -962,17 +892,11 @@ pub struct TemplateExpr {
     pub args: Vec<Type>,
 }
 
-impl fmt::Display for TemplateExpr {
+impl Display for TemplateExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}<", self.inner)?;
         fmt_join(f, ", ", self.args.iter())?;
         write!(f, ">")
-    }
-}
-
-impl From<TemplateExpr> for Expr {
-    fn from(template_expr: TemplateExpr) -> Self {
-        Box::new(template_expr).into()
     }
 }
 
@@ -983,29 +907,17 @@ pub struct MemberExpr {
     pub member: Ident,
 }
 
-impl From<MemberExpr> for Expr {
-    fn from(member_expr: MemberExpr) -> Self {
-        Box::new(member_expr).into()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct CallExpr {
     pub target: Expr,
     pub args: Vec<Expr>,
 }
 
-impl fmt::Display for CallExpr {
+impl Display for CallExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}(", MaybeGrouped(&self.target))?;
         fmt_join(f, ", ", self.args.iter())?;
         write!(f, ")")
-    }
-}
-
-impl From<CallExpr> for Expr {
-    fn from(call_expr: CallExpr) -> Self {
-        Box::new(call_expr).into()
     }
 }
 
@@ -1016,18 +928,12 @@ pub struct CastExpr {
     pub type_: Type,
 }
 
-impl fmt::Display for CastExpr {
+impl Display for CastExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self.kind {
             CastStyle::Functional(kind) => write!(f, "{}<{}>({})", kind, self.type_, self.expr),
             CastStyle::C => write!(f, "({}) {}", self.type_, MaybeGrouped(&self.expr)),
         }
-    }
-}
-
-impl From<CastExpr> for Expr {
-    fn from(cast_expr: CastExpr) -> Self {
-        Box::new(cast_expr).into()
     }
 }
 
@@ -1056,12 +962,6 @@ pub struct NegateExpr {
     pub expr: Expr,
 }
 
-impl From<NegateExpr> for Expr {
-    fn from(negate_expr: NegateExpr) -> Self {
-        Box::new(negate_expr).into()
-    }
-}
-
 #[derive(Clone, Debug, Display)]
 #[display(
     fmt = "{} {} {}",
@@ -1075,12 +975,6 @@ pub struct CompareExpr {
     pub rhs: Expr,
 }
 
-impl From<CompareExpr> for Expr {
-    fn from(compare_expr: CompareExpr) -> Self {
-        Box::new(compare_expr).into()
-    }
-}
-
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "{} = {}", "MaybeGrouped(&self.lhs)", "MaybeGrouped(&self.rhs)")]
 pub struct AssignExpr {
@@ -1088,21 +982,9 @@ pub struct AssignExpr {
     pub rhs: Expr,
 }
 
-impl From<AssignExpr> for Expr {
-    fn from(assign_expr: AssignExpr) -> Self {
-        Box::new(assign_expr).into()
-    }
-}
-
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "({}, {})", "MaybeGrouped(&self.lhs)", "MaybeGrouped(&self.rhs)")]
 pub struct CommaExpr {
     pub lhs: Expr,
     pub rhs: Expr,
-}
-
-impl From<CommaExpr> for Expr {
-    fn from(comma_expr: CommaExpr) -> Self {
-        Box::new(comma_expr).into()
-    }
 }

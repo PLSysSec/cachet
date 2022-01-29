@@ -4,10 +4,10 @@ use void::Void;
 
 use crate::normalizer;
 pub use crate::normalizer::{
-    Arg, AtomExpr, Call, CallableIndex, CompareExpr, DeclIndex, EnumIndex, EnumItem,
-    EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem,
-    LabelIndex, LabelParamIndex, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,
-    NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, OutVarParam, OutVarParamIndex,
+    Arg, AtomExpr, Call, CallableIndex, CompareExpr, DeclIndex, EmitStmt, EnumIndex, EnumItem,
+    EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, InvokeExpr, InvokeStmt,
+    IrIndex, IrItem, LabelIndex, LabelParamIndex, LocalLabelIndex, LocalVar, LocalVarIndex,
+    Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, OutVarParam, OutVarParamIndex,
     ParamIndex, Params, ParentIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex,
     VarParam, VarParamIndex, VariantIndex,
 };

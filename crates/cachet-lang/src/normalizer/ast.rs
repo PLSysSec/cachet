@@ -53,8 +53,8 @@ impl<B> IndexMut<EnumVariantIndex> for Env<B> {
 
 deref_index!(Env<B>[&EnumVariantIndex] => Spanned<Path> | <B>);
 
-impl Index<CallableIndex> for Env {
-    type Output = CallableItem;
+impl<B> Index<CallableIndex> for Env<B> {
+    type Output = CallableItem<B>;
 
     fn index(&self, index: CallableIndex) -> &Self::Output {
         match index {
@@ -64,7 +64,7 @@ impl Index<CallableIndex> for Env {
     }
 }
 
-impl IndexMut<CallableIndex> for Env {
+impl<B> IndexMut<CallableIndex> for Env<B> {
     fn index_mut(&mut self, index: CallableIndex) -> &mut Self::Output {
         match index {
             CallableIndex::Fn(fn_index) => &mut self.fn_items[fn_index],
@@ -73,7 +73,7 @@ impl IndexMut<CallableIndex> for Env {
     }
 }
 
-deref_index!(Env[&CallableIndex] => CallableItem);
+deref_index!(Env<B>[&CallableIndex] => CallableItem<B> | <B>);
 
 #[derive(Clone, Debug)]
 pub struct CallableItem<B = ()> {
@@ -82,13 +82,15 @@ pub struct CallableItem<B = ()> {
     pub is_unsafe: bool,
     pub params: Params,
     pub param_order: Vec<ParamIndex>,
-    pub ret: TypeIndex,
+    pub ret: Option<TypeIndex>,
+    pub interprets: Option<IrIndex>,
+    pub emits: Option<IrIndex>,
     pub body: Option<Body<B>>,
 }
 
 impl<B> Typed for CallableItem<B> {
     fn type_(&self) -> TypeIndex {
-        self.ret
+        self.ret.unwrap_or_else(|| BuiltInType::Unit.into())
     }
 }
 
@@ -185,7 +187,9 @@ pub struct AssignStmt<B = ()> {
 
 #[derive(Clone, Debug)]
 pub struct RetStmt<B = ()> {
-    pub value: Expr<B>,
+    // TODO(spinda): Record when this statement is at an end of control flow
+    // for a body. Do the same for goto statements as well.
+    pub value: Option<Expr<B>>,
 }
 
 #[derive(Clone, Debug, From)]

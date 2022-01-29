@@ -198,8 +198,8 @@ impl<'a> TypeChecker<'a> {
 
         let ret = callable_item.type_();
 
-        let (interprets, emits) = match callable_item.parent {
-            Some(ParentIndex::Ir(ir_index)) => {
+        let (interprets, emits) = match (callable_index, callable_item.parent) {
+            (CallableIndex::Op(_), Some(ParentIndex::Ir(ir_index))) => {
                 let emits = self.env[ir_index].emits;
                 let interprets = match emits {
                     Some(_) => None,

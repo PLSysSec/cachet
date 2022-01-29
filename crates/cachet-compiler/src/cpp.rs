@@ -7,7 +7,6 @@ use derive_more::Display;
 use enumset::EnumSet;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
-use lazy_static::lazy_static;
 use typed_index_collections::{TiSlice, TiVec};
 
 use cachet_lang::ast::{BuiltInType, BuiltInTypeMap, CastKind, Ident, Path, BUILT_IN_TYPES};
@@ -18,7 +17,7 @@ use crate::cpp::ast::*;
 mod ast;
 
 #[derive(Clone, Debug)]
-pub struct CompilerOutput {
+pub struct CppCompilerOutput {
     pub decls: CppCode,
     pub defs: CppCode,
 }
@@ -26,7 +25,7 @@ pub struct CompilerOutput {
 #[derive(Clone, Debug, Display)]
 pub struct CppCode(Code);
 
-pub fn compile(env: &normalizer::Env) -> CompilerOutput {
+pub fn compile(env: &normalizer::Env) -> CppCompilerOutput {
     let mut compiler = Compiler::new(env);
 
     for enum_index in env.enum_items.keys() {
@@ -72,7 +71,7 @@ pub fn compile(env: &normalizer::Env) -> CompilerOutput {
     ]
     .collect();
 
-    CompilerOutput {
+    CppCompilerOutput {
         decls: CppCode(decls),
         defs: CppCode(defs),
     }
@@ -189,7 +188,7 @@ impl IntoIterator for ItemBuckets {
 }
 
 const CONTEXT_PARAM: Param = Param {
-    ident: ParamIdent::Context,
+    ident: ParamVarIdent::Context,
     type_: Type::Path(TypePath::Helper(HelperTypeIdent::ContextRef)),
 };
 const CONTEXT_ARG: Expr = Expr::Var(VarIdent::Param(CONTEXT_PARAM.ident));
@@ -219,9 +218,9 @@ impl<'a> Compiler<'a> {
         let enum_item = &self.env[enum_index];
 
         let variant_decls = enum_item.variants.iter().map(|variant_path| {
-            let path = VariantFnPath {
+            let path = TypeMemberFnPath {
                 parent: enum_item.ident.value,
-                ident: variant_path.value.ident().into(),
+                ident: VariantTypeMemberFnIdent::from(variant_path.value.ident()).into(),
             }
             .into();
 
@@ -325,31 +324,26 @@ impl<'a> Compiler<'a> {
 
         let callable_parent_ident = callable_item.path.value.parent().map(Path::ident);
         let callable_ident = callable_item.path.value.ident();
-        let path = match callable_index {
-            normalizer::CallableIndex::Fn(_) => UserFnPath {
-                parent: callable_parent_ident,
-                ident: callable_ident.into(),
-            }
-            .into(),
-            normalizer::CallableIndex::Op(_) => OpFnPath {
-                parent: callable_parent_ident.expect("orphan op item"),
-                ident: callable_ident.into(),
-            }
-            .into(),
-        };
+        let path = UserFnPath {
+            parent: callable_parent_ident,
+            ident: match callable_index {
+                normalizer::CallableIndex::Fn(_) => FnUserFnIdent::from(callable_ident).into(),
+                normalizer::CallableIndex::Op(_) => OpUserFnIdent::from(callable_ident).into(),
+            },
+        }
+        .into();
 
         let params = iter::once(CONTEXT_PARAM)
             .chain(self.compile_params(&callable_item.params, &callable_item.param_order))
             .collect();
 
-        let ret = if callable_item.ret == BuiltInType::Unit.into() {
-            Type::Void
-        } else {
-            TypeMemberTypePath {
-                parent: self.get_type_ident(callable_item.ret),
+        let ret = match callable_item.ret {
+            Some(ret) => TypeMemberTypePath {
+                parent: self.get_type_ident(ret),
                 ident: ExprTag::Val.into(),
             }
-            .into()
+            .into(),
+            None => Type::Void,
         };
 
         let fn_decl = FnItem {
@@ -361,21 +355,26 @@ impl<'a> Compiler<'a> {
             body: None,
         };
 
-        if let FnPath::Op(op_fn_path) = path {
+        // Declare emit helper functions for interpreter ops.
+        if let (normalizer::CallableIndex::Op(_), Some(ir_index)) =
+            (callable_index, callable_item.interprets)
+        {
+            let ir_ident = self.env[ir_index].ident.value;
+
             let mut emit_fn_decl = fn_decl.clone();
 
             emit_fn_decl.path = IrMemberFnPath {
-                parent: op_fn_path.parent,
-                ident: EmitIrMemberFnIdent::from(op_fn_path.ident).into(),
+                parent: ir_ident,
+                ident: EmitIrMemberFnIdent::from(callable_ident).into(),
             }
             .into();
 
             emit_fn_decl.params.insert(
                 1,
                 Param {
-                    ident: ParamIdent::Ops,
+                    ident: ParamVarIdent::Ops,
                     type_: IrMemberTypePath {
-                        parent: op_fn_path.parent,
+                        parent: ir_ident,
                         ident: IrMemberTypeIdent::OpsRef,
                     }
                     .into(),
@@ -413,11 +412,11 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn compile_params<'c>(
-        &'c mut self,
-        params: &'c normalizer::Params,
-        param_order: &'c [normalizer::ParamIndex],
-    ) -> impl 'c + Iterator<Item = Param> + Captures<'a> {
+    fn compile_params<'b>(
+        &'b mut self,
+        params: &'b normalizer::Params,
+        param_order: &'b [normalizer::ParamIndex],
+    ) -> impl 'b + Iterator<Item = Param> + Captures<'a> {
         param_order
             .iter()
             .map(|param_index| self.compile_param(params, *param_index))
@@ -442,7 +441,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_var_param(&mut self, var_param: &normalizer::VarParam) -> Param {
-        let ident = UserParamIdent::from(var_param.ident.value).into();
+        let ident = UserParamVarIdent::from(var_param.ident.value).into();
 
         let type_ = TypeMemberTypePath {
             parent: self.get_type_ident(var_param.type_),
@@ -454,7 +453,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_out_var_param(&mut self, out_var_param: &normalizer::OutVarParam) -> Param {
-        let ident = UserParamIdent::from(out_var_param.ident.value).into();
+        let ident = UserParamVarIdent::from(out_var_param.ident.value).into();
 
         let type_ = TypeMemberTypePath {
             parent: self.get_type_ident(out_var_param.type_),
@@ -466,7 +465,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_label_param(&mut self, label_param_ident: Ident) -> Param {
-        let ident = UserParamIdent::from(label_param_ident).into();
+        let ident = UserParamVarIdent::from(label_param_ident).into();
 
         let type_ = IrMemberTypePath {
             // TODO(spinda): Give the labels IR annotations so this doesn't
@@ -521,10 +520,6 @@ fn generate_cast_fn_decl(
         CastKind::Upcast => (subtype_path, supertype_path),
     };
 
-    lazy_static! {
-        static ref IN_PARAM_IDENT: Ident = "in".into();
-    }
-
     FnItem {
         path: TypeMemberFnPath {
             parent: subtype_ident,
@@ -538,7 +533,7 @@ fn generate_cast_fn_decl(
         is_fully_qualified: false,
         is_inline: true,
         params: vec![Param {
-            ident: UserParamIdent::from(*IN_PARAM_IDENT).into(),
+            ident: ParamVarIdent::In,
             type_: source_type_path.into(),
         }],
         ret: target_type_path.into(),
@@ -598,7 +593,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                     // let one be mutable within the function body, we store it
                     // in a local variable up front.
 
-                    let lhs = UserParamIdent::from(var_param.ident.value).into();
+                    let lhs = UserParamVarIdent::from(var_param.ident.value).into();
 
                     let rhs = TaggedExpr {
                         expr: Expr::from(lhs),
@@ -609,6 +604,48 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                     self.bind_local_var(lhs, rhs);
                 }
             }
+        }
+    }
+
+    fn compile_args<'c>(&'c self, args: &'c [normalizer::Arg]) -> impl 'c + Iterator<Item = Expr> {
+        args.iter().map(|arg| self.compile_arg(arg))
+    }
+
+    fn compile_arg(&self, arg: &normalizer::Arg) -> Expr {
+        match arg {
+            normalizer::Arg::Expr(atom_expr) => self.compile_expr_arg(atom_expr),
+            normalizer::Arg::OutVar(out_var_arg) => self.compile_out_var_arg(out_var_arg),
+            normalizer::Arg::Label(label_index) => self.compile_label_arg(*label_index),
+        }
+    }
+
+    fn compile_expr_arg(&self, atom_expr: &normalizer::AtomExpr) -> Expr {
+        self.use_expr(self.compile_atom_expr(atom_expr), ExprTag::Ref.into())
+    }
+
+    fn compile_out_var_arg(&self, out_var_arg: &normalizer::OutVarArg) -> Expr {
+        // TODO(spinda): Handle out-parameter upcasting.
+
+        self.use_expr(
+            match out_var_arg.out_var {
+                normalizer::OutVar::Out(var_index) => self.compile_var_access(var_index.value),
+                // TODO(spinda): Eliminate these in the normalizer.
+                normalizer::OutVar::OutLet(_) => unimplemented!(),
+            },
+            ExprTag::MutRef.into(),
+        )
+    }
+
+    fn compile_label_arg(&self, label_index: normalizer::LabelIndex) -> Expr {
+        match label_index {
+            normalizer::LabelIndex::Param(label_param_index) => {
+                UserParamVarIdent::from(self.params[label_param_index].value).into()
+            }
+            normalizer::LabelIndex::Local(local_label_index) => LocalLabelVarIdent {
+                ident: self.locals[local_label_index].value,
+                index: local_label_index,
+            }
+            .into(),
         }
     }
 
@@ -676,7 +713,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             .as_ref()
             .map(|else_| self.compile_block(else_));
 
-        self.stmts.push(IfStmt { cond, then, else_ }.into())
+        self.stmts.push(IfStmt { cond, then, else_ }.into());
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &normalizer::CheckStmt) {
@@ -691,7 +728,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 args: vec![cond],
             })
             .into(),
-        )
+        );
     }
 
     fn compile_goto_stmt(&mut self, goto_stmt: &normalizer::GotoStmt) {
@@ -729,7 +766,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 args: vec![CONTEXT_ARG],
             }
             .into(),
-            _ => ParamIdent::Ops.into(),
+            _ => ParamVarIdent::Ops.into(),
         };
         let args = iter::once(CONTEXT_ARG)
             .chain(iter::once(ops_arg))
@@ -772,47 +809,18 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 args: vec![lhs, rhs],
             })
             .into(),
+            // TODO(spinda): Review this.
             _ => Expr::from(AssignExpr { lhs, rhs }).into(),
         });
     }
 
     fn compile_ret_stmt(&mut self, ret_stmt: &normalizer::RetStmt) {
-        let value = self.use_expr(self.compile_expr(&ret_stmt.value), ExprTag::Val.into());
+        let value = ret_stmt
+            .value
+            .as_ref()
+            .map(|value| self.use_expr(self.compile_expr(value), ExprTag::Val.into()));
 
-        self.stmts.push(RetStmt { value: Some(value) }.into());
-    }
-
-    fn compile_args<'c>(&'c self, args: &'c [normalizer::Arg]) -> impl 'c + Iterator<Item = Expr> {
-        args.iter().map(|arg| self.compile_arg(arg))
-    }
-
-    fn compile_arg(&self, arg: &normalizer::Arg) -> Expr {
-        match arg {
-            normalizer::Arg::Expr(atom_expr) => self.compile_expr_arg(atom_expr),
-            normalizer::Arg::OutVar(out_var_arg) => self.compile_out_var_arg(out_var_arg),
-            normalizer::Arg::Label(label_index) => self.compile_label_arg(*label_index),
-        }
-    }
-
-    fn compile_expr_arg(&self, atom_expr: &normalizer::AtomExpr) -> Expr {
-        self.use_expr(self.compile_atom_expr(atom_expr), ExprTag::Ref.into())
-    }
-
-    fn compile_out_var_arg(&self, out_var_arg: &normalizer::OutVarArg) -> Expr {
-        // TODO(spinda): Handle out-parameter upcasting.
-
-        self.use_expr(
-            match out_var_arg.out_var {
-                normalizer::OutVar::Out(var_index) => self.compile_var_access(var_index.value),
-                // TODO(spinda): Eliminate these in the normalizer.
-                normalizer::OutVar::OutLet(_) => unimplemented!(),
-            },
-            ExprTag::MutRef.into(),
-        )
-    }
-
-    fn compile_label_arg(&self, label_index: normalizer::LabelIndex) -> Expr {
-        self.get_label_ident(label_index).into()
+        self.stmts.push(RetStmt { value }.into());
     }
 
     fn compile_expr(&self, expr: &normalizer::Expr) -> TaggedExpr {
@@ -914,9 +922,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
                 TaggedExpr {
                     expr: CallExpr {
-                        target: VariantFnPath {
+                        target: TypeMemberFnPath {
                             parent: enum_item.ident.value,
-                            ident: variant_path.value.ident().into(),
+                            ident: VariantTypeMemberFnIdent::from(variant_path.value.ident())
+                                .into(),
                         }
                         .into(),
                         args: vec![CONTEXT_ARG],
@@ -947,7 +956,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 let var_param = &self.params[var_param_index];
 
                 TaggedExpr {
-                    expr: UserParamIdent::from(var_param.ident.value).into(),
+                    expr: UserParamVarIdent::from(var_param.ident.value).into(),
                     type_: var_param.type_,
                     tags: var_param_tag(var_param.is_mut).into(),
                 }
@@ -956,7 +965,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 let out_var_param = &self.params[out_var_param_index];
 
                 TaggedExpr {
-                    expr: UserParamIdent::from(out_var_param.ident.value).into(),
+                    expr: UserParamVarIdent::from(out_var_param.ident.value).into(),
                     type_: out_var_param.type_,
                     tags: ExprTag::MutRef.into(),
                 }
@@ -984,7 +993,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let callable_ident = callable_item.path.value.ident();
         let target = UserFnPath {
             parent: callable_parent_ident,
-            ident: callable_ident.into(),
+            ident: FnUserFnIdent::from(callable_ident).into(),
         }
         .into();
 
@@ -1077,19 +1086,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             },
             type_: compare_expr.type_(),
             tags: ExprTag::Ref | ExprTag::Val,
-        }
-    }
-
-    fn get_label_ident(&self, label_index: normalizer::LabelIndex) -> VarIdent {
-        match label_index {
-            normalizer::LabelIndex::Param(label_param_index) => {
-                UserParamIdent::from(self.params[label_param_index].value).into()
-            }
-            normalizer::LabelIndex::Local(local_label_index) => LocalLabelVarIdent {
-                ident: self.locals[local_label_index].value,
-                index: local_label_index,
-            }
-            .into(),
         }
     }
 }

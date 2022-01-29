@@ -1,6 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use std::fmt::{self, Display};
+use derive_more::Display;
 
 pub use crate::ast::built_ins::*;
 pub use crate::ast::ident::*;
@@ -21,23 +21,12 @@ pub enum BlockKind {
     Unsafe,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum NegateKind {
+    #[display(fmt = "-")]
     Arithmetic,
+    #[display(fmt = "!")]
     Logical,
-}
-
-impl Display for NegateKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                NegateKind::Arithmetic => "-",
-                NegateKind::Logical => "!",
-            }
-        )
-    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -53,15 +42,28 @@ impl CastKind {
             CastKind::Upcast => false,
         }
     }
+
+    pub const fn reverse(self) -> Self {
+        match self {
+            CastKind::Downcast => CastKind::Upcast,
+            CastKind::Upcast => CastKind::Downcast,
+        }
+    }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum CompareKind {
+    #[display(fmt = "==")]
     Eq,
+    #[display(fmt = "!=")]
     Neq,
+    #[display(fmt = "<=")]
     Lte,
+    #[display(fmt = ">=")]
     Gte,
+    #[display(fmt = ">")]
     Lt,
+    #[display(fmt = "<")]
     Gt,
 }
 
@@ -74,22 +76,5 @@ impl CompareKind {
             | CompareKind::Gt => true,
             CompareKind::Eq | CompareKind::Neq => false,
         }
-    }
-}
-
-impl Display for CompareKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                CompareKind::Eq => "==",
-                CompareKind::Neq => "!=",
-                CompareKind::Lte => "<=",
-                CompareKind::Gte => ">=",
-                CompareKind::Lt => "<",
-                CompareKind::Gt => ">",
-            }
-        )
     }
 }

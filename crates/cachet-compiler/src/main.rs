@@ -13,13 +13,21 @@ use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
+use cachet_lang::flattener::flatten;
 use cachet_lang::normalizer::normalize;
 use cachet_lang::parser::parse;
 use cachet_lang::resolver::{resolve, ResolveErrors};
 use cachet_lang::type_checker::{type_check, TypeCheckErrors};
 use cachet_lang::FrontendError;
 
-use cachet_compiler::compile;
+use cachet_compiler::{compile_bpl, compile_cpp};
+
+// TODO(spinda): Change to this format for specifying compiler outputs:
+//
+//   cachet-compiler foo.cachet \
+//      --cpp-decls foo.h       \
+//      --cpp-defs foo.inc      \
+//      --bpl foo.bpl
 
 /// The Cachet compiler.
 #[derive(StructOpt)]
@@ -42,22 +50,31 @@ struct Opt {
         requires("decls-output")
     )]
     defs_output: Option<PathBuf>,
+    /// Output file for specification (typically ending in .bpl).
+    #[structopt(
+        parse(from_os_str),
+        required_unless("dry-run"),
+    )]
+    spec_output: Option<PathBuf>,
 
     /// Skip writing output files.
     #[structopt(long)]
     dry_run: bool,
-    /// Dump parsing output.
+    /// Dump parser output.
     #[structopt(long)]
-    dump_parsing: bool,
-    /// Dump name resolution output.
+    dump_parser: bool,
+    /// Dump name resolver output.
     #[structopt(long)]
-    dump_name_resolution: bool,
-    /// Dump type checking output.
+    dump_resolver: bool,
+    /// Dump type checker output.
     #[structopt(long)]
-    dump_type_checking: bool,
-    /// Dump normalization output.
+    dump_type_checker: bool,
+    /// Dump normalizer output.
     #[structopt(long)]
-    dump_normalization: bool,
+    dump_normalizer: bool,
+    /// Dump flattener output.
+    #[structopt(long)]
+    dump_flattener: bool,
 }
 
 fn main() -> Result<(), Error> {
@@ -76,8 +93,8 @@ fn main() -> Result<(), Error> {
             )));
         }
     };
-    if opt.dump_parsing {
-        println!("=== PARSING ===\n\n{:#?}\n\n", items);
+    if opt.dump_parser {
+        println!("=== PARSER ===\n\n{:#?}\n\n", items);
     }
 
     let env = match resolve(items) {
@@ -90,8 +107,8 @@ fn main() -> Result<(), Error> {
             )));
         }
     };
-    if opt.dump_name_resolution {
-        println!("=== NAME RESOLUTION ===\n\n{:#?}\n\n", env);
+    if opt.dump_resolver {
+        println!("=== RESOLVER ===\n\n{:#?}\n\n", env);
     }
 
     let env = match type_check(env) {
@@ -104,16 +121,16 @@ fn main() -> Result<(), Error> {
             )));
         }
     };
-    if opt.dump_type_checking {
-        println!("=== TYPE CHECKING ===\n\n{:#?}\n\n", env);
+    if opt.dump_type_checker {
+        println!("=== TYPE CHECKER ===\n\n{:#?}\n\n", env);
     }
 
     let env = normalize(env);
-    if opt.dump_normalization {
-        println!("=== NORMALIZATION ===\n\n{:#?}\n\n", env);
+    if opt.dump_normalizer {
+        println!("=== NORMALIZER ===\n\n{:#?}\n\n", env);
     }
 
-    let compiler_output = compile(&env);
+    let cpp_compiler_output = compile_cpp(&env);
 
     if !opt.dry_run {
         let decls_output = opt.decls_output.unwrap();
@@ -121,7 +138,7 @@ fn main() -> Result<(), Error> {
             File::create(&decls_output)
                 .with_context(|| format!("Failed to open {}", decls_output.display()))?,
             "{}",
-            compiler_output.decls
+            cpp_compiler_output.decls
         )
         .with_context(|| format!("Failed to write {}", decls_output.display()))?;
 
@@ -130,9 +147,27 @@ fn main() -> Result<(), Error> {
             File::create(&defs_output)
                 .with_context(|| format!("Failed to open {}", defs_output.display()))?,
             "{}",
-            compiler_output.defs
+            cpp_compiler_output.defs
         )
         .with_context(|| format!("Failed to write {}", defs_output.display()))?;
+    }
+
+    let env = flatten(env);
+    if opt.dump_flattener {
+        println!("=== FLATTENER ===\n\n{:#?}\n\n", env);
+    }
+
+    let bpl_code = compile_bpl(&env);
+
+    if !opt.dry_run {
+        let spec_output = opt.spec_output.unwrap();
+        write!(
+            File::create(&spec_output)
+                .with_context(|| format!("Failed to open {}", spec_output.display()))?,
+            "{}",
+            bpl_code
+        )
+        .with_context(|| format!("Failed to write {}", spec_output.display()))?;
     }
 
     Ok(())

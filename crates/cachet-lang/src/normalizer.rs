@@ -47,6 +47,12 @@ fn normalize_callable_item(
     global_var_items: &TiSlice<GlobalVarIndex, GlobalVarItem>,
     callable_item: type_checker::CallableItem,
 ) -> CallableItem {
+    let ret = if callable_item.ret == BuiltInType::Unit.into() {
+        None
+    } else {
+        Some(callable_item.ret)
+    };
+
     let body = callable_item.body.map(|mut body| {
         let mut normalizer = Normalizer::new(
             global_var_items,
@@ -66,7 +72,9 @@ fn normalize_callable_item(
         is_unsafe: callable_item.is_unsafe,
         params: callable_item.params,
         param_order: callable_item.param_order,
-        ret: callable_item.ret,
+        ret,
+        interprets: callable_item.interprets,
+        emits: callable_item.emits,
         body,
     }
 }
@@ -92,13 +100,15 @@ impl<'a> Normalizer<'a> {
 
     fn normalize_body_block(&mut self, block: type_checker::Block) -> Vec<Stmt> {
         if block.type_() == BuiltInType::Unit.into() {
-            return self.normalize_unused_block(block);
+            let mut stmts = self.normalize_unused_block(block);
+            stmts.push(RetStmt { value: None }.into());
+            return stmts;
         }
 
         let mut stmts = self.normalize_block_stmts(block.stmts);
         let mut scoped_normalizer = ScopedNormalizer::new(self, &mut stmts);
         let value = scoped_normalizer.normalize_used_expr(block.value);
-        stmts.push(RetStmt { value }.into());
+        stmts.push(RetStmt { value: Some(value) }.into());
         stmts
     }
 

@@ -41,6 +41,8 @@ fn flatten_callable_item(callable_item: normalizer::CallableItem) -> CallableIte
         params: callable_item.params,
         param_order: callable_item.param_order,
         ret: callable_item.ret,
+        interprets: callable_item.interprets,
+        emits: callable_item.emits,
         body,
     }
 }
@@ -159,7 +161,7 @@ impl Flattener {
     }
 
     fn flatten_ret_stmt(&mut self, ret_stmt: normalizer::RetStmt) {
-        let value = self.flatten_expr(ret_stmt.value);
+        let value = ret_stmt.value.map(|value| self.flatten_expr(value));
 
         self.stmts.push(RetStmt { value }.into());
     }
