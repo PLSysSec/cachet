@@ -5,12 +5,13 @@ use std::ops::{Index, IndexMut};
 use derive_more::From;
 use typed_index_collections::TiVec;
 
+use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_index};
+
 use crate::ast::{
     BlockKind, BuiltInType, BuiltInVar, CheckKind, CompareKind, Ident, MaybeSpanned,
     NegateKind, Path, Spanned,
 };
 pub use crate::parser::VariantIndex;
-use crate::util::{box_from, deref_from, deref_index, field_index, typed_field_index};
 
 #[derive(Clone, Debug)]
 pub struct Env {

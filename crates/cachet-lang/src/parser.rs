@@ -13,8 +13,9 @@ use codespan::RawIndex;
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use lazy_static::lazy_static;
 
+use cachet_util::fmt_join_or;
+
 use crate::ast::{Span, Spanned};
-use crate::util::fmt_join_or;
 use crate::FrontendError;
 
 pub use crate::parser::ast::*;

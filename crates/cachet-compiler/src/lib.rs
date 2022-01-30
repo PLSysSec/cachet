@@ -7,4 +7,3 @@ pub use cpp::{compile as compile_cpp, CppCode, CppCompilerOutput};
 
 mod bpl;
 mod cpp;
-mod util;

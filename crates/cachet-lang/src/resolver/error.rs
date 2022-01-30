@@ -8,7 +8,7 @@ use enumset::{EnumSet, EnumSetType};
 use iterate::iterate;
 use thiserror::Error;
 
-use crate::util::fmt_join_or;
+use cachet_util::fmt_join_or;
 
 use crate::ast::{Ident, Path, Span, Spanned};
 use crate::FrontendError;

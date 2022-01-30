@@ -12,9 +12,11 @@ use derive_more::{From, Into};
 use enumset::EnumSet;
 use typed_index_collections::TiVec;
 
+use cachet_util::{collect_eager, deref_from, MaybeOwned};
+
 use crate::ast::{BuiltInType, BuiltInVar, Ident, Path, Spanned, BUILT_IN_TYPES, BUILT_IN_VARS};
 use crate::parser;
-use crate::util::{collect_eager, deref_from, map_spanned, MaybeOwned};
+use crate::util::map_spanned;
 use crate::FrontendError;
 
 pub use crate::resolver::ast::*;
@@ -570,17 +572,15 @@ impl Resolver {
         let mut scoped_resolver = ScopedResolver::new(self);
         let (params, param_order) = scoped_resolver.resolve_params(callable_item.item.params);
         let body = map_spanned(callable_item.item.body, move |body| match body.value {
-            Some(block) => scoped_resolver
-                .resolve_body_block(block)
-                .map(move |block| {
-                    Some(
-                        Body {
-                            locals: scoped_resolver.locals.into_owned(),
-                            block,
-                        }
-                        .into(),
-                    )
-                }),
+            Some(block) => scoped_resolver.resolve_body_block(block).map(move |block| {
+                Some(
+                    Body {
+                        locals: scoped_resolver.locals.into_owned(),
+                        block,
+                    }
+                    .into(),
+                )
+            }),
             None => Some(None),
         });
 

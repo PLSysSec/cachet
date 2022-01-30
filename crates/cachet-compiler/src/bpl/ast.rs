@@ -13,8 +13,7 @@ use indent_write::fmt::IndentWriter;
 
 use cachet_lang::ast::{CastKind, CheckKind, CompareKind, Ident, NegateKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
-
-use crate::util::{box_from, fmt_join, fmt_join_trailing};
+use cachet_util::{box_from, fmt_join, fmt_join_trailing};
 
 #[derive(Clone, Copy, Debug, Display, From)]
 #[display(fmt = "#{}", ident)]

@@ -11,8 +11,7 @@ use void::unreachable;
 
 use cachet_lang::ast::{BuiltInVar, CastKind, CompareKind, Ident, Path, Spanned};
 use cachet_lang::flattener::{self, Typed};
-
-use crate::util::MaybeOwned;
+use cachet_util::MaybeOwned;
 
 use crate::bpl::ast::*;
 

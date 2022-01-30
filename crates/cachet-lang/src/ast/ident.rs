@@ -8,7 +8,7 @@ use std::vec::IntoIter as VecIntoIter;
 use derive_more::Display;
 use internment::Intern;
 
-use crate::util::{deref_from, fmt_join};
+use cachet_util::{deref_from, fmt_join};
 
 // TODO(spinda): Expand derives.
 #[derive(Clone, Copy, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]

@@ -6,6 +6,8 @@ use derive_more::From;
 use thiserror::Error;
 use typed_index_collections::TiVec;
 
+use cachet_util::{box_from, deref_from, deref_index, field_index};
+
 use crate::ast::{
     BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path,
     Spanned,
@@ -13,11 +15,10 @@ use crate::ast::{
 use crate::resolver;
 pub use crate::resolver::{
     CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem,
-    IrIndex, IrItem, LabelIndex, LabelParamIndex, LocalLabelIndex, LocalVarIndex,
-    OpIndex, OutVar, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex,
-    StructItem, TypeIndex, Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
+    IrIndex, IrItem, LabelIndex, LabelParamIndex, LocalLabelIndex, LocalVarIndex, OpIndex, OutVar,
+    OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex, StructItem,
+    TypeIndex, Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
-use crate::util::{box_from, deref_from, deref_index, field_index};
 
 #[derive(Clone, Debug)]
 pub struct Env {
