@@ -1077,36 +1077,64 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_emit_stmt(&mut self, emit_stmt: &flattener::EmitStmt) {
-        let ir_ident = IrIdent::from(self.env[emit_stmt.ir].ident.value);
+        let ir_item = &self.env[emit_stmt.ir];
+
+        let ir_ident = IrIdent::from(ir_item.ident.value);
         let op_ident = self.env[emit_stmt.call.target].path.value.ident();
 
-        let op_ctor_target = IrMemberFnIdent {
-            ir_ident,
-            selector: UserOpCtorIrMemberFnSelector::from(op_ident).into(),
-        }
-        .into();
-        let (op_ctor_arg_exprs, _) = self.compile_args(&emit_stmt.call.args);
-        let op_ctor_call_expr = CallExpr {
-            target: op_ctor_target,
-            arg_exprs: op_ctor_arg_exprs,
-        }
-        .into();
+        let (op_arg_exprs, _) = self.compile_args(&emit_stmt.call.args);
 
-        let emit_id = self.next_emit_id;
-        self.next_emit_id += 1;
+        match ir_item.emits {
+            Some(_) => {
+                // If the IR of the emitted op describes a compiler, call
+                // directly into the other op.
 
-        let emit_target = IrMemberFnIdent {
-            ir_ident,
-            selector: IrMemberFnSelector::Emit,
+                let target = UserFnIdent {
+                    parent_ident: Some(ir_ident.ident),
+                    fn_ident: op_ident,
+                }
+                .into();
+
+                self.stmts.push(
+                    CallExpr {
+                        target,
+                        arg_exprs: op_arg_exprs,
+                    }
+                    .into(),
+                );
+            }
+            None => {
+                // Otherwise, build the op via the corresponding datatype
+                // constructor and pass it to the emit helper function.
+
+                let op_ctor_target = IrMemberFnIdent {
+                    ir_ident,
+                    selector: UserOpCtorIrMemberFnSelector::from(op_ident).into(),
+                }
+                .into();
+                let op_ctor_call_expr = CallExpr {
+                    target: op_ctor_target,
+                    arg_exprs: op_arg_exprs,
+                }
+                .into();
+
+                let emit_id = self.next_emit_id;
+                self.next_emit_id += 1;
+
+                let emit_target = IrMemberFnIdent {
+                    ir_ident,
+                    selector: IrMemberFnSelector::Emit,
+                }
+                .into();
+                let emit_args = vec![emit_id.into(), op_ctor_call_expr];
+                let emit_call_expr = CallExpr {
+                    target: emit_target,
+                    arg_exprs: emit_args,
+                };
+
+                self.stmts.push(emit_call_expr.into());
+            }
         }
-        .into();
-        let emit_args = vec![emit_id.into(), op_ctor_call_expr];
-        let emit_call_expr = CallExpr {
-            target: emit_target,
-            arg_exprs: emit_args,
-        };
-
-        self.stmts.push(emit_call_expr.into());
     }
 
     fn compile_invoke_stmt(&mut self, invoke_stmt: &flattener::InvokeStmt) {
