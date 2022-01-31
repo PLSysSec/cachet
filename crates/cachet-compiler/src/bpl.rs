@@ -1,17 +1,19 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::collections::{HashMap, HashSet};
+use std::iter;
 use std::ops::{Deref, DerefMut};
 
-use derive_more::Display;
+use derive_more::{Display, From};
 use enum_map::EnumMap;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
-use typed_index_collections::TiSlice;
+use typed_index_collections::{TiSlice, TiVec};
 use void::unreachable;
 
-use cachet_lang::ast::{BuiltInVar, CastKind, CompareKind, Ident, Path, Spanned};
+use cachet_lang::ast::{BuiltInVar, CastKind, CheckKind, CompareKind, Ident, Path, Spanned};
 use cachet_lang::flattener::{self, Typed};
-use cachet_util::MaybeOwned;
+use cachet_util::{typed_field_index, MaybeOwned};
 
 use crate::bpl::ast::*;
 
@@ -45,6 +47,18 @@ pub fn compile(env: &flattener::Env) -> BplCode {
 
     for op_index in env.op_items.keys() {
         compiler.compile_callable_item(op_index.into());
+    }
+
+    if let Some(top_op_item) = env.op_items.last() {
+        if let Some(flattener::ParentIndex::Ir(top_ir_index)) = top_op_item.parent {
+            let mut bottom_ir_index = top_ir_index;
+            while let Some(next_ir_index) = env[bottom_ir_index].emits {
+                bottom_ir_index = next_ir_index.value;
+            }
+
+            let flow_graph = trace_entry_point(&env, top_op_item, bottom_ir_index);
+            compiler.compile_entry_point(top_op_item, top_ir_index, bottom_ir_index, &flow_graph);
+        }
     }
 
     BplCode(compiler.items.into())
@@ -139,7 +153,7 @@ impl<'a> Compiler<'a> {
         let external_op_ctor_fn_item = FnItem {
             ident: IrMemberFnIdent {
                 ir_ident,
-                selector: IrMemberFnSelector::ExternalOpCtor,
+                selector: OpCtorIrMemberFnSelector::from(OpSelector::External).into(),
             }
             .into(),
             attr: Some(FnAttr::Ctor),
@@ -209,7 +223,7 @@ impl<'a> Compiler<'a> {
         let emit_id_type_item = TypeItem {
             ident: IrMemberTypeIdent {
                 ir_ident,
-                selector: IrMemberTypeSelector::EmitId,
+                selector: IrMemberTypeSelector::EmitPath,
             }
             .into(),
             attr: None,
@@ -219,7 +233,7 @@ impl<'a> Compiler<'a> {
         let pc_emit_ids_global_var_item = GlobalVarItem::from(TypedVar {
             ident: IrMemberGlobalVarIdent {
                 ir_ident,
-                selector: IrMemberGlobalVarSelector::PcEmitIds,
+                selector: IrMemberGlobalVarSelector::PcEmitPaths,
             }
             .into(),
             type_: MapType {
@@ -238,7 +252,7 @@ impl<'a> Compiler<'a> {
             attr: None,
             param_vars: vec![
                 TypedVar {
-                    ident: ParamVarIdent::EmitId.into(),
+                    ident: ParamVarIdent::EmitPath.into(),
                     type_: emit_id_type_item.ident.into(),
                 },
                 TypedVar {
@@ -258,7 +272,7 @@ impl<'a> Compiler<'a> {
                             value: None,
                         }
                         .into(),
-                        rhs: ParamVarIdent::EmitId.into(),
+                        rhs: ParamVarIdent::EmitPath.into(),
                     }
                     .into(),
                     AssignStmt {
@@ -468,7 +482,10 @@ impl<'a> Compiler<'a> {
                 let ir_ident = self.env[ir_index].ident.value.into();
                 let ident = IrMemberFnIdent {
                     ir_ident,
-                    selector: UserOpCtorIrMemberFnSelector::from(callable_ident).into(),
+                    selector: OpCtorIrMemberFnSelector {
+                        op_selector: UserOpSelector::from(callable_ident).into(),
+                    }
+                    .into(),
                 }
                 .into();
 
@@ -584,6 +601,268 @@ impl<'a> Compiler<'a> {
                 );
             }
         };
+    }
+
+    fn compile_entry_point(
+        &mut self,
+        top_op_item: &flattener::CallableItem,
+        top_ir_index: flattener::IrIndex,
+        bottom_ir_index: flattener::IrIndex,
+        flow_graph: &FlowGraph,
+    ) {
+        let top_op_ident = top_op_item.path.value.ident();
+
+        let top_ir_ident = self.env[top_ir_index].ident.value.into();
+        let bottom_ir_ident = self.env[bottom_ir_index].ident.value.into();
+
+        let ident = EntryPointFnIdent {
+            ir_ident: top_ir_ident,
+            user_op_selector: top_op_ident.into(),
+        }
+        .into();
+
+        let (param_vars, _) = self.compile_params(&top_op_item.params, &top_op_item.param_order);
+
+        let local_vars = vec![
+            TypedVar {
+                ident: VarIdent::Op,
+                type_: IrMemberTypeIdent {
+                    ir_ident: bottom_ir_ident,
+                    selector: IrMemberTypeSelector::Op,
+                }
+                .into(),
+            }
+            .into(),
+        ];
+
+        let pc_emit_ids_var_ident: VarIdent = IrMemberGlobalVarIdent {
+            ir_ident: bottom_ir_ident,
+            selector: IrMemberGlobalVarSelector::PcEmitPaths,
+        }
+        .into();
+
+        let pc_var_ident: VarIdent = IrMemberGlobalVarIdent {
+            ir_ident: bottom_ir_ident,
+            selector: IrMemberGlobalVarSelector::Pc,
+        }
+        .into();
+
+        let nil_emit_path_expr: Expr =
+            generate_emit_path_expr(bottom_ir_ident, &EmitLabelIdent::default()).into();
+
+        let assume_pc_emit_ids_uninit_stmt = CheckStmt {
+            kind: CheckKind::Assume,
+            attr: None,
+            cond: ForAllExpr {
+                vars: vec![TypedVar {
+                    ident: VarIdent::Pc,
+                    type_: IrMemberTypeIdent {
+                        ir_ident: bottom_ir_ident,
+                        selector: IrMemberTypeSelector::Pc,
+                    }
+                    .into(),
+                }]
+                .into(),
+                expr: CompareExpr {
+                    kind: CompareKind::Eq,
+                    lhs: IndexExpr {
+                        base: pc_emit_ids_var_ident.into(),
+                        key: VarIdent::Pc.into(),
+                        value: None,
+                    }
+                    .into(),
+                    rhs: nil_emit_path_expr.clone(),
+                }
+                .into(),
+            }
+            .into(),
+        }
+        .into();
+
+        let init_pc_stmt: Stmt = AssignStmt {
+            lhs: pc_var_ident.into(),
+            rhs: 0.into(),
+        }
+        .into();
+
+        let call_top_op_fn_stmt = CallExpr {
+            target: UserFnIdent {
+                parent_ident: Some(top_ir_ident.ident),
+                fn_ident: top_op_ident,
+            }
+            .into(),
+            arg_exprs: iter::once(nil_emit_path_expr)
+                .chain(param_vars.iter().map(|param_var| param_var.ident.into()))
+                .collect(),
+        }
+        .into();
+
+        let mut stmts = vec![
+            assume_pc_emit_ids_uninit_stmt,
+            init_pc_stmt.clone(),
+            call_top_op_fn_stmt,
+        ];
+
+        for param_index in &top_op_item.param_order {
+            if let flattener::ParamIndex::Label(label_param_index) = param_index {
+                let label_param_var_ident =
+                    UserParamVarIdent::from(top_op_item.params[label_param_index].value);
+
+                stmts.push(
+                    CallExpr {
+                        target: IrMemberFnIdent {
+                            ir_ident: bottom_ir_ident,
+                            selector: IrMemberFnSelector::Bind,
+                        }
+                        .into(),
+                        arg_exprs: vec![label_param_var_ident.into()],
+                    }
+                    .into(),
+                );
+            }
+        }
+
+        let external_emit_node = &flow_graph.emit_nodes.last().unwrap();
+        let external_emit_stmt = CallExpr {
+            target: IrMemberFnIdent {
+                ir_ident: bottom_ir_ident,
+                selector: IrMemberFnSelector::Emit,
+            }
+            .into(),
+            arg_exprs: vec![
+                generate_emit_path_expr(bottom_ir_ident, &external_emit_node.label_ident).into(),
+                CallExpr {
+                    target: IrMemberFnIdent {
+                        ir_ident: bottom_ir_ident,
+                        selector: OpCtorIrMemberFnSelector::from(OpSelector::External).into(),
+                    }
+                    .into(),
+                    arg_exprs: Vec::new(),
+                }
+                .into(),
+            ],
+        }
+        .into();
+
+        stmts.extend([external_emit_stmt, init_pc_stmt]);
+
+        for emit_node in &flow_graph.emit_nodes {
+            let emit_label_stmt = LabelStmt {
+                label_ident: emit_node.label_ident.clone().into(),
+            }
+            .into();
+
+            let assume_emit_path_stmt = CheckStmt {
+                kind: CheckKind::Assume,
+                attr: Some(CheckAttr::Partition),
+                cond: CompareExpr {
+                    kind: CompareKind::Eq,
+                    lhs: IndexExpr {
+                        base: pc_emit_ids_var_ident.into(),
+                        key: pc_var_ident.into(),
+                        value: None,
+                    }
+                    .into(),
+                    rhs: generate_emit_path_expr(bottom_ir_ident, &emit_node.label_ident).into(),
+                }
+                .into(),
+            }
+            .into();
+
+            stmts.extend([emit_label_stmt, assume_emit_path_stmt]);
+
+            if let Some(target) = emit_node.target {
+                let op_item = &self.env[target];
+                let op_ident = op_item.path.value.ident();
+
+                let assign_op_stmt = AssignStmt {
+                    lhs: VarIdent::Op.into(),
+                    rhs: IndexExpr {
+                        base: IrMemberGlobalVarIdent {
+                            ir_ident: bottom_ir_ident,
+                            selector: IrMemberGlobalVarSelector::Ops,
+                        }
+                        .into(),
+                        key: pc_var_ident.into(),
+                        value: None,
+                    }
+                    .into(),
+                }
+                .into();
+
+                let call_op_fn_stmt = CallExpr {
+                    target: UserFnIdent {
+                        parent_ident: Some(bottom_ir_ident.ident),
+                        fn_ident: op_ident,
+                    }
+                    .into(),
+                    arg_exprs: op_item
+                        .param_order
+                        .iter()
+                        .filter_map(|param_index| match param_index {
+                            flattener::ParamIndex::Var(var_param_index) => {
+                                Some(op_item.params[var_param_index].ident.value)
+                            }
+                            flattener::ParamIndex::OutVar(_) => None,
+                            flattener::ParamIndex::Label(label_param_index) => {
+                                Some(op_item.params[label_param_index].value)
+                            }
+                        })
+                        .map(|param_ident| {
+                            CallExpr {
+                                target: OpCtorFieldFnIdent {
+                                    param_var_ident: UserParamVarIdent::from(param_ident).into(),
+                                    ir_ident: bottom_ir_ident,
+                                    user_op_selector: UserOpSelector::from(op_ident).into(),
+                                }
+                                .into(),
+                                arg_exprs: vec![VarIdent::Op.into()],
+                            }
+                            .into()
+                        })
+                        .collect(),
+                }
+                .into();
+
+                stmts.extend([assign_op_stmt, call_op_fn_stmt]);
+            }
+
+            let mut succ_emit_node_indexes = HashSet::new();
+            for succ in &emit_node.succs {
+                match succ {
+                    EmitSucc::Emit(emit_node_index) => {
+                        succ_emit_node_indexes.insert(*emit_node_index);
+                    }
+                    EmitSucc::Label(label_node_index) => {
+                        succ_emit_node_indexes
+                            .extend(flow_graph[label_node_index].bound_to.iter().copied());
+                    }
+                }
+            }
+
+            stmts.push(
+                GotoStmt {
+                    labels: succ_emit_node_indexes
+                        .iter()
+                        .map(|succ_emit_node_index| {
+                            flow_graph[succ_emit_node_index].label_ident.clone().into()
+                        })
+                        .collect(),
+                }
+                .into(),
+            );
+        }
+
+        self.items.push(
+            ProcItem {
+                ident,
+                attr: Some(ProcAttr::EntryPoint),
+                param_vars,
+                ret_vars: TypedVars::default(),
+                body: Some(Body { local_vars, stmts }),
+            }
+            .into(),
+        );
     }
 
     fn compile_params(
@@ -827,6 +1106,34 @@ fn generate_cast_axiom_item(
     AxiomItem { cond }
 }
 
+fn generate_emit_path_expr(ir_ident: IrIdent, emit_label_ident: &EmitLabelIdent) -> CallExpr {
+    let nil_emit_path_ctor_expr = CallExpr {
+        target: IrMemberFnIdent {
+            ir_ident,
+            selector: IrMemberFnSelector::NilEmitPathCtor,
+        }
+        .into(),
+        arg_exprs: Vec::new(),
+    };
+
+    emit_label_ident
+        .segments
+        .iter()
+        .fold(nil_emit_path_ctor_expr, |accum, emit_label_segment| {
+            CallExpr {
+                target: IrMemberFnIdent {
+                    ir_ident,
+                    selector: IrMemberFnSelector::ConsEmitPathCtor,
+                }
+                .into(),
+                arg_exprs: vec![
+                    accum.into(),
+                    usize::from(emit_label_segment.local_emit_index).into(),
+                ],
+            }
+        })
+}
+
 enum CallableRepr {
     Fn,
     Proc,
@@ -1056,6 +1363,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         self.stmts.push(
             CheckStmt {
                 kind: check_stmt.kind,
+                attr: None,
                 cond,
             }
             .into(),
@@ -1109,7 +1417,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
                 let op_ctor_target = IrMemberFnIdent {
                     ir_ident,
-                    selector: UserOpCtorIrMemberFnSelector::from(op_ident).into(),
+                    selector: OpCtorIrMemberFnSelector {
+                        op_selector: UserOpSelector::from(op_ident).into(),
+                    }
+                    .into(),
                 }
                 .into();
                 let op_ctor_call_expr = CallExpr {
@@ -1430,4 +1741,279 @@ impl CompileExpr for flattener::AtomExpr {
 enum CompiledInvocation {
     FnCall(CallExpr),
     ProcCall(VarIdent),
+}
+
+#[derive(Clone, Debug, Default)]
+struct FlowGraph {
+    emit_nodes: TiVec<EmitNodeIndex, EmitNode>,
+    label_nodes: TiVec<LabelNodeIndex, LabelNode>,
+}
+
+typed_field_index!(FlowGraph:emit_nodes[EmitNodeIndex] => EmitNode);
+typed_field_index!(FlowGraph:label_nodes[LabelNodeIndex] => LabelNode);
+
+#[derive(Clone, Debug)]
+struct EmitNode {
+    label_ident: EmitLabelIdent,
+    succs: HashSet<EmitSucc>,
+    target: Option<flattener::CallableIndex>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+enum EmitSucc {
+    Emit(EmitNodeIndex),
+    Label(LabelNodeIndex),
+}
+
+type LabelScope = HashMap<flattener::LabelIndex, LabelNodeIndex>;
+
+#[derive(Clone, Debug, Default)]
+struct LabelNode {
+    bound_to: HashSet<EmitNodeIndex>,
+}
+
+fn trace_entry_point(
+    env: &flattener::Env,
+    top_op_item: &flattener::CallableItem,
+    bottom_ir_index: flattener::IrIndex,
+) -> FlowGraph {
+    let mut graph = FlowGraph::default();
+
+    let mut label_scope = LabelScope::new();
+    let external_label_node_index = graph.label_nodes.push_and_get_key(LabelNode::default());
+    for param_index in &top_op_item.param_order {
+        if let flattener::ParamIndex::Label(label_param_index) = param_index {
+            label_scope.insert(label_param_index.into(), external_label_node_index);
+        }
+    }
+
+    let mut tracer = FlowTracer::new(env, &mut graph, &label_scope);
+    tracer.trace_op_item(top_op_item);
+    tracer.bind_label(external_label_node_index);
+    tracer.trace_external(bottom_ir_index);
+
+    graph
+}
+
+struct FlowTracer<'a> {
+    env: &'a flattener::Env,
+    graph: &'a mut FlowGraph,
+    curr_emit_label_ident: &'a EmitLabelIdent,
+    next_local_emit_index: MaybeOwned<'a, LocalEmitIndex>,
+    pred_emits: MaybeOwned<'a, HashSet<EmitNodeIndex>>,
+    label_scope: &'a LabelScope,
+    bound_labels: MaybeOwned<'a, HashSet<LabelNodeIndex>>,
+}
+
+impl<'a> FlowTracer<'a> {
+    fn new(
+        env: &'a flattener::Env,
+        graph: &'a mut FlowGraph,
+        label_scope: &'a LabelScope,
+    ) -> Self {
+        static ROOT_EMIT_LABEL_IDENT: EmitLabelIdent = EmitLabelIdent {
+            segments: Vec::new(),
+        };
+        FlowTracer {
+            env,
+            graph,
+            curr_emit_label_ident: &ROOT_EMIT_LABEL_IDENT,
+            next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
+            pred_emits: MaybeOwned::Owned(HashSet::new()),
+            label_scope,
+            bound_labels: MaybeOwned::Owned(HashSet::new()),
+        }
+    }
+
+    fn trace_op_item(&mut self, op_item: &flattener::CallableItem) {
+        if let Some(body) = &op_item.body {
+            self.trace_body(body);
+        }
+    }
+
+    fn trace_body(&mut self, body: &flattener::Body) {
+        self.trace_stmts(&body.stmts);
+    }
+
+    fn trace_stmts(&mut self, stmts: &[flattener::Stmt]) {
+        for stmt in stmts {
+            self.trace_stmt(stmt);
+        }
+    }
+
+    fn trace_branches<'b>(&mut self, branches: impl Iterator<Item = &'b [flattener::Stmt]>) {
+        // First, back up the predecessor emits and bound labels going into the
+        // branches.
+        let init_pred_emits = self.pred_emits.clone();
+        let init_bound_labels = self.bound_labels.clone();
+        self.pred_emits.clear();
+        self.bound_labels.clear();
+
+        for branch in branches {
+            // Trace each branch from the starting predecessor emits and bound
+            // labels.
+            let mut flow_tracer = FlowTracer {
+                env: self.env,
+                graph: self.graph,
+                curr_emit_label_ident: self.curr_emit_label_ident,
+                next_local_emit_index: MaybeOwned::Borrowed(&mut self.next_local_emit_index),
+                pred_emits: MaybeOwned::Owned(init_pred_emits.clone()),
+                label_scope: self.label_scope,
+                bound_labels: MaybeOwned::Owned(init_bound_labels.clone()),
+            };
+            flow_tracer.trace_stmts(branch);
+
+            // Accumulate the predecessor emits and bound labels at the end of
+            // each branch.
+            self.pred_emits.extend(flow_tracer.pred_emits.into_owned());
+            self.bound_labels
+                .extend(flow_tracer.bound_labels.into_owned());
+        }
+    }
+
+    fn trace_stmt(&mut self, stmt: &flattener::Stmt) {
+        match stmt {
+            flattener::Stmt::Let(_)
+            | flattener::Stmt::Check(_)
+            | flattener::Stmt::Invoke(_)
+            | flattener::Stmt::Assign(_)
+            | flattener::Stmt::Ret(_) => (),
+            flattener::Stmt::If(if_stmt) => self.trace_if_stmt(if_stmt),
+            flattener::Stmt::Goto(goto_stmt) => self.trace_goto_stmt(goto_stmt),
+            flattener::Stmt::Emit(emit_stmt) => self.trace_emit_stmt(emit_stmt),
+            flattener::Stmt::Block(void, _) => unreachable(*void),
+        }
+    }
+
+    fn trace_if_stmt(&mut self, if_stmt: &flattener::IfStmt) {
+        static EMPTY_BRANCH: Vec<flattener::Stmt> = Vec::new();
+        self.trace_branches(
+            [
+                if_stmt.then.as_slice(),
+                match &if_stmt.else_ {
+                    Some(else_) => &else_,
+                    None => &EMPTY_BRANCH,
+                },
+            ]
+            .into_iter(),
+        );
+    }
+
+    fn trace_goto_stmt(&mut self, goto_stmt: &flattener::GotoStmt) {
+        let label_node_index = self.label_scope[&goto_stmt.label];
+        self.link_pred_emits_to_succ(label_node_index.into());
+    }
+
+    fn trace_emit_stmt(&mut self, emit_stmt: &flattener::EmitStmt) {
+        let ir_item = &self.env[emit_stmt.ir];
+        let op_item = &self.env[emit_stmt.call.target];
+
+        let new_emit_label_segment = EmitLabelSegment {
+            local_emit_index: self.take_local_emit_index(),
+            ir_ident: ir_item.ident.value.into(),
+            op_selector: UserOpSelector::from(op_item.path.value.ident()).into(),
+        };
+
+        // Extend the emit label identifier with the emit we're currently
+        // looking at.
+        let new_emit_label_ident: EmitLabelIdent = self
+            .curr_emit_label_ident
+            .segments
+            .iter()
+            .copied()
+            .chain(iter::once(new_emit_label_segment))
+            .collect();
+
+        // If the op we're emitting is at the interpreter level, create a
+        // corresponding emit node and set it as the new predecessor on-deck.
+        if ir_item.emits.is_none() {
+            self.create_emit_node(new_emit_label_ident.clone(), Some(emit_stmt.call.target));
+        }
+
+        // Trace inside the emitted op. It's important that we do this *after*
+        // potentially creating a new emit node, so that, e.g., any goto
+        // statements inside the op link the new emit node to their labels as
+        // successors.
+
+        let label_param_indexes =
+            op_item
+                .param_order
+                .iter()
+                .filter_map(|param_index| match param_index {
+                    flattener::ParamIndex::Label(label_param_index) => Some(label_param_index),
+                    _ => None,
+                });
+
+        let label_arg_node_indexes = emit_stmt.call.args.iter().filter_map(|arg| match arg {
+            flattener::Arg::Label(label_index) => Some(self.label_scope[label_index]),
+            _ => None,
+        });
+
+        let label_scope = label_param_indexes
+            .map(Into::into)
+            .zip(label_arg_node_indexes)
+            .collect();
+
+        let mut flow_tracer = FlowTracer {
+            env: self.env,
+            graph: self.graph,
+            curr_emit_label_ident: &new_emit_label_ident,
+            next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
+            pred_emits: MaybeOwned::Borrowed(&mut self.pred_emits),
+            label_scope: &label_scope,
+            bound_labels: MaybeOwned::Borrowed(&mut self.bound_labels),
+        };
+        flow_tracer.trace_op_item(op_item);
+    }
+
+    fn trace_external(&mut self, ir_index: flattener::IrIndex) {
+        let emit_label_segment = EmitLabelSegment {
+            local_emit_index: self.take_local_emit_index(),
+            ir_ident: self.env[ir_index].ident.value.into(),
+            op_selector: OpSelector::External,
+        };
+
+        let emit_label_ident = vec![emit_label_segment].into();
+
+        self.create_emit_node(emit_label_ident, None);
+    }
+
+    fn bind_label(&mut self, label_node_index: LabelNodeIndex) {
+        self.bound_labels.insert(label_node_index);
+    }
+
+    fn create_emit_node(
+        &mut self,
+        label_ident: EmitLabelIdent,
+        target: Option<flattener::CallableIndex>,
+    ) {
+        let emit_node_index = self.graph.emit_nodes.push_and_get_key(EmitNode {
+            label_ident,
+            succs: HashSet::new(),
+            target,
+        });
+
+        self.link_pred_emits_to_succ(emit_node_index.into());
+        self.pred_emits.insert(emit_node_index);
+
+        self.link_bound_labels_to_emit(emit_node_index);
+    }
+
+    fn link_pred_emits_to_succ(&mut self, succ: EmitSucc) {
+        for pred_emit in self.pred_emits.drain() {
+            self.graph[pred_emit].succs.insert(succ);
+        }
+    }
+
+    fn link_bound_labels_to_emit(&mut self, emit_node_index: EmitNodeIndex) {
+        for bound_label in self.bound_labels.drain() {
+            self.graph[bound_label].bound_to.insert(emit_node_index);
+        }
+    }
+
+    fn take_local_emit_index(&mut self) -> LocalEmitIndex {
+        let local_emit_index = *self.next_local_emit_index;
+        *self.next_local_emit_index = LocalEmitIndex::from(usize::from(local_emit_index) + 1);
+        local_emit_index
+    }
 }

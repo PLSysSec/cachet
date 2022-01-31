@@ -48,6 +48,17 @@ pub fn fmt_join_or<T, W: Write>(
     Ok(())
 }
 
+pub fn fmt_join_leading<T: fmt::Display>(
+    f: &mut impl fmt::Write,
+    sep: impl fmt::Display,
+    iter: impl Iterator<Item = T>,
+) -> Result<(), fmt::Error> {
+    for item in iter {
+        write!(f, "{}{}", sep, item)?;
+    }
+    Ok(())
+}
+
 pub fn fmt_join_trailing<T: fmt::Display>(
     f: &mut impl fmt::Write,
     sep: impl fmt::Display,
@@ -58,4 +69,3 @@ pub fn fmt_join_trailing<T: fmt::Display>(
     }
     Ok(())
 }
-

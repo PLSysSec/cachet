@@ -13,7 +13,7 @@ use indent_write::fmt::IndentWriter;
 
 use cachet_lang::ast::{CastKind, CheckKind, CompareKind, Ident, NegateKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
-use cachet_util::{box_from, fmt_join, fmt_join_trailing};
+use cachet_util::{box_from, fmt_join, fmt_join_leading, fmt_join_trailing, typed_index};
 
 #[derive(Clone, Copy, Debug, Display, From)]
 #[display(fmt = "#{}", ident)]
@@ -60,8 +60,8 @@ pub enum IrMemberTypeSelector {
     Op,
     #[display(fmt = "Pc")]
     Pc,
-    #[display(fmt = "EmitId")]
-    EmitId,
+    #[display(fmt = "EmitPath")]
+    EmitPath,
     #[display(fmt = "Label")]
     Label,
 }
@@ -109,6 +109,10 @@ pub enum VarIdent {
     Param(ParamVarIdent),
     #[display(fmt = "ret")]
     Ret,
+    #[display(fmt = "op")]
+    Op,
+    #[display(fmt = "pc")]
+    Pc,
     #[from]
     Local(LocalVarIdent),
     #[from]
@@ -136,8 +140,8 @@ pub enum IrMemberGlobalVarSelector {
     Pc,
     #[display(fmt = "ops")]
     Ops,
-    #[display(fmt = "pcEmitIds")]
-    PcEmitIds,
+    #[display(fmt = "pcEmitPaths")]
+    PcEmitPaths,
     #[display(fmt = "nextLabel")]
     NextLabel,
     #[display(fmt = "labelPcs")]
@@ -165,8 +169,8 @@ impl Display for UserGlobalVarIdent {
 pub enum ParamVarIdent {
     #[display(fmt = "in")]
     In,
-    #[display(fmt = "emitId")]
-    EmitId,
+    #[display(fmt = "EmitPath")]
+    EmitPath,
     #[display(fmt = "op")]
     Op,
     #[display(fmt = "label")]
@@ -213,6 +217,16 @@ pub enum FnIdent {
     IrMember(IrMemberFnIdent),
     User(UserFnIdent),
     ExternalUserFnHelper(ExternalUserFnHelperFnIdent),
+    EntryPoint(EntryPointFnIdent),
+    OpCtorField(OpCtorFieldFnIdent),
+}
+
+#[derive(Clone, Copy, Debug, Display)]
+#[display(fmt = "{}#{}{}", param_var_ident, ir_ident, user_op_selector)]
+pub struct OpCtorFieldFnIdent {
+    pub param_var_ident: ParamVarIdent,
+    pub ir_ident: IrIdent,
+    pub user_op_selector: UserOpSelector,
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -274,14 +288,29 @@ pub enum IrMemberFnSelector {
     Bind,
     #[display(fmt = "goto")]
     Goto,
-    #[display(fmt = "Op^External")]
-    ExternalOpCtor,
-    UserOpCtor(UserOpCtorIrMemberFnSelector),
+    #[display(fmt = "EmitPath^Nil")]
+    NilEmitPathCtor,
+    #[display(fmt = "EmitPath^Cons")]
+    ConsEmitPathCtor,
+    Op(OpCtorIrMemberFnSelector),
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "Op~{}", op_ident)]
-pub struct UserOpCtorIrMemberFnSelector {
+#[display(fmt = "Op{}", op_selector)]
+pub struct OpCtorIrMemberFnSelector {
+    pub op_selector: OpSelector,
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+pub enum OpSelector {
+    #[display(fmt = "^External")]
+    External,
+    User(UserOpSelector),
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+#[display(fmt = "~{}", op_ident)]
+pub struct UserOpSelector {
     pub op_ident: Ident,
 }
 
@@ -310,7 +339,50 @@ pub struct ExternalUserFnHelperFnIdent {
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
-pub enum LabelIdent {}
+#[display(fmt = "EntryPoint{}{}", ir_ident, user_op_selector)]
+pub struct EntryPointFnIdent {
+    pub ir_ident: IrIdent,
+    pub user_op_selector: UserOpSelector,
+}
+
+#[derive(Clone, Debug, Display, From)]
+pub enum LabelIdent {
+    Emit(EmitLabelIdent),
+}
+
+#[derive(Clone, Debug, Default, From)]
+pub struct EmitLabelIdent {
+    pub segments: Vec<EmitLabelSegment>,
+}
+
+impl Display for EmitLabelIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "emit")?;
+        fmt_join_leading(f, "'", self.segments.iter())?;
+        Ok(())
+    }
+}
+
+impl FromIterator<EmitLabelSegment> for EmitLabelIdent {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = EmitLabelSegment>,
+    {
+        EmitLabelIdent {
+            segments: iter.into_iter().collect(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Display)]
+#[display(fmt = "{}{}{}", local_emit_index, ir_ident, op_selector)]
+pub struct EmitLabelSegment {
+    pub local_emit_index: LocalEmitIndex,
+    pub ir_ident: IrIdent,
+    pub op_selector: OpSelector,
+}
+
+typed_index!(pub LocalEmitIndex);
 
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "{}: {}", ident, type_)]
@@ -546,6 +618,8 @@ impl Display for ProcItem {
 
 #[derive(Clone, Debug, Display, From)]
 pub enum ProcAttr {
+    #[display(fmt = "{{:entrypoint}}")]
+    EntryPoint,
     Inline(InlineProcAttr),
 }
 
@@ -567,6 +641,9 @@ impl Display for Body {
 
         let mut indent_writer = IndentWriter::new("  ", f);
         fmt_join_trailing(&mut indent_writer, "\n", self.local_vars.iter())?;
+        if !self.local_vars.is_empty() {
+            write!(indent_writer, "\n")?;
+        }
         fmt_join_trailing(&mut indent_writer, "\n", self.stmts.iter())?;
         let f = indent_writer.into_inner();
 
@@ -641,6 +718,8 @@ pub enum Stmt {
     #[from]
     Check(CheckStmt),
     #[from]
+    Label(LabelStmt),
+    #[from]
     Goto(GotoStmt),
     #[from(types(CallExpr))]
     Call(CallStmt),
@@ -671,6 +750,7 @@ impl Display for IfStmt {
 #[derive(Clone, Debug)]
 pub struct CheckStmt {
     pub kind: CheckKind,
+    pub attr: Option<CheckAttr>,
     pub cond: Expr,
 }
 
@@ -678,15 +758,33 @@ impl Display for CheckStmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "{} {};",
+            "{} ",
             match self.kind {
                 CheckKind::Assert => "assert",
                 CheckKind::Assume => "assume",
-            },
-            self.cond
+            }
         )?;
+
+        if let Some(attr) = &self.attr {
+            write!(f, "{} ", attr)?;
+        }
+
+        write!(f, "{};", self.cond)?;
+
         Ok(())
     }
+}
+
+#[derive(Clone, Debug, Display, From)]
+pub enum CheckAttr {
+    #[display(fmt = "{{:partition}}")]
+    Partition,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "\n{}:", label_ident)]
+pub struct LabelStmt {
+    pub label_ident: LabelIdent,
 }
 
 #[derive(Clone, Debug)]
@@ -698,6 +796,7 @@ impl Display for GotoStmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "goto ")?;
         fmt_join(f, ", ", self.labels.iter())?;
+        write!(f, ";")?;
         Ok(())
     }
 }

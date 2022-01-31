@@ -1,4 +1,5 @@
 use std::borrow::{Borrow, BorrowMut};
+use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 
 pub enum MaybeOwned<'a, T: 'a + ToOwned + ?Sized> {
@@ -64,6 +65,18 @@ where
         match self {
             MaybeOwned::Borrowed(borrowed) => borrowed,
             MaybeOwned::Owned(owned) => owned.borrow_mut(),
+        }
+    }
+}
+
+impl<T: Debug + ToOwned + ?Sized> Debug for MaybeOwned<'_, T>
+where
+    T::Owned: Debug
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            MaybeOwned::Borrowed(borrowed) => Debug::fmt(borrowed, f),
+            MaybeOwned::Owned(owned) => Debug::fmt(owned, f),
         }
     }
 }

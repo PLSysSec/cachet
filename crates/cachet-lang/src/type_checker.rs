@@ -279,8 +279,8 @@ impl<'a> TypeChecker<'a> {
         supertype_index: TypeIndex,
         subtype_index: TypeIndex,
     ) -> Option<Vec<TypeIndex>> {
-        // The internal "unknown" type unifies with everything. It's No values
-        // of this type will ever actually be produced.
+        // The internal "unknown" type unifies with everything. No values of
+        // this type will ever actually be produced.
         if supertype_index == subtype_index
             || supertype_index == self.unknown_type
             || subtype_index == self.unknown_type
