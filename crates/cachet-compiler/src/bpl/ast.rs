@@ -23,7 +23,14 @@ pub struct IrIdent {
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Type {
-    #[from(types(BitVecTypeIdent, FloatTypeIdent, IrMemberTypeIdent, UserTypeIdent))]
+    #[from(types(
+        NativeTypeIdent,
+        BitVecTypeIdent,
+        FloatTypeIdent,
+        PreludeTypeIdent,
+        IrMemberTypeIdent,
+        UserTypeIdent
+    ))]
     Ident(TypeIdent),
     #[from]
     Map(Box<MapType>),
@@ -33,18 +40,32 @@ box_from!(MapType => Type);
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum TypeIdent {
-    #[display(fmt = "bool")]
-    Bool,
-    #[display(fmt = "int")]
-    Int,
+    #[from(types(BitVecTypeIdent, FloatTypeIdent))]
+    Native(NativeTypeIdent),
     #[from]
-    BitVec(BitVecTypeIdent),
-    #[from]
-    Float(FloatTypeIdent),
+    Prelude(PreludeTypeIdent),
     #[from]
     IrMember(IrMemberTypeIdent),
     #[from]
     User(UserTypeIdent),
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+pub enum NativeTypeIdent {
+    #[display(fmt = "bool")]
+    Bool,
+    #[display(fmt = "int")]
+    Int,
+    BitVec(BitVecTypeIdent),
+    Float(FloatTypeIdent),
+}
+
+#[derive(Clone, Copy, Debug, Display)]
+pub enum PreludeTypeIdent {
+    #[display(fmt = "Pc")]
+    Pc,
+    #[display(fmt = "EmitPath")]
+    EmitPath,
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -58,10 +79,6 @@ pub struct IrMemberTypeIdent {
 pub enum IrMemberTypeSelector {
     #[display(fmt = "Op")]
     Op,
-    #[display(fmt = "Pc")]
-    Pc,
-    #[display(fmt = "EmitPath")]
-    EmitPath,
     #[display(fmt = "Label")]
     Label,
 }
@@ -109,6 +126,7 @@ pub enum VarIdent {
     Param(ParamVarIdent),
     #[display(fmt = "ret")]
     Ret,
+    // TODO(spinda): Move these under LocalVarIdent.
     #[display(fmt = "op")]
     Op,
     #[display(fmt = "pc")]
@@ -169,7 +187,11 @@ impl Display for UserGlobalVarIdent {
 pub enum ParamVarIdent {
     #[display(fmt = "in")]
     In,
-    #[display(fmt = "EmitPath")]
+    #[display(fmt = "init")]
+    Init,
+    #[display(fmt = "last")]
+    Last,
+    #[display(fmt = "emit_path")]
     EmitPath,
     #[display(fmt = "op")]
     Op,
@@ -213,6 +235,7 @@ pub enum SyntheticVarKind {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum FnIdent {
+    Prelude(PreludeFnIdent),
     TypeMember(TypeMemberFnIdent),
     IrMember(IrMemberFnIdent),
     User(UserFnIdent),
@@ -221,12 +244,19 @@ pub enum FnIdent {
     OpCtorField(OpCtorFieldFnIdent),
 }
 
+#[derive(Clone, Copy, Debug, Display, From)]
+pub enum PreludeFnIdent {
+    #[display(fmt = "NilEmitPath")]
+    NilEmitPathCtor,
+    #[display(fmt = "ConsEmitPath")]
+    ConsEmitPathCtor,
+}
+
 #[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}#{}{}", param_var_ident, ir_ident, user_op_selector)]
+#[display(fmt = "{}#{}", param_var_ident, op_ctor_ident)]
 pub struct OpCtorFieldFnIdent {
     pub param_var_ident: ParamVarIdent,
-    pub ir_ident: IrIdent,
-    pub user_op_selector: UserOpSelector,
+    pub op_ctor_ident: IrMemberFnIdent,
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -288,10 +318,6 @@ pub enum IrMemberFnSelector {
     Bind,
     #[display(fmt = "goto")]
     Goto,
-    #[display(fmt = "EmitPath^Nil")]
-    NilEmitPathCtor,
-    #[display(fmt = "EmitPath^Cons")]
-    ConsEmitPathCtor,
     Op(OpCtorIrMemberFnSelector),
 }
 
@@ -529,7 +555,7 @@ pub struct GlobalVarItem {
 }
 
 #[derive(Clone, Debug, Display)]
-#[display(fmt = "axiom {};", cond)]
+#[display(fmt = "axiom {};", "MaybeGrouped(&self.cond)")]
 pub struct AxiomItem {
     pub cond: Expr,
 }
@@ -769,7 +795,7 @@ impl Display for CheckStmt {
             write!(f, "{} ", attr)?;
         }
 
-        write!(f, "{};", self.cond)?;
+        write!(f, "{};", MaybeGrouped(&self.cond))?;
 
         Ok(())
     }
@@ -829,7 +855,7 @@ impl From<CallExpr> for CallStmt {
 }
 
 #[derive(Clone, Debug, Display)]
-#[display(fmt = "{} := {};", lhs, rhs)]
+#[display(fmt = "{} := {};", "MaybeGrouped(&self.lhs)", "MaybeGrouped(&self.rhs)")]
 pub struct AssignStmt {
     pub lhs: Expr,
     pub rhs: Expr,
@@ -920,9 +946,9 @@ pub struct IndexExpr {
 
 impl Display for IndexExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}[{}", MaybeGrouped(&self.base), self.key)?;
+        write!(f, "{}[{}", MaybeGrouped(&self.base), MaybeGrouped(&self.key))?;
         if let Some(value) = &self.value {
-            write!(f, " := {}", value)?;
+            write!(f, " := {}", MaybeGrouped(value))?;
         }
         write!(f, "]")?;
         Ok(())

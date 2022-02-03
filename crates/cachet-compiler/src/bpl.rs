@@ -8,6 +8,7 @@ use derive_more::{Display, From};
 use enum_map::EnumMap;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
+use lazy_static::lazy_static;
 use typed_index_collections::{TiSlice, TiVec};
 use void::unreachable;
 
@@ -66,7 +67,6 @@ pub fn compile(env: &flattener::Env) -> BplCode {
 
 struct Compiler<'a> {
     env: &'a flattener::Env,
-    next_emit_id: usize,
     items: Vec<Item>,
 }
 
@@ -74,7 +74,6 @@ impl<'a> Compiler<'a> {
     fn new(env: &'a flattener::Env) -> Self {
         Compiler {
             env,
-            next_emit_id: 0,
             items: Vec::new(),
         }
     }
@@ -110,6 +109,10 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_struct_item(&mut self, struct_item: &flattener::StructItem) {
+        if BLOCKED_PATHS.contains(&struct_item.ident.value.into()) {
+            return;
+        }
+
         let type_ident = UserTypeIdent::from(struct_item.ident.value);
 
         self.items.push(
@@ -162,23 +165,13 @@ impl<'a> Compiler<'a> {
             value: None,
         };
 
-        let pc_type_item = TypeItem {
-            ident: IrMemberTypeIdent {
-                ir_ident,
-                selector: IrMemberTypeSelector::Pc,
-            }
-            .into(),
-            attr: None,
-            type_: Some(TypeIdent::Int.into()),
-        };
-
         let pc_global_var_item = GlobalVarItem::from(TypedVar {
             ident: IrMemberGlobalVarIdent {
                 ir_ident,
                 selector: IrMemberGlobalVarSelector::Pc,
             }
             .into(),
-            type_: pc_type_item.ident.into(),
+            type_: PreludeTypeIdent::Pc.into(),
         });
 
         let ops_global_var_item = GlobalVarItem::from(TypedVar {
@@ -188,7 +181,7 @@ impl<'a> Compiler<'a> {
             }
             .into(),
             type_: MapType {
-                key_types: vec![pc_type_item.ident.into()],
+                key_types: vec![PreludeTypeIdent::Pc.into()],
                 value_type: op_type_item.ident.into(),
             }
             .into(),
@@ -220,25 +213,15 @@ impl<'a> Compiler<'a> {
             }),
         };
 
-        let emit_id_type_item = TypeItem {
-            ident: IrMemberTypeIdent {
-                ir_ident,
-                selector: IrMemberTypeSelector::EmitPath,
-            }
-            .into(),
-            attr: None,
-            type_: Some(TypeIdent::Int.into()),
-        };
-
-        let pc_emit_ids_global_var_item = GlobalVarItem::from(TypedVar {
+        let pc_emit_paths_global_var_item = GlobalVarItem::from(TypedVar {
             ident: IrMemberGlobalVarIdent {
                 ir_ident,
                 selector: IrMemberGlobalVarSelector::PcEmitPaths,
             }
             .into(),
             type_: MapType {
-                key_types: vec![pc_type_item.ident.into()],
-                value_type: emit_id_type_item.ident.into(),
+                key_types: vec![PreludeTypeIdent::Pc.into()],
+                value_type: PreludeTypeIdent::EmitPath.into(),
             }
             .into(),
         });
@@ -252,12 +235,12 @@ impl<'a> Compiler<'a> {
             attr: None,
             param_vars: vec![
                 TypedVar {
-                    ident: ParamVarIdent::EmitPath.into(),
-                    type_: emit_id_type_item.ident.into(),
-                },
-                TypedVar {
                     ident: ParamVarIdent::Op.into(),
                     type_: op_type_item.ident.into(),
+                },
+                TypedVar {
+                    ident: ParamVarIdent::EmitPath.into(),
+                    type_: PreludeTypeIdent::EmitPath.into(),
                 },
             ]
             .into(),
@@ -267,7 +250,7 @@ impl<'a> Compiler<'a> {
                 stmts: vec![
                     AssignStmt {
                         lhs: IndexExpr {
-                            base: pc_emit_ids_global_var_item.var.ident.into(),
+                            base: pc_emit_paths_global_var_item.var.ident.into(),
                             key: pc_global_var_item.var.ident.into(),
                             value: None,
                         }
@@ -297,7 +280,7 @@ impl<'a> Compiler<'a> {
             }
             .into(),
             attr: None,
-            type_: Some(TypeIdent::Int.into()),
+            type_: Some(NativeTypeIdent::Int.into()),
         };
 
         let next_label_global_var_item = GlobalVarItem::from(TypedVar {
@@ -317,7 +300,7 @@ impl<'a> Compiler<'a> {
             .into(),
             type_: MapType {
                 key_types: vec![label_type_item.ident.into()],
-                value_type: pc_type_item.ident.into(),
+                value_type: PreludeTypeIdent::Pc.into(),
             }
             .into(),
         });
@@ -420,12 +403,10 @@ impl<'a> Compiler<'a> {
         self.items.extend([
             op_type_item.into(),
             external_op_ctor_fn_item.into(),
-            pc_type_item.into(),
             pc_global_var_item.into(),
             ops_global_var_item.into(),
             step_proc_item.into(),
-            emit_id_type_item.into(),
-            pc_emit_ids_global_var_item.into(),
+            pc_emit_paths_global_var_item.into(),
             emit_proc_item.into(),
             label_type_item.into(),
             next_label_global_var_item.into(),
@@ -461,6 +442,9 @@ impl<'a> Compiler<'a> {
 
     fn compile_callable_item(&mut self, callable_index: flattener::CallableIndex) {
         let callable_item = &self.env[callable_index];
+        if BLOCKED_PATHS.contains(&callable_item.path.value) {
+            return;
+        }
 
         let callable_parent_ident = callable_item
             .path
@@ -473,12 +457,12 @@ impl<'a> Compiler<'a> {
             fn_ident: callable_ident,
         };
 
-        let (param_vars, mut ret_vars) =
+        let (mut param_vars, mut ret_vars) =
             self.compile_params(&callable_item.params, &callable_item.param_order);
 
-        // Define datatype constructors for interpreter ops.
-        let op_interprets_ir_ident = match (callable_index, callable_item.interprets) {
-            (flattener::CallableIndex::Op(_), Some(ir_index)) => {
+        if let flattener::CallableIndex::Op(_) = callable_index {
+            // Define datatype constructors for interpreter ops.
+            if let Some(ir_index) = callable_item.interprets {
                 let ir_ident = self.env[ir_index].ident.value.into();
                 let ident = IrMemberFnIdent {
                     ir_ident,
@@ -505,16 +489,21 @@ impl<'a> Compiler<'a> {
                     }
                     .into(),
                 );
-
-                Some(ir_ident)
             }
-            _ => None,
-        };
+
+            // Add an extea `emit_path` parameter to compiler ops.
+            if let Some(_) = callable_item.emits {
+                param_vars.push(TypedVar {
+                    ident: ParamVarIdent::EmitPath.into(),
+                    type_: PreludeTypeIdent::EmitPath.into(),
+                });
+            }
+        }
 
         let body = callable_item
             .body
             .as_ref()
-            .map(|body| self.compile_body(op_interprets_ir_ident, &callable_item.params, body));
+            .map(|body| self.compile_body(callable_index, &callable_item, body));
 
         match CallableRepr::for_callable(callable_item) {
             CallableRepr::Fn => {
@@ -621,21 +610,55 @@ impl<'a> Compiler<'a> {
         }
         .into();
 
-        let (param_vars, _) = self.compile_params(&top_op_item.params, &top_op_item.param_order);
-
-        let local_vars = vec![
-            TypedVar {
-                ident: VarIdent::Op,
-                type_: IrMemberTypeIdent {
-                    ir_ident: bottom_ir_ident,
-                    selector: IrMemberTypeSelector::Op,
+        // The parameters of the entry point are the variable parameters of the
+        // top-level op. These will be considered by the solver to have
+        // arbitrary initial values.
+        let param_vars: TypedVars = top_op_item
+            .param_order
+            .iter()
+            .filter_map(|param_index| match param_index {
+                flattener::ParamIndex::Var(var_param_index) => {
+                    Some(self.compile_var_param(&top_op_item.params[var_param_index]))
                 }
-                .into(),
-            }
-            .into(),
-        ];
+                _ => None,
+            })
+            .collect();
 
-        let pc_emit_ids_var_ident: VarIdent = IrMemberGlobalVarIdent {
+        // Label parameters to the top-level op are reflected as local
+        // variables.
+        let label_param_local_vars: Vec<LocalVar> = top_op_item
+            .param_order
+            .iter()
+            .filter_map(|param_index| match param_index {
+                flattener::ParamIndex::Label(label_param_index) => Some(
+                    self.compile_label_param(top_op_item.params[label_param_index].value)
+                        .into(),
+                ),
+                _ => None,
+            })
+            .collect();
+
+        // Start by filling in all of the label parameter local variables with
+        // fresh labels.
+        let mut stmts: Vec<Stmt> = label_param_local_vars
+            .iter()
+            .map(|label_param_local_var| {
+                CallStmt {
+                    call: CallExpr {
+                        target: IrMemberFnIdent {
+                            ir_ident: bottom_ir_ident,
+                            selector: IrMemberFnSelector::Label,
+                        }
+                        .into(),
+                        arg_exprs: Vec::new(),
+                    },
+                    ret_var_idents: vec![label_param_local_var.var.ident],
+                }
+                .into()
+            })
+            .collect();
+
+        let pc_emit_paths_var_ident: VarIdent = IrMemberGlobalVarIdent {
             ir_ident: bottom_ir_ident,
             selector: IrMemberGlobalVarSelector::PcEmitPaths,
         }
@@ -647,26 +670,21 @@ impl<'a> Compiler<'a> {
         }
         .into();
 
-        let nil_emit_path_expr: Expr =
-            generate_emit_path_expr(bottom_ir_ident, &EmitLabelIdent::default()).into();
+        let nil_emit_path_expr: Expr = generate_emit_path_expr(&EmitLabelIdent::default()).into();
 
-        let assume_pc_emit_ids_uninit_stmt = CheckStmt {
+        let assume_pc_emit_paths_uninit_stmt = CheckStmt {
             kind: CheckKind::Assume,
             attr: None,
             cond: ForAllExpr {
                 vars: vec![TypedVar {
                     ident: VarIdent::Pc,
-                    type_: IrMemberTypeIdent {
-                        ir_ident: bottom_ir_ident,
-                        selector: IrMemberTypeSelector::Pc,
-                    }
-                    .into(),
+                    type_: PreludeTypeIdent::Pc.into(),
                 }]
                 .into(),
                 expr: CompareExpr {
                     kind: CompareKind::Eq,
                     lhs: IndexExpr {
-                        base: pc_emit_ids_var_ident.into(),
+                        base: pc_emit_paths_var_ident.into(),
                         key: VarIdent::Pc.into(),
                         value: None,
                     }
@@ -685,43 +703,50 @@ impl<'a> Compiler<'a> {
         }
         .into();
 
+        // Call function corresponding to the top-level op, passing along the
+        // root emit path, variable parameters, and labels from the local
+        // variables declared for its labels parameters.
+        let top_op_var_arg_exprs = param_vars.iter().map(|param_var| param_var.ident.into());
+        let top_op_label_arg_exprs = label_param_local_vars
+            .iter()
+            .map(|label_param_local_var| label_param_local_var.var.ident.into());
+        let top_op_arg_exprs = top_op_var_arg_exprs
+            .chain(top_op_label_arg_exprs)
+            .chain(iter::once(nil_emit_path_expr))
+            .collect();
         let call_top_op_fn_stmt = CallExpr {
             target: UserFnIdent {
                 parent_ident: Some(top_ir_ident.ident),
                 fn_ident: top_op_ident,
             }
             .into(),
-            arg_exprs: iter::once(nil_emit_path_expr)
-                .chain(param_vars.iter().map(|param_var| param_var.ident.into()))
-                .collect(),
+            arg_exprs: top_op_arg_exprs,
         }
         .into();
 
-        let mut stmts = vec![
-            assume_pc_emit_ids_uninit_stmt,
+        stmts.extend([
+            assume_pc_emit_paths_uninit_stmt,
             init_pc_stmt.clone(),
             call_top_op_fn_stmt,
-        ];
+        ]);
 
-        for param_index in &top_op_item.param_order {
-            if let flattener::ParamIndex::Label(label_param_index) = param_index {
-                let label_param_var_ident =
-                    UserParamVarIdent::from(top_op_item.params[label_param_index].value);
-
-                stmts.push(
-                    CallExpr {
-                        target: IrMemberFnIdent {
-                            ir_ident: bottom_ir_ident,
-                            selector: IrMemberFnSelector::Bind,
-                        }
-                        .into(),
-                        arg_exprs: vec![label_param_var_ident.into()],
-                    }
-                    .into(),
-                );
+        // Bind all external labels to the trailing external emit.
+        stmts.extend(label_param_local_vars.iter().map(|label_param_local_var| {
+            CallExpr {
+                target: IrMemberFnIdent {
+                    ir_ident: bottom_ir_ident,
+                    selector: IrMemberFnSelector::Bind,
+                }
+                .into(),
+                arg_exprs: vec![label_param_local_var.var.ident.into()],
             }
-        }
+            .into()
+        }));
 
+        // Emit a trailing "external" op after everything else, to represent
+        // control flow being transferred to some point outside the program.
+        // This represents both normal termination and jumping to an
+        // externally-provided label.
         let external_emit_node = &flow_graph.emit_nodes.last().unwrap();
         let external_emit_stmt = CallExpr {
             target: IrMemberFnIdent {
@@ -730,7 +755,6 @@ impl<'a> Compiler<'a> {
             }
             .into(),
             arg_exprs: vec![
-                generate_emit_path_expr(bottom_ir_ident, &external_emit_node.label_ident).into(),
                 CallExpr {
                     target: IrMemberFnIdent {
                         ir_ident: bottom_ir_ident,
@@ -740,10 +764,10 @@ impl<'a> Compiler<'a> {
                     arg_exprs: Vec::new(),
                 }
                 .into(),
+                generate_emit_path_expr(&external_emit_node.label_ident).into(),
             ],
         }
         .into();
-
         stmts.extend([external_emit_stmt, init_pc_stmt]);
 
         for emit_node in &flow_graph.emit_nodes {
@@ -758,12 +782,12 @@ impl<'a> Compiler<'a> {
                 cond: CompareExpr {
                     kind: CompareKind::Eq,
                     lhs: IndexExpr {
-                        base: pc_emit_ids_var_ident.into(),
+                        base: pc_emit_paths_var_ident.into(),
                         key: pc_var_ident.into(),
                         value: None,
                     }
                     .into(),
-                    rhs: generate_emit_path_expr(bottom_ir_ident, &emit_node.label_ident).into(),
+                    rhs: generate_emit_path_expr(&emit_node.label_ident).into(),
                 }
                 .into(),
             }
@@ -812,8 +836,13 @@ impl<'a> Compiler<'a> {
                             CallExpr {
                                 target: OpCtorFieldFnIdent {
                                     param_var_ident: UserParamVarIdent::from(param_ident).into(),
-                                    ir_ident: bottom_ir_ident,
-                                    user_op_selector: UserOpSelector::from(op_ident).into(),
+                                    op_ctor_ident: IrMemberFnIdent {
+                                        ir_ident: bottom_ir_ident,
+                                        selector: OpCtorIrMemberFnSelector {
+                                            op_selector: UserOpSelector::from(op_ident).into(),
+                                        }
+                                        .into(),
+                                    },
                                 }
                                 .into(),
                                 arg_exprs: vec![VarIdent::Op.into()],
@@ -824,24 +853,21 @@ impl<'a> Compiler<'a> {
                 }
                 .into();
 
-                stmts.extend([assign_op_stmt, call_op_fn_stmt]);
-            }
-
-            let mut succ_emit_node_indexes = HashSet::new();
-            for succ in &emit_node.succs {
-                match succ {
-                    EmitSucc::Emit(emit_node_index) => {
-                        succ_emit_node_indexes.insert(*emit_node_index);
-                    }
-                    EmitSucc::Label(label_node_index) => {
-                        succ_emit_node_indexes
-                            .extend(flow_graph[label_node_index].bound_to.iter().copied());
+                let mut succ_emit_node_indexes = HashSet::new();
+                for succ in &emit_node.succs {
+                    match succ {
+                        EmitSucc::Emit(emit_node_index) => {
+                            succ_emit_node_indexes.insert(*emit_node_index);
+                        }
+                        EmitSucc::Label(label_node_index) => {
+                            succ_emit_node_indexes
+                                .extend(flow_graph[label_node_index].bound_to.iter().copied());
+                        }
                     }
                 }
-            }
+                debug_assert!(!succ_emit_node_indexes.is_empty());
 
-            stmts.push(
-                GotoStmt {
+                let goto_succs_stmt = GotoStmt {
                     labels: succ_emit_node_indexes
                         .iter()
                         .map(|succ_emit_node_index| {
@@ -849,9 +875,24 @@ impl<'a> Compiler<'a> {
                         })
                         .collect(),
                 }
-                .into(),
-            );
+                .into();
+
+                stmts.extend([assign_op_stmt, call_op_fn_stmt, goto_succs_stmt]);
+            }
         }
+
+        let mut local_vars = label_param_local_vars;
+        local_vars.push(
+            TypedVar {
+                ident: VarIdent::Op,
+                type_: IrMemberTypeIdent {
+                    ir_ident: bottom_ir_ident,
+                    selector: IrMemberTypeSelector::Op,
+                }
+                .into(),
+            }
+            .into(),
+        );
 
         self.items.push(
             ProcItem {
@@ -919,16 +960,16 @@ impl<'a> Compiler<'a> {
 
     fn compile_body(
         &mut self,
-        op_interprets_ir_ident: Option<IrIdent>,
-        params: &flattener::Params,
+        callable_index: flattener::CallableIndex,
+        callable_item: &flattener::CallableItem,
         body: &flattener::Body,
     ) -> Body {
         let mut local_vars = self.compile_locals(&body.locals).collect();
 
         let mut scoped_compiler = ScopedCompiler::new(
             self,
-            op_interprets_ir_ident,
-            params,
+            callable_index,
+            callable_item,
             &body.locals,
             &mut local_vars,
         );
@@ -1106,13 +1147,9 @@ fn generate_cast_axiom_item(
     AxiomItem { cond }
 }
 
-fn generate_emit_path_expr(ir_ident: IrIdent, emit_label_ident: &EmitLabelIdent) -> CallExpr {
+fn generate_emit_path_expr(emit_label_ident: &EmitLabelIdent) -> CallExpr {
     let nil_emit_path_ctor_expr = CallExpr {
-        target: IrMemberFnIdent {
-            ir_ident,
-            selector: IrMemberFnSelector::NilEmitPathCtor,
-        }
-        .into(),
+        target: PreludeFnIdent::NilEmitPathCtor.into(),
         arg_exprs: Vec::new(),
     };
 
@@ -1121,11 +1158,7 @@ fn generate_emit_path_expr(ir_ident: IrIdent, emit_label_ident: &EmitLabelIdent)
         .iter()
         .fold(nil_emit_path_ctor_expr, |accum, emit_label_segment| {
             CallExpr {
-                target: IrMemberFnIdent {
-                    ir_ident,
-                    selector: IrMemberFnSelector::ConsEmitPathCtor,
-                }
-                .into(),
+                target: PreludeFnIdent::ConsEmitPathCtor.into(),
                 arg_exprs: vec![
                     accum.into(),
                     usize::from(emit_label_segment.local_emit_index).into(),
@@ -1141,6 +1174,10 @@ enum CallableRepr {
 
 impl CallableRepr {
     fn for_callable(callable_item: &flattener::CallableItem) -> Self {
+        if BLOCKED_PATHS.contains(&callable_item.path.value) {
+            return Self::Proc;
+        }
+
         let has_out_params =
             callable_item
                 .param_order
@@ -1159,10 +1196,11 @@ impl CallableRepr {
 
 struct ScopedCompiler<'a, 'b> {
     compiler: &'b mut Compiler<'a>,
-    op_interprets_ir_ident: Option<IrIdent>,
-    params: &'b flattener::Params,
-    locals: &'b flattener::Locals,
+    callable_index: flattener::CallableIndex,
+    callable_item: &'b flattener::CallableItem,
+    callable_locals: &'b flattener::Locals,
     local_vars: &'b mut Vec<LocalVar>,
+    next_local_emit_index: MaybeOwned<'b, LocalEmitIndex>,
     next_synthetic_var_indexes: MaybeOwned<'b, EnumMap<SyntheticVarKind, usize>>,
     stmts: Vec<Stmt>,
 }
@@ -1184,17 +1222,18 @@ impl<'a> DerefMut for ScopedCompiler<'a, '_> {
 impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn new(
         compiler: &'b mut Compiler<'a>,
-        op_interprets_ir_ident: Option<IrIdent>,
-        params: &'b flattener::Params,
-        locals: &'b flattener::Locals,
+        callable_index: flattener::CallableIndex,
+        callable_item: &'b flattener::CallableItem,
+        callable_locals: &'b flattener::Locals,
         local_vars: &'b mut Vec<LocalVar>,
     ) -> Self {
         ScopedCompiler {
             compiler,
-            op_interprets_ir_ident,
-            params,
-            locals,
+            callable_index,
+            callable_item,
+            callable_locals,
             local_vars,
+            next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
             next_synthetic_var_indexes: MaybeOwned::Owned(EnumMap::default()),
             stmts: Vec::new(),
         }
@@ -1203,10 +1242,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn recurse<'c>(&'c mut self) -> ScopedCompiler<'a, 'c> {
         ScopedCompiler {
             compiler: self.compiler,
-            op_interprets_ir_ident: self.op_interprets_ir_ident,
-            params: self.params,
-            locals: self.locals,
+            callable_index: self.callable_index,
+            callable_item: self.callable_item,
+            callable_locals: self.callable_locals,
             local_vars: self.local_vars,
+            next_local_emit_index: MaybeOwned::Borrowed(&mut self.next_local_emit_index),
             next_synthetic_var_indexes: MaybeOwned::Borrowed(&mut self.next_synthetic_var_indexes),
             stmts: Vec::new(),
         }
@@ -1252,10 +1292,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_label_arg(&mut self, label_index: flattener::LabelIndex) -> Expr {
         match label_index {
             flattener::LabelIndex::Param(label_param_index) => {
-                UserParamVarIdent::from(self.params[label_param_index].value).into()
+                UserParamVarIdent::from(self.callable_item.params[label_param_index].value).into()
             }
             flattener::LabelIndex::Local(local_label_index) => LocalLabelVarIdent {
-                ident: self.locals[local_label_index].value,
+                ident: self.callable_locals[local_label_index].value,
                 index: local_label_index,
             }
             .into(),
@@ -1334,7 +1374,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_let_stmt(&mut self, let_stmt: &flattener::LetStmt) {
         let lhs = LocalVarIdent {
-            ident: self.locals[let_stmt.lhs].ident.value,
+            ident: self.callable_locals[let_stmt.lhs].ident.value,
             index: let_stmt.lhs,
         }
         .into();
@@ -1390,7 +1430,16 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let ir_ident = IrIdent::from(ir_item.ident.value);
         let op_ident = self.env[emit_stmt.call.target].path.value.ident();
 
-        let (op_arg_exprs, _) = self.compile_args(&emit_stmt.call.args);
+        let (mut op_arg_exprs, _) = self.compile_args(&emit_stmt.call.args);
+
+        let local_emit_index = usize::from(*self.next_local_emit_index);
+        *self.next_local_emit_index = LocalEmitIndex::from(local_emit_index + 1);
+
+        let emit_path_expr = CallExpr {
+            target: PreludeFnIdent::ConsEmitPathCtor.into(),
+            arg_exprs: vec![ParamVarIdent::EmitPath.into(), local_emit_index.into()],
+        }
+        .into();
 
         match ir_item.emits {
             Some(_) => {
@@ -1402,6 +1451,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                     fn_ident: op_ident,
                 }
                 .into();
+
+                op_arg_exprs.push(emit_path_expr);
 
                 self.stmts.push(
                     CallExpr {
@@ -1429,21 +1480,21 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 }
                 .into();
 
-                let emit_id = self.next_emit_id;
-                self.next_emit_id += 1;
-
                 let emit_target = IrMemberFnIdent {
                     ir_ident,
                     selector: IrMemberFnSelector::Emit,
                 }
                 .into();
-                let emit_args = vec![emit_id.into(), op_ctor_call_expr];
-                let emit_call_expr = CallExpr {
-                    target: emit_target,
-                    arg_exprs: emit_args,
-                };
 
-                self.stmts.push(emit_call_expr.into());
+                let emit_args = vec![op_ctor_call_expr, emit_path_expr];
+
+                self.stmts.push(
+                    CallExpr {
+                        target: emit_target,
+                        arg_exprs: emit_args,
+                    }
+                    .into(),
+                );
             }
         }
     }
@@ -1515,17 +1566,24 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             )
         });
 
-        let step_call = self.op_interprets_ir_ident.map(|ir_ident| {
-            CallExpr {
-                target: IrMemberFnIdent {
-                    ir_ident,
-                    selector: IrMemberFnSelector::Step,
-                }
-                .into(),
-                arg_exprs: Vec::new(),
+        let step_call = match (self.callable_index, self.callable_item.interprets) {
+            (flattener::CallableIndex::Op(_), Some(ir_index)) => {
+                let ir_ident = self.env[ir_index].ident.value.into();
+
+                Some(
+                    CallExpr {
+                        target: IrMemberFnIdent {
+                            ir_ident,
+                            selector: IrMemberFnSelector::Step,
+                        }
+                        .into(),
+                        arg_exprs: Vec::new(),
+                    }
+                    .into(),
+                )
             }
-            .into()
-        });
+            _ => None,
+        };
 
         self.stmts
             .extend(iterate![..assign_stmt, ..step_call, Stmt::Ret]);
@@ -1694,15 +1752,15 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 )
             }
             flattener::VarIndex::Param(var_param_index) => {
-                let var_param = &self.params[var_param_index];
+                let var_param = &self.callable_item.params[var_param_index];
                 Some(UserParamVarIdent::from(var_param.ident.value).into())
             }
             flattener::VarIndex::OutParam(out_var_param_index) => {
-                let out_var_param = &self.params[out_var_param_index];
+                let out_var_param = &self.callable_item.params[out_var_param_index];
                 Some(UserParamVarIdent::from(out_var_param.ident.value).into())
             }
             flattener::VarIndex::Local(local_var_index) => {
-                let local_var = &self.locals[local_var_index];
+                let local_var = &self.callable_locals[local_var_index];
                 Some(
                     LocalVarIdent {
                         ident: local_var.ident.value,
@@ -1778,18 +1836,20 @@ fn trace_entry_point(
     bottom_ir_index: flattener::IrIndex,
 ) -> FlowGraph {
     let mut graph = FlowGraph::default();
-
     let mut label_scope = LabelScope::new();
-    let external_label_node_index = graph.label_nodes.push_and_get_key(LabelNode::default());
+
     for param_index in &top_op_item.param_order {
         if let flattener::ParamIndex::Label(label_param_index) = param_index {
-            label_scope.insert(label_param_index.into(), external_label_node_index);
+            let label_node_index = graph.label_nodes.push_and_get_key(LabelNode::default());
+            label_scope.insert(label_param_index.into(), label_node_index);
         }
     }
 
     let mut tracer = FlowTracer::new(env, &mut graph, &label_scope);
     tracer.trace_op_item(top_op_item);
-    tracer.bind_label(external_label_node_index);
+
+    // Bind all external labels to an additional external emit.
+    tracer.bound_labels.extend(label_scope.values());
     tracer.trace_external(bottom_ir_index);
 
     graph
@@ -1978,10 +2038,6 @@ impl<'a> FlowTracer<'a> {
         self.create_emit_node(emit_label_ident, None);
     }
 
-    fn bind_label(&mut self, label_node_index: LabelNodeIndex) {
-        self.bound_labels.insert(label_node_index);
-    }
-
     fn create_emit_node(
         &mut self,
         label_ident: EmitLabelIdent,
@@ -2016,4 +2072,22 @@ impl<'a> FlowTracer<'a> {
         *self.next_local_emit_index = LocalEmitIndex::from(usize::from(local_emit_index) + 1);
         local_emit_index
     }
+}
+
+lazy_static! {
+    // Temporary hack to implement a few functions in Boogie, until we implement
+    // support for conditional compilation and polymorphism in Cachet.
+    pub static ref BLOCKED_PATHS: HashSet<Path> = HashSet::from([
+        Ident::from("ValueReg").into(),
+        Ident::from("MASM").nest("getValue".into()),
+        Ident::from("MASM").nest("setValue".into()),
+        Ident::from("MASM").nest("getInt32".into()),
+        Ident::from("MASM").nest("setInt32".into()),
+        Ident::from("MASM").nest("getObject".into()),
+        Ident::from("MASM").nest("setObject".into()),
+        Ident::from("CacheIR").nest("allocateValueReg".into()),
+        Ident::from("CacheIR").nest("releaseValueReg".into()),
+        Ident::from("CacheIR").nest("allocateReg".into()),
+        Ident::from("CacheIR").nest("releaseReg".into()),
+    ]);
 }

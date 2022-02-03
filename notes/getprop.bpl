@@ -277,7 +277,10 @@ procedure {:inline 1} $MASM^step()
   $MASM^pc := $MASM^pc + 1;
 }
 
-type $MASM^EmitId = int;
+//type $MASM^EmitId = int;
+type {:datatype} $MASM^EmitId;
+function {:constructor} $MASM^EmitId^Nil(n: int): $MASM^EmitId;
+function {:constructor} $MASM^EmitId^Cons(x: $MASM^EmitId, y: int): $MASM^EmitId;
 
 var $MASM^pcEmitIds: [$MASM^Pc]$MASM^EmitId;
 
@@ -543,7 +546,7 @@ function $CacheIR~readInt32Field($int32Field: $Int32Field): $Int32;
 function $CacheIR~readShapeField($shapeField: $ShapeField): $Shape;
 
 // op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure) {
-procedure $CacheIR~GuardToObject($valueId: $ValueId, $objectId: $ObjectId, $failure: $MASM^Label)
+procedure $CacheIR~GuardToObject(emitId: $MASM^EmitId, $valueId: $ValueId, $objectId: $ObjectId, $failure: $MASM^Label)
   modifies
     $MASM^pc,
     $MASM^ops,
@@ -558,13 +561,14 @@ procedure $CacheIR~GuardToObject($valueId: $ValueId, $objectId: $ObjectId, $fail
   $objectReg := $CacheIR~useObjectReg($objectId);
 
   // emit MASM::BranchTestNotObject(valueReg, failure);
-  call $MASM^emit(0, $MASM^Op~BranchTestNotObject($valueReg, $failure));
+  call $MASM^emit($MASM^EmitId^Cons(emitId, 0), $MASM^Op~BranchTestNotObject($valueReg, $failure));
   // emit MASM::UnboxObject(valueReg, objectReg);
-  call $MASM^emit(1, $MASM^Op~UnboxObject($valueReg, $objectReg));
+  call $MASM^emit($MASM^EmitId^Cons(emitId, 1), $MASM^Op~UnboxObject($valueReg, $objectReg));
 }
 
 // op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure) {
 procedure $CacheIR~GuardShape(
+  emitId: $MASM^EmitId,
   $objectId: $ObjectId,
   $shapeField: $ShapeField,
   $failure: $MASM^Label
@@ -583,11 +587,11 @@ procedure $CacheIR~GuardShape(
   $shape := $CacheIR~readShapeField($shapeField);
 
   // emit MASM::BranchTestNotObjectShape(objectReg, shape, failure);
-  call $MASM^emit(2, $MASM^Op~BranchTestNotObjectShape($objectReg, $shape, $failure));
+  call $MASM^emit($MASM^EmitId^Cons(emitId, 0), $MASM^Op~BranchTestNotObjectShape($objectReg, $shape, $failure));
 }
 
 // op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
-procedure $CacheIR~LoadFixedSlotResult($objectId: $ObjectId, $slotField: $Int32Field)
+procedure $CacheIR~LoadFixedSlotResult(emitId: $MASM^EmitId, $objectId: $ObjectId, $slotField: $Int32Field)
   modifies
     $MASM^pc,
     $MASM^ops,
@@ -602,7 +606,7 @@ procedure $CacheIR~LoadFixedSlotResult($objectId: $ObjectId, $slotField: $Int32F
   $slot := $CacheIR~readInt32Field($slotField);
 
   // emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
-  call $MASM^emit(3, $MASM^Op~LoadObjectFixedSlot($objectReg, $slot, $CacheIR~outputReg));
+  call $MASM^emit($MASM^EmitId^Cons(emitId, 0), $MASM^Op~LoadObjectFixedSlot($objectReg, $slot, $CacheIR~outputReg));
 }
 
 procedure {:entrypoint} $GetProp()
@@ -672,25 +676,25 @@ procedure {:entrypoint} $GetProp()
   }
   */
 
-  assume (forall pc: $MASM^Pc :: $MASM^pcEmitIds[pc] == -1);
+  assume (forall pc: $MASM^Pc :: $MASM^pcEmitIds[pc] == $MASM^EmitId^Nil(-1));
 
   $MASM^pc := 0;
 
   call $failure := $MASM^label();
 
-  call $CacheIR~GuardToObject($valueId, $objectId, $failure);
-  call $CacheIR~GuardShape($objectId, $shapeField, $failure);
-  call $CacheIR~LoadFixedSlotResult($objectId, $slotField);
+  call $CacheIR~GuardToObject($MASM^EmitId^Nil(0), $valueId, $objectId, $failure);
+  call $CacheIR~GuardShape($MASM^EmitId^Nil(1), $objectId, $shapeField, $failure);
+  call $CacheIR~LoadFixedSlotResult($MASM^EmitId^Nil(2), $objectId, $slotField);
 
-  call $MASM^emit(4, $MASM^Op^External());
+  call $MASM^emit($MASM^EmitId^Nil(3), $MASM^Op^External());
 
   call $MASM^bind($failure);
-  call $MASM^emit(5, $MASM^Op^External());
+  call $MASM^emit($MASM^EmitId^Nil(4), $MASM^Op^External());
 
   $MASM^pc := 0;
 
   emit'0$MASM~BranchTestNotObject:
-    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == 0;
+    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == $MASM^EmitId^Cons($MASM^EmitId^Nil(0), 0);
     op := $MASM^ops[$MASM^pc];
     call $MASM~BranchTestNotObject(
       $valueReg#$MASM^Op~BranchTestNotObject(op),
@@ -699,7 +703,7 @@ procedure {:entrypoint} $GetProp()
     goto emit'1$MASM~UnboxObject, emit'5$MASM^External;
 
   emit'1$MASM~UnboxObject:
-    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == 1;
+    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == $MASM^EmitId^Cons($MASM^EmitId^Nil(0), 1);
     op := $MASM^ops[$MASM^pc];
     call $MASM~UnboxObject(
       $valueReg#$MASM^Op~UnboxObject(op),
@@ -707,7 +711,7 @@ procedure {:entrypoint} $GetProp()
     );
 
   emit'2$MASM~BranchTestNotObjectShape:
-    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == 2;
+    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == $MASM^EmitId^Cons($MASM^EmitId^Nil(1), 0);
     op := $MASM^ops[$MASM^pc];
     call $MASM~BranchTestNotObjectShape(
       $objectReg#$MASM^Op~BranchTestNotObjectShape(op),
@@ -717,7 +721,7 @@ procedure {:entrypoint} $GetProp()
     goto emit'3$MASM~LoadObjectFixedSlot, emit'5$MASM^External;
 
   emit'3$MASM~LoadObjectFixedSlot:
-    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == 3;
+    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == $MASM^EmitId^Cons($MASM^EmitId^Nil(2), 0);
     op := $MASM^ops[$MASM^pc];
     call $MASM~LoadObjectFixedSlot(
       $objectReg#$MASM^Op~LoadObjectFixedSlot(op),
@@ -726,7 +730,7 @@ procedure {:entrypoint} $GetProp()
     );
 
   emit'4$MASM^External:
-    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == 4;
+    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == $MASM^EmitId^Nil(3);
     /* ... test code ...
     assert origSuccess;
     call finalOutput := $MASM~getValue($CacheIR~outputReg);
@@ -735,7 +739,7 @@ procedure {:entrypoint} $GetProp()
     return;
 
   emit'5$MASM^External:
-    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == 5;
+    assume {:partition} $MASM^pcEmitIds[$MASM^pc] == $MASM^EmitId^Nil(4);
     /* ... test code ...
     assert !origSuccess;
     */

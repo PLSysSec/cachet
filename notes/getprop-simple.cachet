@@ -95,12 +95,6 @@ struct ValueReg;
 struct Reg;
 
 ir MASM {
-    fn getValue(valueReg: ValueReg) -> Value;
-    fn setValue(valueReg: ValueReg, value: Value);
-
-    fn getObject(reg: Reg) -> Object;
-    fn setObject(reg: Reg, object: Object);
-
     op BranchTestNotObject(valueReg: ValueReg, label branch) {
         let value = MASM::getValue(valueReg);
         if !Value::isObject(value) {
@@ -124,6 +118,12 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         MASM::setValue(outputReg, Object::getFixedSlot(object, slot));
     }
+
+    fn getValue(valueReg: ValueReg) -> Value;
+    fn setValue(valueReg: ValueReg, value: Value);
+
+    fn getObject(reg: Reg) -> Object;
+    fn setObject(reg: Reg, object: Object);
 }
 
 struct ValueId;
@@ -135,6 +135,25 @@ struct ShapeField;
 struct RegAlloc;
 
 ir CacheIR emits MASM {
+    op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        let objectReg = CacheIR::useObjectReg(objectId);
+        emit MASM::BranchTestNotObject(valueReg, failure);
+        emit MASM::UnboxObject(valueReg, objectReg);
+    }
+
+    op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let shape = CacheIR::readShapeField(shapeField);
+        emit MASM::BranchTestNotObjectShape(objectReg, shape, failure);
+    }
+
+    op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let slot = CacheIR::readInt32Field(slotField);
+        emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
+    }
+
     var mut regAlloc: RegAlloc;
 
     fn allocateValueReg() -> ValueReg {
@@ -171,23 +190,4 @@ ir CacheIR emits MASM {
 
     fn readInt32Field(int32Field: Int32Field) -> Int32;
     fn readShapeField(shapeField: ShapeField) -> Shape;
-
-    op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure) {
-        let valueReg = CacheIR::useValueReg(valueId);
-        let objectReg = CacheIR::useObjectReg(objectId);
-        emit MASM::BranchTestNotObject(valueReg, failure);
-        emit MASM::UnboxObject(valueReg, objectReg);
-    }
-
-    op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure) {
-        let objectReg = CacheIR::useObjectReg(objectId);
-        let shape = CacheIR::readShapeField(shapeField);
-        emit MASM::BranchTestNotObjectShape(objectReg, shape, failure);
-    }
-
-    op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
-        let objectReg = CacheIR::useObjectReg(objectId);
-        let slot = CacheIR::readInt32Field(slotField);
-        emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
-    }
 }

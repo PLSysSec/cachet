@@ -24,7 +24,11 @@ struct Value;
 impl Value {
     fn typeOf(value: Value) -> ValueType;
 
-    /* ... */
+    // ...
+
+    fn isInt32(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Int32
+    }
 
     fn isObject(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Object
@@ -34,12 +38,31 @@ impl Value {
         Value::typeOf(value) == ValueType::Null
     }
 
+    fn fromInt32(int32: Int32) -> Value {
+        let value = unsafe { Value::fromInt32Unchecked(int32) };
+        assume Value::isInt32(value);
+        assume unsafe { Value::toInt32Unchecked(value) } == int32;
+        value
+    }
+
+    unsafe fn fromInt32Unchecked(value: Int32) -> Value;
+
+    fn toInt32(value: Value) -> Int32 {
+        assert Value::isInt32(value);
+        let int32 = unsafe { Value::toInt32Unchecked(value) };
+        assume unsafe { Value::fromInt32Unchecked(int32) } == value;
+        int32
+    }
+
+    unsafe fn toInt32Unchecked(value: Value) -> Int32;
+
     fn fromObject(object: Object) -> Value {
         let value = unsafe { Value::fromObjectUnchecked(object) };
         assume Value::isObject(value);
         assume unsafe { Value::toObjectUnchecked(value) } == object;
         value
     }
+
     unsafe fn fromObjectUnchecked(value: Object) -> Value;
 
     fn toObject(value: Value) -> Object {
@@ -48,6 +71,7 @@ impl Value {
         assume unsafe { Value::fromObjectUnchecked(object) } == value;
         object
     }
+
     unsafe fn toObjectUnchecked(value: Value) -> Object;
 }
 
@@ -59,6 +83,7 @@ impl Object {
     fn shapeOf(object: Object) -> Shape {
         unsafe { Object::shapeOfUnchecked(heap, object) }
     }
+
     unsafe fn shapeOfUnchecked(heap: Heap, object: Object) -> Shape;
 
     fn toNativeObject(object: Object) -> NativeObject {
@@ -77,13 +102,14 @@ impl Object {
 struct NativeObject <: Object;
 
 impl NativeObject {
-    // #[reads(heap)]
-    // fn getFixedSlot(nativeObject: NativeObject, slot: Int32) -> Value;
     fn getFixedSlot(nativeObject: NativeObject, slot: Int32) -> Value {
         let shape = Object::shapeOf(nativeObject);
         assert Shape::hasFixedSlot(shape, slot);
         unsafe { NativeObject::getFixedSlotUnchecked(heap, nativeObject, slot) }
     }
+
+    // #[reads(heap)]
+    // unsafe fn getFixedSlotUnchecked(nativeObject: NativeObject, slot: Int32) -> Value;
     unsafe fn getFixedSlotUnchecked(heap: Heap, nativeObject: NativeObject, slot: Int32) -> Value;
 }
 
@@ -101,12 +127,11 @@ impl Class {
     fn isNativeObject(class: Class) -> Bool;
 }
 
-// #[cfg(spec)]
-// type ValueReg = Reg;
-// #[cfg(impl)]
-struct ValueReg;
-
 struct Reg;
+
+// #[spec]
+// type ValueReg = Reg;
+struct ValueReg;
 
 enum Condition {
     Equal,
@@ -184,13 +209,13 @@ ir MASM {
         let objectHasShape = Object::shapeOf(object) == shape;
 
         if condition == Condition::Equal {
-            if !objectHasShape {
+            if objectHasShape {
                 goto branch;
             }
         }
 
         if condition == Condition::NotEqual {
-            if objectHasShape {
+            if !objectHasShape {
                 goto branch;
             }
         }
@@ -201,56 +226,37 @@ ir MASM {
         MASM::setValue(outputReg, Object::getFixedSlot(object, slot));
     }
 
-    // #[cfg(spec)]
     // var mut regs: Map<Reg, Value>;
 
-    // #[cfg(spec)]
-    // fn getValue(valueReg: ValueReg) -> Value {
+    // #[spec]
+    fn getValue(valueReg: ValueReg) -> Value; // {
         // Map::get(MASM::regs, valueReg)
     // }
 
-    // #[cfg(impl)]
-    fn getValue(valueReg: ValueReg) -> Value;
-
-    // #[cfg(spec)]
-    // fn setValue(valueReg: ValueReg, value: Value) {
+    // #[spec]
+    fn setValue(valueReg: ValueReg, value: Value); // {
         // MASM::regs = Map::set(MASM::regs, valueReg, value);
     // }
 
-    // #[cfg(impl)]
-    fn setValue(valueReg: ValueReg, value: Value);
-
-    // #[cfg(spec)]
-    // fn getInt32(reg: Reg) -> Int32 {
+    // #[spec]
+    fn getInt32(reg: Reg) -> Int32; // {
         // Value::toInt32(MASM::getValue(reg))
     // }
 
-    // #[cfg(impl)]
-    fn getInt32(reg: Reg) -> Int32;
-
-    // #[cfg(spec)]
-    // fn setInt32(reg: Reg, int32: Int32) {
+    // #[spec]
+    fn setInt32(reg: Reg, int32: Int32); // {
         // MASM::setValue(reg, Value::fromInt32(int32));
     // }
 
-    // #[cfg(impl)]
-    fn setInt32(reg: Reg, int32: Int32);
-
-    // #[cfg(spec)]
-    // fn getObject(reg: Reg) -> Object {
+    // #[spec]
+    fn getObject(reg: Reg) -> Object; // {
         // Value::toObject(MASM::getValue(reg))
     // }
 
-    // #[cfg(impl)]
-    fn getObject(reg: Reg) -> Object;
-
-    // #[cfg(spec)]
-    // fn setObject(reg: Reg, object: Object) {
+    // #[spec]
+    fn setObject(reg: Reg, object: Object); // {
         // MASM::setValue(reg, Value::fromObject(object));
     // }
-
-    // #[cfg(impl)]
-    fn setObject(reg: Reg, object: Object);
 }
 
 struct ValueId;
@@ -260,16 +266,16 @@ struct Int32Field;
 struct ShapeField;
 
 ir CacheIR emits MASM {
+    op GuardIsNull(valueId: ValueId, label failure){
+        let valueReg = CacheIR::useValueReg(valueId);
+        emit MASM::BranchTestNull(Condition::NotEqual, valueReg, failure);
+    }
 
-op GuardIsNull(inputId: ValueId, label failure){
-    let inputReg = CacheIR::useValueReg(inputId);
-    emit MASM::BranchTestNull(Condition::NotEqual, inputReg, failure);
-
-}
-
-    op GuardToObject(inputId: ValueId, label failure) {
-        let inputReg = CacheIR::useValueReg(inputId);
-        emit MASM::BranchTestObject(Condition::NotEqual, inputReg, failure);
+    op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        let objectReg = CacheIR::useObjectReg(objectId);
+        emit MASM::BranchTestObject(Condition::NotEqual, valueReg, failure);
+        emit MASM::UnboxObject(valueReg, objectReg);
     }
 
     op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure) {
@@ -295,45 +301,31 @@ op GuardIsNull(inputId: ValueId, label failure){
         emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
     }
 
-    // #[cfg(spec)]
-    // fn allocateValueReg() -> ValueReg {
-        // CacheIR::allocateReg()
-    // }
-
-    // #[cfg(impl)]
-    fn allocateValueReg() -> ValueReg;
-
-    // #[cfg(spec)]
-    // fn releaseValueReg(valueReg: ValueReg) {
-        // CacheIR::releaseReg(valueReg);
-    // }
-
-    // #[cfg(impl)]
-    fn releaseValueReg(valueReg: ValueReg);
-
-    // #[cfg(spec)]
     // var mut allocatedRegs: Set<Reg>;
 
-    // #[cfg(spec)]
-    // fn allocateReg() -> Reg {
+    // #[spec]
+    fn allocateReg() -> Reg; // {
         // let reg = unsafe { CacheIR::allocateRegUnchecked(CacheIR::allocatedRegs) };
         // assume !Set::contains(CacheIR::allocatedRegs, reg);
         // CacheIR::allocatedRegs = Set::add(CacheIR::allocatedRegs, reg);
         // reg
     // }
-    // #[cfg(spec)]
-    // unsafe fn allocateRegUnchecked(allocatedRegs: Set<Reg>) -> Reg;
+    // unsafe fn allocateRegUnchecked(allocatedRegs: Set<Reg>) -> Reg; */
 
-    // #[cfg(impl)]
-    fn allocateReg() -> Reg;
-
-    // #[cfg(spec)]
-    // fn releaseReg(reg: Reg) {
+    // #[spec]
+    fn releaseReg(reg: Reg); // {
         // CacheIR::allocatedRegs = Set::remove(CacheIR::allocatedRegs, reg);
     // }
 
-    // #[cfg(impl)]
-    fn releaseReg(reg: Reg);
+    // #[spec]
+    fn allocateValueReg() -> ValueReg; // {
+        // CacheIR::allocateReg()
+    // }
+
+    // #[spec]
+    fn releaseValueReg(valueReg: ValueReg); // {
+        // CacheIR::releaseReg(valueReg);
+    // }
 
     fn useValueReg(valueId: ValueId) -> ValueReg;
     fn useObjectReg(objectId: ObjectId) -> Reg;
@@ -344,4 +336,27 @@ op GuardIsNull(inputId: ValueId, label failure){
     fn readShapeField(shapeField: ShapeField) -> Shape;
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
+}
+
+ir CacheStub emits CacheIR {
+    op GetProp(
+        valueId: ValueId,
+        objectId: ObjectId,
+        shapeField: ShapeField,
+        slotField: Int32Field,
+        label failure
+    ) {
+        assume CacheIR::useValueReg(valueId) == CacheIR::allocateValueReg();
+        assume CacheIR::useObjectReg(objectId) == CacheIR::allocateReg();
+
+        let shape = CacheIR::readShapeField(shapeField);
+        let slot = CacheIR::readInt32Field(slotField);
+
+        assume Shape::hasFixedSlot(shape, slot);
+        assume Class::isNativeObject(Shape::classOf(shape));
+
+        emit CacheIR::GuardToObject(valueId, objectId, failure);
+        emit CacheIR::GuardShape(objectId, shapeField, failure);
+        emit CacheIR::LoadFixedSlotResult(objectId, slotField);
+    }
 }
