@@ -129,9 +129,10 @@ impl Class {
 
 struct Reg;
 
-// #[spec]
-// type ValueReg = Reg;
+// #[cfg(cpp)]
 struct ValueReg;
+// #[cfg(verify)]
+// type ValueReg = Reg;
 
 enum Condition {
     Equal,
@@ -226,38 +227,56 @@ ir MASM {
         MASM::setValue(outputReg, Object::getFixedSlot(object, slot));
     }
 
-    // var mut regs: Map<Reg, Value>;
+    fn getValue(valueReg: ValueReg) -> Value;
+    fn setValue(valueReg: ValueReg, value: Value);
 
-    // #[spec]
-    fn getValue(valueReg: ValueReg) -> Value; // {
-        // Map::get(MASM::regs, valueReg)
-    // }
+    fn getInt32(reg: Reg) -> Int32;
+    fn setInt32(reg: Reg, int32: Int32);
 
-    // #[spec]
-    fn setValue(valueReg: ValueReg, value: Value); // {
-        // MASM::regs = Map::set(MASM::regs, valueReg, value);
-    // }
-
-    // #[spec]
-    fn getInt32(reg: Reg) -> Int32; // {
-        // Value::toInt32(MASM::getValue(reg))
-    // }
-
-    // #[spec]
-    fn setInt32(reg: Reg, int32: Int32); // {
-        // MASM::setValue(reg, Value::fromInt32(int32));
-    // }
-
-    // #[spec]
-    fn getObject(reg: Reg) -> Object; // {
-        // Value::toObject(MASM::getValue(reg))
-    // }
-
-    // #[spec]
-    fn setObject(reg: Reg, object: Object); // {
-        // MASM::setValue(reg, Value::fromObject(object));
-    // }
+    fn getObject(reg: Reg) -> Object;
+    fn setObject(reg: Reg, object: Object);
 }
+
+//#[cfg(cpp)]
+//impl MASM {
+    //fn getValue(valueReg: ValueReg) -> Value;
+    //fn setValue(valueReg: ValueReg, value: Value);
+
+    //fn getInt32(reg: Reg) -> Int32;
+    //fn setInt32(reg: Reg, int32: Int32);
+
+    //fn getObject(reg: Reg) -> Object;
+    //fn setObject(reg: Reg, object: Object);
+//}
+
+//#[cfg(verify)]
+//impl MASM {
+    //var mut regs: Map<Reg, Value>;
+
+    //fn getValue(valueReg: ValueReg) -> Value {
+        //Map::get(MASM::regs, valueReg)
+    //}
+
+    //fn setValue(valueReg: ValueReg, value: Value) {
+        //MASM::regs = Map::set(MASM::regs, valueReg, value);
+    //}
+
+    //fn getInt32(reg: Reg) -> Int32 {
+        //Value::toInt32(MASM::getValue(reg))
+    //}
+
+    //fn setInt32(reg: Reg, int32: Int32) {
+        //MASM::setValue(reg, Value::fromInt32(int32));
+    //}
+
+    //fn getObject(reg: Reg) -> Object {
+        //Value::toObject(MASM::getValue(reg))
+    //}
+
+    //fn setObject(reg: Reg, object: Object) {
+        //MASM::setValue(reg, Value::fromObject(object));
+    //}
+//}
 
 struct ValueId;
 struct ObjectId;
@@ -301,31 +320,11 @@ ir CacheIR emits MASM {
         emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
     }
 
-    // var mut allocatedRegs: Set<Reg>;
+    fn allocateReg() -> Reg;
+    fn releaseReg(reg: Reg);
 
-    // #[spec]
-    fn allocateReg() -> Reg; // {
-        // let reg = unsafe { CacheIR::allocateRegUnchecked(CacheIR::allocatedRegs) };
-        // assume !Set::contains(CacheIR::allocatedRegs, reg);
-        // CacheIR::allocatedRegs = Set::add(CacheIR::allocatedRegs, reg);
-        // reg
-    // }
-    // unsafe fn allocateRegUnchecked(allocatedRegs: Set<Reg>) -> Reg; */
-
-    // #[spec]
-    fn releaseReg(reg: Reg); // {
-        // CacheIR::allocatedRegs = Set::remove(CacheIR::allocatedRegs, reg);
-    // }
-
-    // #[spec]
-    fn allocateValueReg() -> ValueReg; // {
-        // CacheIR::allocateReg()
-    // }
-
-    // #[spec]
-    fn releaseValueReg(valueReg: ValueReg); // {
-        // CacheIR::releaseReg(valueReg);
-    // }
+    fn allocateValueReg() -> ValueReg;
+    fn releaseValueReg(valueReg: ValueReg);
 
     fn useValueReg(valueId: ValueId) -> ValueReg;
     fn useObjectReg(objectId: ObjectId) -> Reg;
@@ -337,6 +336,41 @@ ir CacheIR emits MASM {
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
 }
+
+//#[cfg(cpp)]
+//impl CacheIR {
+    //fn allocateReg() -> Reg;
+    //fn releaseReg(reg: Reg);
+
+    //fn allocateValueReg() -> ValueReg;
+    //fn releaseValueReg(valueReg: ValueReg);
+//}
+
+//#[cfg(verify)]
+//impl CacheIR {
+    //var mut allocatedRegs: Set<Reg>;
+
+    //fn allocateReg() -> Reg {
+        //let reg = unsafe { CacheIR::allocateRegUnchecked(CacheIR::allocatedRegs) };
+        //assume !Set::contains(CacheIR::allocatedRegs, reg);
+        //CacheIR::allocatedRegs = Set::add(CacheIR::allocatedRegs, reg);
+        //reg
+    //}
+
+    //unsafe fn allocateRegUnchecked(allocatedRegs: Set<Reg>) -> Reg;
+
+    //fn releaseReg(reg: Reg) {
+        //CacheIR::allocatedRegs = Set::remove(CacheIR::allocatedRegs, reg);
+    //}
+
+    //fn allocateValueReg() -> ValueReg {
+        //CacheIR::allocateReg()
+    //}
+
+    //fn releaseValueReg(valueReg: ValueReg) {
+        //CacheIR::releaseReg(valueReg);
+    //}
+//}
 
 ir CacheStub emits CacheIR {
     op GetProp(
