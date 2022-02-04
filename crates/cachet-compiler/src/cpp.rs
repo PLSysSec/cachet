@@ -3,7 +3,8 @@
 use std::iter;
 use std::ops::Deref;
 
-use derive_more::Display;
+use derive_more::{Display, From};
+use enum_map::EnumMap;
 use enumset::EnumSet;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
@@ -77,12 +78,54 @@ pub fn compile(env: &normalizer::Env) -> CppCompilerOutput {
     }
 }
 
+#[derive(Clone, Copy, From)]
+enum ItemBucketIndex {
+    #[from(types(BuiltInType, normalizer::EnumIndex, normalizer::StructIndex))]
+    Type(normalizer::TypeIndex),
+    #[from(types(normalizer::IrIndex))]
+    Ir(IrItemBucketIndex),
+    TopLevel,
+}
+
+impl From<normalizer::ParentIndex> for ItemBucketIndex {
+    fn from(parent_index: normalizer::ParentIndex) -> Self {
+        match parent_index {
+            normalizer::ParentIndex::Type(type_index) => type_index.into(),
+            normalizer::ParentIndex::Ir(ir_index) => ir_index.into(),
+        }
+    }
+}
+
+impl From<Option<normalizer::ParentIndex>> for ItemBucketIndex {
+    fn from(parent_index: Option<normalizer::ParentIndex>) -> Self {
+        match parent_index {
+            Some(parent_index) => parent_index.into(),
+            None => Self::TopLevel,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct IrItemBucketIndex {
+    ir_index: normalizer::IrIndex,
+    selector: Option<IrMemberFlagSelector>,
+}
+
+impl From<normalizer::IrIndex> for IrItemBucketIndex {
+    fn from(ir_index: normalizer::IrIndex) -> Self {
+        Self {
+            ir_index,
+            selector: None,
+        }
+    }
+}
+
 #[derive(Clone)]
 struct ItemBuckets {
     built_in_type_namespace_items: BuiltInTypeMap<NamespaceItem>,
     enum_namespace_items: TiVec<normalizer::EnumIndex, NamespaceItem>,
     struct_namespace_items: TiVec<normalizer::StructIndex, NamespaceItem>,
-    ir_namespace_items: TiVec<normalizer::IrIndex, NamespaceItem>,
+    ir_item_buckets: TiVec<normalizer::IrIndex, IrItemBuckets>,
     top_level_items: Vec<Item>,
 }
 
@@ -92,7 +135,7 @@ impl ItemBuckets {
         struct_items: &TiSlice<normalizer::StructIndex, normalizer::StructItem>,
         ir_items: &TiSlice<normalizer::IrIndex, normalizer::IrItem>,
     ) -> Self {
-        let init_namespace_item = |ident| NamespaceItem {
+        let init_namespace_item = |ident: Ident| NamespaceItem {
             ident: NamespaceIdent {
                 kind: NamespaceKind::Impl,
                 ident,
@@ -111,25 +154,19 @@ impl ItemBuckets {
                 .iter()
                 .map(|struct_item| init_namespace_item(struct_item.ident.value))
                 .collect(),
-            ir_namespace_items: ir_items
+            ir_item_buckets: ir_items
                 .iter()
-                .map(|ir_item| init_namespace_item(ir_item.ident.value))
+                .map(|ir_item| IrItemBuckets::new(ir_item.ident.value))
                 .collect(),
             top_level_items: Vec::new(),
         }
     }
 
-    fn bucket_for(&mut self, parent_index: Option<normalizer::ParentIndex>) -> &mut Vec<Item> {
-        match parent_index {
-            Some(parent_index) => self.bucket_for_parent(parent_index),
-            None => &mut self.top_level_items,
-        }
-    }
-
-    fn bucket_for_parent(&mut self, parent_index: normalizer::ParentIndex) -> &mut Vec<Item> {
-        match parent_index {
-            normalizer::ParentIndex::Type(type_index) => self.bucket_for_type(type_index),
-            normalizer::ParentIndex::Ir(ir_index) => self.bucket_for_ir(ir_index),
+    fn bucket_for(&mut self, item_bucket_index: ItemBucketIndex) -> &mut Vec<Item> {
+        match item_bucket_index {
+            ItemBucketIndex::Type(type_index) => self.bucket_for_type(type_index),
+            ItemBucketIndex::Ir(ir_item_bucket_index) => self.bucket_for_ir(ir_item_bucket_index),
+            ItemBucketIndex::TopLevel => &mut self.top_level_items,
         }
     }
 
@@ -155,8 +192,9 @@ impl ItemBuckets {
         &mut self.struct_namespace_items[struct_index].items
     }
 
-    fn bucket_for_ir(&mut self, ir_index: normalizer::IrIndex) -> &mut Vec<Item> {
-        &mut self.ir_namespace_items[ir_index].items
+    fn bucket_for_ir(&mut self, ir_item_bucket_index: IrItemBucketIndex) -> &mut Vec<Item> {
+        self.ir_item_buckets[ir_item_bucket_index.ir_index]
+            .bucket_for(ir_item_bucket_index.selector)
     }
 }
 
@@ -169,7 +207,7 @@ impl IntoIterator for ItemBuckets {
             built_in_type_namespace_items,
             enum_namespace_items,
             struct_namespace_items,
-            ir_namespace_items,
+            ir_item_buckets,
             top_level_items,
         } = self;
 
@@ -178,12 +216,91 @@ impl IntoIterator for ItemBuckets {
                 ..built_in_type_namespace_items,
                 ..enum_namespace_items,
                 ..struct_namespace_items,
-                ..ir_namespace_items,
             ]
             .filter(|namespace_item| !namespace_item.items.is_empty())
             .map(Into::into),
+            ..ir_item_buckets.into_iter().flatten(),
             ..top_level_items
         ]
+    }
+}
+
+#[derive(Clone)]
+struct IrItemBuckets {
+    ident: Ident,
+    items_for_selectors: EnumMap<IrMemberFlagSelector, Vec<Item>>,
+    misc_items: Vec<Item>,
+}
+
+impl IrItemBuckets {
+    fn new(ident: Ident) -> Self {
+        IrItemBuckets {
+            ident,
+            items_for_selectors: EnumMap::default(),
+            misc_items: Vec::new(),
+        }
+    }
+
+    fn bucket_for(&mut self, selector: Option<IrMemberFlagSelector>) -> &mut Vec<Item> {
+        match selector {
+            Some(selector) => &mut self.items_for_selectors[selector],
+            None => &mut self.misc_items,
+        }
+    }
+}
+
+impl IntoIterator for IrItemBuckets {
+    type Item = Item;
+    type IntoIter = impl Iterator<Item = Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let IrItemBuckets {
+            ident,
+            items_for_selectors,
+            misc_items,
+        } = self;
+
+        let impl_namespace_ident = NamespaceIdent {
+            kind: NamespaceKind::Impl,
+            ident,
+        };
+
+        let if_def_items = items_for_selectors
+            .into_iter()
+            .filter_map(move |(selector, items)| {
+                if items.is_empty() {
+                    None
+                } else {
+                    Some(
+                        IfDefItem {
+                            cond: IrMemberFlagIdent { ident, selector }.into(),
+                            then: vec![
+                                NamespaceItem {
+                                    ident: impl_namespace_ident,
+                                    items,
+                                }
+                                .into(),
+                            ]
+                            .into(),
+                        }
+                        .into(),
+                    )
+                }
+            });
+
+        let misc_namespace_item = if misc_items.is_empty() {
+            None
+        } else {
+            Some(
+                NamespaceItem {
+                    ident: impl_namespace_ident,
+                    items: misc_items,
+                }
+                .into(),
+            )
+        };
+
+        iterate![..if_def_items, ..misc_namespace_item]
     }
 }
 
@@ -315,7 +432,7 @@ impl<'a> Compiler<'a> {
         .into();
 
         self.external_decls
-            .bucket_for(global_var_item.parent)
+            .bucket_for(global_var_item.parent.into())
             .push(fn_decl);
     }
 
@@ -355,41 +472,63 @@ impl<'a> Compiler<'a> {
             body: None,
         };
 
-        // Declare emit helper functions for interpreter ops.
-        if let (normalizer::CallableIndex::Op(_), Some(ir_index)) =
-            (callable_index, callable_item.interprets)
-        {
-            let ir_ident = self.env[ir_index].ident.value;
+        let item_bucket_index = match callable_index {
+            normalizer::CallableIndex::Fn(_) => callable_item.parent.into(),
+            normalizer::CallableIndex::Op(_) => {
+                let ir_index = match callable_item.parent {
+                    Some(normalizer::ParentIndex::Ir(ir_index)) => ir_index,
+                    _ => panic!("op with no parent IR"),
+                };
+                let ir_item = &self.env[ir_index];
+                let ir_ident = ir_item.ident.value;
 
-            let mut emit_fn_decl = fn_decl.clone();
+                // Declare emit helper functions for ops.
 
-            emit_fn_decl.path = IrMemberFnPath {
-                parent: ir_ident,
-                ident: EmitIrMemberFnIdent::from(callable_ident).into(),
+                let mut emit_fn_decl = fn_decl.clone();
+
+                emit_fn_decl.path = IrMemberFnPath {
+                    parent: ir_ident,
+                    ident: EmitIrMemberFnIdent::from(callable_ident).into(),
+                }
+                .into();
+
+                emit_fn_decl.params.insert(
+                    1,
+                    Param {
+                        ident: ParamVarIdent::Ops,
+                        type_: IrMemberTypePath {
+                            parent: ir_ident,
+                            ident: IrMemberTypeIdent::OpsRef,
+                        }
+                        .into(),
+                    },
+                );
+
+                self.external_decls
+                    .bucket_for_ir(IrItemBucketIndex {
+                        ir_index,
+                        selector: Some(IrMemberFlagSelector::Emit),
+                    })
+                    .push(emit_fn_decl.into());
+
+                // Put the rest of the compiled items in either the interpreter
+                // or compiler bucket.
+
+                IrItemBucketIndex {
+                    ir_index,
+                    selector: Some(match ir_item.emits {
+                        None => IrMemberFlagSelector::Interpreter,
+                        Some(_) => IrMemberFlagSelector::Compiler,
+                    }),
+                }
+                .into()
             }
-            .into();
-
-            emit_fn_decl.params.insert(
-                1,
-                Param {
-                    ident: ParamVarIdent::Ops,
-                    type_: IrMemberTypePath {
-                        parent: ir_ident,
-                        ident: IrMemberTypeIdent::OpsRef,
-                    }
-                    .into(),
-                },
-            );
-
-            self.external_decls
-                .bucket_for(callable_item.parent)
-                .push(emit_fn_decl.into());
-        }
+        };
 
         match &callable_item.body {
             None => {
                 self.external_decls
-                    .bucket_for(callable_item.parent)
+                    .bucket_for(item_bucket_index)
                     .push(fn_decl.into());
             }
             Some(body) => {
@@ -403,10 +542,10 @@ impl<'a> Compiler<'a> {
                 ));
 
                 self.internal_decls
-                    .bucket_for(callable_item.parent)
+                    .bucket_for(item_bucket_index)
                     .push(fn_decl.into());
                 self.internal_defs
-                    .bucket_for(callable_item.parent)
+                    .bucket_for(item_bucket_index)
                     .push(fn_def.into());
             }
         }

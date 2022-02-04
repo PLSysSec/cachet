@@ -69,3 +69,70 @@ pub fn fmt_join_trailing<T: fmt::Display>(
     }
     Ok(())
 }
+
+#[derive(Debug, Clone)]
+pub struct AffixWriter<'a, W> {
+    inner: W,
+    line_prefix: &'a str,
+    line_suffix: &'a str,
+    has_started_line: bool,
+}
+
+impl<'a, W: Write> AffixWriter<'a, W> {
+    pub fn new(inner: W, line_prefix: &'a str, line_suffix: &'a str) -> Self {
+        Self {
+            inner,
+            line_prefix,
+            line_suffix,
+            has_started_line: false,
+        }
+    }
+
+    pub fn into_inner(self) -> W {
+        self.inner
+    }
+
+    fn ensure_line_started(&mut self) -> Result<(), fmt::Error> {
+        if !self.has_started_line {
+            self.inner.write_str(self.line_prefix)?;
+            self.has_started_line = true;
+        }
+        Ok(())
+    }
+}
+
+impl<'a, W: Write> Write for AffixWriter<'a, W> {
+    fn write_str(&mut self, mut s: &str) -> Result<(), fmt::Error> {
+        while !s.is_empty() {
+            self.ensure_line_started()?;
+
+            match s.find('\n') {
+                Some(newline_index) => {
+                    let before_newline = &s[..newline_index];
+                    let after_newline = &s[newline_index + 1..];
+
+                    self.inner.write_str(before_newline)?;
+                    self.inner.write_str(self.line_suffix)?;
+                    self.inner.write_char('\n')?;
+                    s = after_newline;
+                    self.has_started_line = false;
+                }
+                None => {
+                    self.inner.write_str(s)?;
+                    break;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn write_char(&mut self, c: char) -> Result<(), fmt::Error> {
+        self.ensure_line_started()?;
+        if c == '\n' {
+            self.has_started_line = false;
+        }
+
+        self.inner.write_char(c)?;
+        Ok(())
+    }
+}

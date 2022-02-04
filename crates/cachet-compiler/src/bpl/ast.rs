@@ -9,11 +9,12 @@ use std::ops::{Deref, DerefMut};
 
 use derive_more::{Display, From};
 use enum_map::Enum;
-use indent_write::fmt::IndentWriter;
 
 use cachet_lang::ast::{CastKind, CheckKind, CompareKind, Ident, NegateKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
-use cachet_util::{box_from, fmt_join, fmt_join_leading, fmt_join_trailing, typed_index};
+use cachet_util::{
+    box_from, fmt_join, fmt_join_leading, fmt_join_trailing, typed_index, AffixWriter,
+};
 
 #[derive(Clone, Copy, Debug, Display, From)]
 #[display(fmt = "#{}", ident)]
@@ -586,9 +587,9 @@ impl Display for FnItem {
             Some(value) => {
                 write!(f, "{{")?;
 
-                let mut indent_writer = IndentWriter::new("  ", f);
-                write!(indent_writer, "{}", value)?;
-                let f = indent_writer.into_inner();
+                let mut indented = AffixWriter::new(f, "  ", "");
+                write!(indented, "{}", value)?;
+                let f = indented.into_inner();
 
                 write!(f, "}}")?;
             }
@@ -665,13 +666,13 @@ impl Display for Body {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{{\n")?;
 
-        let mut indent_writer = IndentWriter::new("  ", f);
-        fmt_join_trailing(&mut indent_writer, "\n", self.local_vars.iter())?;
+        let mut indented = AffixWriter::new(f, "  ", "");
+        fmt_join_trailing(&mut indented, "\n", self.local_vars.iter())?;
         if !self.local_vars.is_empty() {
-            write!(indent_writer, "\n")?;
+            write!(indented, "\n")?;
         }
-        fmt_join_trailing(&mut indent_writer, "\n", self.stmts.iter())?;
-        let f = indent_writer.into_inner();
+        fmt_join_trailing(&mut indented, "\n", self.stmts.iter())?;
+        let f = indented.into_inner();
 
         write!(f, "}}")?;
         Ok(())
@@ -718,9 +719,9 @@ impl Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{{\n")?;
 
-        let mut indent_writer = IndentWriter::new("  ", f);
-        fmt_join_trailing(&mut indent_writer, "\n", self.stmts.iter())?;
-        let f = indent_writer.into_inner();
+        let mut indented = AffixWriter::new(f, "  ", "");
+        fmt_join_trailing(&mut indented, "\n", self.stmts.iter())?;
+        let f = indented.into_inner();
 
         write!(f, "}}")
     }
@@ -855,7 +856,11 @@ impl From<CallExpr> for CallStmt {
 }
 
 #[derive(Clone, Debug, Display)]
-#[display(fmt = "{} := {};", "MaybeGrouped(&self.lhs)", "MaybeGrouped(&self.rhs)")]
+#[display(
+    fmt = "{} := {};",
+    "MaybeGrouped(&self.lhs)",
+    "MaybeGrouped(&self.rhs)"
+)]
 pub struct AssignStmt {
     pub lhs: Expr,
     pub rhs: Expr,
@@ -946,7 +951,12 @@ pub struct IndexExpr {
 
 impl Display for IndexExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}[{}", MaybeGrouped(&self.base), MaybeGrouped(&self.key))?;
+        write!(
+            f,
+            "{}[{}",
+            MaybeGrouped(&self.base),
+            MaybeGrouped(&self.key)
+        )?;
         if let Some(value) = &self.value {
             write!(f, " := {}", MaybeGrouped(value))?;
         }

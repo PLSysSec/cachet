@@ -6,13 +6,13 @@ use std::fmt::{self, Display, Write};
 use std::iter::FromIterator;
 
 use derive_more::{Display, From};
+use enum_map::Enum;
 use enumset::EnumSetType;
-use indent_write::fmt::IndentWriter;
 
 use cachet_lang::ast::{CastKind, CompareKind, Ident, NegateKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 
-use cachet_util::{box_from, chain_from, fmt_join, fmt_join_trailing};
+use cachet_util::{box_from, chain_from, fmt_join, fmt_join_trailing, AffixWriter};
 
 #[derive(Clone, Copy, Debug, Display)]
 #[display(fmt = "{}_{}", kind, ident)]
@@ -562,6 +562,28 @@ pub struct OpUserFnIdent {
     pub ident: Ident,
 }
 
+#[derive(Clone, Copy, Debug, Display, From)]
+pub enum FlagIdent {
+    IrMember(IrMemberFlagIdent),
+}
+
+#[derive(Clone, Copy, Debug, Display)]
+#[display(fmt = "CACHET_{}_{}", ident, selector)]
+pub struct IrMemberFlagIdent {
+    pub ident: Ident,
+    pub selector: IrMemberFlagSelector,
+}
+
+#[derive(Clone, Copy, Debug, Display, Enum)]
+pub enum IrMemberFlagSelector {
+    #[display(fmt = "EMIT")]
+    Emit,
+    #[display(fmt = "INTERPRETER")]
+    Interpreter,
+    #[display(fmt = "COMPILER")]
+    Compiler,
+}
+
 #[derive(Clone, Debug, Default, From)]
 pub struct Code {
     pub items: Vec<Item>,
@@ -586,9 +608,27 @@ impl FromIterator<Item> for Code {
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Item {
+    IfDef(IfDefItem),
     Comment(CommentItem),
     Namespace(NamespaceItem),
     Fn(FnItem),
+}
+
+#[derive(Clone, Debug)]
+pub struct IfDefItem {
+    pub cond: FlagIdent,
+    pub then: Code,
+}
+
+impl Display for IfDefItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "#ifdef {}\n\n{}\n\n#endif  // {}",
+            self.cond, self.then, self.cond
+        )?;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -598,7 +638,7 @@ pub struct CommentItem {
 
 impl Display for CommentItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(IndentWriter::new("// ", f), "{}", self.text)
+        write!(AffixWriter::new(f, "// ", ""), "{}", self.text)
     }
 }
 
@@ -666,11 +706,12 @@ impl Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{{\n")?;
 
-        let mut indent_writer = IndentWriter::new("  ", f);
-        fmt_join_trailing(&mut indent_writer, "\n", self.stmts.iter())?;
-        let f = indent_writer.into_inner();
+        let mut indented = AffixWriter::new(f, "  ", "");
+        fmt_join_trailing(&mut indented, "\n", self.stmts.iter())?;
+        let f = indented.into_inner();
 
-        write!(f, "}}")
+        write!(f, "}}")?;
+        Ok(())
     }
 }
 
