@@ -744,8 +744,8 @@ impl<'a> ScopedResolver<'a> {
             parser::Param::OutVar(out_var_param) => self
                 .resolve_out_var_param(out_var_param, &mut params.out_var_params)
                 .into(),
-            parser::Param::Label(label_ident) => self
-                .resolve_label_param(label_ident, &mut params.label_params)
+            parser::Param::Label(label_param) => self
+                .resolve_label_param(label_param, &mut params.label_params)
                 .into(),
         }
     }
@@ -789,11 +789,21 @@ impl<'a> ScopedResolver<'a> {
 
     fn resolve_label_param(
         &mut self,
-        label_ident: Spanned<Ident>,
-        label_params: &mut TiVec<LabelParamIndex, Spanned<Ident>>,
+        label_param: parser::LabelParam,
+        label_params: &mut TiVec<LabelParamIndex, LabelParam>,
     ) -> LabelParamIndex {
-        let label_param_index = label_params.push_and_get_key(label_ident);
-        self.register_scoped(label_ident, label_param_index.into());
+        let ir = Spanned::new(
+            label_param.ir.span,
+            self.lookup_ir_global(label_param.ir)
+                .found(&mut self.errors)
+                .unwrap_or_else(|| IrIndex::from(0)),
+        );
+
+        let label_param_index = label_params.push_and_get_key(LabelParam {
+            ident: label_param.ident,
+            ir,
+        });
+        self.register_scoped(label_param.ident, label_param_index.into());
         label_param_index
     }
 

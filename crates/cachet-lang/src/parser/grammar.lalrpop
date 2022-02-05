@@ -95,7 +95,7 @@ CallableBody: Option<Block> = {
 Param: Param = {
     <var_param:VarParam> => var_param.into(),
     <out_var_param:OutVarParam> => out_var_param.into(),
-    "label" <label:Spanned<Ident>> => Param::Label(label),
+    <label_param:LabelParam> => label_param.into(),
 };
 
 VarParam: VarParam =
@@ -104,6 +104,9 @@ VarParam: VarParam =
 
 OutVarParam: OutVarParam =
     "out" <ident:Spanned<Ident>> ":" <type_: Spanned<Path>> => OutVarParam { ident, type_ };
+
+LabelParam: LabelParam =
+    "label" <ident:Spanned<Ident>> ":" <ir: Spanned<Path>> => LabelParam { ident, ir };
 
 Arg: Arg = {
     <expr:RawBlockOrExpr> => {

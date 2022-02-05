@@ -140,7 +140,7 @@ enum Condition {
 }
 
 ir MASM {
-    op BranchTestObject(condition: Condition, valueReg: ValueReg, label branch) {
+    op BranchTestObject(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         let value = MASM::getValue(valueReg);
         let valueIsObject = Value::isObject(value);
 
@@ -157,7 +157,7 @@ ir MASM {
         }
     }
 
-    op BranchTestNull(condition: Condition, valueReg: ValueReg, label branch) {
+    op BranchTestNull(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         let value = MASM::getValue(valueReg);
         let valueIsNull = Value::isNull(value);
 
@@ -181,7 +181,7 @@ ir MASM {
 
     op BranchTestObjectShape(
         condition: Condition, objectReg: Reg, shape: Shape, scratchReg: Reg, spectreRegToZero: Reg,
-        label branch
+        label branch: MASM
     ) {
         let object = MASM::getObject(objectReg);
         let objectHasShape = Object::shapeOf(object) == shape;
@@ -204,7 +204,7 @@ ir MASM {
     }
 
     op BranchTestObjectShapeNoSpectreMitigations(
-        condition: Condition, objectReg: Reg, shape: Shape, label branch
+        condition: Condition, objectReg: Reg, shape: Shape, label branch: MASM
     ) {
         let object = MASM::getObject(objectReg);
         let objectHasShape = Object::shapeOf(object) == shape;
@@ -285,19 +285,19 @@ struct Int32Field;
 struct ShapeField;
 
 ir CacheIR emits MASM {
-    op GuardIsNull(valueId: ValueId, label failure){
+    op GuardIsNull(valueId: ValueId, label failure: MASM){
         let valueReg = CacheIR::useValueReg(valueId);
         emit MASM::BranchTestNull(Condition::NotEqual, valueReg, failure);
     }
 
-    op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure) {
+    op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure: MASM) {
         let valueReg = CacheIR::useValueReg(valueId);
         let objectReg = CacheIR::useObjectReg(objectId);
         emit MASM::BranchTestObject(Condition::NotEqual, valueReg, failure);
         emit MASM::UnboxObject(valueReg, objectReg);
     }
 
-    op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure) {
+    op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure: MASM) {
         let objectReg = CacheIR::useObjectReg(objectId);
         let shape = CacheIR::readShapeField(shapeField);
 
@@ -378,7 +378,7 @@ ir CacheStub emits CacheIR {
         objectId: ObjectId,
         shapeField: ShapeField,
         slotField: Int32Field,
-        label failure
+        label failure: MASM
     ) {
         assume CacheIR::useValueReg(valueId) == CacheIR::allocateValueReg();
         assume CacheIR::useObjectReg(objectId) == CacheIR::allocateReg();

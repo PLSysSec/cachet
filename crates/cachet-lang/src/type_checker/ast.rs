@@ -9,15 +9,15 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
 use crate::ast::{
-    BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path,
+    BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, NegateKind, Path,
     Spanned,
 };
 use crate::resolver;
 pub use crate::resolver::{
     CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem,
-    IrIndex, IrItem, LabelIndex, LabelParamIndex, LocalLabelIndex, LocalVarIndex, OpIndex, OutVar,
-    OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex, StructItem,
-    TypeIndex, Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
+    IrIndex, IrItem, LabelIndex, LabelParam, LabelParamIndex, LocalLabelIndex, LocalVarIndex,
+    OpIndex, OutVar, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex,
+    StructItem, TypeIndex, Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -209,29 +209,19 @@ impl Typed for Body {
 }
 
 field_index!(Body:locals[LocalVarIndex] => LocalVar);
-field_index!(Body:locals[LocalLabelIndex] => Spanned<Ident>);
+field_index!(Body:locals[LocalLabelIndex] => LocalLabel);
 
 #[derive(Clone, Debug, Default)]
 pub struct Locals {
     pub local_vars: TiVec<LocalVarIndex, LocalVar>,
-    pub local_labels: TiVec<LocalLabelIndex, Spanned<Ident>>,
+    pub local_labels: TiVec<LocalLabelIndex, LocalLabel>,
 }
 
 field_index!(Locals:local_vars[LocalVarIndex] => LocalVar);
-field_index!(Locals:local_labels[LocalLabelIndex] => Spanned<Ident>);
+field_index!(Locals:local_labels[LocalLabelIndex] => LocalLabel);
 
-#[derive(Clone, Debug)]
-pub struct LocalVar {
-    pub ident: Spanned<Ident>,
-    pub is_mut: bool,
-    pub type_: TypeIndex,
-}
-
-impl Typed for LocalVar {
-    fn type_(&self) -> TypeIndex {
-        self.type_
-    }
-}
+pub type LocalVar = VarParam;
+pub type LocalLabel = LabelParam;
 
 #[derive(Clone, Debug)]
 pub struct Block {

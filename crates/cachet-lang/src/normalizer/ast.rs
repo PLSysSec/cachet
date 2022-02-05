@@ -8,16 +8,16 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
 use crate::ast::{
-    BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path,
+    BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, NegateKind, Path,
     Spanned,
 };
 use crate::type_checker;
 pub use crate::type_checker::{
     CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex,
-    GlobalVarItem, GotoStmt, IrIndex, IrItem, LabelIndex, LabelParamIndex, LocalLabelIndex,
-    LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg,
-    OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex, StructItem,
-    TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex, VariantIndex,
+    GlobalVarItem, GotoStmt, IrIndex, IrItem, LabelIndex, LabelParam, LabelParamIndex, LocalLabel,
+    LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar,
+    OutVarArg, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex,
+    StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -118,7 +118,7 @@ pub struct Body<B = ()> {
 }
 
 field_index!(Body<B>:locals[LocalVarIndex] => LocalVar | <B>);
-field_index!(Body<B>:locals[LocalLabelIndex] => Spanned<Ident> | <B>);
+field_index!(Body<B>:locals[LocalLabelIndex] => LocalLabel | <B>);
 
 #[derive(Clone, Debug, From)]
 pub enum Stmt<B = ()> {

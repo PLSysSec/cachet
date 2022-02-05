@@ -95,7 +95,7 @@ struct ValueReg;
 struct Reg;
 
 ir MASM {
-    op BranchTestNotObject(valueReg: ValueReg, label branch) {
+    op BranchTestNotObject(valueReg: ValueReg, label branch: MASM) {
         let value = MASM::getValue(valueReg);
         if !Value::isObject(value) {
             goto branch;
@@ -107,7 +107,7 @@ ir MASM {
         MASM::setObject(objectReg, Value::toObject(value));
     }
 
-    op BranchTestNotObjectShape(objectReg: Reg, shape: Shape, label branch) {
+    op BranchTestNotObjectShape(objectReg: Reg, shape: Shape, label branch: MASM) {
         let object = MASM::getObject(objectReg);
         if Object::shapeOf(object) != shape {
             goto branch;
@@ -135,14 +135,14 @@ struct ShapeField;
 struct RegAlloc;
 
 ir CacheIR emits MASM {
-    op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure) {
+    op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure: MASM) {
         let valueReg = CacheIR::useValueReg(valueId);
         let objectReg = CacheIR::useObjectReg(objectId);
         emit MASM::BranchTestNotObject(valueReg, failure);
         emit MASM::UnboxObject(valueReg, objectReg);
     }
 
-    op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure) {
+    op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure: MASM) {
         let objectReg = CacheIR::useObjectReg(objectId);
         let shape = CacheIR::readShapeField(shapeField);
         emit MASM::BranchTestNotObjectShape(objectReg, shape, failure);

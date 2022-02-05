@@ -68,11 +68,9 @@ pub struct CallableItem {
 
 #[derive(Clone, Debug, From)]
 pub enum Param {
-    #[from]
     Var(VarParam),
-    #[from]
     OutVar(OutVarParam),
-    Label(Spanned<Ident>),
+    Label(LabelParam),
 }
 
 #[derive(Clone, Debug)]
@@ -86,6 +84,12 @@ pub struct VarParam {
 pub struct OutVarParam {
     pub ident: Spanned<Ident>,
     pub type_: Spanned<Path>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LabelParam {
+    pub ident: Spanned<Ident>,
+    pub ir: Spanned<Path>,
 }
 
 #[derive(Clone, Debug, From)]

@@ -574,7 +574,7 @@ impl<'a> Compiler<'a> {
                 self.compile_out_var_param(&params[out_var_param_index])
             }
             normalizer::ParamIndex::Label(label_param_index) => {
-                self.compile_label_param(params[label_param_index].value)
+                self.compile_label_param(&params[label_param_index])
             }
         }
     }
@@ -603,13 +603,11 @@ impl<'a> Compiler<'a> {
         Param { ident, type_ }
     }
 
-    fn compile_label_param(&mut self, label_param_ident: Ident) -> Param {
-        let ident = UserParamVarIdent::from(label_param_ident).into();
+    fn compile_label_param(&mut self, label_param: &normalizer::LabelParam) -> Param {
+        let ident = UserParamVarIdent::from(label_param.ident.value).into();
 
         let type_ = IrMemberTypePath {
-            // TODO(spinda): Give the labels IR annotations so this doesn't
-            // have to be hardcoded.
-            parent: "MASM".into(),
+            parent: self.env[label_param.ir.value].ident.value,
             ident: IrMemberTypeIdent::LabelRef,
         }
         .into();
@@ -778,10 +776,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_label_arg(&self, label_index: normalizer::LabelIndex) -> Expr {
         match label_index {
             normalizer::LabelIndex::Param(label_param_index) => {
-                UserParamVarIdent::from(self.params[label_param_index].value).into()
+                UserParamVarIdent::from(self.params[label_param_index].ident.value).into()
             }
             normalizer::LabelIndex::Local(local_label_index) => LocalLabelVarIdent {
-                ident: self.locals[local_label_index].value,
+                ident: self.locals[local_label_index].ident.value,
                 index: local_label_index,
             }
             .into(),

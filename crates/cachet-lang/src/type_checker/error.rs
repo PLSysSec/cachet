@@ -29,9 +29,11 @@ pub enum TypeCheckError {
     #[error("op `{op}` is missing a body")]
     MissingOpBody { op: Path, body_span: Span },
     #[error("can't jump to `{target_label}` from within `{source_callable}`")]
-    MisplacedGotoStmt {
-        source_callable: Spanned<Path>,
+    GotoIrMismatch {
+        source_callable: Path,
         target_label: Spanned<Ident>,
+        expected_ir: Option<Spanned<Ident>>,
+        found_ir: Ident,
     },
     #[error("can't emit `{target_op}` inside `{source_callable}`")]
     EmitIrMismatch {
@@ -39,6 +41,11 @@ pub enum TypeCheckError {
         target_op: Spanned<Path>,
         expected_ir: Option<Spanned<Ident>>,
         found_ir: Ident,
+    },
+    #[error("labels can only be generated for interpreted IRs")]
+    InvalidLabelIr {
+        ir: Spanned<Ident>,
+        ir_defined_at: Span,
     },
     #[error("mismatched types")]
     ExprTypeMismatch {
@@ -129,8 +136,9 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::OpHasOutParam { out_param, .. } => out_param.span,
             TypeCheckError::OpReturnsValue { ret_span, .. } => *ret_span,
             TypeCheckError::MissingOpBody { body_span, .. } => *body_span,
-            TypeCheckError::MisplacedGotoStmt { target_label, .. } => target_label.span,
+            TypeCheckError::GotoIrMismatch { target_label, .. } => target_label.span,
             TypeCheckError::EmitIrMismatch { target_op, .. } => target_op.span,
+            TypeCheckError::InvalidLabelIr { ir, .. } => ir.span,
             TypeCheckError::ExprTypeMismatch { expr_span, .. } => *expr_span,
             TypeCheckError::InvalidCast { expr_span, .. } => *expr_span,
             TypeCheckError::UnsafeCallInSafeContext { target, .. } => target.span,
@@ -183,10 +191,12 @@ impl FrontendError for TypeCheckError {
             | TypeCheckError::MissingOpBody { .. } => {
                 label.message = "allowed for functions but not for ops".to_owned();
             }
-            TypeCheckError::MisplacedGotoStmt { .. } => {
-                label.message = "`goto` statements may only appear in interpreted ops".to_owned();
+            TypeCheckError::GotoIrMismatch {
+                expected_ir,
+                found_ir,
+                ..
             }
-            TypeCheckError::EmitIrMismatch {
+            | TypeCheckError::EmitIrMismatch {
                 expected_ir,
                 found_ir,
                 ..
@@ -197,6 +207,9 @@ impl FrontendError for TypeCheckError {
                     }
                     None => format!("unexpected `{}` op", found_ir),
                 };
+            }
+            TypeCheckError::InvalidLabelIr { ir, .. } => {
+                label.message = format!("`{}` isn't an interpreted IR", ir);
             }
             TypeCheckError::ExprTypeMismatch {
                 expected_type,
@@ -302,13 +315,16 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::OpHasOutParam { .. } => (),
             TypeCheckError::OpReturnsValue { .. } => (),
             TypeCheckError::MissingOpBody { .. } => (),
-            TypeCheckError::MisplacedGotoStmt {
-                source_callable, ..
+            TypeCheckError::GotoIrMismatch {
+                source_callable,
+                expected_ir,
+                ..
             } => {
-                labels.push(
-                    Label::secondary(file_id, source_callable.span)
-                        .with_message(format!("`{}` defined here", source_callable)),
-                );
+                if let Some(expected_ir) = expected_ir {
+                    labels.push(Label::secondary(file_id, expected_ir.span).with_message(
+                        format!("`{}` interprets `{}` ops", source_callable, expected_ir),
+                    ));
+                }
             }
             TypeCheckError::EmitIrMismatch {
                 source_callable,
@@ -320,6 +336,14 @@ impl FrontendError for TypeCheckError {
                         format!("`{}` emits `{}` ops", source_callable, expected_ir),
                     ));
                 }
+            }
+            TypeCheckError::InvalidLabelIr {
+                ir, ir_defined_at, ..
+            } => {
+                labels.push(
+                    Label::secondary(file_id, *ir_defined_at)
+                        .with_message(format!("IR `{}` defined here", ir)),
+                );
             }
             TypeCheckError::ExprTypeMismatch { .. } => (),
             TypeCheckError::InvalidCast { .. } => (),

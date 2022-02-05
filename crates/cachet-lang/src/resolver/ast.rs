@@ -242,12 +242,12 @@ impl Typed for CallableItem {
 pub struct Params {
     pub var_params: TiVec<VarParamIndex, VarParam>,
     pub out_var_params: TiVec<OutVarParamIndex, OutVarParam>,
-    pub label_params: TiVec<LabelParamIndex, Spanned<Ident>>,
+    pub label_params: TiVec<LabelParamIndex, LabelParam>,
 }
 
 typed_field_index!(Params:var_params[pub VarParamIndex] => VarParam);
 typed_field_index!(Params:out_var_params[pub OutVarParamIndex] => OutVarParam);
-typed_field_index!(Params:label_params[pub LabelParamIndex] => Spanned<Ident>);
+typed_field_index!(Params:label_params[pub LabelParamIndex] => LabelParam);
 
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
 pub enum ParamIndex {
@@ -285,6 +285,12 @@ impl Typed for OutVarParam {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct LabelParam {
+    pub ident: Spanned<Ident>,
+    pub ir: Spanned<IrIndex>,
+}
+
 #[derive(Clone, Debug, From)]
 pub enum Arg {
     Expr(Expr),
@@ -314,22 +320,28 @@ pub struct Body {
 }
 
 field_index!(Body:locals[LocalVarIndex] => LocalVar);
-field_index!(Body:locals[LocalLabelIndex] => Spanned<Ident>);
+field_index!(Body:locals[LocalLabelIndex] => LocalLabel);
 
 #[derive(Clone, Debug, Default)]
 pub struct Locals {
     pub local_vars: TiVec<LocalVarIndex, LocalVar>,
-    pub local_labels: TiVec<LocalLabelIndex, Spanned<Ident>>,
+    pub local_labels: TiVec<LocalLabelIndex, LocalLabel>,
 }
 
 typed_field_index!(Locals:local_vars[pub LocalVarIndex] => LocalVar);
-typed_field_index!(Locals:local_labels[pub LocalLabelIndex] => Spanned<Ident>);
+typed_field_index!(Locals:local_labels[pub LocalLabelIndex] => LocalLabel);
 
 #[derive(Clone, Debug)]
 pub struct LocalVar {
     pub ident: Spanned<Ident>,
     pub is_mut: bool,
     pub type_: Option<TypeIndex>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalLabel {
+    pub ident: Spanned<Ident>,
+    pub ir: Option<Spanned<IrIndex>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]

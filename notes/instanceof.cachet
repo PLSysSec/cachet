@@ -1,5 +1,5 @@
 ir CacheIR {
-  op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId, label failure) {
+  op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId, label failure: MASM) {
     let lhs = CacheIR::getValue(lhsId);
     let proto = CacheIR::getObject(protoId);
 
@@ -34,7 +34,7 @@ ir CacheIR {
 }
 
 ir CacheIR emits MASM {
-  op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId, label failure) {
+  op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId, label failure: MASM) {
     let lhsReg = CacheIR::useValueReg(lhsId);
     let protoReg = CacheIR::useObjectReg(protoId);
     let scratchReg = CacheIR::allocateReg();

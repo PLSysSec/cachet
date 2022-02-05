@@ -12,7 +12,7 @@ use lazy_static::lazy_static;
 use typed_index_collections::{TiSlice, TiVec};
 use void::unreachable;
 
-use cachet_lang::ast::{BuiltInVar, CastKind, CheckKind, CompareKind, Ident, Path, Spanned};
+use cachet_lang::ast::{BuiltInVar, CastKind, CheckKind, CompareKind, Ident, Path};
 use cachet_lang::flattener::{self, Typed};
 use cachet_util::{typed_field_index, MaybeOwned};
 
@@ -631,7 +631,7 @@ impl<'a> Compiler<'a> {
             .iter()
             .filter_map(|param_index| match param_index {
                 flattener::ParamIndex::Label(label_param_index) => Some(
-                    self.compile_label_param(top_op_item.params[label_param_index].value)
+                    self.compile_label_param(&top_op_item.params[label_param_index])
                         .into(),
                 ),
                 _ => None,
@@ -829,7 +829,7 @@ impl<'a> Compiler<'a> {
                             }
                             flattener::ParamIndex::OutVar(_) => None,
                             flattener::ParamIndex::Label(label_param_index) => {
-                                Some(op_item.params[label_param_index].value)
+                                Some(op_item.params[label_param_index].ident.value)
                             }
                         })
                         .map(|param_ident| {
@@ -922,7 +922,7 @@ impl<'a> Compiler<'a> {
                 flattener::ParamIndex::OutVar(out_var_param_index) => out_param_ret_vars
                     .push(self.compile_out_var_param(&params[out_var_param_index])),
                 flattener::ParamIndex::Label(label_param_index) => {
-                    param_vars.push(self.compile_label_param(params[label_param_index].value));
+                    param_vars.push(self.compile_label_param(&params[label_param_index]));
                 }
             }
         }
@@ -945,13 +945,11 @@ impl<'a> Compiler<'a> {
         })
     }
 
-    fn compile_label_param(&self, label_param_ident: Ident) -> TypedVar {
+    fn compile_label_param(&self, label_param: &flattener::LabelParam) -> TypedVar {
         TypedVar {
-            ident: UserParamVarIdent::from(label_param_ident).into(),
+            ident: UserParamVarIdent::from(label_param.ident.value).into(),
             type_: IrMemberTypeIdent {
-                // TODO(spinda): Give the labels IR annotations so this doesn't
-                // have to be hardcoded.
-                ir_ident: Ident::from("MASM").into(),
+                ir_ident: self.env[label_param.ir.value].ident.value.into(),
                 selector: IrMemberTypeSelector::Label,
             }
             .into(),
@@ -1016,30 +1014,28 @@ impl<'a> Compiler<'a> {
 
     fn compile_local_labels<'b>(
         &'b self,
-        local_labels: &'b TiSlice<LocalLabelIndex, Spanned<Ident>>,
+        local_labels: &'b TiSlice<LocalLabelIndex, flattener::LocalLabel>,
     ) -> impl 'b + Iterator<Item = LocalVar> + Captures<'a> {
         local_labels
             .iter_enumerated()
-            .map(|(local_label_index, local_label_ident)| {
-                self.compile_local_label(local_label_index, local_label_ident.value)
+            .map(|(local_label_index, local_label)| {
+                self.compile_local_label(local_label_index, local_label)
             })
     }
 
     fn compile_local_label(
         &self,
         local_label_index: LocalLabelIndex,
-        local_label_ident: Ident,
+        local_label: &flattener::LocalLabel,
     ) -> LocalVar {
         TypedVar {
             ident: LocalLabelVarIdent {
-                ident: local_label_ident,
+                ident: local_label.ident.value,
                 index: local_label_index,
             }
             .into(),
             type_: IrMemberTypeIdent {
-                // TODO(spinda): Give the labels IR annotations so this doesn't
-                // have to be hardcoded.
-                ir_ident: Ident::from("MASM").into(),
+                ir_ident: self.env[local_label.ir.value].ident.value.into(),
                 selector: IrMemberTypeSelector::Label,
             }
             .into(),
@@ -1292,10 +1288,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_label_arg(&mut self, label_index: flattener::LabelIndex) -> Expr {
         match label_index {
             flattener::LabelIndex::Param(label_param_index) => {
-                UserParamVarIdent::from(self.callable_item.params[label_param_index].value).into()
+                UserParamVarIdent::from(self.callable_item.params[label_param_index].ident.value)
+                    .into()
             }
             flattener::LabelIndex::Local(local_label_index) => LocalLabelVarIdent {
-                ident: self.callable_locals[local_label_index].value,
+                ident: self.callable_locals[local_label_index].ident.value,
                 index: local_label_index,
             }
             .into(),
