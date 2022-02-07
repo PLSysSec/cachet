@@ -42,11 +42,6 @@ pub enum TypeCheckError {
         expected_ir: Option<Spanned<Ident>>,
         found_ir: Ident,
     },
-    #[error("labels can only be generated for interpreted IRs")]
-    InvalidLabelIr {
-        ir: Spanned<Ident>,
-        ir_defined_at: Span,
-    },
     #[error("mismatched types")]
     ExprTypeMismatch {
         expected_type: Ident,
@@ -99,6 +94,14 @@ pub enum TypeCheckError {
         target: Path,
         param: Spanned<Ident>,
     },
+    #[error("IR of label argument doesn't match parameter `{param}` to `{target}`")]
+    ArgIrMismatch {
+        expected_ir: Ident,
+        found_ir: Ident,
+        arg_span: Span,
+        target: Path,
+        param: Spanned<Ident>,
+    },
     #[error("left- and right-hand sides of operator have mismatched types")]
     BinaryOperatorTypeMismatch {
         operator_span: Span,
@@ -138,7 +141,6 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::MissingOpBody { body_span, .. } => *body_span,
             TypeCheckError::GotoIrMismatch { target_label, .. } => target_label.span,
             TypeCheckError::EmitIrMismatch { target_op, .. } => target_op.span,
-            TypeCheckError::InvalidLabelIr { ir, .. } => ir.span,
             TypeCheckError::ExprTypeMismatch { expr_span, .. } => *expr_span,
             TypeCheckError::InvalidCast { expr_span, .. } => *expr_span,
             TypeCheckError::UnsafeCallInSafeContext { target, .. } => target.span,
@@ -146,6 +148,7 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::ArgCountMismatch { target, .. } => target.span,
             TypeCheckError::ArgKindMismatch { arg_span, .. } => *arg_span,
             TypeCheckError::ArgTypeMismatch { arg_span, .. } => *arg_span,
+            TypeCheckError::ArgIrMismatch { arg_span, .. } => *arg_span,
             TypeCheckError::BinaryOperatorTypeMismatch { operator_span, .. } => *operator_span,
             TypeCheckError::NumericOperatorTypeMismatch { operand_span, .. } => *operand_span,
             TypeCheckError::AssignTypeMismatch { rhs_span, .. } => *rhs_span,
@@ -208,9 +211,6 @@ impl FrontendError for TypeCheckError {
                     None => format!("unexpected `{}` op", found_ir),
                 };
             }
-            TypeCheckError::InvalidLabelIr { ir, .. } => {
-                label.message = format!("`{}` isn't an interpreted IR", ir);
-            }
             TypeCheckError::ExprTypeMismatch {
                 expected_type,
                 found_type,
@@ -252,11 +252,16 @@ impl FrontendError for TypeCheckError {
                     format!("expected {}, found {}", expected_arg_kind, found_arg_kind);
             }
             TypeCheckError::ArgTypeMismatch {
-                expected_type,
-                found_type,
+                expected_type: expected,
+                found_type: found,
+                ..
+            }
+            | TypeCheckError::ArgIrMismatch {
+                expected_ir: expected,
+                found_ir: found,
                 ..
             } => {
-                label.message = format!("expected `{}`, found `{}`", expected_type, found_type);
+                label.message = format!("expected `{}`, found `{}`", expected, found);
             }
             TypeCheckError::BinaryOperatorTypeMismatch { .. } => (),
             TypeCheckError::NumericOperatorTypeMismatch { operand_type, .. } => {
@@ -337,14 +342,6 @@ impl FrontendError for TypeCheckError {
                     ));
                 }
             }
-            TypeCheckError::InvalidLabelIr {
-                ir, ir_defined_at, ..
-            } => {
-                labels.push(
-                    Label::secondary(file_id, *ir_defined_at)
-                        .with_message(format!("IR `{}` defined here", ir)),
-                );
-            }
             TypeCheckError::ExprTypeMismatch { .. } => (),
             TypeCheckError::InvalidCast { .. } => (),
             TypeCheckError::UnsafeCallInSafeContext {
@@ -381,7 +378,8 @@ impl FrontendError for TypeCheckError {
                         .with_message(format!("parameter `{}` defined here", param)),
                 );
             }
-            TypeCheckError::ArgTypeMismatch { param, .. } => {
+            TypeCheckError::ArgTypeMismatch { param, .. }
+            | TypeCheckError::ArgIrMismatch { param, .. } => {
                 labels.push(
                     Label::secondary(file_id, param.span)
                         .with_message(format!("parameter `{}` defined here", param)),

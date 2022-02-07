@@ -8,8 +8,8 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_index};
 
 use crate::ast::{
-    BlockKind, BuiltInType, BuiltInVar, CheckKind, CompareKind, Ident, MaybeSpanned,
-    NegateKind, Path, Spanned,
+    BlockKind, BuiltInType, BuiltInVar, CheckKind, CompareKind, Ident, MaybeSpanned, NegateKind,
+    Path, Spanned,
 };
 pub use crate::parser::VariantIndex;
 
@@ -288,7 +288,7 @@ impl Typed for OutVarParam {
 #[derive(Clone, Debug)]
 pub struct LabelParam {
     pub ident: Spanned<Ident>,
-    pub ir: Spanned<IrIndex>,
+    pub ir: IrIndex,
 }
 
 #[derive(Clone, Debug, From)]
@@ -341,7 +341,7 @@ pub struct LocalVar {
 #[derive(Clone, Debug)]
 pub struct LocalLabel {
     pub ident: Spanned<Ident>,
-    pub ir: Option<Spanned<IrIndex>>,
+    pub ir: Option<IrIndex>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]

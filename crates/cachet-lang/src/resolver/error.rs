@@ -25,6 +25,8 @@ pub enum ResolveError {
     Undefined(#[from] UndefinedError),
     #[error(transparent)]
     WrongKind(#[from] WrongKindError),
+    #[error(transparent)]
+    InvalidLabelIr(#[from] InvalidLabelIrError),
 }
 
 impl FrontendError for ResolveError {
@@ -35,6 +37,7 @@ impl FrontendError for ResolveError {
             ResolveError::DuplicateDef(error) => error.span(),
             ResolveError::Undefined(error) => error.span(),
             ResolveError::WrongKind(error) => error.span(),
+            ResolveError::InvalidLabelIr(error) => error.span(),
         }
     }
 
@@ -45,6 +48,7 @@ impl FrontendError for ResolveError {
             ResolveError::DuplicateDef(error) => error.build_diagnostic(file_id),
             ResolveError::Undefined(error) => error.build_diagnostic(file_id),
             ResolveError::WrongKind(error) => error.build_diagnostic(file_id),
+            ResolveError::InvalidLabelIr(error) => error.build_diagnostic(file_id),
         }
     }
 }
@@ -205,6 +209,30 @@ impl FrontendError for WrongKindError {
                 ]
                 .collect(),
             )
+    }
+}
+
+#[derive(Clone, Debug, Error)]
+#[error("labels can only be generated for interpreted IRs")]
+pub struct InvalidLabelIrError {
+    pub ir: Spanned<Path>,
+    pub ir_defined_at: Span,
+}
+
+impl FrontendError for InvalidLabelIrError {
+    fn span(&self) -> Span {
+        self.ir.span
+    }
+
+    fn build_diagnostic<T: Copy>(&self, file_id: T) -> Diagnostic<T> {
+        Diagnostic::error()
+            .with_message(self.to_string())
+            .with_labels(vec![
+                Label::primary(file_id, self.span())
+                    .with_message(format!("`{}` isn't an interpreted IR", self.ir)),
+                Label::secondary(file_id, self.ir_defined_at)
+                    .with_message(format!("IR `{}` defined here", self.ir)),
+            ])
     }
 }
 

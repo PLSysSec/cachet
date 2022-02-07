@@ -607,7 +607,7 @@ impl<'a> Compiler<'a> {
         let ident = UserParamVarIdent::from(label_param.ident.value).into();
 
         let type_ = IrMemberTypePath {
-            parent: self.env[label_param.ir.value].ident.value,
+            parent: self.env[label_param.ir].ident.value,
             ident: IrMemberTypeIdent::LabelRef,
         }
         .into();

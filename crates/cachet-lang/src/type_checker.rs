@@ -196,17 +196,6 @@ impl<'a> TypeChecker<'a> {
     fn type_check_callable_item(&mut self, callable_index: CallableIndex) -> CallableItem {
         let callable_item = &self.env[callable_index];
 
-        // TODO(spinda): Move this into the name resolver.
-        for param_index in &callable_item.param_order {
-            match param_index {
-                resolver::ParamIndex::Label(label_param_index) => {
-                    let label_param = &callable_item.params[label_param_index];
-                    self.validate_label_ir(label_param.ir);
-                }
-                _ => (),
-            }
-        }
-
         let ret = callable_item.type_();
 
         let (interprets, emits) = match (callable_index, callable_item.parent) {
@@ -333,16 +322,6 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    fn validate_label_ir(&mut self, ir_index: Spanned<IrIndex>) {
-        let ir_item = &self.env[ir_index.value];
-        if ir_item.emits.is_some() {
-            self.errors.push(TypeCheckError::InvalidLabelIr {
-                ir: Spanned::new(ir_index.span, ir_item.ident.value),
-                ir_defined_at: ir_item.ident.span,
-            });
-        }
-    }
-
     fn get_type_ident(&self, type_index: TypeIndex) -> Ident {
         match type_index {
             TypeIndex::BuiltIn(built_in_type) => built_in_type.ident(),
@@ -361,6 +340,7 @@ impl<'a> TypeChecker<'a> {
 struct ParamSummary {
     ident: Spanned<Ident>,
     type_: Option<TypeIndex>,
+    ir: Option<IrIndex>,
     expected_arg_kind: ArgKind,
 }
 
@@ -434,6 +414,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 ParamSummary {
                     ident: var_param.ident,
                     type_: Some(var_param.type_),
+                    ir: None,
                     expected_arg_kind: ArgKind::Expr,
                 }
             }
@@ -442,14 +423,19 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 ParamSummary {
                     ident: out_var_param.ident,
                     type_: Some(out_var_param.type_),
+                    ir: None,
                     expected_arg_kind: ArgKind::OutVar,
                 }
             }
-            resolver::ParamIndex::Label(label_param_index) => ParamSummary {
-                ident: callable_item.params[label_param_index].ident,
-                type_: None,
-                expected_arg_kind: ArgKind::Label,
-            },
+            resolver::ParamIndex::Label(label_param_index) => {
+                let label_param = &callable_item.params[label_param_index];
+                ParamSummary {
+                    ident: callable_item.params[label_param_index].ident,
+                    type_: None,
+                    ir: Some(label_param.ir),
+                    expected_arg_kind: ArgKind::Label,
+                }
+            }
         });
 
         let arg_span = arg.span;
@@ -472,7 +458,14 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 )
                 .into(),
             ),
-            resolver::Arg::Label(label_index) => (ArgKind::Label, label_index.into()),
+            resolver::Arg::Label(label_index) => {
+                self.type_check_label_arg(
+                    callable_item.path.value,
+                    param_summary.as_ref(),
+                    Spanned::new(arg_span, *label_index),
+                );
+                (ArgKind::Label, label_index.into())
+            }
         };
 
         if let Some(ParamSummary {
@@ -575,6 +568,33 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             out_var: arg.value,
             type_: param_type_index,
             upcast_route,
+        }
+    }
+
+    fn type_check_label_arg(
+        &mut self,
+        target: Path,
+        param_summary: Option<&ParamSummary>,
+        arg: Spanned<LabelIndex>,
+    ) {
+        if let Some(&ParamSummary {
+            ident: param_ident,
+            ir: Some(param_ir_index),
+            ..
+        }) = param_summary
+        {
+            let arg_ir_index = self.get_label_ir(arg.value);
+            if param_ir_index != arg_ir_index {
+                self.type_checker
+                    .errors
+                    .push(TypeCheckError::ArgIrMismatch {
+                        expected_ir: self.env[param_ir_index].ident.value,
+                        found_ir: self.env[arg_ir_index].ident.value,
+                        arg_span: arg.span,
+                        target,
+                        param: param_ident,
+                    });
+            }
         }
     }
 
@@ -716,7 +736,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
     fn type_check_goto_stmt(&mut self, goto_stmt: &resolver::GotoStmt) -> GotoStmt {
         let ir_index = self.get_label_ir(goto_stmt.label.value);
-        if Some(ir_index.value) != self.interprets.map(|interprets| interprets.value) {
+        if Some(ir_index) != self.interprets.map(|interprets| interprets.value) {
             self.type_checker
                 .errors
                 .push(TypeCheckError::GotoIrMismatch {
@@ -728,13 +748,13 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     expected_ir: self.interprets.map(|interprets| {
                         interprets.map(|interprets| self.env[interprets].ident.value)
                     }),
-                    found_ir: self.env[ir_index.value].ident.value,
+                    found_ir: self.env[ir_index].ident.value,
                 });
         }
 
         GotoStmt {
             label: goto_stmt.label.value,
-            ir: ir_index.value,
+            ir: ir_index,
         }
     }
 
@@ -1042,7 +1062,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         }
     }
 
-    fn get_label_ir(&self, label_index: LabelIndex) -> Spanned<IrIndex> {
+    fn get_label_ir(&self, label_index: LabelIndex) -> IrIndex {
         match label_index {
             LabelIndex::Param(label_param_index) => {
                 self.callable_item.params[label_param_index].ir

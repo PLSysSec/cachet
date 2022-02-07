@@ -10,7 +10,7 @@ use std::ops::{Deref, DerefMut};
 
 use derive_more::{From, Into};
 use enumset::EnumSet;
-use typed_index_collections::TiVec;
+use typed_index_collections::{TiSlice, TiVec};
 
 use cachet_util::{collect_eager, deref_from, MaybeOwned};
 
@@ -46,12 +46,13 @@ pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> 
             .map(|struct_item| resolver.resolve_struct_item(struct_item)),
     );
 
-    let ir_items: Option<_> = collect_eager(
+    let ir_items: Option<TiVec<_, _>> = collect_eager(
         item_catalog
             .ir_items
             .into_iter()
             .map(|ir_item| resolver.resolve_ir_item(ir_item)),
     );
+    resolver.ir_items = ir_items.as_ref().map(|ir_items| ir_items.as_slice());
 
     let global_var_items: Option<_> = collect_eager(
         item_catalog
@@ -481,13 +482,14 @@ fn resolve_enum_item(enum_item: parser::EnumItem) -> EnumItem {
     }
 }
 
-struct Resolver {
+struct Resolver<'a> {
     errors: Vec<ResolveError>,
     global_registry: GlobalRegistry,
     impl_item_parents: TiVec<ImplIndex, Option<TypeIndex>>,
+    ir_items: Option<&'a TiSlice<IrIndex, IrItem>>,
 }
 
-impl Resolver {
+impl<'a> Resolver<'a> {
     fn new(
         errors: Vec<ResolveError>,
         global_registry: GlobalRegistry,
@@ -497,6 +499,7 @@ impl Resolver {
             errors,
             global_registry,
             impl_item_parents: TiVec::with_capacity(impl_item_parents.len()),
+            ir_items: None,
         };
 
         for parent_index in impl_item_parents {
@@ -612,6 +615,24 @@ impl Resolver {
         }
     }
 
+    fn resolve_label_ir(&mut self, path: Spanned<Path>) -> Option<IrIndex> {
+        let ir_index = self.lookup_ir_global(path).found(&mut self.errors)?;
+        let ir_item = &self.ir_items?[ir_index];
+        match ir_item.emits {
+            None => Some(ir_index),
+            Some(_) => {
+                self.errors.push(
+                    InvalidLabelIrError {
+                        ir: path,
+                        ir_defined_at: ir_item.ident.span,
+                    }
+                    .into(),
+                );
+                None
+            }
+        }
+    }
+
     fn lookup_type_global(&mut self, path: Spanned<Path>) -> LookupResult<TypeIndex> {
         self.lookup_global(path, NameKind::Type.into())
             .map_found(|item_index| match item_index {
@@ -690,28 +711,28 @@ impl Registrable for ScopedIndex {
 
 type ScopedRegistry = Registry<Ident, ScopedIndex>;
 
-struct ScopedResolver<'a> {
-    resolver: &'a mut Resolver,
-    scoped_registry: Cow<'a, ScopedRegistry>,
-    locals: MaybeOwned<'a, Locals>,
+struct ScopedResolver<'a, 'b> {
+    resolver: &'b mut Resolver<'a>,
+    scoped_registry: Cow<'b, ScopedRegistry>,
+    locals: MaybeOwned<'b, Locals>,
 }
 
-impl Deref for ScopedResolver<'_> {
-    type Target = Resolver;
+impl<'a, 'b> Deref for ScopedResolver<'a, 'b> {
+    type Target = Resolver<'a>;
 
     fn deref(&self) -> &Self::Target {
         self.resolver
     }
 }
 
-impl DerefMut for ScopedResolver<'_> {
+impl<'a, 'b> DerefMut for ScopedResolver<'a, 'b> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.resolver
     }
 }
 
-impl<'a> ScopedResolver<'a> {
-    fn new(resolver: &'a mut Resolver) -> Self {
+impl<'a, 'b> ScopedResolver<'a, 'b> {
+    fn new(resolver: &'b mut Resolver<'a>) -> Self {
         ScopedResolver {
             resolver,
             scoped_registry: Cow::Owned(ScopedRegistry::new()),
@@ -719,7 +740,7 @@ impl<'a> ScopedResolver<'a> {
         }
     }
 
-    fn recurse(&mut self) -> ScopedResolver<'_> {
+    fn recurse<'c>(&'c mut self) -> ScopedResolver<'a, 'c> {
         ScopedResolver {
             resolver: self.resolver,
             scoped_registry: Cow::Borrowed(&self.scoped_registry),
@@ -792,12 +813,9 @@ impl<'a> ScopedResolver<'a> {
         label_param: parser::LabelParam,
         label_params: &mut TiVec<LabelParamIndex, LabelParam>,
     ) -> LabelParamIndex {
-        let ir = Spanned::new(
-            label_param.ir.span,
-            self.lookup_ir_global(label_param.ir)
-                .found(&mut self.errors)
-                .unwrap_or_else(|| IrIndex::from(0)),
-        );
+        let ir = self
+            .resolve_label_ir(label_param.ir)
+            .unwrap_or_else(|| IrIndex::from(0));
 
         let label_param_index = label_params.push_and_get_key(LabelParam {
             ident: label_param.ident,

@@ -949,7 +949,7 @@ impl<'a> Compiler<'a> {
         TypedVar {
             ident: UserParamVarIdent::from(label_param.ident.value).into(),
             type_: IrMemberTypeIdent {
-                ir_ident: self.env[label_param.ir.value].ident.value.into(),
+                ir_ident: self.env[label_param.ir].ident.value.into(),
                 selector: IrMemberTypeSelector::Label,
             }
             .into(),
@@ -1035,7 +1035,7 @@ impl<'a> Compiler<'a> {
             }
             .into(),
             type_: IrMemberTypeIdent {
-                ir_ident: self.env[local_label.ir.value].ident.value.into(),
+                ir_ident: self.env[local_label.ir].ident.value.into(),
                 selector: IrMemberTypeSelector::Label,
             }
             .into(),
