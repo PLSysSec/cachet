@@ -801,7 +801,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     fn type_check_expr(&mut self, expr: &resolver::Expr) -> Expr {
         match expr {
             resolver::Expr::Block(block_expr) => self.type_check_block_expr(block_expr).into(),
-            resolver::Expr::Var(index) => self.type_check_var_expr(*index).into(),
+            resolver::Expr::Literal(literal) => literal.into(),
+            resolver::Expr::Var(var_index) => self.type_check_var_expr(*var_index).into(),
             resolver::Expr::Invoke(call) => self.type_check_invoke_expr(call).into(),
             resolver::Expr::Negate(negate_expr) => self.type_check_negate_expr(negate_expr).into(),
             resolver::Expr::Cast(cast_expr) => self.type_check_cast_expr(cast_expr),

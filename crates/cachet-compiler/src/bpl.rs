@@ -12,7 +12,7 @@ use lazy_static::lazy_static;
 use typed_index_collections::{TiSlice, TiVec};
 use void::unreachable;
 
-use cachet_lang::ast::{BuiltInVar, CastKind, CheckKind, CompareKind, Ident, Path};
+use cachet_lang::ast::{BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path};
 use cachet_lang::flattener::{self, Typed};
 use cachet_util::{typed_field_index, MaybeOwned};
 
@@ -192,7 +192,7 @@ impl<'a> Compiler<'a> {
             rhs: ArithExpr {
                 kind: ArithKind::Add,
                 lhs: pc_global_var_item.var.ident.into(),
-                rhs: 1.into(),
+                rhs: Literal::Int(1).into(),
             }
             .into(),
         }
@@ -331,7 +331,7 @@ impl<'a> Compiler<'a> {
                         rhs: ArithExpr {
                             kind: ArithKind::Add,
                             lhs: next_label_global_var_item.var.ident.into(),
-                            rhs: 1.into(),
+                            rhs: Literal::Int(1).into(),
                         }
                         .into(),
                     }
@@ -699,7 +699,7 @@ impl<'a> Compiler<'a> {
 
         let init_pc_stmt: Stmt = AssignStmt {
             lhs: pc_var_ident.into(),
-            rhs: 0.into(),
+            rhs: Literal::Int(0).into(),
         }
         .into();
 
@@ -1157,7 +1157,7 @@ fn generate_emit_path_expr(emit_label_ident: &EmitLabelIdent) -> CallExpr {
                 target: PreludeFnIdent::ConsEmitPathCtor.into(),
                 arg_exprs: vec![
                     accum.into(),
-                    usize::from(emit_label_segment.local_emit_index).into(),
+                    Literal::Int(emit_label_segment.local_emit_index.into()).into(),
                 ],
             }
         })
@@ -1429,12 +1429,15 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let (mut op_arg_exprs, _) = self.compile_args(&emit_stmt.call.args);
 
-        let local_emit_index = usize::from(*self.next_local_emit_index);
-        *self.next_local_emit_index = LocalEmitIndex::from(local_emit_index + 1);
+        let local_emit_index = *self.next_local_emit_index;
+        *self.next_local_emit_index = LocalEmitIndex::from(usize::from(local_emit_index) + 1);
 
         let emit_path_expr = CallExpr {
             target: PreludeFnIdent::ConsEmitPathCtor.into(),
-            arg_exprs: vec![ParamVarIdent::EmitPath.into(), local_emit_index.into()],
+            arg_exprs: vec![
+                ParamVarIdent::EmitPath.into(),
+                Literal::Int(local_emit_index.into()).into(),
+            ],
         }
         .into();
 
@@ -1589,9 +1592,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_expr(&mut self, expr: &flattener::Expr) -> Expr {
         match expr {
             flattener::Expr::Block(void, _) => unreachable(*void),
+            flattener::Expr::Literal(literal) => compile_literal(*literal).into(),
             flattener::Expr::Var(var_expr) => self.compile_var_expr(var_expr),
             flattener::Expr::Invoke(invoke_expr) => self.compile_invoke_expr(invoke_expr),
-            flattener::Expr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr).into(),
+            flattener::Expr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr),
             flattener::Expr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
             flattener::Expr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).into()
@@ -1601,10 +1605,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_atom_expr(&mut self, atom_expr: &flattener::AtomExpr) -> Expr {
         match atom_expr {
+            flattener::AtomExpr::Literal(literal) => compile_literal(*literal).into(),
             flattener::AtomExpr::Var(var_expr) => self.compile_var_expr(var_expr),
-            flattener::AtomExpr::Negate(negate_expr) => {
-                self.compile_negate_expr(&negate_expr).into()
-            }
+            flattener::AtomExpr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr),
             flattener::AtomExpr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
             flattener::AtomExpr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).into()
@@ -1658,12 +1661,24 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_negate_expr<E: CompileExpr + Typed>(
         &mut self,
         negate_expr: &flattener::NegateExpr<E>,
-    ) -> NegateExpr {
+    ) -> Expr {
         let expr = negate_expr.expr.compile(self);
 
-        NegateExpr {
-            kind: negate_expr.kind,
-            expr,
+        match negate_expr.kind {
+            NegateKind::Arithmetic => {
+                let type_ident = self.get_type_ident(negate_expr.type_()).into();
+
+                CallExpr {
+                    target: TypeMemberFnIdent {
+                        type_ident,
+                        selector: TypeMemberFnSelector::Negate,
+                    }
+                    .into(),
+                    arg_exprs: vec![expr],
+                }
+                .into()
+            }
+            kind => NegateExpr { kind, expr }.into(),
         }
     }
 
@@ -1767,6 +1782,12 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 )
             }
         }
+    }
+}
+
+fn compile_literal(literal: flattener::Literal) -> Literal {
+    match literal {
+        flattener::Literal::Int32(n) => Literal::Bv32(n as u32),
     }
 }
 

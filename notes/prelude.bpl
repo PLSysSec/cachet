@@ -17,6 +17,7 @@ type #Bool = bool;
 type #Int32 = bv32;
 
 function {:bvbuiltin "bvadd"} #Int32^Add(x: #Int32, y: #Int32): #Int32;
+function {:bvbuiltin "bvneg"} #Int32^Negate(n: #Int32): #Int32;
 // etc; see https://boogie-docs.readthedocs.io/en/latest/LangRef.html#other-operators
 
 type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/issues/29#issuecomment-231239065

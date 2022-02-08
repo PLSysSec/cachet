@@ -15,9 +15,10 @@ use crate::ast::{
 use crate::resolver;
 pub use crate::resolver::{
     CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem,
-    IrIndex, IrItem, LabelIndex, LabelParam, LabelParamIndex, LocalLabelIndex, LocalVarIndex,
-    OpIndex, OutVar, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex,
-    StructItem, TypeIndex, Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
+    IrIndex, IrItem, LabelIndex, LabelParam, LabelParamIndex, Literal, LocalLabelIndex,
+    LocalVarIndex, OpIndex, OutVar, OutVarParam, OutVarParamIndex, ParamIndex, Params,
+    ParentIndex, StructIndex, StructItem, TypeIndex, Typed, VarIndex, VarParam, VarParamIndex,
+    VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -286,6 +287,8 @@ pub struct EmitStmt {
 pub enum Expr {
     #[from]
     Block(Box<BlockExpr>),
+    #[from]
+    Literal(Literal),
     #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
     #[from]
@@ -304,6 +307,7 @@ impl Typed for Expr {
     fn type_(&self) -> TypeIndex {
         match self {
             Expr::Block(block_expr) => block_expr.type_(),
+            Expr::Literal(literal) => literal.type_(),
             Expr::Var(var_expr) => var_expr.type_(),
             Expr::Invoke(call_expr) => call_expr.type_(),
             Expr::Negate(negate_expr) => negate_expr.type_(),
@@ -319,6 +323,8 @@ box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
+
+deref_from!(&Literal => Expr);
 
 impl From<Block> for Expr {
     fn from(block: Block) -> Self {

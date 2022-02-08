@@ -965,6 +965,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Expr::Block(_, block_expr) => {
                 self.compile_block_expr(&block_expr).map(Expr::from)
             }
+            normalizer::Expr::Literal(literal) => self.compile_literal(literal).map(Expr::from),
             normalizer::Expr::Var(var_expr) => self.compile_var_expr(var_expr),
             normalizer::Expr::Invoke(invoke_expr) => {
                 self.compile_invoke_expr(invoke_expr).map(Expr::from)
@@ -983,6 +984,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_atom_expr(&self, atom_expr: &normalizer::AtomExpr) -> TaggedExpr {
         match atom_expr {
+            normalizer::AtomExpr::Literal(literal) => {
+                self.compile_literal(literal).map(Expr::from)
+            }
             normalizer::AtomExpr::Var(var_expr) => self.compile_var_expr(var_expr),
             normalizer::AtomExpr::Negate(negate_expr) => {
                 self.compile_negate_expr(&negate_expr).map(Expr::from)
@@ -1034,6 +1038,16 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             expr: block.into(),
             type_: block_expr.type_(),
             tags: ExprTag::Val.into(),
+        }
+    }
+
+    fn compile_literal(&self, literal: &normalizer::Literal) -> TaggedExpr<Literal> {
+        match literal {
+            normalizer::Literal::Int32(n) => TaggedExpr {
+                expr: Literal::Int32(*n),
+                type_: BuiltInType::Int32.into(),
+                tags: ExprTag::Val.into(),
+            },
         }
     }
 

@@ -12,7 +12,7 @@ use enumset::EnumSetType;
 use cachet_lang::ast::{CastKind, CompareKind, Ident, NegateKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 
-use cachet_util::{box_from, chain_from, fmt_join, fmt_join_trailing, AffixWriter};
+use cachet_util::{box_from, chain_from, deref_from, fmt_join, fmt_join_trailing, AffixWriter};
 
 #[derive(Clone, Copy, Debug, Display)]
 #[display(fmt = "{}_{}", kind, ident)]
@@ -823,6 +823,8 @@ pub struct ExprStmt {
 pub enum Expr {
     #[from(types(Block, "Vec<Stmt>"))]
     Block(BlockExpr),
+    #[from]
+    Literal(Literal),
     #[from(types(ParamVarIdent, UserParamVarIdent, LocalVarIdent, LocalLabelVarIdent,))]
     Var(VarIdent),
     #[from(types(
@@ -860,6 +862,8 @@ box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 box_from!(CommaExpr => Expr);
 
+deref_from!(&Literal => Expr);
+
 impl FromIterator<Stmt> for Expr {
     fn from_iter<T>(iter: T) -> Self
     where
@@ -878,6 +882,7 @@ impl Display for MaybeGrouped<'_> {
             // C++ syntax reasons, so there's no need for us to group them again
             // here.
             Expr::Block(_)
+            | Expr::Literal(_)
             | Expr::Var(_)
             | Expr::Fn(_)
             | Expr::Template(_)
@@ -925,6 +930,12 @@ impl FromIterator<Stmt> for BlockExpr {
     {
         Block::from_iter(iter).into()
     }
+}
+
+#[derive(Clone, Copy, Debug, Display)]
+pub enum Literal {
+    #[display(fmt = "{:?}_int32", _0)]
+    Int32(i32),
 }
 
 #[derive(Clone, Debug)]

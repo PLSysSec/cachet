@@ -13,7 +13,7 @@ use enum_map::Enum;
 use cachet_lang::ast::{CastKind, CheckKind, CompareKind, Ident, NegateKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 use cachet_util::{
-    box_from, fmt_join, fmt_join_leading, fmt_join_trailing, typed_index, AffixWriter,
+    box_from, deref_from, fmt_join, fmt_join_leading, fmt_join_trailing, typed_index, AffixWriter,
 };
 
 #[derive(Clone, Copy, Debug, Display, From)]
@@ -269,6 +269,8 @@ pub struct TypeMemberFnIdent {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum TypeMemberFnSelector {
+    #[display(fmt = "Negate")]
+    Negate,
     Cast(CastTypeMemberFnSelector),
     Variant(VariantCtorTypeMemberFnSelector),
 }
@@ -868,7 +870,7 @@ pub struct AssignStmt {
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Expr {
-    #[from(types(bool, usize))]
+    #[from(types(bool))]
     Literal(Literal),
     #[from(types(
         GlobalVarIdent,
@@ -901,6 +903,9 @@ box_from!(CompareExpr => Expr);
 box_from!(ArithExpr => Expr);
 box_from!(ForAllExpr => Expr);
 
+deref_from!(&Literal => Expr);
+deref_from!(&bool => Expr);
+
 struct MaybeGrouped<'a>(&'a Expr);
 
 impl Display for MaybeGrouped<'_> {
@@ -919,13 +924,18 @@ impl Display for MaybeGrouped<'_> {
     }
 }
 
-#[derive(Clone, Debug, Display, From)]
+#[derive(Clone, Copy, Debug, Display, From)]
 pub enum Literal {
     #[display(fmt = "{:?}", _0)]
+    #[from]
     Bool(bool),
     #[display(fmt = "{:?}", _0)]
-    Usize(usize),
+    Int(usize),
+    #[display(fmt = "{:?}bv32", _0)]
+    Bv32(u32),
 }
+
+deref_from!(&bool => Literal);
 
 #[derive(Clone, Debug)]
 pub struct CallExpr {

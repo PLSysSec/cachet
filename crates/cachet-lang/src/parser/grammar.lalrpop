@@ -3,6 +3,8 @@
 // TODO(spinda): Fix block comments. Seems like the parser might be too greedy
 // right now.
 
+use std::str::FromStr;
+
 use codespan::RawIndex;
 use iterate::iterate;
 
@@ -274,9 +276,10 @@ BlockOrExpr3: Expr =
 RawExpr3: MaybeGrouped = {
     "(" <expr:BlockOrExpr0> ")" => MaybeGrouped::grouped(expr),
     <block_expr:BlockExpr> => MaybeGrouped::ungrouped(block_expr.into()),
-    <call:Call> => MaybeGrouped::ungrouped(Expr::Invoke(call)),
+    <literal:Literal> => MaybeGrouped::ungrouped(literal.into()),
     <path:Spanned<Path>> => MaybeGrouped::ungrouped(path.into()),
-    <negate_expr:NegateExpr> => MaybeGrouped::ungrouped(negate_expr.into()),
+    <call:Call> => MaybeGrouped::ungrouped(Expr::Invoke(call)),
+    <negate_expr:NegateExpr> => MaybeGrouped::ungrouped(negate_expr),
 };
 
 RawBlockOrExpr3: MaybeGrouped = {
@@ -294,8 +297,19 @@ BlockKind: BlockKind = {
     "unsafe" => BlockKind::Unsafe,
 };
 
-NegateExpr: NegateExpr =
-    <kind:Spanned<NegateKind>> <expr:Spanned<BlockOrExpr3>> => NegateExpr { kind, expr };
+Literal: Literal =
+    <n:Int32Literal> => Literal::Int32(n);
+
+Int32Literal: i32 =
+    <digits:Spanned<r"[0-9]+">> =>? i32::from_str(digits.value).map_err(|error| ParseError::User {
+        error: Spanned::new(digits.span, "number too large to fit in Int32"),
+    });
+
+NegateExpr: Expr =
+    <kind:Spanned<NegateKind>> <expr:Spanned<BlockOrExpr3>> => match (kind.value, &expr.value) {
+        (NegateKind::Arithmetic, Expr::Literal(Literal::Int32(n))) => Literal::Int32(-n).into(),
+        _ => NegateExpr { kind, expr }.into(),
+    };
 
 NegateKind: NegateKind = {
     "-" => NegateKind::Arithmetic,

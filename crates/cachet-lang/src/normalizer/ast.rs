@@ -14,10 +14,11 @@ use crate::ast::{
 use crate::type_checker;
 pub use crate::type_checker::{
     CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex,
-    GlobalVarItem, GotoStmt, IrIndex, IrItem, LabelIndex, LabelParam, LabelParamIndex, LocalLabel,
-    LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar,
-    OutVarArg, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex,
-    StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex, VariantIndex,
+    GlobalVarItem, GotoStmt, IrIndex, IrItem, LabelIndex, LabelParam, LabelParamIndex, Literal,
+    LocalLabel, LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError,
+    OpIndex, OutVar, OutVarArg, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex,
+    StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex,
+    VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -196,6 +197,8 @@ pub struct RetStmt<B = ()> {
 #[derive(Clone, Debug, From)]
 pub enum Expr<B = ()> {
     Block(B, Box<BlockExpr<B>>),
+    #[from]
+    Literal(Literal),
     #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
     #[from]
@@ -212,6 +215,7 @@ impl<B> Typed for Expr<B> {
     fn type_(&self) -> TypeIndex {
         match self {
             Expr::Block(_, block_expr) => block_expr.type_(),
+            Expr::Literal(literal) => literal.type_(),
             Expr::Var(var_expr) => var_expr.type_(),
             Expr::Invoke(invoke_expr) => invoke_expr.type_(),
             Expr::Negate(negate_expr) => negate_expr.type_(),
@@ -231,10 +235,13 @@ box_from!(BlockExpr<B> => Expr<B> | <B> where B: Default);
 box_from!(NegateExpr<Expr<B>> => Expr<B> | <B>);
 box_from!(CastExpr<Expr<B>> => Expr<B> | <B>);
 
+deref_from!(&Literal => Expr);
+
 impl<B> From<AtomExpr> for Expr<B> {
     fn from(atom_expr: AtomExpr) -> Self {
         match atom_expr {
             AtomExpr::Var(var_expr) => var_expr.into(),
+            AtomExpr::Literal(literal) => literal.into(),
             AtomExpr::Negate(negate_expr) => (*negate_expr).into(),
             AtomExpr::Cast(cast_expr) => (*cast_expr).into(),
             AtomExpr::Compare(compare_expr) => (*compare_expr).into(),
@@ -256,6 +263,8 @@ impl<B> From<CastExpr<AtomExpr>> for Expr<B> {
 
 #[derive(Clone, Debug, From)]
 pub enum AtomExpr {
+    #[from]
+    Literal(Literal),
     #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
     #[from]
@@ -269,6 +278,7 @@ pub enum AtomExpr {
 impl Typed for AtomExpr {
     fn type_(&self) -> TypeIndex {
         match self {
+            AtomExpr::Literal(literal) => literal.type_(),
             AtomExpr::Var(var_expr) => var_expr.type_(),
             AtomExpr::Negate(negate_expr) => negate_expr.type_(),
             AtomExpr::Cast(cast_expr) => cast_expr.type_(),
@@ -281,12 +291,15 @@ box_from!(NegateExpr<AtomExpr> => AtomExpr);
 box_from!(CastExpr<AtomExpr> => AtomExpr);
 box_from!(CompareExpr => AtomExpr);
 
+deref_from!(&Literal => AtomExpr);
+
 impl<B> TryFrom<Expr<B>> for AtomExpr {
     type Error = Expr<B>;
 
     fn try_from(expr: Expr<B>) -> Result<Self, Self::Error> {
         match expr {
             expr @ (Expr::Block(_, _) | Expr::Invoke(_)) => Err(expr),
+            Expr::Literal(literal) => Ok(literal.into()),
             Expr::Var(var_expr) => Ok(var_expr.into()),
             Expr::Negate(negate_expr) => Ok((*negate_expr).try_into()?),
             Expr::Cast(cast_expr) => Ok((*cast_expr).try_into()?),

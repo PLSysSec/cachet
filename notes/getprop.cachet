@@ -297,11 +297,24 @@ ir CacheIR emits MASM {
         emit MASM::UnboxObject(valueReg, objectReg);
     }
 
+
+
+
+
+
+
+
+
+
+
+    // CACHET
     op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure: MASM) {
         let objectReg = CacheIR::useObjectReg(objectId);
         let shape = CacheIR::readShapeField(shapeField);
 
-        if CacheIR::objectGuardNeedsSpectreMitigations(objectId) {
+        let needsSpectreMitigations = CacheIR::objectGuardNeedsSpectreMitigations(objectId);
+
+        if needsSpectreMitigations {
             let scratchReg = CacheIR::allocateReg();
             emit MASM::BranchTestObjectShape(
                 Condition::NotEqual, objectReg, shape, scratchReg, objectReg, failure
@@ -313,6 +326,30 @@ ir CacheIR emits MASM {
             );
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
         let objectReg = CacheIR::useObjectReg(objectId);
@@ -372,6 +409,28 @@ ir CacheIR emits MASM {
     //}
 //}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ir CacheStub emits CacheIR {
     op GetProp(
         valueId: ValueId,
@@ -384,13 +443,50 @@ ir CacheStub emits CacheIR {
         assume CacheIR::useObjectReg(objectId) == CacheIR::allocateReg();
 
         let shape = CacheIR::readShapeField(shapeField);
-        let slot = CacheIR::readInt32Field(slotField);
 
-        assume Shape::hasFixedSlot(shape, slot);
         assume Class::isNativeObject(Shape::classOf(shape));
+
+        assume Shape::hasFixedSlot(shape, 0);
+        assume Shape::hasFixedSlot(shape, 1);
+        assume Shape::hasFixedSlot(shape, 2);
+
+        let slot = CacheIR::readInt32Field(slotField);
+        assume slot == 1;
 
         emit CacheIR::GuardToObject(valueId, objectId, failure);
         emit CacheIR::GuardShape(objectId, shapeField, failure);
         emit CacheIR::LoadFixedSlotResult(objectId, slotField);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

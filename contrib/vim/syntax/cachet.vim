@@ -20,6 +20,8 @@ syn keyword cachetEmit emit
 syn match cachetIdent "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match cachetFnIdent "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
+syn match cachetNumber display "\<[0-9][0-9_]*"
+
 syn keyword cachetBuiltInType Unit Bool Int32 Double
 syn keyword cachetUnitVar unit
 syn keyword cachetBoolVar true false
@@ -57,6 +59,8 @@ hi def link cachetEmit Keyword
 
 hi def link cachetIdent Identifier
 hi def link cachetFnIdent Function
+
+hi def link cachetNumber Number
 
 hi def link cachetBuiltInType Type
 hi def link cachetUnitVar Constant

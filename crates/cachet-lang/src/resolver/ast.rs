@@ -11,7 +11,7 @@ use crate::ast::{
     BlockKind, BuiltInType, BuiltInVar, CheckKind, CompareKind, Ident, MaybeSpanned, NegateKind,
     Path, Spanned,
 };
-pub use crate::parser::VariantIndex;
+pub use crate::parser::{Literal, VariantIndex};
 
 #[derive(Clone, Debug)]
 pub struct Env {
@@ -153,6 +153,14 @@ impl Typed for BuiltInVar {
 impl Typed for TypeIndex {
     fn type_(&self) -> TypeIndex {
         *self
+    }
+}
+
+impl Typed for Literal {
+    fn type_(&self) -> TypeIndex {
+        match self {
+            Literal::Int32(_) => BuiltInType::Int32.into(),
+        }
     }
 }
 
@@ -403,6 +411,8 @@ pub enum Expr {
     #[from]
     Block(Box<BlockExpr>),
     #[from]
+    Literal(Literal),
+    #[from]
     Var(Spanned<VarIndex>),
     Invoke(Call),
     #[from]
@@ -427,6 +437,7 @@ impl From<Block> for Expr {
     }
 }
 
+deref_from!(&Literal => Expr);
 deref_from!(&Spanned<VarIndex> => Expr);
 
 impl From<Spanned<&VarIndex>> for Expr {

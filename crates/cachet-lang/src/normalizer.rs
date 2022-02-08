@@ -346,6 +346,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
 
         match expr {
             type_checker::Expr::Block(block_expr) => self.normalize_used_block_expr(*block_expr),
+            type_checker::Expr::Literal(literal) => literal.into(),
             type_checker::Expr::Var(var_expr) => var_expr.into(),
             type_checker::Expr::Invoke(invoke_expr) => {
                 self.normalize_used_invoke_expr(invoke_expr)
@@ -368,6 +369,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_unused_expr(&mut self, expr: type_checker::Expr) {
         match expr {
             type_checker::Expr::Block(block_expr) => self.normalize_unused_block_expr(*block_expr),
+            type_checker::Expr::Literal(_) => (),
             type_checker::Expr::Var(_) => (),
             type_checker::Expr::Invoke(invoke_expr) => {
                 self.normalize_unused_invoke_expr(invoke_expr)

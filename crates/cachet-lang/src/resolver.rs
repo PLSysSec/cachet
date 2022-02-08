@@ -1004,6 +1004,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             parser::Expr::Block(block_expr) => {
                 self.resolve_block_expr(*block_expr).map(Expr::from)
             }
+            parser::Expr::Literal(literal) => Some(literal.into()),
             parser::Expr::Var(var_path) => self.resolve_var_expr(var_path).map(Expr::from),
             parser::Expr::Invoke(call) => self
                 .resolve_call(call, |scoped_resolver, target| {

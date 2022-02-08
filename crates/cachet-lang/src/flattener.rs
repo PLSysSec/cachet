@@ -169,6 +169,7 @@ impl Flattener {
     fn flatten_expr(&mut self, expr: normalizer::Expr) -> Expr {
         match expr {
             normalizer::Expr::Block(_, block_expr) => self.flatten_block_expr(*block_expr),
+            normalizer::Expr::Literal(literal) => literal.into(),
             normalizer::Expr::Var(var_expr) => var_expr.into(),
             normalizer::Expr::Invoke(invoke_expr) => invoke_expr.into(),
             normalizer::Expr::Negate(negate_expr) => self.flatten_negate_expr(*negate_expr).into(),

@@ -3,7 +3,7 @@
 use derive_more::From;
 use typed_index_collections::TiVec;
 
-use cachet_util::{box_from, typed_field_index};
+use cachet_util::{box_from, deref_from, typed_field_index};
 
 use crate::ast::{BlockKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned};
 
@@ -173,6 +173,8 @@ pub enum Expr {
     #[from]
     Block(Box<BlockExpr>),
     #[from]
+    Literal(Literal),
+    #[from]
     Var(Spanned<Path>),
     Invoke(Call),
     #[from]
@@ -191,9 +193,18 @@ box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 
+deref_from!(&Literal => Expr);
+deref_from!(&Spanned<Path> => Expr);
+
 impl From<Block> for Expr {
     fn from(block: Block) -> Self {
         BlockExpr::from(block).into()
+    }
+}
+
+impl From<Spanned<&Path>> for Expr {
+    fn from(path: Spanned<&Path>) -> Self {
+        path.copied().into()
     }
 }
 
@@ -207,6 +218,11 @@ impl From<Block> for BlockExpr {
     fn from(block: Block) -> Self {
         Self { kind: None, block }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Literal {
+    Int32(i32),
 }
 
 #[derive(Clone, Debug)]
