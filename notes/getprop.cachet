@@ -23,6 +23,7 @@ struct Value;
 
 impl Value {
     fn typeOf(value: Value) -> ValueType;
+    fn setType(value: Value, valueTy: ValueType);
 
     // ...
 
@@ -92,6 +93,13 @@ impl Object {
         assert Class::isNativeObject(class);
         unsafe { object as NativeObject }
     }
+
+    fn toArgumentsObject(object: Object) -> ArgumentsObject {
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        assert Class::isArgumentsObject(class);
+        unsafe { object as ArgumentsObject }
+    }
   
     fn getFixedSlot(object: Object, slot: Int32) -> Value {
         let nativeObject = Object::toNativeObject(object);
@@ -113,6 +121,13 @@ impl NativeObject {
     unsafe fn getFixedSlotUnchecked(heap: Heap, nativeObject: NativeObject, slot: Int32) -> Value;
 }
 
+struct ArgumentsObject <: NativeObject;
+
+impl ArgumentsObject {
+    fn getInitialLength(obj: ArgumentsObject) -> Int32;
+    fn hasOverriddenLength(obj: ArgumentsObject) -> Bool;
+}
+
 struct Shape;
 
 impl Shape {
@@ -125,6 +140,7 @@ struct Class;
 
 impl Class {
     fn isNativeObject(class: Class) -> Bool;
+    fn isArgumentsObject(class: Class) -> Bool;
 }
 
 struct Reg;
@@ -227,6 +243,24 @@ ir MASM {
         MASM::setValue(outputReg, Object::getFixedSlot(object, slot));
     }
 
+    op LoadArgumentsObjectLength(
+        objectReg: Reg, outputReg: ValueReg, label failure: MASM
+    ) {
+        let obj = MASM::getObject(objectReg);
+        let argObj = Object::toArgumentsObject(obj);
+        if ArgumentsObject::hasOverriddenLength(argObj) {
+            goto failure;
+        }
+        let lengthVal = Value::fromInt32(ArgumentsObject::getInitialLength(argObj));
+        MASM::setValue(outputReg, lengthVal)
+    }
+
+    op TagValue(valTy: ValueType, payload: ValueReg, dest: ValueReg) {
+        let payloadVal = MASM::getValue(payload);
+        Value::setType(payloadVal, valTy);
+        MASM::setValue(dest, payloadVal);
+    }
+
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);
 
@@ -320,6 +354,16 @@ ir CacheIR emits MASM {
         let objectReg = CacheIR::useObjectReg(objectId);
         let slot = CacheIR::readInt32Field(slotField);
         emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
+    }
+
+    op LoadArgumentsObjectLengthResult(objectId: ObjectId, label failure: MASM) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let argObjLengthReg = CacheIR::allocateValueReg();
+
+        emit MASM::LoadArgumentsObjectLength(objectReg, argObjLengthReg, failure);
+        emit MASM::TagValue(ValueType::Int32, argObjLengthReg, CacheIR::outputReg);
+
+        CacheIR::releaseValueReg(argObjLengthReg);
     }
 
     fn allocateReg() -> Reg;
