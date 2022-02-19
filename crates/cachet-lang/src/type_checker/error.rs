@@ -28,17 +28,17 @@ pub enum TypeCheckError {
     OpReturnsValue { op: Path, ret_span: Span },
     #[error("op `{op}` is missing a body")]
     MissingOpBody { op: Path, body_span: Span },
-    #[error("can't jump to `{target_label}` from within `{source_callable}`")]
+    #[error("can't jump to `{label}` inside `{callable}")]
     GotoIrMismatch {
-        source_callable: Path,
-        target_label: Spanned<Ident>,
+        label: Spanned<Ident>,
+        callable: Path,
         expected_ir: Option<Spanned<Ident>>,
         found_ir: Ident,
     },
-    #[error("can't emit `{target_op}` inside `{source_callable}`")]
+    #[error("can't emit `{op}` inside `{callable}`")]
     EmitIrMismatch {
-        source_callable: Path,
-        target_op: Spanned<Path>,
+        op: Spanned<Path>,
+        callable: Path,
         expected_ir: Option<Spanned<Ident>>,
         found_ir: Ident,
     },
@@ -139,8 +139,8 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::OpHasOutParam { out_param, .. } => out_param.span,
             TypeCheckError::OpReturnsValue { ret_span, .. } => *ret_span,
             TypeCheckError::MissingOpBody { body_span, .. } => *body_span,
-            TypeCheckError::GotoIrMismatch { target_label, .. } => target_label.span,
-            TypeCheckError::EmitIrMismatch { target_op, .. } => target_op.span,
+            TypeCheckError::GotoIrMismatch { label, .. } => label.span,
+            TypeCheckError::EmitIrMismatch { op, .. } => op.span,
             TypeCheckError::ExprTypeMismatch { expr_span, .. } => *expr_span,
             TypeCheckError::InvalidCast { expr_span, .. } => *expr_span,
             TypeCheckError::UnsafeCallInSafeContext { target, .. } => target.span,
@@ -198,8 +198,18 @@ impl FrontendError for TypeCheckError {
                 expected_ir,
                 found_ir,
                 ..
+            } => {
+                label.message = match expected_ir {
+                    Some(expected_ir) => {
+                        format!(
+                            "expected `{}` label, found `{}` label",
+                            expected_ir, found_ir
+                        )
+                    }
+                    None => format!("unexpected `{}` label", found_ir),
+                };
             }
-            | TypeCheckError::EmitIrMismatch {
+            TypeCheckError::EmitIrMismatch {
                 expected_ir,
                 found_ir,
                 ..
@@ -321,25 +331,29 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::OpReturnsValue { .. } => (),
             TypeCheckError::MissingOpBody { .. } => (),
             TypeCheckError::GotoIrMismatch {
-                source_callable,
+                callable,
                 expected_ir,
                 ..
             } => {
                 if let Some(expected_ir) = expected_ir {
-                    labels.push(Label::secondary(file_id, expected_ir.span).with_message(
-                        format!("`{}` interprets `{}` ops", source_callable, expected_ir),
-                    ));
+                    labels.push(
+                        Label::secondary(file_id, expected_ir.span).with_message(format!(
+                            "`{}` interprets `{}` ops",
+                            callable, expected_ir
+                        )),
+                    );
                 }
             }
             TypeCheckError::EmitIrMismatch {
-                source_callable,
+                callable,
                 expected_ir,
                 ..
             } => {
                 if let Some(expected_ir) = expected_ir {
-                    labels.push(Label::secondary(file_id, expected_ir.span).with_message(
-                        format!("`{}` emits `{}` ops", source_callable, expected_ir),
-                    ));
+                    labels.push(
+                        Label::secondary(file_id, expected_ir.span)
+                            .with_message(format!("`{}` emits `{}` ops", callable, expected_ir)),
+                    );
                 }
             }
             TypeCheckError::ExprTypeMismatch { .. } => (),

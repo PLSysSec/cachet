@@ -14,9 +14,9 @@ use crate::ast::{
 use crate::type_checker;
 pub use crate::type_checker::{
     CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex,
-    GlobalVarItem, GotoStmt, IrIndex, IrItem, LabelIndex, LabelParam, LabelParamIndex, Literal,
-    LocalLabel, LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError,
-    OpIndex, OutVar, OutVarArg, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex,
+    GlobalVarItem, GotoStmt, IrIndex, IrItem, Label, LabelIndex, LabelParamIndex, LabelStmt,
+    Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex,
+    OutVar, OutVarArg, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex,
     StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex,
     VariantIndex,
 };
@@ -119,12 +119,14 @@ pub struct Body<B = ()> {
 }
 
 field_index!(Body<B>:locals[LocalVarIndex] => LocalVar | <B>);
-field_index!(Body<B>:locals[LocalLabelIndex] => LocalLabel | <B>);
+field_index!(Body<B>:locals[LocalLabelIndex] => Label | <B>);
 
 #[derive(Clone, Debug, From)]
 pub enum Stmt<B = ()> {
     #[from]
     Let(LetStmt<B>),
+    #[from]
+    Label(LabelStmt),
     #[from]
     If(IfStmt<B>),
     #[from]

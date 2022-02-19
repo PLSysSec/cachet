@@ -70,7 +70,7 @@ pub struct CallableItem {
 pub enum Param {
     Var(VarParam),
     OutVar(OutVarParam),
-    Label(LabelParam),
+    Label(Label),
 }
 
 #[derive(Clone, Debug)]
@@ -87,7 +87,7 @@ pub struct OutVarParam {
 }
 
 #[derive(Clone, Debug)]
-pub struct LabelParam {
+pub struct Label {
     pub ident: Spanned<Ident>,
     pub ir: Spanned<Path>,
 }
@@ -134,6 +134,8 @@ pub enum Stmt {
     #[from]
     Let(LetStmt),
     #[from]
+    Label(LabelStmt),
+    #[from]
     If(IfStmt),
     #[from]
     Check(CheckStmt),
@@ -148,6 +150,11 @@ pub enum Stmt {
 pub struct LetStmt {
     pub lhs: LocalVar,
     pub rhs: Spanned<Expr>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LabelStmt {
+    pub label: Label,
 }
 
 #[derive(Clone, Debug)]

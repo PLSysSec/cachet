@@ -97,7 +97,7 @@ CallableBody: Option<Block> = {
 Param: Param = {
     <var_param:VarParam> => var_param.into(),
     <out_var_param:OutVarParam> => out_var_param.into(),
-    <label_param:LabelParam> => label_param.into(),
+    <label_param:Label> => label_param.into(),
 };
 
 VarParam: VarParam =
@@ -107,8 +107,8 @@ VarParam: VarParam =
 OutVarParam: OutVarParam =
     "out" <ident:Spanned<Ident>> ":" <type_: Spanned<Path>> => OutVarParam { ident, type_ };
 
-LabelParam: LabelParam =
-    "label" <ident:Spanned<Ident>> ":" <ir: Spanned<Path>> => LabelParam { ident, ir };
+Label: Label =
+    "label" <ident:Spanned<Ident>> ":" <ir: Spanned<Path>> => Label { ident, ir };
 
 Arg: Arg = {
     <expr:RawBlockOrExpr> => {
@@ -179,6 +179,7 @@ StmtsBlock: (Vec<Stmt>, Block) = {
 
 Stmt: Stmt = {
     <let_stmt:LetStmt> => let_stmt.into(),
+    <label_stmt:LabelStmt> => label_stmt.into(),
     <if_stmt:IfStmt> => if_stmt.into(),
     <check_stmt:CheckStmt> => check_stmt.into(),
     <goto_stmt:GotoStmt> => goto_stmt.into(),
@@ -188,6 +189,9 @@ Stmt: Stmt = {
 
 LetStmt: LetStmt =
     <lhs:LocalVar> "=" <rhs:Spanned<BlockOrExpr>> ";" => LetStmt { lhs, rhs };
+
+LabelStmt: LabelStmt =
+    <label:Label> ";" => LabelStmt { label };
 
 IfStmt: IfStmt =
     "if" <cond:Spanned<BlockOrExpr>> <then:Block> <else_:("else" <Block>)?> =>

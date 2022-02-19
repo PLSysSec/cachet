@@ -83,6 +83,9 @@ impl Flattener {
             normalizer::Stmt::Let(let_stmt) => {
                 self.flatten_let_stmt(let_stmt);
             }
+            normalizer::Stmt::Label(label_stmt) => {
+                self.stmts.push(label_stmt.into());
+            }
             normalizer::Stmt::If(if_stmt) => {
                 self.flatten_if_stmt(if_stmt);
             }
