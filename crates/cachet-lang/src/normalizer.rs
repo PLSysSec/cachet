@@ -238,6 +238,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_stmt(&mut self, stmt: type_checker::Stmt) {
         match stmt {
             type_checker::Stmt::Let(let_stmt) => self.normalize_let_stmt(let_stmt),
+            type_checker::Stmt::Label(label_stmt) => self.stmts.push(label_stmt.into()),
             type_checker::Stmt::If(if_stmt) => self.normalize_if_stmt(if_stmt),
             type_checker::Stmt::Check(check_stmt) => self.normalize_check_stmt(check_stmt),
             type_checker::Stmt::Goto(goto_stmt) => self.stmts.push(goto_stmt.into()),

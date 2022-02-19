@@ -148,6 +148,8 @@ impl IrMemberTypePath {
 
 #[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum IrMemberTypeIdent {
+    #[display(fmt = "LabelLocal")]
+    LabelLocal,
     #[display(fmt = "LabelRef")]
     LabelRef,
     #[display(fmt = "OpsRef")]
@@ -430,15 +432,22 @@ impl IrMemberFnPath {
 pub enum IrMemberFnIdent {
     #[display(fmt = "GetOutput")]
     GetOutput,
-    #[display(fmt = "Goto")]
-    Goto,
+    #[display(fmt = "NewLabel")]
+    NewLabel,
+    #[display(fmt = "ToLabelRef")]
+    ToLabelRef,
+    #[display(fmt = "GotoLabel")]
+    GotoLabel,
     Emit(EmitIrMemberFnIdent),
 }
 
 impl IrMemberFnIdent {
     pub const fn parent_namespace_kind(self) -> NamespaceKind {
         match self {
-            IrMemberFnIdent::GetOutput | IrMemberFnIdent::Goto => NamespaceKind::Ir,
+            IrMemberFnIdent::GetOutput
+            | IrMemberFnIdent::NewLabel
+            | IrMemberFnIdent::ToLabelRef
+            | IrMemberFnIdent::GotoLabel => NamespaceKind::Ir,
             IrMemberFnIdent::Emit(_) => EmitIrMemberFnIdent::PARENT_NAMESPACE_KIND,
         }
     }

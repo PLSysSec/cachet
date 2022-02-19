@@ -6,10 +6,10 @@ use crate::normalizer;
 pub use crate::normalizer::{
     Arg, AtomExpr, Call, CallableIndex, CompareExpr, DeclIndex, EmitStmt, EnumIndex, EnumItem,
     EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, InvokeExpr, InvokeStmt,
-    IrIndex, IrItem, LabelIndex, LabelParam, LabelParamIndex, Literal, LocalLabel,
-    LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar,
-    OutVarArg, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex,
-    StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex, VariantIndex,
+    IrIndex, IrItem, Label, LabelIndex, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex,
+    LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg,
+    OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex, StructIndex, StructItem,
+    TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 
 pub type Env = normalizer::Env<Void>;

@@ -15,7 +15,7 @@ use crate::ast::{
 use crate::resolver;
 pub use crate::resolver::{
     CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem,
-    IrIndex, IrItem, LabelIndex, LabelParam, LabelParamIndex, Literal, LocalLabelIndex,
+    IrIndex, IrItem, Label, LabelIndex, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex,
     LocalVarIndex, OpIndex, OutVar, OutVarParam, OutVarParamIndex, ParamIndex, Params,
     ParentIndex, StructIndex, StructItem, TypeIndex, Typed, VarIndex, VarParam, VarParamIndex,
     VariantIndex,
@@ -210,19 +210,18 @@ impl Typed for Body {
 }
 
 field_index!(Body:locals[LocalVarIndex] => LocalVar);
-field_index!(Body:locals[LocalLabelIndex] => LocalLabel);
+field_index!(Body:locals[LocalLabelIndex] => Label);
 
 #[derive(Clone, Debug, Default)]
 pub struct Locals {
     pub local_vars: TiVec<LocalVarIndex, LocalVar>,
-    pub local_labels: TiVec<LocalLabelIndex, LocalLabel>,
+    pub local_labels: TiVec<LocalLabelIndex, Label>,
 }
 
 field_index!(Locals:local_vars[LocalVarIndex] => LocalVar);
-field_index!(Locals:local_labels[LocalLabelIndex] => LocalLabel);
+field_index!(Locals:local_labels[LocalLabelIndex] => Label);
 
 pub type LocalVar = VarParam;
-pub type LocalLabel = LabelParam;
 
 #[derive(Clone, Debug)]
 pub struct Block {
@@ -240,6 +239,8 @@ impl Typed for Block {
 pub enum Stmt {
     #[from]
     Let(LetStmt),
+    #[from]
+    Label(LabelStmt),
     #[from]
     If(IfStmt),
     #[from]

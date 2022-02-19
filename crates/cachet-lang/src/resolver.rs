@@ -615,24 +615,6 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_label_ir(&mut self, path: Spanned<Path>) -> Option<IrIndex> {
-        let ir_index = self.lookup_ir_global(path).found(&mut self.errors)?;
-        let ir_item = &self.ir_items?[ir_index];
-        match ir_item.emits {
-            None => Some(ir_index),
-            Some(_) => {
-                self.errors.push(
-                    InvalidLabelIrError {
-                        ir: path,
-                        ir_defined_at: ir_item.ident.span,
-                    }
-                    .into(),
-                );
-                None
-            }
-        }
-    }
-
     fn lookup_type_global(&mut self, path: Spanned<Path>) -> LookupResult<TypeIndex> {
         self.lookup_global(path, NameKind::Type.into())
             .map_found(|item_index| match item_index {
@@ -759,70 +741,72 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
 
     fn resolve_param(&mut self, param: parser::Param, params: &mut Params) -> ParamIndex {
         match param {
-            parser::Param::Var(var_param) => self
-                .resolve_var_param(var_param, &mut params.var_params)
-                .into(),
-            parser::Param::OutVar(out_var_param) => self
-                .resolve_out_var_param(out_var_param, &mut params.out_var_params)
-                .into(),
-            parser::Param::Label(label_param) => self
-                .resolve_label_param(label_param, &mut params.label_params)
-                .into(),
+            parser::Param::Var(var_param) => {
+                let var_param = self.resolve_var_param(var_param);
+                let var_param_ident = var_param.ident;
+                let var_param_index = params.var_params.push_and_get_key(var_param);
+                self.register_scoped(var_param_ident, var_param_index.into());
+                var_param_index.into()
+            }
+            parser::Param::OutVar(out_var_param) => {
+                let out_var_param = self.resolve_out_var_param(out_var_param);
+                let out_var_param_ident = out_var_param.ident;
+                let out_var_param_index = params.out_var_params.push_and_get_key(out_var_param);
+                self.register_scoped(out_var_param_ident, out_var_param_index.into());
+                out_var_param_index.into()
+            }
+            parser::Param::Label(label_param) => {
+                let label_param = self.resolve_label(label_param);
+                let label_param_ident = label_param.ident;
+                let label_param_index = params.label_params.push_and_get_key(label_param);
+                self.register_scoped(label_param_ident, label_param_index.into());
+                label_param_index.into()
+            }
         }
     }
 
-    fn resolve_var_param(
-        &mut self,
-        var_param: parser::VarParam,
-        var_params: &mut TiVec<VarParamIndex, VarParam>,
-    ) -> VarParamIndex {
-        let type_ = self
-            .lookup_type_global(var_param.type_)
-            .found(&mut self.errors)
-            .unwrap_or_else(|| BuiltInType::Unit.into());
-
-        let var_param_index = var_params.push_and_get_key(VarParam {
+    fn resolve_var_param(&mut self, var_param: parser::VarParam) -> VarParam {
+        let local_var = self.resolve_local_var(parser::LocalVar {
             ident: var_param.ident,
             is_mut: var_param.is_mut,
-            type_,
+            type_: Some(var_param.type_),
         });
-        self.register_scoped(var_param.ident, var_param_index.into());
-        var_param_index
+
+        VarParam {
+            ident: local_var.ident,
+            is_mut: local_var.is_mut,
+            type_: local_var.type_.unwrap_or_else(|| BuiltInType::Unit.into()),
+        }
     }
 
-    fn resolve_out_var_param(
-        &mut self,
-        out_var_param: parser::OutVarParam,
-        out_var_params: &mut TiVec<OutVarParamIndex, OutVarParam>,
-    ) -> OutVarParamIndex {
-        let type_ = self
-            .lookup_type_global(out_var_param.type_)
-            .found(&mut self.errors)
-            .unwrap_or_else(|| BuiltInType::Unit.into());
-
-        let out_var_param_index = out_var_params.push_and_get_key(OutVarParam {
+    fn resolve_out_var_param(&mut self, out_var_param: parser::OutVarParam) -> OutVarParam {
+        let var_param = self.resolve_var_param(parser::VarParam {
             ident: out_var_param.ident,
-            type_,
+            is_mut: false,
+            type_: out_var_param.type_,
         });
-        self.register_scoped(out_var_param.ident, out_var_param_index.into());
-        out_var_param_index
+
+        OutVarParam {
+            ident: var_param.ident,
+            type_: var_param.type_,
+        }
     }
 
-    fn resolve_label_param(
-        &mut self,
-        label_param: parser::LabelParam,
-        label_params: &mut TiVec<LabelParamIndex, LabelParam>,
-    ) -> LabelParamIndex {
+    fn resolve_label(&mut self, label: parser::Label) -> Label {
+        // If the IR lookup fails, we fill in the `ir` field with a bogus zero
+        // index value. This could be an invalid index value if there are no IRs
+        // defined in the code we're processing. It'll be fine as long as
+        // nothing in name resolution actually uses these index values. The
+        // generation of an error on lookup failure will stop them from escaping
+        // the resolver.
         let ir = self
-            .resolve_label_ir(label_param.ir)
+            .resolve_label_ir(label.ir)
             .unwrap_or_else(|| IrIndex::from(0));
 
-        let label_param_index = label_params.push_and_get_key(LabelParam {
-            ident: label_param.ident,
+        Label {
+            ident: label.ident,
             ir,
-        });
-        self.register_scoped(label_param.ident, label_param_index.into());
-        label_param_index
+        }
     }
 
     fn resolve_args(&mut self, args: Vec<Spanned<parser::Arg>>) -> Option<Vec<Spanned<Arg>>> {
@@ -873,18 +857,13 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 self.lookup_var_scoped(out_var_path).found(&mut self.errors)
             })
             .map(OutVar::Out),
-            parser::OutVar::OutLet(out_let_var) => Some(OutVar::OutLet(self.bind_local_var(
-                out_let_var,
-                |_, ident, out_let_var_index| {
-                    // An `out let` variable shouldn't come into scope until
-                    // after the call expression finishes executing.
-                    // Otherwise, another argument in the call expression
-                    // could refer to this newly-introduced variable, before
-                    // it has actually been populated with a value by the
-                    // call.
-                    deferred_local_var_registrations.push((ident, out_let_var_index));
-                },
-            ))),
+            parser::OutVar::OutLet(out_local_var) => {
+                let out_local_var = self.resolve_local_var(out_local_var);
+                let out_local_var_ident = out_local_var.ident;
+                let out_local_var_index = self.locals.local_vars.push_and_get_key(out_local_var);
+                deferred_local_var_registrations.push((out_local_var_ident, out_local_var_index));
+                Some(OutVar::OutLet(out_local_var_index))
+            }
         }
     }
 
@@ -903,6 +882,18 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             target: target?,
             args: args?,
         })
+    }
+
+    fn resolve_local_var(&mut self, local_var: parser::LocalVar) -> LocalVar {
+        let type_ = local_var
+            .type_
+            .and_then(|type_| self.lookup_type_scoped(type_).found(&mut self.errors));
+
+        LocalVar {
+            ident: local_var.ident,
+            is_mut: local_var.is_mut,
+            type_,
+        }
     }
 
     fn resolve_body_block(&mut self, block: parser::Block) -> Option<Block> {
@@ -935,6 +926,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     fn resolve_stmt(&mut self, stmt: parser::Stmt) -> Option<Stmt> {
         match stmt {
             parser::Stmt::Let(let_stmt) => self.resolve_let_stmt(let_stmt).map(Stmt::from),
+            parser::Stmt::Label(label_stmt) => self.resolve_label_stmt(label_stmt).map(Stmt::from),
             parser::Stmt::If(if_stmt) => self.resolve_if_stmt(if_stmt).map(Stmt::from),
             parser::Stmt::Check(check_stmt) => self.resolve_check_stmt(check_stmt).map(Stmt::from),
             parser::Stmt::Goto(goto_stmt) => self.resolve_goto_stmt(goto_stmt).map(Stmt::from),
@@ -952,13 +944,25 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     fn resolve_let_stmt(&mut self, let_stmt: parser::LetStmt) -> Option<LetStmt> {
         let rhs = map_spanned(let_stmt.rhs, |rhs| self.resolve_expr(rhs.value));
 
-        let lhs = self.bind_local_var(let_stmt.lhs, |scoped_resolver, ident, local_var_index| {
-            scoped_resolver.register_scoped(ident, local_var_index.into());
-        });
+        let local_var = self.resolve_local_var(let_stmt.lhs);
+        let local_var_ident = local_var.ident;
+        let local_var_index = self.locals.local_vars.push_and_get_key(local_var);
+        self.register_scoped(local_var_ident, local_var_index.into());
 
         Some(LetStmt {
-            lhs: lhs,
+            lhs: local_var_index,
             rhs: rhs?,
+        })
+    }
+
+    fn resolve_label_stmt(&mut self, label_stmt: parser::LabelStmt) -> Option<LabelStmt> {
+        let local_label = self.resolve_label(label_stmt.label);
+        let local_label_ident = local_label.ident;
+        let local_label_index = self.locals.local_labels.push_and_get_key(local_label);
+        self.register_scoped(local_label_ident, local_label_index.into());
+
+        Some(LabelStmt {
+            label: local_label_index,
         })
     }
 
@@ -1088,6 +1092,24 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         })
     }
 
+    fn resolve_label_ir(&mut self, path: Spanned<Path>) -> Option<IrIndex> {
+        let ir_index = self.lookup_ir_scoped(path).found(&mut self.errors)?;
+        let ir_item = &self.ir_items?[ir_index];
+        match ir_item.emits {
+            None => Some(ir_index),
+            Some(_) => {
+                self.errors.push(
+                    InvalidLabelIrError {
+                        ir: path,
+                        ir_defined_at: ir_item.ident.span,
+                    }
+                    .into(),
+                );
+                None
+            }
+        }
+    }
+
     fn register_scoped(&mut self, ident: Spanned<Ident>, scoped_index: ScopedIndex) {
         if let Err(error) = self
             .scoped_registry
@@ -1098,26 +1120,6 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         }
     }
 
-    fn bind_local_var(
-        &mut self,
-        local_var: parser::LocalVar,
-        mut register_local_var: impl FnMut(&mut Self, Spanned<Ident>, LocalVarIndex),
-    ) -> LocalVarIndex {
-        let type_ = local_var.type_.map(|type_| {
-            self.lookup_type_scoped(type_)
-                .found(&mut self.errors)
-                .unwrap_or_else(|| BuiltInType::Unit.into())
-        });
-
-        let local_var_index = self.locals.local_vars.push_and_get_key(LocalVar {
-            ident: local_var.ident,
-            is_mut: local_var.is_mut,
-            type_,
-        });
-        register_local_var(self, local_var.ident, local_var_index);
-        local_var_index
-    }
-
     fn lookup_type_scoped(&mut self, path: Spanned<Path>) -> LookupResult<TypeIndex> {
         let path = match self.lookup_scoped_only(path, NameKind::Type.into()) {
             Ok(_) => unreachable!(),
@@ -1126,6 +1128,16 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         };
 
         self.lookup_type_global(path)
+    }
+
+    fn lookup_ir_scoped(&mut self, path: Spanned<Path>) -> LookupResult<IrIndex> {
+        let path = match self.lookup_scoped_only(path, NameKind::Ir.into()) {
+            Ok(_) => unreachable!(),
+            Err(LookupError::Undefined(error)) => error.path,
+            Err(error @ LookupError::WrongKind(_)) => return Err(error),
+        };
+
+        self.lookup_ir_global(path)
     }
 
     fn lookup_op_scoped(&mut self, path: Spanned<Path>) -> LookupResult<OpIndex> {

@@ -640,6 +640,7 @@ impl<'a> Compiler<'a> {
 
         // Start by filling in all of the label parameter local variables with
         // fresh labels.
+        // TODO(spinda): Make the label parameters match their IRs.
         let mut stmts: Vec<Stmt> = label_param_local_vars
             .iter()
             .map(|label_param_local_var| {
@@ -731,6 +732,7 @@ impl<'a> Compiler<'a> {
         ]);
 
         // Bind all external labels to the trailing external emit.
+        // TODO(spinda): Only do this for external labels of the bottom IR.
         stmts.extend(label_param_local_vars.iter().map(|label_param_local_var| {
             CallExpr {
                 target: IrMemberFnIdent {
@@ -945,7 +947,7 @@ impl<'a> Compiler<'a> {
         })
     }
 
-    fn compile_label_param(&self, label_param: &flattener::LabelParam) -> TypedVar {
+    fn compile_label_param(&self, label_param: &flattener::Label) -> TypedVar {
         TypedVar {
             ident: UserParamVarIdent::from(label_param.ident.value).into(),
             type_: IrMemberTypeIdent {
@@ -1014,7 +1016,7 @@ impl<'a> Compiler<'a> {
 
     fn compile_local_labels<'b>(
         &'b self,
-        local_labels: &'b TiSlice<LocalLabelIndex, flattener::LocalLabel>,
+        local_labels: &'b TiSlice<LocalLabelIndex, flattener::Label>,
     ) -> impl 'b + Iterator<Item = LocalVar> + Captures<'a> {
         local_labels
             .iter_enumerated()
@@ -1026,7 +1028,7 @@ impl<'a> Compiler<'a> {
     fn compile_local_label(
         &self,
         local_label_index: LocalLabelIndex,
-        local_label: &flattener::LocalLabel,
+        local_label: &flattener::Label,
     ) -> LocalVar {
         TypedVar {
             ident: LocalLabelVarIdent {
@@ -1358,6 +1360,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_stmt(&mut self, stmt: &flattener::Stmt) {
         match stmt {
             flattener::Stmt::Let(let_stmt) => self.compile_let_stmt(let_stmt),
+            flattener::Stmt::Label(label_stmt) => self.compile_label_stmt(label_stmt),
             flattener::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
             flattener::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
             flattener::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
@@ -1377,6 +1380,29 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         .into();
 
         let rhs = self.compile_expr(&let_stmt.rhs);
+
+        self.stmts.push(AssignStmt { lhs, rhs }.into());
+    }
+
+    fn compile_label_stmt(&mut self, label_stmt: &flattener::LabelStmt) {
+        let local_label = &self.callable_locals[label_stmt.label];
+        let ir_ident = self.env[local_label.ir].ident.value.into();
+
+        let lhs = LocalLabelVarIdent {
+            ident: local_label.ident.value,
+            index: label_stmt.label,
+        }
+        .into();
+
+        let rhs = CallExpr {
+            target: IrMemberFnIdent {
+                ir_ident,
+                selector: IrMemberFnSelector::Label,
+            }
+            .into(),
+            arg_exprs: vec![].into(),
+        }
+        .into();
 
         self.stmts.push(AssignStmt { lhs, rhs }.into());
     }
@@ -1853,54 +1879,96 @@ fn trace_entry_point(
     top_op_item: &flattener::CallableItem,
     bottom_ir_index: flattener::IrIndex,
 ) -> FlowGraph {
-    let mut graph = FlowGraph::default();
-    let mut label_scope = LabelScope::new();
-
-    for param_index in &top_op_item.param_order {
-        if let flattener::ParamIndex::Label(label_param_index) = param_index {
-            let label_node_index = graph.label_nodes.push_and_get_key(LabelNode::default());
-            label_scope.insert(label_param_index.into(), label_node_index);
-        }
-    }
-
-    let mut tracer = FlowTracer::new(env, &mut graph, &label_scope);
-    tracer.trace_op_item(top_op_item);
-
-    // Bind all external labels to an additional external emit.
-    tracer.bound_labels.extend(label_scope.values());
-    tracer.trace_external(bottom_ir_index);
-
-    graph
+    let mut flow_tracer = FlowTracer::new(env, bottom_ir_index);
+    flow_tracer.init_top_label_params(&top_op_item.params, &top_op_item.param_order);
+    flow_tracer.trace_op_item(top_op_item);
+    flow_tracer.bind_external_labels();
+    flow_tracer.graph.into_owned()
 }
 
 struct FlowTracer<'a> {
     env: &'a flattener::Env,
-    graph: &'a mut FlowGraph,
+    bottom_ir_index: flattener::IrIndex,
+    graph: MaybeOwned<'a, FlowGraph>,
     curr_emit_label_ident: &'a EmitLabelIdent,
     next_local_emit_index: MaybeOwned<'a, LocalEmitIndex>,
     pred_emits: MaybeOwned<'a, HashSet<EmitNodeIndex>>,
-    label_scope: &'a LabelScope,
+    label_scope: MaybeOwned<'a, LabelScope>,
     bound_labels: MaybeOwned<'a, HashSet<LabelNodeIndex>>,
 }
 
 impl<'a> FlowTracer<'a> {
-    fn new(
-        env: &'a flattener::Env,
-        graph: &'a mut FlowGraph,
-        label_scope: &'a LabelScope,
-    ) -> Self {
+    fn new(env: &'a flattener::Env, bottom_ir_index: flattener::IrIndex) -> Self {
         static ROOT_EMIT_LABEL_IDENT: EmitLabelIdent = EmitLabelIdent {
             segments: Vec::new(),
         };
+
         FlowTracer {
             env,
-            graph,
+            bottom_ir_index,
+            graph: MaybeOwned::Owned(FlowGraph::default()),
             curr_emit_label_ident: &ROOT_EMIT_LABEL_IDENT,
             next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
             pred_emits: MaybeOwned::Owned(HashSet::new()),
-            label_scope,
+            label_scope: MaybeOwned::Owned(LabelScope::new()),
             bound_labels: MaybeOwned::Owned(HashSet::new()),
         }
+    }
+
+    fn init_top_label_params(
+        &mut self,
+        params: &flattener::Params,
+        param_order: &[flattener::ParamIndex],
+    ) {
+        for param_index in param_order {
+            if let flattener::ParamIndex::Label(label_param_index) = param_index {
+                let label_param = &params[label_param_index];
+                if label_param.ir == self.bottom_ir_index {
+                    self.create_label_node(label_param_index.into());
+                }
+            }
+        }
+    }
+
+    fn init_label_params_with_args(
+        &mut self,
+        params: &flattener::Params,
+        param_order: &[flattener::ParamIndex],
+        args: &[flattener::Arg],
+        caller_label_scope: &LabelScope,
+    ) {
+        for item in param_order.iter().zip(args) {
+            if let (
+                flattener::ParamIndex::Label(label_param_index),
+                flattener::Arg::Label(arg_label_index),
+            ) = item
+            {
+                let label_param = &params[label_param_index];
+                if label_param.ir == self.bottom_ir_index {
+                    let arg_label_node_index = caller_label_scope[arg_label_index];
+                    self.label_scope
+                        .insert(label_param_index.into(), arg_label_node_index);
+                }
+            }
+        }
+    }
+
+    fn bind_external_labels(&mut self) {
+        self.bound_labels.extend(
+            self.graph
+                .label_nodes
+                .iter_enumerated()
+                .filter(|(_, label_node)| label_node.bound_to.is_empty())
+                .map(|(label_node_index, _)| label_node_index),
+        );
+
+        let emit_label_segment = EmitLabelSegment {
+            local_emit_index: self.take_local_emit_index(),
+            ir_ident: self.env[self.bottom_ir_index].ident.value.into(),
+            op_selector: OpSelector::External,
+        };
+        let emit_label_ident = vec![emit_label_segment].into();
+        self.create_emit_node(emit_label_ident, None);
     }
 
     fn trace_op_item(&mut self, op_item: &flattener::CallableItem) {
@@ -1910,7 +1978,16 @@ impl<'a> FlowTracer<'a> {
     }
 
     fn trace_body(&mut self, body: &flattener::Body) {
+        self.trace_local_labels(&body.locals.local_labels);
         self.trace_stmts(&body.stmts);
+    }
+
+    fn trace_local_labels(&mut self, local_labels: &TiSlice<LocalLabelIndex, flattener::Label>) {
+        for (local_label_index, local_label) in local_labels.iter_enumerated() {
+            if local_label.ir == self.bottom_ir_index {
+                self.create_label_node(local_label_index.into());
+            }
+        }
     }
 
     fn trace_stmts(&mut self, stmts: &[flattener::Stmt]) {
@@ -1932,11 +2009,12 @@ impl<'a> FlowTracer<'a> {
             // labels.
             let mut flow_tracer = FlowTracer {
                 env: self.env,
-                graph: self.graph,
+                bottom_ir_index: self.bottom_ir_index,
+                graph: MaybeOwned::Borrowed(&mut self.graph),
                 curr_emit_label_ident: self.curr_emit_label_ident,
                 next_local_emit_index: MaybeOwned::Borrowed(&mut self.next_local_emit_index),
                 pred_emits: MaybeOwned::Owned(init_pred_emits.clone()),
-                label_scope: self.label_scope,
+                label_scope: MaybeOwned::Borrowed(&mut self.label_scope),
                 bound_labels: MaybeOwned::Owned(init_bound_labels.clone()),
             };
             flow_tracer.trace_stmts(branch);
@@ -1952,6 +2030,7 @@ impl<'a> FlowTracer<'a> {
     fn trace_stmt(&mut self, stmt: &flattener::Stmt) {
         match stmt {
             flattener::Stmt::Let(_)
+            | flattener::Stmt::Label(_)
             | flattener::Stmt::Check(_)
             | flattener::Stmt::Invoke(_)
             | flattener::Stmt::Assign(_)
@@ -2010,50 +2089,26 @@ impl<'a> FlowTracer<'a> {
 
         // Trace inside the emitted op. It's important that we do this *after*
         // potentially creating a new emit node, so that, e.g., any goto
-        // statements inside the op link the new emit node to their labels as
-        // successors.
-
-        let label_param_indexes =
-            op_item
-                .param_order
-                .iter()
-                .filter_map(|param_index| match param_index {
-                    flattener::ParamIndex::Label(label_param_index) => Some(label_param_index),
-                    _ => None,
-                });
-
-        let label_arg_node_indexes = emit_stmt.call.args.iter().filter_map(|arg| match arg {
-            flattener::Arg::Label(label_index) => Some(self.label_scope[label_index]),
-            _ => None,
-        });
-
-        let label_scope = label_param_indexes
-            .map(Into::into)
-            .zip(label_arg_node_indexes)
-            .collect();
+        // statements inside the op link their labels as successors of the new
+        // emit node.
 
         let mut flow_tracer = FlowTracer {
             env: self.env,
-            graph: self.graph,
+            bottom_ir_index: self.bottom_ir_index,
+            graph: MaybeOwned::Borrowed(&mut self.graph),
             curr_emit_label_ident: &new_emit_label_ident,
             next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
             pred_emits: MaybeOwned::Borrowed(&mut self.pred_emits),
-            label_scope: &label_scope,
+            label_scope: MaybeOwned::Owned(LabelScope::new()),
             bound_labels: MaybeOwned::Borrowed(&mut self.bound_labels),
         };
+        flow_tracer.init_label_params_with_args(
+            &op_item.params,
+            &op_item.param_order,
+            &emit_stmt.call.args,
+            &self.label_scope,
+        );
         flow_tracer.trace_op_item(op_item);
-    }
-
-    fn trace_external(&mut self, ir_index: flattener::IrIndex) {
-        let emit_label_segment = EmitLabelSegment {
-            local_emit_index: self.take_local_emit_index(),
-            ir_ident: self.env[ir_index].ident.value.into(),
-            op_selector: OpSelector::External,
-        };
-
-        let emit_label_ident = vec![emit_label_segment].into();
-
-        self.create_emit_node(emit_label_ident, None);
     }
 
     fn create_emit_node(
@@ -2080,8 +2135,10 @@ impl<'a> FlowTracer<'a> {
     }
 
     fn link_bound_labels_to_emit(&mut self, emit_node_index: EmitNodeIndex) {
-        for bound_label in self.bound_labels.drain() {
-            self.graph[bound_label].bound_to.insert(emit_node_index);
+        for bound_label_index in self.bound_labels.drain() {
+            self.graph[bound_label_index]
+                .bound_to
+                .insert(emit_node_index);
         }
     }
 
@@ -2089,6 +2146,15 @@ impl<'a> FlowTracer<'a> {
         let local_emit_index = *self.next_local_emit_index;
         *self.next_local_emit_index = LocalEmitIndex::from(usize::from(local_emit_index) + 1);
         local_emit_index
+    }
+
+    fn create_label_node(&mut self, label_index: flattener::LabelIndex) {
+        let label_node_index = self
+            .graph
+            .label_nodes
+            .push_and_get_key(LabelNode::default());
+
+        self.label_scope.insert(label_index, label_node_index);
     }
 }
 

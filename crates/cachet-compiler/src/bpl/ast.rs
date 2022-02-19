@@ -192,7 +192,7 @@ pub enum ParamVarIdent {
     Init,
     #[display(fmt = "last")]
     Last,
-    #[display(fmt = "emit_path")]
+    #[display(fmt = "emitPath")]
     EmitPath,
     #[display(fmt = "op")]
     Op,

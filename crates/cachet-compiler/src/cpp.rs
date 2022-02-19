@@ -603,7 +603,7 @@ impl<'a> Compiler<'a> {
         Param { ident, type_ }
     }
 
-    fn compile_label_param(&mut self, label_param: &normalizer::LabelParam) -> Param {
+    fn compile_label_param(&mut self, label_param: &normalizer::Label) -> Param {
         let ident = UserParamVarIdent::from(label_param.ident.value).into();
 
         let type_ = IrMemberTypePath {
@@ -778,11 +778,24 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::LabelIndex::Param(label_param_index) => {
                 UserParamVarIdent::from(self.params[label_param_index].ident.value).into()
             }
-            normalizer::LabelIndex::Local(local_label_index) => LocalLabelVarIdent {
-                ident: self.locals[local_label_index].ident.value,
-                index: local_label_index,
+            normalizer::LabelIndex::Local(local_label_index) => {
+                let local_label = &self.locals[local_label_index];
+                CallExpr {
+                    target: IrMemberFnPath {
+                        parent: self.env[local_label.ir].ident.value,
+                        ident: IrMemberFnIdent::ToLabelRef,
+                    }
+                    .into(),
+                    args: vec![
+                        LocalLabelVarIdent {
+                            ident: self.locals[local_label_index].ident.value,
+                            index: local_label_index,
+                        }
+                        .into(),
+                    ],
+                }
+                .into()
             }
-            .into(),
         }
     }
 
@@ -802,6 +815,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_stmt(&mut self, stmt: &normalizer::Stmt) {
         match stmt {
             normalizer::Stmt::Let(let_stmt) => self.compile_let_stmt(let_stmt),
+            normalizer::Stmt::Label(label_stmt) => self.compile_label_stmt(label_stmt),
             normalizer::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
             normalizer::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
             normalizer::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
@@ -823,6 +837,37 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let rhs = self.compile_expr(&let_stmt.rhs);
 
         self.bind_local_var(lhs, rhs);
+    }
+
+    fn compile_label_stmt(&mut self, label_stmt: &normalizer::LabelStmt) {
+        let local_label = &self.locals[label_stmt.label];
+        let ir_ident = self.env[local_label.ir].ident.value;
+
+        let lhs = LocalLabelVarIdent {
+            ident: local_label.ident.value,
+            index: label_stmt.label,
+        }
+        .into();
+
+        let type_ = IrMemberTypePath {
+            parent: ir_ident,
+            ident: IrMemberTypeIdent::LabelLocal,
+        }
+        .into();
+
+        let rhs = Some(
+            CallExpr {
+                target: IrMemberFnPath {
+                    parent: ir_ident,
+                    ident: IrMemberFnIdent::NewLabel,
+                }
+                .into(),
+                args: vec![CONTEXT_ARG],
+            }
+            .into(),
+        );
+
+        self.stmts.push(LetStmt { lhs, type_, rhs }.into());
     }
 
     fn bind_local_var(&mut self, lhs: VarIdent, rhs: TaggedExpr) {
@@ -872,7 +917,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let ir_ident = self.env[goto_stmt.ir].ident.value;
         let target = IrMemberFnPath {
             parent: ir_ident,
-            ident: IrMemberFnIdent::Goto,
+            ident: IrMemberFnIdent::GotoLabel,
         }
         .into();
 

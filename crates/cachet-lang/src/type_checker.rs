@@ -25,16 +25,24 @@ use crate::type_checker::graphs::{CallGraph, TypeGraph};
 pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     // Set up an internal placeholder type used to "turn off" type-checking for
     // variables whose types can't be inferred. This type shouldn't escape the
-    // type-checking phase.
+    // type-checking phase. Do the same with a placeholder IR for uninferrable
+    // labels.
     let unknown_type_index = env
         .struct_items
         .push_and_get_key(StructItem {
-            ident: Spanned::new(Span::initial(), *UNKNOWN_TYPE_IDENT),
+            ident: Spanned::new(Span::initial(), *UNKNOWN_IDENT),
             supertype: None,
         })
         .into();
+    let unknown_ir_index = env
+        .ir_items
+        .push_and_get_key(IrItem {
+            ident: Spanned::new(Span::initial(), *UNKNOWN_IDENT),
+            emits: None,
+        })
+        .into();
 
-    let mut type_checker = TypeChecker::new(&env, unknown_type_index);
+    let mut type_checker = TypeChecker::new(&env, unknown_type_index, unknown_ir_index);
 
     let fn_items = type_checker.type_check_fn_items();
     let op_items = type_checker.type_check_op_items();
@@ -42,12 +50,17 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     let decl_order = type_checker.finish()?;
 
     // Strip out the internal "unknown" type, so it doesn't escape the
-    // type-checking phase.
+    // type-checking phase. Do the same for the "unknown" IR.
     let popped_type_index = env
         .struct_items
         .pop_key_value()
         .map(|(struct_index, _)| struct_index.into());
+    let popped_ir_index = env
+        .ir_items
+        .pop_key_value()
+        .map(|(ir_index, _)| ir_index.into());
     debug_assert_eq!(popped_type_index, Some(unknown_type_index));
+    debug_assert_eq!(popped_ir_index, Some(unknown_ir_index));
 
     Ok(Env {
         enum_items: env.enum_items,
@@ -61,7 +74,7 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
 }
 
 lazy_static! {
-    static ref UNKNOWN_TYPE_IDENT: Ident = Ident::from("<Unknown>");
+    static ref UNKNOWN_IDENT: Ident = Ident::from("<Unknown>");
 }
 
 fn build_cast_chain(
@@ -82,17 +95,23 @@ fn build_cast_chain(
 struct TypeChecker<'a> {
     errors: Vec<TypeCheckError>,
     env: &'a resolver::Env,
-    unknown_type: TypeIndex,
     call_graph: CallGraph,
+    unknown_type: TypeIndex,
+    unknown_ir: IrIndex,
 }
 
 impl<'a> TypeChecker<'a> {
-    fn new(env: &'a resolver::Env, unknown_type_index: TypeIndex) -> Self {
+    fn new(
+        env: &'a resolver::Env,
+        unknown_type_index: TypeIndex,
+        unknown_ir_index: IrIndex,
+    ) -> Self {
         TypeChecker {
             errors: Vec::new(),
             env,
-            unknown_type: unknown_type_index,
             call_graph: CallGraph::new(env.fn_items.len(), env.op_items.len()),
+            unknown_type: unknown_type_index,
+            unknown_ir: unknown_ir_index,
         }
     }
 
@@ -232,16 +251,7 @@ impl<'a> TypeChecker<'a> {
                         ),
                     })
                     .collect(),
-                local_labels: locals
-                    .local_labels
-                    .into_iter()
-                    .map(|local_label| LocalLabel {
-                        ident: local_label.ident,
-                        ir: local_label.ir.expect(
-                            "the IRs of all local variables should be inferred by this point",
-                        ),
-                    })
-                    .collect(),
+                local_labels: locals.local_labels,
             };
 
             Body { locals, block }
@@ -322,18 +332,22 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
+    fn is_numeric_type(&self, type_index: TypeIndex) -> bool {
+        // Consider the internal "unknown" type to be numeric for the purposes
+        // of the type-checking phase.
+        type_index.is_numeric() || type_index == self.unknown_type
+    }
+
+    fn match_label_irs(&self, expected_ir: IrIndex, found_ir: IrIndex) -> bool {
+        expected_ir == found_ir || found_ir == self.unknown_ir
+    }
+
     fn get_type_ident(&self, type_index: TypeIndex) -> Ident {
         match type_index {
             TypeIndex::BuiltIn(built_in_type) => built_in_type.ident(),
             TypeIndex::Enum(enum_index) => self.env[enum_index].ident.value,
             TypeIndex::Struct(struct_index) => self.env[struct_index].ident.value,
         }
-    }
-
-    fn is_numeric_type(&self, type_index: TypeIndex) -> bool {
-        // Consider the internal "unknown" type to be numeric for the purposes
-        // of the type-checking phase.
-        type_index.is_numeric() || type_index == self.unknown_type
     }
 }
 
@@ -584,7 +598,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         }) = param_summary
         {
             let arg_ir_index = self.get_label_ir(arg.value);
-            if param_ir_index != arg_ir_index {
+            if !self.match_label_irs(param_ir_index, arg_ir_index) {
                 self.type_checker
                     .errors
                     .push(TypeCheckError::ArgIrMismatch {
@@ -681,6 +695,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     fn type_check_stmt(&mut self, stmt: &resolver::Stmt) -> Option<Stmt> {
         match stmt {
             resolver::Stmt::Let(let_stmt) => Some(self.type_check_let_stmt(let_stmt).into()),
+            resolver::Stmt::Label(LabelStmt { label }) => Some(LabelStmt { label: *label }.into()),
             resolver::Stmt::If(if_stmt) => Some(self.type_check_if_stmt(if_stmt).into()),
             resolver::Stmt::Check(check_stmt) => {
                 Some(self.type_check_check_stmt(check_stmt).into())
@@ -694,12 +709,12 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     fn type_check_let_stmt(&mut self, let_stmt: &resolver::LetStmt) -> LetStmt {
         let rhs = let_stmt.rhs.as_ref().map(|rhs| self.type_check_expr(rhs));
 
-        let lhs = &mut self.locals[let_stmt.lhs];
+        let local_var = &mut self.locals[let_stmt.lhs];
 
-        let rhs = match lhs.type_ {
+        let rhs = match local_var.type_ {
             Some(lhs_type_index) => self.expect_expr_type(rhs, lhs_type_index),
             None => {
-                lhs.type_ = Some(rhs.value.type_());
+                local_var.type_ = Some(rhs.value.type_());
                 rhs.value
             }
         };
@@ -735,26 +750,34 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     }
 
     fn type_check_goto_stmt(&mut self, goto_stmt: &resolver::GotoStmt) -> GotoStmt {
-        let ir_index = self.get_label_ir(goto_stmt.label.value);
-        if Some(ir_index) != self.interprets.map(|interprets| interprets.value) {
+        let found_ir_index = self.get_label_ir(goto_stmt.label.value);
+
+        let is_mismatched = match self.interprets {
+            Some(expected_ir_index) => {
+                !self.match_label_irs(expected_ir_index.value, found_ir_index)
+            }
+            None => true,
+        };
+        if is_mismatched {
             self.type_checker
                 .errors
                 .push(TypeCheckError::GotoIrMismatch {
-                    source_callable: self.callable_item.path.value,
-                    target_label: Spanned::new(
+                    label: Spanned::new(
                         goto_stmt.label.span,
                         self.get_label_ident(goto_stmt.label.value).value,
                     ),
-                    expected_ir: self.interprets.map(|interprets| {
-                        interprets.map(|interprets| self.env[interprets].ident.value)
+                    callable: self.callable_item.path.value,
+                    expected_ir: self.interprets.map(|expected_ir_index| {
+                        expected_ir_index
+                            .map(|expected_ir_index| self.env[expected_ir_index].ident.value)
                     }),
-                    found_ir: self.env[ir_index].ident.value,
+                    found_ir: self.env[found_ir_index].ident.value,
                 });
         }
 
         GotoStmt {
             label: goto_stmt.label.value,
-            ir: ir_index,
+            ir: found_ir_index,
         }
     }
 
@@ -768,8 +791,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     self.type_checker
                         .errors
                         .push(TypeCheckError::EmitIrMismatch {
-                            source_callable: self.callable_item.path.value,
-                            target_op: Spanned::new(call.target.span, callable_item.path.value),
+                            op: Spanned::new(call.target.span, callable_item.path.value),
+                            callable: self.callable_item.path.value,
                             expected_ir: self
                                 .emits
                                 .map(|emits| emits.map(|emits| self.env[emits].ident.value)),
@@ -1068,9 +1091,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             LabelIndex::Param(label_param_index) => {
                 self.callable_item.params[label_param_index].ir
             }
-            LabelIndex::Local(local_label_index) => self.locals[local_label_index]
-                .ir
-                .expect("local label used before its declaration"),
+            LabelIndex::Local(local_label_index) => self.locals[local_label_index].ir,
         }
     }
 }
