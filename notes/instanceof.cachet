@@ -1,73 +1,75 @@
+// vim: set tw=99 ts=4 sts=4 sw=4 et:
+
 ir CacheIR {
-  op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId, label failure: MASM) {
-    let lhs = CacheIR::getValue(lhsId);
-    let proto = CacheIR::getObject(protoId);
+    op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId, label failure: MASM) {
+        let lhs = CacheIR::getValue(lhsId);
+        let proto = CacheIR::getObject(protoId);
 
-    if !Value::isObject(lhs) {
-      goto failure;
+        if !Value::isObject(lhs) {
+            goto failure;
+        }
+        let mut currentObject = Value::toObject(lhs);
+        let mut currentProto = Object::getProto(currentObject);
+
+        loop {
+            if Value::isNull(currentProto) {
+                CacheIR::setOutput(Value::fromBool(false));
+                return;
+            }
+            if Value::isMagic(currentProto) {
+                goto failure;
+            }
+
+            if !Value::isObject(currentProto) {
+                CacheIR::setOutput(Value::fromBool(false));
+                return;
+            }
+            currentObject = Value::toObject(currentProto);
+            if currentObject == proto {
+                CacheIR::setOutput(Value::fromBool(true));
+                return;
+            }
+
+            currentProto = Object::getProto(currentObject);
+        }
     }
-    let mut currentObject = Value::toObject(lhs);
-    let mut currentProto = Object::getProto(currentObject);
-
-    loop {
-      if Value::isNull(currentProto) {
-        CacheIR::setOutput(Value::fromBool(false));
-        return;
-      }
-      if Value::isMagic(currentProto) {
-        goto failure;
-      }
-
-      if !Value::isObject(currentProto) {
-        CacheIR::setOutput(Value::fromBool(false));
-        return;
-      }
-      currentObject = Value::toObject(currentProto);
-      if currentObject == proto {
-        CacheIR::setOutput(Value::fromBool(true));
-        return;
-      }
-
-      currentProto = Object::getProto(currentObject);
-    }
-  }
 }
 
 ir CacheIR emits MASM {
-  op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId, label failure: MASM) {
-    let lhsReg = CacheIR::useValueReg(lhsId);
-    let protoReg = CacheIR::useObjectReg(protoId);
-    let scratchReg = CacheIR::allocateReg();
+    op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId, label failure: MASM) {
+        let lhsReg = CacheIR::useValueReg(lhsId);
+        let protoReg = CacheIR::useObjectReg(protoId);
+        let scratchReg = CacheIR::allocateReg();
 
-    label loopHead;
-    label returnFalse;
-    label returnTrue;
-    label done;
+        label loopHead: MASM;
+        label returnFalse: MASM;
+        label returnTrue: MASM;
+        label done: MASM;
 
-    emit MASM::BranchTestNotObject(lhsReg, returnFalse);
-    emit MASM::UnboxObject(lhsReg, scratchReg);
-    emit MASM::LoadObjectProto(scratchReg, lhsReg);
+        emit MASM::BranchTestNotObject(lhsReg, returnFalse);
+        emit MASM::UnboxObject(lhsReg, scratchReg);
+        emit MASM::LoadObjectProto(scratchReg, lhsReg);
 
-    bind loopHead;
-    emit MASM::BranchTestNull(lhsReg, returnFalse);
-    emit MASM::BranchTestMagic(lhsReg, failure);
+        bind loopHead;
+        emit MASM::BranchTestNull(lhsReg, returnFalse);
+        emit MASM::BranchTestMagic(lhsReg, failure);
 
-    emit MASM::BranchTestNotObject(lhsReg, returnFalse);
-    emit MASM::UnboxObject(lhsReg, scratchReg);
-    emit MASM::BranchTestObjectEq(scratchReg, protoReg, returnTrue);
+        emit MASM::BranchTestNotObject(lhsReg, returnFalse);
+        emit MASM::UnboxObject(lhsReg, scratchReg);
+        emit MASM::BranchTestObjectEq(scratchReg, protoReg, returnTrue);
 
-    emit MASM::LoadObjectProto(scratchReg, lhsReg);
-    emit MASM::Jump(loopHead);
+        emit MASM::LoadObjectProto(scratchReg, lhsReg);
+        emit MASM::Jump(loopHead);
 
-    bind returnFalse;
-    emit MASM::StoreBool(false, CacheIR::outputReg);
-    emit MASM::Jump(done);
+        bind returnFalse;
+        emit MASM::StoreBool(false, CacheIR::outputReg);
+        emit MASM::Jump(done);
 
-    bind returnTrue;
-    emit MASM::StoreBool(true, CacheIR::outputReg);
+        bind returnTrue;
+        emit MASM::StoreBool(true, CacheIR::outputReg);
 
-    bind done;
+        bind done;
 
-    CacheIR::releaseReg(scratchReg);
-  }
+        CacheIR::releaseReg(scratchReg);
+    }
 }
