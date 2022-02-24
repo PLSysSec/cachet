@@ -244,21 +244,31 @@ ir MASM {
     }
 
     op LoadArgumentsObjectLength(
-        objectReg: Reg, outputReg: ValueReg, label failure: MASM
+        objectReg: Reg, outputReg: Reg, label failure: MASM
     ) {
         let obj = MASM::getObject(objectReg);
         let argObj = Object::toArgumentsObject(obj);
         if ArgumentsObject::hasOverriddenLength(argObj) {
             goto failure;
         }
-        let lengthVal = Value::fromInt32(ArgumentsObject::getInitialLength(argObj));
-        MASM::setValue(outputReg, lengthVal)
+        let length = ArgumentsObject::getInitialLength(argObj);
+        MASM::setInt32(outputReg, length)
     }
 
-    op TagValue(valTy: ValueType, payload: ValueReg, dest: ValueReg) {
-        let payloadVal = MASM::getValue(payload);
-        Value::setType(payloadVal, valTy);
-        MASM::setValue(dest, payloadVal);
+    op TagValue(valTy: ValueType, payload: Reg, dest: ValueReg) {
+        // TODO: Don't have getters/setters for other types yet
+        if valTy == ValueType::Int32 {
+            let i = MASM::getInt32(payload);
+            let val = Value::fromInt32(i);
+            MASM::setValue(dest, val);
+        }
+        else {
+            if valTy == ValueType::Object {
+                let o = MASM::getObject(payload);
+                let val = Value::fromObject(o);
+                MASM::setValue(dest, val);
+            }
+        }
     }
 
     fn getValue(valueReg: ValueReg) -> Value;
@@ -358,12 +368,12 @@ ir CacheIR emits MASM {
 
     op LoadArgumentsObjectLengthResult(objectId: ObjectId, label failure: MASM) {
         let objectReg = CacheIR::useObjectReg(objectId);
-        let argObjLengthReg = CacheIR::allocateValueReg();
+        let argObjLengthReg = CacheIR::allocateReg();
 
         emit MASM::LoadArgumentsObjectLength(objectReg, argObjLengthReg, failure);
         emit MASM::TagValue(ValueType::Int32, argObjLengthReg, CacheIR::outputReg);
 
-        CacheIR::releaseValueReg(argObjLengthReg);
+        CacheIR::releaseReg(argObjLengthReg);
     }
 
     fn allocateReg() -> Reg;
