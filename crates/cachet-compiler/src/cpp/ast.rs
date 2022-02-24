@@ -438,6 +438,8 @@ pub enum IrMemberFnIdent {
     ToLabelRef,
     #[display(fmt = "GotoLabel")]
     GotoLabel,
+    #[display(fmt = "BindLabel")]
+    BindLabel,
     Emit(EmitIrMemberFnIdent),
 }
 
@@ -447,7 +449,8 @@ impl IrMemberFnIdent {
             IrMemberFnIdent::GetOutput
             | IrMemberFnIdent::NewLabel
             | IrMemberFnIdent::ToLabelRef
-            | IrMemberFnIdent::GotoLabel => NamespaceKind::Ir,
+            | IrMemberFnIdent::GotoLabel
+            | IrMemberFnIdent::BindLabel => NamespaceKind::Ir,
             IrMemberFnIdent::Emit(_) => EmitIrMemberFnIdent::PARENT_NAMESPACE_KIND,
         }
     }

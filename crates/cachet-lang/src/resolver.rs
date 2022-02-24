@@ -930,6 +930,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             parser::Stmt::If(if_stmt) => self.resolve_if_stmt(if_stmt).map(Stmt::from),
             parser::Stmt::Check(check_stmt) => self.resolve_check_stmt(check_stmt).map(Stmt::from),
             parser::Stmt::Goto(goto_stmt) => self.resolve_goto_stmt(goto_stmt).map(Stmt::from),
+            parser::Stmt::Bind(bind_stmt) => self.resolve_bind_stmt(bind_stmt).map(Stmt::from),
             parser::Stmt::Emit(call) => self
                 .resolve_call(call, |scoped_resolver, target| {
                     scoped_resolver
@@ -999,6 +1000,17 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         });
 
         Some(GotoStmt {
+            label: label_index?,
+        })
+    }
+
+    fn resolve_bind_stmt(&mut self, bind_stmt: parser::BindStmt) -> Option<BindStmt> {
+        let label_index = map_spanned(bind_stmt.label, |label_ident| {
+            self.lookup_label_scoped(label_ident)
+                .found(&mut self.errors)
+        });
+
+        Some(BindStmt {
             label: label_index?,
         })
     }

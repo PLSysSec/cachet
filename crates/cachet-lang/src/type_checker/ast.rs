@@ -248,6 +248,8 @@ pub enum Stmt {
     #[from]
     Goto(GotoStmt),
     #[from]
+    Bind(BindStmt),
+    #[from]
     Emit(EmitStmt),
     #[from(types(Block))]
     Expr(Expr),
@@ -274,6 +276,12 @@ pub struct CheckStmt {
 
 #[derive(Clone, Debug)]
 pub struct GotoStmt {
+    pub label: LabelIndex,
+    pub ir: IrIndex,
+}
+
+#[derive(Clone, Debug)]
+pub struct BindStmt {
     pub label: LabelIndex,
     pub ir: IrIndex,
 }

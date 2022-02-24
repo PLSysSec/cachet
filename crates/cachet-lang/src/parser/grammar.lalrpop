@@ -183,6 +183,7 @@ Stmt: Stmt = {
     <if_stmt:IfStmt> => if_stmt.into(),
     <check_stmt:CheckStmt> => check_stmt.into(),
     <goto_stmt:GotoStmt> => goto_stmt.into(),
+    <bind_stmt:BindStmt> => bind_stmt.into(),
     <emit_stmt:EmitStmt> => emit_stmt,
     <expr:Expr> ";" => expr.into(),
 };
@@ -207,6 +208,9 @@ CheckKind: CheckKind = {
 
 GotoStmt: GotoStmt =
     "goto" <label:Spanned<Path>> ";" => GotoStmt { label };
+
+BindStmt: BindStmt =
+    "bind" <label:Spanned<Path>> ";" => BindStmt { label };
 
 EmitStmt: Stmt =
     "emit" <call:Call> => Stmt::Emit(call);

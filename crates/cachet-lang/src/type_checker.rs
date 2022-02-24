@@ -25,8 +25,7 @@ use crate::type_checker::graphs::{CallGraph, TypeGraph};
 pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     // Set up an internal placeholder type used to "turn off" type-checking for
     // variables whose types can't be inferred. This type shouldn't escape the
-    // type-checking phase. Do the same with a placeholder IR for uninferrable
-    // labels.
+    // type-checking phase.
     let unknown_type_index = env
         .struct_items
         .push_and_get_key(StructItem {
@@ -34,15 +33,8 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
             supertype: None,
         })
         .into();
-    let unknown_ir_index = env
-        .ir_items
-        .push_and_get_key(IrItem {
-            ident: Spanned::new(Span::initial(), *UNKNOWN_IDENT),
-            emits: None,
-        })
-        .into();
 
-    let mut type_checker = TypeChecker::new(&env, unknown_type_index, unknown_ir_index);
+    let mut type_checker = TypeChecker::new(&env, unknown_type_index);
 
     let fn_items = type_checker.type_check_fn_items();
     let op_items = type_checker.type_check_op_items();
@@ -50,17 +42,12 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     let decl_order = type_checker.finish()?;
 
     // Strip out the internal "unknown" type, so it doesn't escape the
-    // type-checking phase. Do the same for the "unknown" IR.
+    // type-checking phase.
     let popped_type_index = env
         .struct_items
         .pop_key_value()
         .map(|(struct_index, _)| struct_index.into());
-    let popped_ir_index = env
-        .ir_items
-        .pop_key_value()
-        .map(|(ir_index, _)| ir_index.into());
     debug_assert_eq!(popped_type_index, Some(unknown_type_index));
-    debug_assert_eq!(popped_ir_index, Some(unknown_ir_index));
 
     Ok(Env {
         enum_items: env.enum_items,
@@ -97,21 +84,15 @@ struct TypeChecker<'a> {
     env: &'a resolver::Env,
     call_graph: CallGraph,
     unknown_type: TypeIndex,
-    unknown_ir: IrIndex,
 }
 
 impl<'a> TypeChecker<'a> {
-    fn new(
-        env: &'a resolver::Env,
-        unknown_type_index: TypeIndex,
-        unknown_ir_index: IrIndex,
-    ) -> Self {
+    fn new(env: &'a resolver::Env, unknown_type_index: TypeIndex) -> Self {
         TypeChecker {
             errors: Vec::new(),
             env,
             call_graph: CallGraph::new(env.fn_items.len(), env.op_items.len()),
             unknown_type: unknown_type_index,
-            unknown_ir: unknown_ir_index,
         }
     }
 
@@ -336,10 +317,6 @@ impl<'a> TypeChecker<'a> {
         // Consider the internal "unknown" type to be numeric for the purposes
         // of the type-checking phase.
         type_index.is_numeric() || type_index == self.unknown_type
-    }
-
-    fn match_label_irs(&self, expected_ir: IrIndex, found_ir: IrIndex) -> bool {
-        expected_ir == found_ir || found_ir == self.unknown_ir
     }
 
     fn get_type_ident(&self, type_index: TypeIndex) -> Ident {
@@ -598,7 +575,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         }) = param_summary
         {
             let arg_ir_index = self.get_label_ir(arg.value);
-            if !self.match_label_irs(param_ir_index, arg_ir_index) {
+            if arg_ir_index != param_ir_index {
                 self.type_checker
                     .errors
                     .push(TypeCheckError::ArgIrMismatch {
@@ -701,6 +678,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 Some(self.type_check_check_stmt(check_stmt).into())
             }
             resolver::Stmt::Goto(goto_stmt) => Some(self.type_check_goto_stmt(goto_stmt).into()),
+            resolver::Stmt::Bind(bind_stmt) => Some(self.type_check_bind_stmt(bind_stmt).into()),
             resolver::Stmt::Emit(call) => self.type_check_emit_stmt(call).map(Into::into),
             resolver::Stmt::Expr(expr) => Some(self.type_check_expr(expr).into()),
         }
@@ -750,15 +728,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     }
 
     fn type_check_goto_stmt(&mut self, goto_stmt: &resolver::GotoStmt) -> GotoStmt {
-        let found_ir_index = self.get_label_ir(goto_stmt.label.value);
-
-        let is_mismatched = match self.interprets {
-            Some(expected_ir_index) => {
-                !self.match_label_irs(expected_ir_index.value, found_ir_index)
-            }
-            None => true,
-        };
-        if is_mismatched {
+        let ir_index = self.get_label_ir(goto_stmt.label.value);
+        if Some(ir_index) != self.interprets.map(|interprets| interprets.value) {
             self.type_checker
                 .errors
                 .push(TypeCheckError::GotoIrMismatch {
@@ -767,17 +738,40 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                         self.get_label_ident(goto_stmt.label.value).value,
                     ),
                     callable: self.callable_item.path.value,
-                    expected_ir: self.interprets.map(|expected_ir_index| {
-                        expected_ir_index
-                            .map(|expected_ir_index| self.env[expected_ir_index].ident.value)
+                    expected_ir: self.interprets.map(|interprets| {
+                        interprets.map(|interprets| self.env[interprets].ident.value)
                     }),
-                    found_ir: self.env[found_ir_index].ident.value,
+                    found_ir: self.env[ir_index].ident.value,
                 });
         }
 
         GotoStmt {
             label: goto_stmt.label.value,
-            ir: found_ir_index,
+            ir: ir_index,
+        }
+    }
+
+    fn type_check_bind_stmt(&mut self, bind_stmt: &resolver::BindStmt) -> BindStmt {
+        let ir_index = self.get_label_ir(bind_stmt.label.value);
+        if Some(ir_index) != self.emits.map(|emits| emits.value) {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::BindIrMismatch {
+                    label: Spanned::new(
+                        bind_stmt.label.span,
+                        self.get_label_ident(bind_stmt.label.value).value,
+                    ),
+                    callable: self.callable_item.path.value,
+                    expected_ir: self
+                        .emits
+                        .map(|emits| emits.map(|emits| self.env[emits].ident.value)),
+                    found_ir: self.env[ir_index].ident.value,
+                });
+        }
+
+        BindStmt {
+            label: bind_stmt.label.value,
+            ir: ir_index,
         }
     }
 

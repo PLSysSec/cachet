@@ -28,14 +28,21 @@ pub enum TypeCheckError {
     OpReturnsValue { op: Path, ret_span: Span },
     #[error("op `{op}` is missing a body")]
     MissingOpBody { op: Path, body_span: Span },
-    #[error("can't jump to `{label}` inside `{callable}")]
+    #[error("can't jump to label `{label}` inside `{callable}")]
     GotoIrMismatch {
         label: Spanned<Ident>,
         callable: Path,
         expected_ir: Option<Spanned<Ident>>,
         found_ir: Ident,
     },
-    #[error("can't emit `{op}` inside `{callable}`")]
+    #[error("can't bind label `{label}` inside `{callable}")]
+    BindIrMismatch {
+        label: Spanned<Ident>,
+        callable: Path,
+        expected_ir: Option<Spanned<Ident>>,
+        found_ir: Ident,
+    },
+    #[error("can't emit op `{op}` inside `{callable}`")]
     EmitIrMismatch {
         op: Spanned<Path>,
         callable: Path,
@@ -140,6 +147,7 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::OpReturnsValue { ret_span, .. } => *ret_span,
             TypeCheckError::MissingOpBody { body_span, .. } => *body_span,
             TypeCheckError::GotoIrMismatch { label, .. } => label.span,
+            TypeCheckError::BindIrMismatch { label, .. } => label.span,
             TypeCheckError::EmitIrMismatch { op, .. } => op.span,
             TypeCheckError::ExprTypeMismatch { expr_span, .. } => *expr_span,
             TypeCheckError::InvalidCast { expr_span, .. } => *expr_span,
@@ -195,6 +203,7 @@ impl FrontendError for TypeCheckError {
                 label.message = "allowed for functions but not for ops".to_owned();
             }
             TypeCheckError::GotoIrMismatch {
+                callable,
                 expected_ir,
                 found_ir,
                 ..
@@ -206,10 +215,33 @@ impl FrontendError for TypeCheckError {
                             expected_ir, found_ir
                         )
                     }
-                    None => format!("unexpected `{}` label", found_ir),
+                    None => format!(
+                        "unexpected jump to `{}` label inside non-interpreter `{}`",
+                        found_ir, callable
+                    ),
+                };
+            }
+            TypeCheckError::BindIrMismatch {
+                callable,
+                expected_ir,
+                found_ir,
+                ..
+            } => {
+                label.message = match expected_ir {
+                    Some(expected_ir) => {
+                        format!(
+                            "expected `{}` label, found `{}` label",
+                            expected_ir, found_ir
+                        )
+                    }
+                    None => format!(
+                        "unexpected bind of `{}` label inside non-emitter `{}`",
+                        found_ir, callable
+                    ),
                 };
             }
             TypeCheckError::EmitIrMismatch {
+                callable,
                 expected_ir,
                 found_ir,
                 ..
@@ -218,7 +250,10 @@ impl FrontendError for TypeCheckError {
                     Some(expected_ir) => {
                         format!("expected `{}` op, found `{}` op", expected_ir, found_ir)
                     }
-                    None => format!("unexpected `{}` op", found_ir),
+                    None => format!(
+                        "unexpected emit of `{}` op inside non-emitter `{}`",
+                        found_ir, callable
+                    ),
                 };
             }
             TypeCheckError::ExprTypeMismatch {
@@ -344,7 +379,12 @@ impl FrontendError for TypeCheckError {
                     );
                 }
             }
-            TypeCheckError::EmitIrMismatch {
+            TypeCheckError::BindIrMismatch {
+                callable,
+                expected_ir,
+                ..
+            }
+            | TypeCheckError::EmitIrMismatch {
                 callable,
                 expected_ir,
                 ..
