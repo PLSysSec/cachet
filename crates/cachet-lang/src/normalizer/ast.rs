@@ -13,10 +13,10 @@ use crate::ast::{
 };
 use crate::type_checker;
 pub use crate::type_checker::{
-    CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex,
-    GlobalVarItem, GotoStmt, IrIndex, IrItem, Label, LabelIndex, LabelParamIndex, LabelStmt,
-    Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex,
-    OutVar, OutVarArg, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex,
+    BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex,
+    GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, Label, LabelIndex, LabelParamIndex,
+    LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError,
+    OpIndex, OutVar, OutVarArg, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex,
     StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex,
     VariantIndex,
 };
@@ -133,6 +133,8 @@ pub enum Stmt<B = ()> {
     Check(CheckStmt<B>),
     #[from]
     Goto(GotoStmt),
+    #[from]
+    Bind(BindStmt),
     #[from]
     Emit(EmitStmt),
     Block(B, BlockStmt<B>),

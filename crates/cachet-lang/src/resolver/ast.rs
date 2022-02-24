@@ -373,6 +373,8 @@ pub enum Stmt {
     Check(CheckStmt),
     #[from]
     Goto(GotoStmt),
+    #[from]
+    Bind(BindStmt),
     Emit(Call),
     #[from(types(Block))]
     Expr(Expr),
@@ -404,6 +406,11 @@ pub struct CheckStmt {
 
 #[derive(Clone, Debug)]
 pub struct GotoStmt {
+    pub label: Spanned<LabelIndex>,
+}
+
+#[derive(Clone, Debug)]
+pub struct BindStmt {
     pub label: Spanned<LabelIndex>,
 }
 

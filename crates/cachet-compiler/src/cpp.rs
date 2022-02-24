@@ -762,6 +762,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_out_var_arg(&self, out_var_arg: &normalizer::OutVarArg) -> Expr {
         // TODO(spinda): Handle out-parameter upcasting.
+        // TODO(spinda): If a variable is referenced to fill both an in- and
+        // out-parameter in the same call, we need to set up a separate space
+        // for the out-parameter value to be written while the value is still
+        // being used. This can reuse the machinery for out-parameter upcasting.
 
         self.use_expr(
             match out_var_arg.out_var {
@@ -819,6 +823,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
             normalizer::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
             normalizer::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
+            normalizer::Stmt::Bind(bind_stmt) => self.compile_bind_stmt(bind_stmt),
             normalizer::Stmt::Emit(call) => self.compile_emit_stmt(call),
             normalizer::Stmt::Block(_, block_stmt) => self.compile_block_stmt(block_stmt),
             normalizer::Stmt::Invoke(invoke_stmt) => self.compile_invoke_stmt(invoke_stmt),
@@ -929,6 +934,26 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         ]);
     }
 
+    fn compile_bind_stmt(&mut self, bind_stmt: &normalizer::BindStmt) {
+        let ir_ident = self.env[bind_stmt.ir].ident.value;
+        let target = IrMemberFnPath {
+            parent: ir_ident,
+            ident: IrMemberFnIdent::BindLabel,
+        }
+        .into();
+
+        let args = vec![
+            CONTEXT_ARG,
+            self.ops_arg(),
+            self.compile_label_arg(bind_stmt.label),
+        ];
+
+        self.stmts.extend([
+            Expr::from(CallExpr { target, args }).into(),
+            RetStmt { value: None }.into(),
+        ]);
+    }
+
     fn compile_emit_stmt(&mut self, emit_stmt: &normalizer::EmitStmt) {
         let ir_ident = self.env[emit_stmt.ir].ident.value;
         let op_ident = self.env[emit_stmt.call.target].path.value.ident();
@@ -938,20 +963,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
         .into();
 
-        let ops_arg = match self.parent_index {
-            Some(normalizer::ParentIndex::Ir(ir_index)) => CallExpr {
-                target: IrMemberFnPath {
-                    parent: self.env[ir_index].ident.value,
-                    ident: IrMemberFnIdent::GetOutput,
-                }
-                .into(),
-                args: vec![CONTEXT_ARG],
-            }
-            .into(),
-            _ => ParamVarIdent::Ops.into(),
-        };
         let args = iter::once(CONTEXT_ARG)
-            .chain(iter::once(ops_arg))
+            .chain(iter::once(self.ops_arg()))
             .chain(self.compile_args(&emit_stmt.call.args))
             .collect();
 
@@ -1282,6 +1295,21 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             },
             type_: compare_expr.type_(),
             tags: ExprTag::Ref | ExprTag::Val,
+        }
+    }
+
+    fn ops_arg(&self) -> Expr {
+        match self.parent_index {
+            Some(normalizer::ParentIndex::Ir(ir_index)) => CallExpr {
+                target: IrMemberFnPath {
+                    parent: self.env[ir_index].ident.value,
+                    ident: IrMemberFnIdent::GetOutput,
+                }
+                .into(),
+                args: vec![CONTEXT_ARG],
+            }
+            .into(),
+            _ => ParamVarIdent::Ops.into(),
         }
     }
 }

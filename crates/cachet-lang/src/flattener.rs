@@ -95,6 +95,9 @@ impl Flattener {
             normalizer::Stmt::Goto(goto_stmt) => {
                 self.stmts.push(goto_stmt.into());
             }
+            normalizer::Stmt::Bind(bind_stmt) => {
+                self.stmts.push(bind_stmt.into());
+            }
             normalizer::Stmt::Emit(emit_stmt) => {
                 self.stmts.push(emit_stmt.into());
             }

@@ -1364,6 +1364,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
             flattener::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
             flattener::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
+            flattener::Stmt::Bind(bind_stmt) => self.compile_bind_stmt(bind_stmt),
             flattener::Stmt::Emit(call) => self.compile_emit_stmt(call),
             flattener::Stmt::Block(void, _) => unreachable(*void),
             flattener::Stmt::Invoke(invoke_stmt) => self.compile_invoke_stmt(invoke_stmt),
@@ -1388,23 +1389,30 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let local_label = &self.callable_locals[label_stmt.label];
         let ir_ident = self.env[local_label.ir].ident.value.into();
 
-        let lhs = LocalLabelVarIdent {
-            ident: local_label.ident.value,
-            index: label_stmt.label,
-        }
-        .into();
-
-        let rhs = CallExpr {
+        let call = CallExpr {
             target: IrMemberFnIdent {
                 ir_ident,
                 selector: IrMemberFnSelector::Label,
             }
             .into(),
             arg_exprs: vec![].into(),
-        }
-        .into();
+        };
 
-        self.stmts.push(AssignStmt { lhs, rhs }.into());
+        let ret_var_idents = vec![
+            LocalLabelVarIdent {
+                ident: local_label.ident.value,
+                index: label_stmt.label,
+            }
+            .into(),
+        ];
+
+        self.stmts.push(
+            CallStmt {
+                call,
+                ret_var_idents,
+            }
+            .into(),
+        );
     }
 
     fn compile_if_stmt(&mut self, if_stmt: &flattener::IfStmt) {
@@ -1445,6 +1453,19 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         self.stmts
             .extend([CallExpr { target, arg_exprs }.into(), Stmt::Ret]);
+    }
+
+    fn compile_bind_stmt(&mut self, bind_stmt: &flattener::BindStmt) {
+        let ir_ident = self.env[bind_stmt.ir].ident.value.into();
+        let target = IrMemberFnIdent {
+            ir_ident,
+            selector: IrMemberFnSelector::Bind,
+        }
+        .into();
+
+        let arg_exprs = vec![self.compile_label_arg(bind_stmt.label)];
+
+        self.stmts.extend([CallExpr { target, arg_exprs }.into()]);
     }
 
     fn compile_emit_stmt(&mut self, emit_stmt: &flattener::EmitStmt) {
@@ -2037,6 +2058,7 @@ impl<'a> FlowTracer<'a> {
             | flattener::Stmt::Ret(_) => (),
             flattener::Stmt::If(if_stmt) => self.trace_if_stmt(if_stmt),
             flattener::Stmt::Goto(goto_stmt) => self.trace_goto_stmt(goto_stmt),
+            flattener::Stmt::Bind(bind_stmt) => self.trace_bind_stmt(bind_stmt),
             flattener::Stmt::Emit(emit_stmt) => self.trace_emit_stmt(emit_stmt),
             flattener::Stmt::Block(void, _) => unreachable(*void),
         }
@@ -2059,6 +2081,11 @@ impl<'a> FlowTracer<'a> {
     fn trace_goto_stmt(&mut self, goto_stmt: &flattener::GotoStmt) {
         let label_node_index = self.label_scope[&goto_stmt.label];
         self.link_pred_emits_to_succ(label_node_index.into());
+    }
+
+    fn trace_bind_stmt(&mut self, bind_stmt: &flattener::BindStmt) {
+        let label_node_index = self.label_scope[&bind_stmt.label];
+        self.bound_labels.insert(label_node_index);
     }
 
     fn trace_emit_stmt(&mut self, emit_stmt: &flattener::EmitStmt) {
