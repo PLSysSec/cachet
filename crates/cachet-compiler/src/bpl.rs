@@ -626,28 +626,31 @@ impl<'a> Compiler<'a> {
 
         // Label parameters to the top-level op are reflected as local
         // variables.
-        let label_param_local_vars: Vec<LocalVar> = top_op_item
+        let label_params: Vec<&flattener::Label> = top_op_item
             .param_order
             .iter()
             .filter_map(|param_index| match param_index {
-                flattener::ParamIndex::Label(label_param_index) => Some(
-                    self.compile_label_param(&top_op_item.params[label_param_index])
-                        .into(),
-                ),
+                flattener::ParamIndex::Label(label_param_index) => {
+                    Some(&top_op_item.params[label_param_index])
+                }
                 _ => None,
             })
+            .collect();
+        let label_param_local_vars: Vec<LocalVar> = label_params
+            .iter()
+            .map(|label_param| self.compile_label_param(label_param).into())
             .collect();
 
         // Start by filling in all of the label parameter local variables with
         // fresh labels.
-        // TODO(spinda): Make the label parameters match their IRs.
-        let mut stmts: Vec<Stmt> = label_param_local_vars
+        let mut stmts: Vec<Stmt> = label_params
             .iter()
-            .map(|label_param_local_var| {
+            .zip(label_param_local_vars.iter())
+            .map(|(label_param, label_param_local_var)| {
                 CallStmt {
                     call: CallExpr {
                         target: IrMemberFnIdent {
-                            ir_ident: bottom_ir_ident,
+                            ir_ident: self.env[label_param.ir].ident.value.into(),
                             selector: IrMemberFnSelector::Label,
                         }
                         .into(),
@@ -731,19 +734,25 @@ impl<'a> Compiler<'a> {
             call_top_op_fn_stmt,
         ]);
 
-        // Bind all external labels to the trailing external emit.
-        // TODO(spinda): Only do this for external labels of the bottom IR.
-        stmts.extend(label_param_local_vars.iter().map(|label_param_local_var| {
-            CallExpr {
-                target: IrMemberFnIdent {
-                    ir_ident: bottom_ir_ident,
-                    selector: IrMemberFnSelector::Bind,
-                }
-                .into(),
-                arg_exprs: vec![label_param_local_var.var.ident.into()],
-            }
-            .into()
-        }));
+        // Bind all external labels to the trailing external emit. This covers
+        // the top-level label parameters of the bottom IR.
+        stmts.extend(
+            label_params
+                .iter()
+                .zip(label_param_local_vars.iter())
+                .filter(|(label_param, _)| label_param.ir == bottom_ir_index)
+                .map(|(_, label_param_local_var)| {
+                    CallExpr {
+                        target: IrMemberFnIdent {
+                            ir_ident: bottom_ir_ident,
+                            selector: IrMemberFnSelector::Bind,
+                        }
+                        .into(),
+                        arg_exprs: vec![label_param_local_var.var.ident.into()],
+                    }
+                    .into()
+                }),
+        );
 
         // Emit a trailing "external" op after everything else, to represent
         // control flow being transferred to some point outside the program.
@@ -883,6 +892,8 @@ impl<'a> Compiler<'a> {
             }
         }
 
+        // Tack on an additional local variable to hold the op being
+        // interpreted.
         let mut local_vars = label_param_local_vars;
         local_vars.push(
             TypedVar {
