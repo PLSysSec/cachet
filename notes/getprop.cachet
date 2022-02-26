@@ -30,14 +30,6 @@ impl Value {
         Value::typeOf(value) == ValueType::Int32
     }
 
-    fn isObject(value: Value) -> Bool {
-        Value::typeOf(value) == ValueType::Object
-    }
-
-    fn isNull(value: Value) -> Bool {
-        Value::typeOf(value) == ValueType::Null
-    }
-
     fn fromInt32(int32: Int32) -> Value {
         let value = unsafe { Value::fromInt32Unchecked(int32) };
         assume Value::isInt32(value);
@@ -55,6 +47,14 @@ impl Value {
     }
 
     unsafe fn toInt32Unchecked(value: Value) -> Int32;
+
+    fn isNull(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Null
+    }
+
+    fn isObject(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Object
+    }
 
     fn fromObject(object: Object) -> Value {
         let value = unsafe { Value::fromObjectUnchecked(object) };

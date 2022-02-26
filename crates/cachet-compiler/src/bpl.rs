@@ -878,6 +878,7 @@ impl<'a> Compiler<'a> {
                 }
                 debug_assert!(!succ_emit_node_indexes.is_empty());
 
+                // TODO(spinda): Elide goto on fallthrough.
                 let goto_succs_stmt = GotoStmt {
                     labels: succ_emit_node_indexes
                         .iter()
@@ -1679,6 +1680,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_var_access(&self, var_index: flattener::VarIndex) -> Expr {
         match var_index {
+            flattener::VarIndex::BuiltIn(BuiltInVar::True) => true.into(),
+            flattener::VarIndex::BuiltIn(BuiltInVar::False) => false.into(),
             flattener::VarIndex::EnumVariant(enum_variant_index) => {
                 let enum_item = &self.env[enum_variant_index.enum_index];
                 let variant_path = enum_item[enum_variant_index.variant_index];
@@ -2205,6 +2208,8 @@ lazy_static! {
         Ident::from("MASM").nest("setValue".into()),
         Ident::from("MASM").nest("getInt32".into()),
         Ident::from("MASM").nest("setInt32".into()),
+        Ident::from("MASM").nest("getBool".into()),
+        Ident::from("MASM").nest("setBool".into()),
         Ident::from("MASM").nest("getObject".into()),
         Ident::from("MASM").nest("setObject".into()),
         Ident::from("CacheIR").nest("allocateValueReg".into()),

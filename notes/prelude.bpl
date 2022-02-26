@@ -80,6 +80,22 @@ procedure #MASM~setInt32($reg: #Reg, $int32: #Int32)
   call #MASM~setValue($reg, tmp'0);
 }
 
+procedure #MASM~getBool($reg: #Reg)
+  returns (ret: #Bool)
+{
+  var tmp'0: #Value;
+  call tmp'0 := #MASM~getValue($reg);
+  call ret := #Value~toBool(tmp'0);
+}
+
+procedure #MASM~setBool($reg: #Reg, $bool: #Bool)
+  modifies #MASM~regs;
+{
+  var tmp'0: #Value;
+  call tmp'0 := #Value~fromBool($bool);
+  call #MASM~setValue($reg, tmp'0);
+}
+
 procedure #MASM~getObject($reg: #Reg)
   returns (ret: #Object)
 {
