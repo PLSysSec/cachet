@@ -48,6 +48,28 @@ impl Value {
 
     unsafe fn toInt32Unchecked(value: Value) -> Int32;
 
+    fn isBool(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Bool
+    }
+
+    fn fromBool(bool: Bool) -> Value {
+        let value = unsafe { Value::fromBoolUnchecked(bool) };
+        assume Value::isBool(value);
+        assume unsafe { Value::toBoolUnchecked(value) } == bool;
+        value
+    }
+
+    unsafe fn fromBoolUnchecked(value: Bool) -> Value;
+
+    fn toBool(value: Value) -> Bool {
+        assert Value::isBool(value);
+        let bool = unsafe { Value::toBoolUnchecked(value) };
+        assume unsafe { Value::fromBoolUnchecked(bool) } == value;
+        bool
+    }
+
+    unsafe fn toBoolUnchecked(value: Value) -> Bool;
+
     fn isNull(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Null
     }
