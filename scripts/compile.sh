@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && cd .. && pwd)
+repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && cd .. && pwd)"
 
 notes_dir="${repo_dir}/notes"
 cachet_file="${notes_dir}/${1}.cachet"
