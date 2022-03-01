@@ -260,14 +260,24 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         );
     }
 
-    fn normalize_if_stmt(&mut self, if_stmt: type_checker::IfStmt) {
+    fn normalize_if_stmt_recurse(&mut self, if_stmt: type_checker::IfStmt) -> IfStmt {
         let cond = self.normalize_expr(if_stmt.cond);
         let then = self.normalize_unused_block(if_stmt.then);
         let else_ = if_stmt
             .else_
-            .map(|else_| self.normalize_unused_block(else_));
+            .map(|else_| match else_ {
+                type_checker::ElseStmt::ElseBlock(else_block) =>
+                    ast::ElseStmt::ElseBlock(self.normalize_unused_block(else_block)),
+                type_checker::ElseStmt::ElseIf(else_if) =>
+                    ast::ElseStmt::ElseIf(Box::new(self.normalize_if_stmt_recurse(*else_if))),
+            });
 
-        self.stmts.push(IfStmt { cond, then, else_ }.into());
+        IfStmt { cond, then, else_ }
+    }
+
+    fn normalize_if_stmt(&mut self, if_stmt: type_checker::IfStmt) {
+        let if_ = self.normalize_if_stmt_recurse(if_stmt);
+        self.stmts.push(if_.into());
     }
 
     fn normalize_check_stmt(&mut self, check_stmt: type_checker::CheckStmt) {

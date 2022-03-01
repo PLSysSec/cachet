@@ -712,7 +712,12 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let else_ = if_stmt
             .else_
             .as_ref()
-            .map(|else_| self.type_check_block(else_));
+            .map(|else_| match else_ {
+                resolver::ElseStmt::ElseBlock(else_block) =>
+                    ast::ElseStmt::ElseBlock(self.type_check_block(else_block)),
+                resolver::ElseStmt::ElseIf(else_if) =>
+                    ast::ElseStmt::ElseIf(Box::new(self.type_check_if_stmt(&*else_if))),
+            });
 
         IfStmt { cond, then, else_ }
     }

@@ -128,14 +128,26 @@ impl Flattener {
         );
     }
 
-    fn flatten_if_stmt(&mut self, if_stmt: normalizer::IfStmt) {
+    fn flatten_if_stmt_recurse(&mut self, if_stmt: normalizer::IfStmt) -> IfStmt {
         let cond = self.flatten_expr(if_stmt.cond);
 
         let then = flatten_block(if_stmt.then);
 
-        let else_ = if_stmt.else_.map(flatten_block);
+        let else_ = if_stmt
+            .else_
+            .map(|else_| match else_ {
+                normalizer::ElseStmt::ElseBlock(else_block) =>
+                    ast::ElseStmt::ElseBlock(flatten_block(else_block)),
+                normalizer::ElseStmt::ElseIf(else_if) =>
+                    ast::ElseStmt::ElseIf(Box::new(self.flatten_if_stmt_recurse(*else_if))),
+            });
 
-        self.stmts.push(IfStmt { cond, then, else_ }.into());
+        IfStmt { cond, then, else_ }
+    }
+
+    fn flatten_if_stmt(&mut self, if_stmt: normalizer::IfStmt) {
+        let if_ = self.flatten_if_stmt_recurse(if_stmt);
+        self.stmts.push(if_.into());
     }
 
     fn flatten_check_stmt(&mut self, check_stmt: normalizer::CheckStmt) {

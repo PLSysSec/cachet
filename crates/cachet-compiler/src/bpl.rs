@@ -1427,17 +1427,26 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         );
     }
 
-    fn compile_if_stmt(&mut self, if_stmt: &flattener::IfStmt) {
+    fn compile_if_stmt_recurse(&mut self, if_stmt: &flattener::IfStmt) -> IfStmt {
         let cond = self.compile_expr(&if_stmt.cond);
 
         let then = self.compile_block(&if_stmt.then);
 
-        let else_ = if_stmt
-            .else_
-            .as_ref()
-            .map(|else_| self.compile_block(else_));
+        let else_ = if_stmt.else_.as_ref().map(|else_| match else_ {
+            flattener::ElseStmt::ElseBlock(else_block) => {
+                ast::ElseStmt::ElseBlock(self.compile_block(else_block))
+            }
+            flattener::ElseStmt::ElseIf(else_if) => {
+                ast::ElseStmt::ElseIf(Box::new(self.compile_if_stmt_recurse(&*else_if)))
+            }
+        });
 
-        self.stmts.push(IfStmt { cond, then, else_ }.into());
+        IfStmt { cond, then, else_ }
+    }
+
+    fn compile_if_stmt(&mut self, if_stmt: &flattener::IfStmt) {
+        let if_ = self.compile_if_stmt_recurse(if_stmt);
+        self.stmts.push(if_.into());
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &flattener::CheckStmt) {
@@ -2080,16 +2089,23 @@ impl<'a> FlowTracer<'a> {
 
     fn trace_if_stmt(&mut self, if_stmt: &flattener::IfStmt) {
         static EMPTY_BRANCH: Vec<flattener::Stmt> = Vec::new();
-        self.trace_branches(
-            [
-                if_stmt.then.as_slice(),
-                match &if_stmt.else_ {
-                    Some(else_) => &else_,
-                    None => &EMPTY_BRANCH,
+        let mut branches = vec![];
+        let mut if_option = Some(if_stmt);
+        while let Some(if_) = if_option {
+            branches.push(if_.then.as_slice());
+            match &if_.else_ {
+                Some(flattener::ElseStmt::ElseIf(if_next)) => if_option = Some(&*if_next),
+                Some(flattener::ElseStmt::ElseBlock(b)) => {
+                    branches.push(&b);
+                    if_option = None;
                 },
-            ]
-            .into_iter(),
-        );
+                None => {
+                    branches.push(&EMPTY_BRANCH);
+                    if_option = None;
+                },
+            }
+        }
+        self.trace_branches(branches.into_iter());
     }
 
     fn trace_goto_stmt(&mut self, goto_stmt: &flattener::GotoStmt) {

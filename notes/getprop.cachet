@@ -284,12 +284,10 @@ ir MASM {
             let val = Value::fromInt32(i);
             MASM::setValue(dest, val);
         }
-        else {
-            if valTy == ValueType::Object {
-                let o = MASM::getObject(payload);
-                let val = Value::fromObject(o);
-                MASM::setValue(dest, val);
-            }
+        else if valTy == ValueType::Object {
+            let o = MASM::getObject(payload);
+            let val = Value::fromObject(o);
+            MASM::setValue(dest, val);
         }
     }
 

@@ -904,6 +904,10 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         self.recurse().resolve_block_impl(block)
     }
 
+    fn resolve_nested_elseif(&mut self, if_stmt: Box<parser::IfStmt>) -> Option<Box<IfStmt>> {
+        self.recurse().resolve_if_stmt(*if_stmt).map(Box::new)
+    }
+
     /// This is deliberately *not* named `resolve_block`, to force explicit
     /// disambiguation between calls to `resolve_body_block` and
     /// `resolve_nested_block`. `resolve_block_impl` should not be called
@@ -974,7 +978,10 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
 
         let else_ = match if_stmt.else_ {
             None => Some(None),
-            Some(else_) => self.resolve_nested_block(else_).map(Some),
+            Some(parser::ElseStmt::ElseBlock(else_)) =>
+                self.resolve_nested_block(else_).map(ElseStmt::ElseBlock).map(Some),
+            Some(parser::ElseStmt::ElseIf(elseif_)) =>
+                self.resolve_nested_elseif(elseif_).map(ElseStmt::ElseIf).map(Some),
         };
 
         Some(IfStmt {

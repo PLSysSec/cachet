@@ -887,7 +887,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         self.stmts.push(LetStmt { lhs, type_, rhs }.into());
     }
 
-    fn compile_if_stmt(&mut self, if_stmt: &normalizer::IfStmt) {
+    fn compile_if_stmt_recurse(&mut self, if_stmt: &normalizer::IfStmt) -> IfStmt {
         let cond = self.use_expr(
             self.compile_expr(&if_stmt.cond),
             ExprTag::Ref | ExprTag::Val,
@@ -895,12 +895,21 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let then = self.compile_block(&if_stmt.then);
 
-        let else_ = if_stmt
-            .else_
-            .as_ref()
-            .map(|else_| self.compile_block(else_));
+        let else_ = if_stmt.else_.as_ref().map(|else_| match else_ {
+            normalizer::ElseStmt::ElseBlock(else_block) => {
+                ast::ElseStmt::ElseBlock(self.compile_block(else_block))
+            }
+            normalizer::ElseStmt::ElseIf(else_if) => {
+                ast::ElseStmt::ElseIf(Box::new(self.compile_if_stmt_recurse(&*else_if)))
+            }
+        });
 
-        self.stmts.push(IfStmt { cond, then, else_ }.into());
+        IfStmt { cond, then, else_ }.into()
+    }
+
+    fn compile_if_stmt(&mut self, if_stmt: &normalizer::IfStmt) {
+        let if_ = self.compile_if_stmt_recurse(if_stmt);
+        self.stmts.push(if_.into());
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &normalizer::CheckStmt) {

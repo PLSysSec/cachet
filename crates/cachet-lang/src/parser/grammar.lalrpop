@@ -195,8 +195,13 @@ LabelStmt: LabelStmt =
     <label:Label> ";" => LabelStmt { label };
 
 IfStmt: IfStmt =
-    "if" <cond:Spanned<BlockOrExpr>> <then:Block> <else_:("else" <Block>)?> =>
+    "if" <cond:Spanned<BlockOrExpr>> <then:Block> <else_:("else" <ElseStmt>)?> =>
         IfStmt { cond, then, else_ };
+
+ElseStmt: ElseStmt = {
+    <else_block:Block> => else_block.into(),
+    <else_if:Box<IfStmt>> => else_if.into(),
+}
 
 CheckStmt: CheckStmt =
     <kind:CheckKind> <cond:Spanned<BlockOrExpr>> ";" => CheckStmt { kind, cond };
@@ -373,6 +378,10 @@ Path: Path =
 Spanned<Rule>: Spanned<Rule> =
     <start: @L> <value: Rule> <end: @R> =>
         Spanned::new(Span::new(start as RawIndex, end as RawIndex), value);
+
+Box<Rule>: Box<Rule> =
+    <value: Rule> =>
+        Box::new(value);
 
 Comma<Rule>: Vec<Rule> =
     <mut xs:(<Rule> ",")*> <x:Rule?> => {

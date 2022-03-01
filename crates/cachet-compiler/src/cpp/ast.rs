@@ -793,18 +793,40 @@ impl Display for LetStmt {
     }
 }
 
+#[derive(Clone, Debug, From)]
+pub enum ElseStmt {
+    #[from]
+    ElseBlock(Block),
+    #[from]
+    ElseIf(Box<IfStmt>),
+}
+
+impl Display for ElseStmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match self {
+            ElseStmt::ElseBlock(b) => {
+                write!(f, " else {}", b)?;
+            },
+            ElseStmt::ElseIf(if_) => {
+                write!(f, " else {}", *if_)?;
+            },
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct IfStmt {
     pub cond: Expr,
     pub then: Block,
-    pub else_: Option<Block>,
+    pub else_: Option<ElseStmt>,
 }
 
 impl Display for IfStmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "if ({}) {}", self.cond, self.then)?;
         if let Some(else_) = &self.else_ {
-            write!(f, " else {}", else_)?;
+            write!(f, "{}", else_)?;
         }
         Ok(())
     }

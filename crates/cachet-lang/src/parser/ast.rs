@@ -148,6 +148,14 @@ pub enum Stmt {
     Expr(Expr),
 }
 
+#[derive(Clone, Debug, From)]
+pub enum ElseStmt {
+    #[from]
+    ElseBlock(Block),
+    #[from]
+    ElseIf(Box<IfStmt>),
+}
+
 #[derive(Clone, Debug)]
 pub struct LetStmt {
     pub lhs: LocalVar,
@@ -163,7 +171,7 @@ pub struct LabelStmt {
 pub struct IfStmt {
     pub cond: Spanned<Expr>,
     pub then: Block,
-    pub else_: Option<Block>,
+    pub else_: Option<ElseStmt>,
 }
 
 #[derive(Clone, Debug)]
