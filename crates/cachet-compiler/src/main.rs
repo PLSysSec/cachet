@@ -51,10 +51,7 @@ struct Opt {
     )]
     defs_output: Option<PathBuf>,
     /// Output file for specification (typically ending in .bpl).
-    #[structopt(
-        parse(from_os_str),
-        required_unless("dry-run"),
-    )]
+    #[structopt(parse(from_os_str), required_unless("dry-run"))]
     spec_output: Option<PathBuf>,
 
     /// Skip writing output files.

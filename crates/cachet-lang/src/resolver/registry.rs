@@ -82,11 +82,7 @@ impl<K: Eq + Hash, V> Registry<K, V> {
 }
 
 impl<K: Clone + Eq + Hash + Into<Path>, V: Registrable> Registry<K, V> {
-    pub fn register(
-        &mut self,
-        key: MaybeSpanned<K>,
-        value: V,
-    ) -> Result<(), DuplicateDefError> {
+    pub fn register(&mut self, key: MaybeSpanned<K>, value: V) -> Result<(), DuplicateDefError> {
         if value.shadows() {
             self.register_shadowing(key, value);
             return Ok(());

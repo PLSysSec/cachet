@@ -17,9 +17,9 @@ pub type CallableItem = normalizer::CallableItem<Void>;
 pub type Body = normalizer::Body<Void>;
 
 pub type Stmt = normalizer::Stmt<Void>;
-pub type ElseStmt = normalizer::ElseStmt<Void>;
 pub type LetStmt = normalizer::LetStmt<Void>;
 pub type IfStmt = normalizer::IfStmt<Void>;
+pub type ElseClause = normalizer::ElseClause<Void>;
 pub type CheckStmt = normalizer::CheckStmt<Void>;
 pub type AssignStmt = normalizer::AssignStmt<Void>;
 pub type RetStmt = normalizer::RetStmt<Void>;

@@ -896,11 +896,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let then = self.compile_block(&if_stmt.then);
 
         let else_ = if_stmt.else_.as_ref().map(|else_| match else_ {
-            normalizer::ElseStmt::ElseBlock(else_block) => {
-                ast::ElseStmt::ElseBlock(self.compile_block(else_block))
+            normalizer::ElseClause::ElseIf(else_if) => {
+                ast::ElseClause::ElseIf(Box::new(self.compile_if_stmt_recurse(&*else_if)))
             }
-            normalizer::ElseStmt::ElseIf(else_if) => {
-                ast::ElseStmt::ElseIf(Box::new(self.compile_if_stmt_recurse(&*else_if)))
+            normalizer::ElseClause::Else(else_block) => {
+                ast::ElseClause::Else(self.compile_block(else_block))
             }
         });
 

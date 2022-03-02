@@ -70,10 +70,7 @@ pub enum CompareKind {
 impl CompareKind {
     pub fn is_numeric(&self) -> bool {
         match self {
-            CompareKind::Lte
-            | CompareKind::Gte
-            | CompareKind::Lt
-            | CompareKind::Gt => true,
+            CompareKind::Lte | CompareKind::Gte | CompareKind::Lt | CompareKind::Gt => true,
             CompareKind::Eq | CompareKind::Neq => false,
         }
     }

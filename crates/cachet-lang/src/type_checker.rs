@@ -709,15 +709,14 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         let then = self.type_check_block(&if_stmt.then);
 
-        let else_ = if_stmt
-            .else_
-            .as_ref()
-            .map(|else_| match else_ {
-                resolver::ElseStmt::ElseBlock(else_block) =>
-                    ast::ElseStmt::ElseBlock(self.type_check_block(else_block)),
-                resolver::ElseStmt::ElseIf(else_if) =>
-                    ast::ElseStmt::ElseIf(Box::new(self.type_check_if_stmt(&*else_if))),
-            });
+        let else_ = if_stmt.else_.as_ref().map(|else_| match else_ {
+            resolver::ElseClause::ElseIf(else_if) => {
+                ast::ElseClause::ElseIf(Box::new(self.type_check_if_stmt(&*else_if)))
+            }
+            resolver::ElseClause::Else(else_block) => {
+                ast::ElseClause::Else(self.type_check_block(else_block))
+            }
+        });
 
         IfStmt { cond, then, else_ }
     }

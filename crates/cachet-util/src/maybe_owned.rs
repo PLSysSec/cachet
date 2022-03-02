@@ -71,7 +71,7 @@ where
 
 impl<T: Debug + ToOwned + ?Sized> Debug for MaybeOwned<'_, T>
 where
-    T::Owned: Debug
+    T::Owned: Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {

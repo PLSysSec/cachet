@@ -793,33 +793,11 @@ impl Display for LetStmt {
     }
 }
 
-#[derive(Clone, Debug, From)]
-pub enum ElseStmt {
-    #[from]
-    ElseBlock(Block),
-    #[from]
-    ElseIf(Box<IfStmt>),
-}
-
-impl Display for ElseStmt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match self {
-            ElseStmt::ElseBlock(b) => {
-                write!(f, " else {}", b)?;
-            },
-            ElseStmt::ElseIf(if_) => {
-                write!(f, " else {}", *if_)?;
-            },
-        }
-        Ok(())
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct IfStmt {
     pub cond: Expr,
     pub then: Block,
-    pub else_: Option<ElseStmt>,
+    pub else_: Option<ElseClause>,
 }
 
 impl Display for IfStmt {
@@ -827,6 +805,28 @@ impl Display for IfStmt {
         write!(f, "if ({}) {}", self.cond, self.then)?;
         if let Some(else_) = &self.else_ {
             write!(f, "{}", else_)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, From)]
+pub enum ElseClause {
+    #[from]
+    ElseIf(Box<IfStmt>),
+    #[from]
+    Else(Block),
+}
+
+impl Display for ElseClause {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match self {
+            ElseClause::ElseIf(if_stmt) => {
+                write!(f, " else {}", *if_stmt)?;
+            }
+            ElseClause::Else(block) => {
+                write!(f, " else {}", block)?;
+            }
         }
         Ok(())
     }

@@ -195,12 +195,12 @@ LabelStmt: LabelStmt =
     <label:Label> ";" => LabelStmt { label };
 
 IfStmt: IfStmt =
-    "if" <cond:Spanned<BlockOrExpr>> <then:Block> <else_:("else" <ElseStmt>)?> =>
+    "if" <cond:Spanned<BlockOrExpr>> <then:Block> <else_:("else" <ElseClause>)?> =>
         IfStmt { cond, then, else_ };
 
-ElseStmt: ElseStmt = {
-    <else_block:Block> => else_block.into(),
+ElseClause: ElseClause = {
     <else_if:Box<IfStmt>> => else_if.into(),
+    <else_block:Block> => else_block.into(),
 }
 
 CheckStmt: CheckStmt =

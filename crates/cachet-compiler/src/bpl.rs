@@ -1433,11 +1433,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let then = self.compile_block(&if_stmt.then);
 
         let else_ = if_stmt.else_.as_ref().map(|else_| match else_ {
-            flattener::ElseStmt::ElseBlock(else_block) => {
-                ast::ElseStmt::ElseBlock(self.compile_block(else_block))
+            flattener::ElseClause::ElseIf(else_if) => {
+                ast::ElseClause::ElseIf(Box::new(self.compile_if_stmt_recurse(&*else_if)))
             }
-            flattener::ElseStmt::ElseIf(else_if) => {
-                ast::ElseStmt::ElseIf(Box::new(self.compile_if_stmt_recurse(&*else_if)))
+            flattener::ElseClause::Else(else_block) => {
+                ast::ElseClause::Else(self.compile_block(else_block))
             }
         });
 
@@ -2094,15 +2094,15 @@ impl<'a> FlowTracer<'a> {
         while let Some(if_) = if_option {
             branches.push(if_.then.as_slice());
             match &if_.else_ {
-                Some(flattener::ElseStmt::ElseIf(if_next)) => if_option = Some(&*if_next),
-                Some(flattener::ElseStmt::ElseBlock(b)) => {
+                Some(flattener::ElseClause::ElseIf(if_next)) => if_option = Some(&*if_next),
+                Some(flattener::ElseClause::Else(b)) => {
                     branches.push(&b);
                     if_option = None;
-                },
+                }
                 None => {
                     branches.push(&EMPTY_BRANCH);
                     if_option = None;
-                },
+                }
             }
         }
         self.trace_branches(branches.into_iter());

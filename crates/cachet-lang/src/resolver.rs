@@ -977,11 +977,15 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         let then = self.resolve_nested_block(if_stmt.then);
 
         let else_ = match if_stmt.else_ {
+            Some(parser::ElseClause::ElseIf(elseif_)) => self
+                .resolve_nested_elseif(elseif_)
+                .map(ElseClause::ElseIf)
+                .map(Some),
+            Some(parser::ElseClause::Else(else_)) => self
+                .resolve_nested_block(else_)
+                .map(ElseClause::Else)
+                .map(Some),
             None => Some(None),
-            Some(parser::ElseStmt::ElseBlock(else_)) =>
-                self.resolve_nested_block(else_).map(ElseStmt::ElseBlock).map(Some),
-            Some(parser::ElseStmt::ElseIf(elseif_)) =>
-                self.resolve_nested_elseif(elseif_).map(ElseStmt::ElseIf).map(Some),
         };
 
         Some(IfStmt {

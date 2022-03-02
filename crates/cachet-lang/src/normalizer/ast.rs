@@ -146,14 +146,6 @@ pub enum Stmt<B = ()> {
     Ret(RetStmt<B>),
 }
 
-#[derive(Clone, Debug, From)]
-pub enum ElseStmt<B = ()> {
-    #[from]
-    ElseBlock(Vec<Stmt<B>>),
-    #[from]
-    ElseIf(Box<IfStmt<B>>),
-}
-
 impl<B: Default> From<BlockStmt<B>> for Stmt<B> {
     fn from(block_stmt: BlockStmt<B>) -> Self {
         Stmt::Block(B::default(), block_stmt)
@@ -170,7 +162,15 @@ pub struct LetStmt<B = ()> {
 pub struct IfStmt<B = ()> {
     pub cond: Expr<B>,
     pub then: Vec<Stmt<B>>,
-    pub else_: Option<ElseStmt<B>>,
+    pub else_: Option<ElseClause<B>>,
+}
+
+#[derive(Clone, Debug, From)]
+pub enum ElseClause<B = ()> {
+    #[from]
+    ElseIf(Box<IfStmt<B>>),
+    #[from]
+    Else(Vec<Stmt<B>>),
 }
 
 #[derive(Clone, Debug)]

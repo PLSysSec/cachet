@@ -133,14 +133,14 @@ impl Flattener {
 
         let then = flatten_block(if_stmt.then);
 
-        let else_ = if_stmt
-            .else_
-            .map(|else_| match else_ {
-                normalizer::ElseStmt::ElseBlock(else_block) =>
-                    ast::ElseStmt::ElseBlock(flatten_block(else_block)),
-                normalizer::ElseStmt::ElseIf(else_if) =>
-                    ast::ElseStmt::ElseIf(Box::new(self.flatten_if_stmt_recurse(*else_if))),
-            });
+        let else_ = if_stmt.else_.map(|else_| match else_ {
+            normalizer::ElseClause::ElseIf(else_if) => {
+                ast::ElseClause::ElseIf(Box::new(self.flatten_if_stmt_recurse(*else_if)))
+            }
+            normalizer::ElseClause::Else(else_block) => {
+                ast::ElseClause::Else(flatten_block(else_block))
+            }
+        });
 
         IfStmt { cond, then, else_ }
     }
