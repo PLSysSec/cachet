@@ -319,6 +319,8 @@ pub enum IrMemberFnSelector {
     Label,
     #[display(fmt = "bind")]
     Bind,
+    #[display(fmt = "bindExit")]
+    BindExit,
     #[display(fmt = "goto")]
     Goto,
     Op(OpCtorIrMemberFnSelector),
@@ -332,8 +334,8 @@ pub struct OpCtorIrMemberFnSelector {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum OpSelector {
-    #[display(fmt = "^External")]
-    External,
+    #[display(fmt = "^Exit")]
+    Exit,
     User(UserOpSelector),
 }
 
@@ -387,7 +389,11 @@ pub struct EmitLabelIdent {
 impl Display for EmitLabelIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "emit")?;
-        fmt_join_leading(f, "'", self.segments.iter())?;
+        if self.segments.is_empty() {
+            write!(f, "{}", OpSelector::Exit)?;
+        } else {
+            fmt_join_leading(f, "'", self.segments.iter())?;
+        }
         Ok(())
     }
 }

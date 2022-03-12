@@ -603,12 +603,16 @@ impl<'a> Compiler<'a> {
         Param { ident, type_ }
     }
 
-    fn compile_label_param(&mut self, label_param: &normalizer::Label) -> Param {
-        let ident = UserParamVarIdent::from(label_param.ident.value).into();
+    fn compile_label_param(&mut self, label_param: &normalizer::LabelParam) -> Param {
+        let ident = UserParamVarIdent::from(label_param.label.ident.value).into();
 
         let type_ = IrMemberTypePath {
-            parent: self.env[label_param.ir].ident.value,
-            ident: IrMemberTypeIdent::LabelRef,
+            parent: self.env[label_param.label.ir].ident.value,
+            ident: if label_param.is_out {
+                IrMemberTypeIdent::LabelMutRef
+            } else {
+                IrMemberTypeIdent::LabelRef
+            },
         }
         .into();
 
@@ -623,7 +627,7 @@ impl<'a> Compiler<'a> {
         body: &normalizer::Body,
     ) -> Block {
         let mut scoped_compiler = ScopedCompiler::new(self, parent_index, params, &body.locals);
-        scoped_compiler.bind_mut_var_params(param_order);
+        scoped_compiler.init_mut_var_params(param_order);
         scoped_compiler.compile_stmts(&body.stmts);
         scoped_compiler.stmts.into()
     }
@@ -678,6 +682,8 @@ fn generate_cast_fn_decl(
     }
 }
 
+// TODO(spinda): Make this hold a `CallableItem` reference instead of broken-out
+// fields.
 struct ScopedCompiler<'a, 'b> {
     compiler: &'b Compiler<'a>,
     parent_index: Option<normalizer::ParentIndex>,
@@ -720,7 +726,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn bind_mut_var_params(&mut self, param_order: &[normalizer::ParamIndex]) {
+    fn init_mut_var_params(&mut self, param_order: &[normalizer::ParamIndex]) {
         for param_index in param_order {
             if let normalizer::ParamIndex::Var(var_param_index) = param_index {
                 let var_param = &self.params[var_param_index];
@@ -738,7 +744,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                         tags: ExprTag::Ref.into(),
                     };
 
-                    self.bind_local_var(lhs, rhs);
+                    self.init_local_var(lhs, rhs);
                 }
             }
         }
@@ -752,7 +758,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         match arg {
             normalizer::Arg::Expr(atom_expr) => self.compile_expr_arg(atom_expr),
             normalizer::Arg::OutVar(out_var_arg) => self.compile_out_var_arg(out_var_arg),
-            normalizer::Arg::Label(label_index) => self.compile_label_arg(*label_index),
+            normalizer::Arg::Label(label_arg) => self.compile_label_arg(label_arg),
         }
     }
 
@@ -769,38 +775,51 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         self.use_expr(
             match out_var_arg.out_var {
-                normalizer::OutVar::Out(var_index) => self.compile_var_access(var_index.value),
+                normalizer::OutVar::Free(var_index) => self.compile_var_access(var_index.value),
                 // TODO(spinda): Eliminate these in the normalizer.
-                normalizer::OutVar::OutLet(_) => unimplemented!(),
+                normalizer::OutVar::Fresh(_) => unimplemented!(),
             },
             ExprTag::MutRef.into(),
         )
     }
 
-    fn compile_label_arg(&self, label_index: normalizer::LabelIndex) -> Expr {
-        match label_index {
+    fn compile_label_arg(&self, label_arg: &normalizer::LabelArg) -> Expr {
+        match label_arg.label {
             normalizer::LabelIndex::Param(label_param_index) => {
-                UserParamVarIdent::from(self.params[label_param_index].ident.value).into()
+                UserParamVarIdent::from(self.params[label_param_index].label.ident.value).into()
             }
-            normalizer::LabelIndex::Local(local_label_index) => {
-                let local_label = &self.locals[local_label_index];
-                CallExpr {
-                    target: IrMemberFnPath {
-                        parent: self.env[local_label.ir].ident.value,
-                        ident: IrMemberFnIdent::ToLabelRef,
+            normalizer::LabelIndex::Local(local_label_index) => CallExpr {
+                target: IrMemberFnPath {
+                    parent: self.env[label_arg.ir].ident.value,
+                    ident: if label_arg.is_out {
+                        IrMemberFnIdent::ToLabelMutRef
+                    } else {
+                        IrMemberFnIdent::ToLabelRef
+                    },
+                }
+                .into(),
+                args: vec![
+                    LocalLabelVarIdent {
+                        ident: self.locals[local_label_index].ident.value,
+                        index: local_label_index,
                     }
                     .into(),
-                    args: vec![
-                        LocalLabelVarIdent {
-                            ident: self.locals[local_label_index].ident.value,
-                            index: local_label_index,
-                        }
-                        .into(),
-                    ],
-                }
-                .into()
+                ],
             }
+            .into(),
         }
+    }
+
+    fn compile_internal_label_arg(
+        &self,
+        label_index: normalizer::LabelIndex,
+        is_out: bool,
+    ) -> Expr {
+        self.compile_label_arg(&normalizer::LabelArg {
+            label: label_index,
+            is_out,
+            ir: self.get_label_ir(label_index),
+        })
     }
 
     fn compile_block(&self, stmts: &[normalizer::Stmt]) -> Block {
@@ -841,7 +860,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let rhs = self.compile_expr(&let_stmt.rhs);
 
-        self.bind_local_var(lhs, rhs);
+        self.init_local_var(lhs, rhs);
     }
 
     fn compile_label_stmt(&mut self, label_stmt: &normalizer::LabelStmt) {
@@ -875,7 +894,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         self.stmts.push(LetStmt { lhs, type_, rhs }.into());
     }
 
-    fn bind_local_var(&mut self, lhs: VarIdent, rhs: TaggedExpr) {
+    fn init_local_var(&mut self, lhs: VarIdent, rhs: TaggedExpr) {
         let type_ = TypeMemberTypePath {
             parent: self.get_type_ident(rhs.type_),
             ident: ExprTag::Local.into(),
@@ -935,7 +954,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
         .into();
 
-        let args = vec![CONTEXT_ARG, self.compile_label_arg(goto_stmt.label)];
+        let args = vec![
+            CONTEXT_ARG,
+            self.compile_internal_label_arg(goto_stmt.label, false),
+        ];
 
         self.stmts.extend([
             Expr::from(CallExpr { target, args }).into(),
@@ -954,7 +976,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let args = vec![
             CONTEXT_ARG,
             self.ops_arg(),
-            self.compile_label_arg(bind_stmt.label),
+            self.compile_internal_label_arg(bind_stmt.label, true),
         ];
 
         self.stmts.extend([
@@ -1319,6 +1341,15 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             .into(),
             _ => ParamVarIdent::Ops.into(),
+        }
+    }
+
+    fn get_label_ir(&self, label_index: normalizer::LabelIndex) -> normalizer::IrIndex {
+        match label_index {
+            normalizer::LabelIndex::Param(label_param_index) => {
+                self.params[label_param_index].label.ir
+            }
+            normalizer::LabelIndex::Local(local_label_index) => self.locals[local_label_index].ir,
         }
     }
 }

@@ -137,6 +137,8 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_ir_item(&mut self, ir_item: &flattener::IrItem) {
+        // TODO(spinda): Always generate label infrastructure for IRs.
+
         if ir_item.emits.is_some() {
             return;
         }
@@ -153,10 +155,10 @@ impl<'a> Compiler<'a> {
             type_: None,
         };
 
-        let external_op_ctor_fn_item = FnItem {
+        let exit_op_ctor_fn_item = FnItem {
             ident: IrMemberFnIdent {
                 ir_ident,
-                selector: OpCtorIrMemberFnSelector::from(OpSelector::External).into(),
+                selector: OpCtorIrMemberFnSelector::from(OpSelector::Exit).into(),
             }
             .into(),
             attr: Some(FnAttr::Ctor),
@@ -370,6 +372,37 @@ impl<'a> Compiler<'a> {
             }),
         };
 
+        let bind_exit_proc_item = ProcItem {
+            ident: IrMemberFnIdent {
+                ir_ident,
+                selector: IrMemberFnSelector::BindExit,
+            }
+            .into(),
+            attr: Some(InlineProcAttr { depth: 1 }.into()),
+            param_vars: vec![TypedVar {
+                ident: ParamVarIdent::Label.into(),
+                type_: label_type_item.ident.into(),
+            }]
+            .into(),
+            ret_vars: TypedVars::default(),
+            body: Some(Body {
+                local_vars: Vec::new(),
+                stmts: vec![
+                    AssignStmt {
+                        lhs: IndexExpr {
+                            base: label_pcs_global_var_item.var.ident.into(),
+                            key: ParamVarIdent::Label.into(),
+                            value: None,
+                        }
+                        .into(),
+                        // PC 0 is reserved for an exit point.
+                        rhs: Literal::Int(0).into(),
+                    }
+                    .into(),
+                ],
+            }),
+        };
+
         let goto_proc_item = ProcItem {
             ident: IrMemberFnIdent {
                 ir_ident,
@@ -402,7 +435,7 @@ impl<'a> Compiler<'a> {
 
         self.items.extend([
             op_type_item.into(),
-            external_op_ctor_fn_item.into(),
+            exit_op_ctor_fn_item.into(),
             pc_global_var_item.into(),
             ops_global_var_item.into(),
             step_proc_item.into(),
@@ -413,6 +446,7 @@ impl<'a> Compiler<'a> {
             label_pcs_global_var_item.into(),
             label_proc_item.into(),
             bind_proc_item.into(),
+            bind_exit_proc_item.into(),
             goto_proc_item.into(),
         ]);
     }
@@ -529,50 +563,78 @@ impl<'a> Compiler<'a> {
                 let (attr, body) = match body {
                     Some(body) => (None, body),
                     None => {
-                        let body = if ret_vars.is_empty() {
-                            Body::default()
-                        } else {
-                            // For external functions represented as procedures with
-                            // return varlabies (for, e.g., out-parameters), set up a
-                            // procedure body where each return variable is assigned to
-                            // the result of delegating to a unique uninterpreted
-                            // function.
+                        // For external functions represented as procedures with
+                        // return varlabies (for, e.g., out-parameters), set up a
+                        // procedure body where each return variable is assigned to
+                        // the result of delegating to a unique uninterpreted
+                        // function.
 
-                            let arg_exprs: Vec<_> =
-                                param_vars.iter().map(|param| param.ident.into()).collect();
+                        let arg_exprs: Vec<_> =
+                            param_vars.iter().map(|param| param.ident.into()).collect();
 
-                            ret_vars
-                                .iter()
-                                .map(|ret_var| {
-                                    let ident = ExternalUserFnHelperFnIdent {
-                                        fn_ident,
-                                        ret_var_ident: ret_var.ident,
+                        let ret_var_assign_stmts = ret_vars.iter().map(|ret_var| {
+                            let ident = ExternalUserFnHelperFnIdent {
+                                fn_ident,
+                                ret_var_ident: ret_var.ident,
+                            }
+                            .into();
+
+                            self.items.push(
+                                FnItem {
+                                    ident,
+                                    attr: None,
+                                    param_vars: param_vars.clone(),
+                                    ret: ret_var.type_.clone(),
+                                    value: None,
+                                }
+                                .into(),
+                            );
+
+                            AssignStmt {
+                                lhs: ret_var.ident.into(),
+                                rhs: CallExpr {
+                                    target: ident,
+                                    arg_exprs: arg_exprs.clone(),
+                                }
+                                .into(),
+                            }
+                            .into()
+                        });
+
+                        // Also bind all label out-parameters to an exit
+                        // point.
+
+                        let out_label_param_bind_stmts = callable_item
+                            .param_order
+                            .iter()
+                            .filter_map(|param_index| match param_index {
+                                flattener::ParamIndex::Label(label_param_index) => {
+                                    Some(label_param_index)
+                                }
+                                _ => None,
+                            })
+                            .map(|label_param_index| &callable_item.params[*label_param_index])
+                            .filter(|label_param| label_param.is_out)
+                            .map(|label_param| {
+                                let ir_index = label_param.label.ir;
+                                let ir_ident = self.env[ir_index].ident.value.into();
+
+                                CallExpr {
+                                    target: IrMemberFnIdent {
+                                        ir_ident,
+                                        selector: IrMemberFnSelector::BindExit,
                                     }
-                                    .into();
+                                    .into(),
+                                    arg_exprs: vec![
+                                        UserParamVarIdent::from(label_param.label.ident.value)
+                                            .into(),
+                                    ],
+                                }
+                                .into()
+                            });
 
-                                    self.items.push(
-                                        FnItem {
-                                            ident,
-                                            attr: None,
-                                            param_vars: param_vars.clone(),
-                                            ret: ret_var.type_.clone(),
-                                            value: None,
-                                        }
-                                        .into(),
-                                    );
-
-                                    AssignStmt {
-                                        lhs: ret_var.ident.into(),
-                                        rhs: CallExpr {
-                                            target: ident,
-                                            arg_exprs: arg_exprs.clone(),
-                                        }
-                                        .into(),
-                                    }
-                                    .into()
-                                })
-                                .collect()
-                        };
+                        let body = iterate![..ret_var_assign_stmts, ..out_label_param_bind_stmts]
+                            .collect();
 
                         (Some(InlineProcAttr { depth: 1 }.into()), body)
                     }
@@ -626,7 +688,7 @@ impl<'a> Compiler<'a> {
 
         // Label parameters to the top-level op are reflected as local
         // variables.
-        let label_params: Vec<&flattener::Label> = top_op_item
+        let label_params: Vec<&flattener::LabelParam> = top_op_item
             .param_order
             .iter()
             .filter_map(|param_index| match param_index {
@@ -650,7 +712,7 @@ impl<'a> Compiler<'a> {
                 CallStmt {
                     call: CallExpr {
                         target: IrMemberFnIdent {
-                            ir_ident: self.env[label_param.ir].ident.value.into(),
+                            ir_ident: self.env[label_param.label.ir].ident.value.into(),
                             selector: IrMemberFnSelector::Label,
                         }
                         .into(),
@@ -701,9 +763,56 @@ impl<'a> Compiler<'a> {
         }
         .into();
 
-        let init_pc_stmt: Stmt = AssignStmt {
+        let init_emit_pc_stmt: Stmt = AssignStmt {
             lhs: pc_var_ident.into(),
             rhs: Literal::Int(0).into(),
+        }
+        .into();
+
+        stmts.extend([assume_pc_emit_paths_uninit_stmt, init_emit_pc_stmt]);
+
+        // Bind all top-level label parameters to the exit point we're about to
+        // emit at PC 0. Filter down to just the labels of the bottom-level IR,
+        // i.e., the ones we could actually jump to.
+        stmts.extend(
+            label_params
+                .iter()
+                .zip(label_param_local_vars.iter())
+                .filter(|(label_param, _)| label_param.label.ir == bottom_ir_index)
+                .map(|(_, label_param_local_var)| {
+                    CallExpr {
+                        target: IrMemberFnIdent {
+                            ir_ident: bottom_ir_ident,
+                            selector: IrMemberFnSelector::Bind,
+                        }
+                        .into(),
+                        arg_exprs: vec![label_param_local_var.var.ident.into()],
+                    }
+                    .into()
+                }),
+        );
+
+        // Emit a leading "exit" op at the reserved PC 0, to represent control
+        // flow being transferred to some point outside the program from a jump
+        // to an externally-bound label (e.g., top-level label parameters).
+        let exit_op_ctor_call_expr: Expr = CallExpr {
+            target: IrMemberFnIdent {
+                ir_ident: bottom_ir_ident,
+                selector: OpCtorIrMemberFnSelector::from(OpSelector::Exit).into(),
+            }
+            .into(),
+            arg_exprs: Vec::new(),
+        }
+        .into();
+        let exit_emit_label_ident = &flow_graph[flow_graph.exit_emit_node_index()].label_ident;
+        let exit_emit_path_expr: Expr = generate_emit_path_expr(&exit_emit_label_ident).into();
+        let leading_exit_emit_stmt = CallExpr {
+            target: IrMemberFnIdent {
+                ir_ident: bottom_ir_ident,
+                selector: IrMemberFnSelector::Emit,
+            }
+            .into(),
+            arg_exprs: vec![exit_op_ctor_call_expr.clone(), exit_emit_path_expr.clone()],
         }
         .into();
 
@@ -728,60 +837,53 @@ impl<'a> Compiler<'a> {
         }
         .into();
 
-        stmts.extend([
-            assume_pc_emit_paths_uninit_stmt,
-            init_pc_stmt.clone(),
-            call_top_op_fn_stmt,
-        ]);
-
-        // Bind all external labels to the trailing external emit. This covers
-        // the top-level label parameters of the bottom IR.
-        stmts.extend(
-            label_params
-                .iter()
-                .zip(label_param_local_vars.iter())
-                .filter(|(label_param, _)| label_param.ir == bottom_ir_index)
-                .map(|(_, label_param_local_var)| {
-                    CallExpr {
-                        target: IrMemberFnIdent {
-                            ir_ident: bottom_ir_ident,
-                            selector: IrMemberFnSelector::Bind,
-                        }
-                        .into(),
-                        arg_exprs: vec![label_param_local_var.var.ident.into()],
-                    }
-                    .into()
-                }),
-        );
-
-        // Emit a trailing "external" op after everything else, to represent
-        // control flow being transferred to some point outside the program.
-        // This represents both normal termination and jumping to an
-        // externally-provided label.
-        let external_emit_node = &flow_graph.emit_nodes.last().unwrap();
-        let external_emit_stmt = CallExpr {
+        // Emit a trailing "exit" op after everything else, to represent
+        // control flow being transferred to some point outside the program
+        // following normal termination (i.e., control flow reaching the end of
+        // the generated program).
+        let trailing_exit_emit_stmt = CallExpr {
             target: IrMemberFnIdent {
                 ir_ident: bottom_ir_ident,
                 selector: IrMemberFnSelector::Emit,
             }
             .into(),
-            arg_exprs: vec![
-                CallExpr {
-                    target: IrMemberFnIdent {
-                        ir_ident: bottom_ir_ident,
-                        selector: OpCtorIrMemberFnSelector::from(OpSelector::External).into(),
-                    }
-                    .into(),
-                    arg_exprs: Vec::new(),
-                }
-                .into(),
-                generate_emit_path_expr(&external_emit_node.label_ident).into(),
-            ],
+            arg_exprs: vec![exit_op_ctor_call_expr, exit_emit_path_expr],
         }
         .into();
-        stmts.extend([external_emit_stmt, init_pc_stmt]);
 
-        for emit_node in &flow_graph.emit_nodes {
+        // Note that PC 0 is reserved for a leading exit-point which breaks from
+        // control-flow within the program out to external code. We generate
+        // this up front so we have a known PC for binding things like top-level
+        // incoming label parameters and label out-parameters of external
+        // functions. The first real op of the generated program is emitted at
+        // PC 1, thus this is where the counter starts for the interpreter
+        // phase.
+        let init_interpret_pc_stmt: Stmt = AssignStmt {
+            lhs: pc_var_ident.into(),
+            rhs: Literal::Int(1).into(),
+        }
+        .into();
+
+        stmts.extend([
+            leading_exit_emit_stmt,
+            call_top_op_fn_stmt,
+            trailing_exit_emit_stmt,
+            init_interpret_pc_stmt,
+        ]);
+
+        // For each emit node in the control-flow graph, emit a labeled section
+        // which interprets the corresponding op and jumps to labels
+        // corresponding to the possible subsequent emits. We do this for all
+        // the regular emit nodes first, and then for the artificially-inserted
+        // "exit" emit node at the end.
+        let emit_nodes = iterate![
+            ..flow_graph
+                .emit_nodes
+                .iter()
+                .filter(|emit_node| !emit_node.is_exit()),
+            &flow_graph[flow_graph.exit_emit_node_index()],
+        ];
+        for emit_node in emit_nodes {
             let emit_label_stmt = LabelStmt {
                 label_ident: emit_node.label_ident.clone().into(),
             }
@@ -840,7 +942,7 @@ impl<'a> Compiler<'a> {
                             }
                             flattener::ParamIndex::OutVar(_) => None,
                             flattener::ParamIndex::Label(label_param_index) => {
-                                Some(op_item.params[label_param_index].ident.value)
+                                Some(op_item.params[label_param_index].label.ident.value)
                             }
                         })
                         .map(|param_ident| {
@@ -959,11 +1061,15 @@ impl<'a> Compiler<'a> {
         })
     }
 
-    fn compile_label_param(&self, label_param: &flattener::Label) -> TypedVar {
+    fn compile_label_param(&self, label_param: &flattener::LabelParam) -> TypedVar {
+        // Both label parameters and out-parameters should be compiled to
+        // regular Boogie parameters. Unlike with variable out-parameters, which
+        // get translated to return variables, we don't actually *assign*
+        // through label out-parameters, we just bind the label IDs passed in.
         TypedVar {
-            ident: UserParamVarIdent::from(label_param.ident.value).into(),
+            ident: UserParamVarIdent::from(label_param.label.ident.value).into(),
             type_: IrMemberTypeIdent {
-                ir_ident: self.env[label_param.ir].ident.value.into(),
+                ir_ident: self.env[label_param.label.ir].ident.value.into(),
                 selector: IrMemberTypeSelector::Label,
             }
             .into(),
@@ -1194,6 +1300,9 @@ impl CallableRepr {
                 .iter()
                 .any(|param_index| match param_index {
                     flattener::ParamIndex::OutVar(_) => true,
+                    flattener::ParamIndex::Label(label_param_index) => {
+                        callable_item.params[*label_param_index].is_out
+                    }
                     _ => false,
                 });
 
@@ -1274,8 +1383,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 flattener::Arg::OutVar(out_var_arg) => {
                     ret_var_idents.push(self.compile_out_var_arg(out_var_arg))
                 }
-                flattener::Arg::Label(label_index) => {
-                    arg_exprs.push(self.compile_label_arg(*label_index))
+                flattener::Arg::Label(label_arg) => {
+                    arg_exprs.push(self.compile_label_arg(label_arg))
                 }
             }
         }
@@ -1291,20 +1400,30 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         // TODO(spinda): Handle out-parameter upcasting.
 
         match out_var_arg.out_var {
-            flattener::OutVar::Out(var_index) => self
+            flattener::OutVar::Free(var_index) => self
                 .get_var_ident(var_index.value)
                 .expect("invalid out-variable argument"),
             // TODO(spinda): Eliminate these in the normalizer.
-            flattener::OutVar::OutLet(_) => unimplemented!(),
+            flattener::OutVar::Fresh(_) => unimplemented!(),
         }
     }
 
-    fn compile_label_arg(&mut self, label_index: flattener::LabelIndex) -> Expr {
+    fn compile_label_arg(&mut self, label_arg: &flattener::LabelArg) -> Expr {
+        self.compile_internal_label_arg(label_arg.label)
+    }
+
+    fn compile_internal_label_arg(&mut self, label_index: flattener::LabelIndex) -> Expr {
+        // As with compiling label parameters and out-parameters, we compile
+        // label arguments anD label out-arguments the same way when generating
+        // Boogie.
         match label_index {
-            flattener::LabelIndex::Param(label_param_index) => {
-                UserParamVarIdent::from(self.callable_item.params[label_param_index].ident.value)
-                    .into()
-            }
+            flattener::LabelIndex::Param(label_param_index) => UserParamVarIdent::from(
+                self.callable_item.params[label_param_index]
+                    .label
+                    .ident
+                    .value,
+            )
+            .into(),
             flattener::LabelIndex::Local(local_label_index) => LocalLabelVarIdent {
                 ident: self.callable_locals[local_label_index].ident.value,
                 index: local_label_index,
@@ -1470,7 +1589,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
         .into();
 
-        let arg_exprs = vec![self.compile_label_arg(goto_stmt.label)];
+        let arg_exprs = vec![self.compile_internal_label_arg(goto_stmt.label)];
 
         self.stmts
             .extend([CallExpr { target, arg_exprs }.into(), Stmt::Ret]);
@@ -1484,7 +1603,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
         .into();
 
-        let arg_exprs = vec![self.compile_label_arg(bind_stmt.label)];
+        let arg_exprs = vec![self.compile_internal_label_arg(bind_stmt.label)];
 
         self.stmts.extend([CallExpr { target, arg_exprs }.into()]);
     }
@@ -1895,6 +2014,25 @@ struct FlowGraph {
     label_nodes: TiVec<LabelNodeIndex, LabelNode>,
 }
 
+impl FlowGraph {
+    fn exit_emit_node_index(&self) -> EmitNodeIndex {
+        let exit_emit_node_index = self.emit_nodes.first_key().expect("missing exit emit node");
+        debug_assert!(
+            self[exit_emit_node_index].is_exit(),
+            "first emit node does not correspond to an exit point"
+        );
+        exit_emit_node_index
+    }
+
+    fn link_label_to_emit(
+        &mut self,
+        label_node_index: LabelNodeIndex,
+        emit_node_index: EmitNodeIndex,
+    ) {
+        self[label_node_index].bound_to.insert(emit_node_index);
+    }
+}
+
 typed_field_index!(FlowGraph:emit_nodes[EmitNodeIndex] => EmitNode);
 typed_field_index!(FlowGraph:label_nodes[LabelNodeIndex] => LabelNode);
 
@@ -1903,6 +2041,12 @@ struct EmitNode {
     label_ident: EmitLabelIdent,
     succs: HashSet<EmitSucc>,
     target: Option<flattener::CallableIndex>,
+}
+
+impl EmitNode {
+    fn is_exit(&self) -> bool {
+        self.target.is_none()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
@@ -1924,10 +2068,40 @@ fn trace_entry_point(
     bottom_ir_index: flattener::IrIndex,
 ) -> FlowGraph {
     let mut flow_tracer = FlowTracer::new(env, bottom_ir_index);
+    flow_tracer.insert_exit_emit_node();
     flow_tracer.init_top_label_params(&top_op_item.params, &top_op_item.param_order);
     flow_tracer.trace_op_item(top_op_item);
-    flow_tracer.bind_external_labels();
-    flow_tracer.graph.into_owned()
+    flow_tracer.link_exit_emit_node();
+
+    let flow_graph = flow_tracer.graph.into_owned();
+    debug_assert_eq!(
+        flow_graph
+            .emit_nodes
+            .iter()
+            .filter(|emit_node| emit_node.is_exit())
+            .count(),
+        1,
+        "wrong number of exit emit nodes"
+    );
+    debug_assert_eq!(
+        flow_graph
+            .emit_nodes
+            .iter_enumerated()
+            .find(|(_, emit_node)| emit_node.succs.is_empty() && !emit_node.is_exit())
+            .map(|(emit_node_index, _)| emit_node_index),
+        None,
+        "non-exit emit node has no successors"
+    );
+    debug_assert_eq!(
+        flow_graph
+            .label_nodes
+            .iter_enumerated()
+            .find(|(_, label_node)| label_node.bound_to.is_empty())
+            .map(|(label_node_index, _)| label_node_index),
+        None,
+        "unbound label node",
+    );
+    flow_graph
 }
 
 struct FlowTracer<'a> {
@@ -1965,10 +2139,16 @@ impl<'a> FlowTracer<'a> {
         param_order: &[flattener::ParamIndex],
     ) {
         for param_index in param_order {
+            let exit_emit_node_index = self.graph.exit_emit_node_index();
             if let flattener::ParamIndex::Label(label_param_index) = param_index {
                 let label_param = &params[label_param_index];
-                if label_param.ir == self.bottom_ir_index {
-                    self.create_label_node(label_param_index.into());
+                // We only need to track control-flow between labels of the
+                // bottom-level IR (i.e., the one that will be interpreted in
+                // the end).
+                if label_param.label.ir == self.bottom_ir_index {
+                    let label_node_index = self.insert_label_node(label_param_index.into());
+                    self.graph
+                        .link_label_to_emit(label_node_index, exit_emit_node_index);
                 }
             }
         }
@@ -1984,35 +2164,17 @@ impl<'a> FlowTracer<'a> {
         for item in param_order.iter().zip(args) {
             if let (
                 flattener::ParamIndex::Label(label_param_index),
-                flattener::Arg::Label(arg_label_index),
+                flattener::Arg::Label(label_arg),
             ) = item
             {
                 let label_param = &params[label_param_index];
-                if label_param.ir == self.bottom_ir_index {
-                    let arg_label_node_index = caller_label_scope[arg_label_index];
+                if label_param.label.ir == self.bottom_ir_index {
+                    let arg_label_node_index = caller_label_scope[&label_arg.label];
                     self.label_scope
                         .insert(label_param_index.into(), arg_label_node_index);
                 }
             }
         }
-    }
-
-    fn bind_external_labels(&mut self) {
-        self.bound_labels.extend(
-            self.graph
-                .label_nodes
-                .iter_enumerated()
-                .filter(|(_, label_node)| label_node.bound_to.is_empty())
-                .map(|(label_node_index, _)| label_node_index),
-        );
-
-        let emit_label_segment = EmitLabelSegment {
-            local_emit_index: self.take_local_emit_index(),
-            ir_ident: self.env[self.bottom_ir_index].ident.value.into(),
-            op_selector: OpSelector::External,
-        };
-        let emit_label_ident = vec![emit_label_segment].into();
-        self.create_emit_node(emit_label_ident, None);
     }
 
     fn trace_op_item(&mut self, op_item: &flattener::CallableItem) {
@@ -2029,7 +2191,7 @@ impl<'a> FlowTracer<'a> {
     fn trace_local_labels(&mut self, local_labels: &TiSlice<LocalLabelIndex, flattener::Label>) {
         for (local_label_index, local_label) in local_labels.iter_enumerated() {
             if local_label.ir == self.bottom_ir_index {
-                self.create_label_node(local_label_index.into());
+                self.insert_label_node(local_label_index.into());
             }
         }
     }
@@ -2076,7 +2238,6 @@ impl<'a> FlowTracer<'a> {
             flattener::Stmt::Let(_)
             | flattener::Stmt::Label(_)
             | flattener::Stmt::Check(_)
-            | flattener::Stmt::Invoke(_)
             | flattener::Stmt::Assign(_)
             | flattener::Stmt::Ret(_) => (),
             flattener::Stmt::If(if_stmt) => self.trace_if_stmt(if_stmt),
@@ -2084,6 +2245,7 @@ impl<'a> FlowTracer<'a> {
             flattener::Stmt::Bind(bind_stmt) => self.trace_bind_stmt(bind_stmt),
             flattener::Stmt::Emit(emit_stmt) => self.trace_emit_stmt(emit_stmt),
             flattener::Stmt::Block(void, _) => unreachable(*void),
+            flattener::Stmt::Invoke(invoke_stmt) => self.trace_invoke_stmt(invoke_stmt),
         }
     }
 
@@ -2141,7 +2303,10 @@ impl<'a> FlowTracer<'a> {
         // If the op we're emitting is at the interpreter level, create a
         // corresponding emit node and set it as the new predecessor on-deck.
         if ir_item.emits.is_none() {
-            self.create_emit_node(new_emit_label_ident.clone(), Some(emit_stmt.call.target));
+            self.insert_and_link_emit_node(
+                new_emit_label_ident.clone(),
+                Some(emit_stmt.call.target),
+            );
         }
 
         // Trace inside the emitted op. It's important that we do this *after*
@@ -2168,20 +2333,57 @@ impl<'a> FlowTracer<'a> {
         flow_tracer.trace_op_item(op_item);
     }
 
-    fn create_emit_node(
+    fn trace_invoke_stmt(&mut self, invoke_stmt: &flattener::InvokeStmt) {
+        // TODO(spinda): Handle non-external functions with label
+        // out-parameters.
+        debug_assert!(self.env[invoke_stmt.call.target].body.is_none());
+
+        let exit_emit_node_index = self.graph.exit_emit_node_index();
+        for arg in &invoke_stmt.call.args {
+            if let flattener::Arg::Label(label_arg) = arg {
+                if label_arg.is_out && label_arg.ir == self.bottom_ir_index {
+                    let label_node_index = self.label_scope[&label_arg.label];
+                    self.graph
+                        .link_label_to_emit(label_node_index, exit_emit_node_index);
+                }
+            }
+        }
+    }
+
+    fn insert_exit_emit_node(&mut self) {
+        debug_assert!(self.graph.emit_nodes.is_empty());
+        debug_assert!(self.pred_emits.is_empty());
+        self.insert_emit_node(EmitLabelIdent::default(), None);
+    }
+
+    fn link_exit_emit_node(&mut self) {
+        self.link_emit_node(self.graph.exit_emit_node_index());
+    }
+
+    fn insert_emit_node(
+        &mut self,
+        label_ident: EmitLabelIdent,
+        target: Option<flattener::CallableIndex>,
+    ) -> EmitNodeIndex {
+        self.graph.emit_nodes.push_and_get_key(EmitNode {
+            label_ident,
+            succs: HashSet::new(),
+            target,
+        })
+    }
+
+    fn insert_and_link_emit_node(
         &mut self,
         label_ident: EmitLabelIdent,
         target: Option<flattener::CallableIndex>,
     ) {
-        let emit_node_index = self.graph.emit_nodes.push_and_get_key(EmitNode {
-            label_ident,
-            succs: HashSet::new(),
-            target,
-        });
-
-        self.link_pred_emits_to_succ(emit_node_index.into());
+        let emit_node_index = self.insert_emit_node(label_ident, target);
+        self.link_emit_node(emit_node_index);
         self.pred_emits.insert(emit_node_index);
+    }
 
+    fn link_emit_node(&mut self, emit_node_index: EmitNodeIndex) {
+        self.link_pred_emits_to_succ(emit_node_index.into());
         self.link_bound_labels_to_emit(emit_node_index);
     }
 
@@ -2193,9 +2395,8 @@ impl<'a> FlowTracer<'a> {
 
     fn link_bound_labels_to_emit(&mut self, emit_node_index: EmitNodeIndex) {
         for bound_label_index in self.bound_labels.drain() {
-            self.graph[bound_label_index]
-                .bound_to
-                .insert(emit_node_index);
+            self.graph
+                .link_label_to_emit(bound_label_index, emit_node_index);
         }
     }
 
@@ -2205,13 +2406,13 @@ impl<'a> FlowTracer<'a> {
         local_emit_index
     }
 
-    fn create_label_node(&mut self, label_index: flattener::LabelIndex) {
+    fn insert_label_node(&mut self, label_index: flattener::LabelIndex) -> LabelNodeIndex {
         let label_node_index = self
             .graph
             .label_nodes
             .push_and_get_key(LabelNode::default());
-
         self.label_scope.insert(label_index, label_node_index);
+        label_node_index
     }
 }
 

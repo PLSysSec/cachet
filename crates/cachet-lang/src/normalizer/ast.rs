@@ -14,11 +14,11 @@ use crate::ast::{
 use crate::type_checker;
 pub use crate::type_checker::{
     BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex,
-    GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, Label, LabelIndex, LabelParamIndex,
-    LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError,
-    OpIndex, OutVar, OutVarArg, OutVarParam, OutVarParamIndex, ParamIndex, Params, ParentIndex,
-    StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex,
-    VariantIndex,
+    GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, Label, LabelIndex, LabelParam,
+    LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,
+    NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, OutVarParam, OutVarParamIndex,
+    ParamIndex, Params, ParentIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex,
+    VarParam, VarParamIndex, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -100,10 +100,15 @@ impl<B> Typed for CallableItem<B> {
 pub enum Arg {
     Expr(AtomExpr),
     OutVar(OutVarArg),
-    Label(LabelIndex),
+    Label(LabelArg),
 }
 
-deref_from!(&LabelIndex => Arg);
+#[derive(Clone, Debug)]
+pub struct LabelArg {
+    pub label: LabelIndex,
+    pub is_out: bool,
+    pub ir: IrIndex,
+}
 
 #[derive(Clone, Debug)]
 pub struct Call {

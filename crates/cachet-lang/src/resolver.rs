@@ -756,8 +756,8 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 out_var_param_index.into()
             }
             parser::Param::Label(label_param) => {
-                let label_param = self.resolve_label(label_param);
-                let label_param_ident = label_param.ident;
+                let label_param = self.resolve_label_param(label_param);
+                let label_param_ident = label_param.label.ident;
                 let label_param_index = params.label_params.push_and_get_key(label_param);
                 self.register_scoped(label_param_ident, label_param_index.into());
                 label_param_index.into()
@@ -792,6 +792,15 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         }
     }
 
+    fn resolve_label_param(&mut self, label_param: parser::LabelParam) -> LabelParam {
+        let label = self.resolve_label(label_param.label);
+
+        LabelParam {
+            label,
+            is_out: label_param.is_out,
+        }
+    }
+
     fn resolve_label(&mut self, label: parser::Label) -> Label {
         // If the IR lookup fails, we fill in the `ir` field with a bogus zero
         // index value. This could be an invalid index value if there are no IRs
@@ -810,16 +819,16 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     }
 
     fn resolve_args(&mut self, args: Vec<Spanned<parser::Arg>>) -> Option<Vec<Spanned<Arg>>> {
-        let mut deferred_local_var_registrations = Vec::new();
+        let mut deferred_local_registrations = Vec::new();
 
         let args = collect_eager(args.into_iter().map(|arg| {
             map_spanned(arg, |arg| {
-                self.resolve_arg(arg.value, &mut deferred_local_var_registrations)
+                self.resolve_arg(arg.value, &mut deferred_local_registrations)
             })
         }));
 
-        for (ident, local_var_index) in deferred_local_var_registrations {
-            self.register_scoped(ident, local_var_index.into());
+        for (ident, scoped_index) in deferred_local_registrations {
+            self.register_scoped(ident, scoped_index);
         }
 
         args
@@ -828,41 +837,38 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     fn resolve_arg(
         &mut self,
         arg: parser::Arg,
-        deferred_local_var_registrations: &mut Vec<(Spanned<Ident>, LocalVarIndex)>,
+        deferred_local_registrations: &mut Vec<(Spanned<Ident>, ScopedIndex)>,
     ) -> Option<Arg> {
         match arg {
-            parser::Arg::VarExprOrLabel(path) => self
-                .lookup_var_or_label_scoped(path)
+            parser::Arg::Expr(expr) => self.resolve_expr(expr).map(Arg::from),
+            parser::Arg::FreeVarOrLabel(free_arg) => self
+                .lookup_var_or_label_scoped(free_arg.path)
                 .found(&mut self.errors)
                 .map(|scoped_index| match scoped_index {
-                    ScopedIndex::Var(var_index) => {
-                        Expr::from(Spanned::new(path.span, var_index)).into()
-                    }
-                    ScopedIndex::Label(label_index) => label_index.into(),
+                    ScopedIndex::Var(var_index) => if free_arg.is_out {
+                        OutVar::Free(Spanned::new(free_arg.path.span, var_index)).into()
+                    } else {
+                        Expr::from(Spanned::new(free_arg.path.span, var_index)).into()
+                    },
+                    ScopedIndex::Label(label_index) => if free_arg.is_out {
+                        OutLabel::Free(Spanned::new(free_arg.path.span, label_index)).into()
+                    } else {
+                        label_index.into()
+                    },
                 }),
-            parser::Arg::Expr(expr) => self.resolve_expr(expr).map(Arg::from),
-            parser::Arg::OutVar(out_var) => self
-                .resolve_out_var(out_var, deferred_local_var_registrations)
-                .map(Arg::from),
-        }
-    }
-
-    fn resolve_out_var(
-        &mut self,
-        out_var: parser::OutVar,
-        deferred_local_var_registrations: &mut Vec<(Spanned<Ident>, LocalVarIndex)>,
-    ) -> Option<OutVar> {
-        match out_var {
-            parser::OutVar::Out(out_var_path) => map_spanned(out_var_path, |out_var_path| {
-                self.lookup_var_scoped(out_var_path).found(&mut self.errors)
-            })
-            .map(OutVar::Out),
-            parser::OutVar::OutLet(out_local_var) => {
-                let out_local_var = self.resolve_local_var(out_local_var);
-                let out_local_var_ident = out_local_var.ident;
-                let out_local_var_index = self.locals.local_vars.push_and_get_key(out_local_var);
-                deferred_local_var_registrations.push((out_local_var_ident, out_local_var_index));
-                Some(OutVar::OutLet(out_local_var_index))
+            parser::Arg::OutFreshVar(local_var) => {
+                let local_var = self.resolve_local_var(local_var);
+                let local_var_ident = local_var.ident;
+                let local_var_index = self.locals.local_vars.push_and_get_key(local_var);
+                deferred_local_registrations.push((local_var_ident, local_var_index.into()));
+                Some(OutVar::Fresh(local_var_index).into())
+            }
+            parser::Arg::OutFreshLabel(local_label) => {
+                let local_label = self.resolve_local_label(local_label);
+                let label_ident = local_label.ident;
+                let local_label_index = self.locals.local_labels.push_and_get_key(local_label);
+                deferred_local_registrations.push((label_ident, local_label_index.into()));
+                Some(OutLabel::Fresh(local_label_index).into())
             }
         }
     }
@@ -893,6 +899,15 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             ident: local_var.ident,
             is_mut: local_var.is_mut,
             type_,
+        }
+    }
+
+    fn resolve_local_label(&mut self, local_label: parser::LocalLabel) -> LocalLabel {
+        let ir = local_label.ir.and_then(|ir| self.resolve_label_ir(ir));
+
+        LocalLabel {
+            ident: local_label.ident,
+            ir,
         }
     }
 
@@ -961,7 +976,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     }
 
     fn resolve_label_stmt(&mut self, label_stmt: parser::LabelStmt) -> Option<LabelStmt> {
-        let local_label = self.resolve_label(label_stmt.label);
+        let local_label = self.resolve_local_label(label_stmt.label.into());
         let local_label_ident = local_label.ident;
         let local_label_index = self.locals.local_labels.push_and_get_key(local_label);
         self.register_scoped(local_label_ident, local_label_index.into());

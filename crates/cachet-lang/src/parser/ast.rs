@@ -68,9 +68,12 @@ pub struct CallableItem {
 
 #[derive(Clone, Debug, From)]
 pub enum Param {
+    #[from]
     Var(VarParam),
+    #[from]
     OutVar(OutVarParam),
-    Label(Label),
+    #[from(types(Label))]
+    Label(LabelParam),
 }
 
 #[derive(Clone, Debug)]
@@ -87,6 +90,21 @@ pub struct OutVarParam {
 }
 
 #[derive(Clone, Debug)]
+pub struct LabelParam {
+    pub label: Label,
+    pub is_out: bool,
+}
+
+impl From<Label> for LabelParam {
+    fn from(label: Label) -> Self {
+        Self {
+            label,
+            is_out: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct Label {
     pub ident: Spanned<Ident>,
     pub ir: Spanned<Path>,
@@ -94,20 +112,24 @@ pub struct Label {
 
 #[derive(Clone, Debug, From)]
 pub enum Arg {
-    /// Arguments that look like `bar` in `foo(bar)` could be either a variable
-    /// expression argument or a label argument. They will have to be
-    /// disambiguated during name resolution.
-    VarExprOrLabel(Spanned<Path>),
     #[from]
     Expr(Expr),
+    /// Arguments that look like `bar` in `foo(bar)` could be either a variable
+    /// expression argument or a label argument. The same is true of arguments
+    /// that look like `out bar)` in `foo(out bar)`. They will have to be
+    /// disambiguated during name resolution.
     #[from]
-    OutVar(OutVar),
+    FreeVarOrLabel(FreeVarOrLabelArg),
+    #[from]
+    OutFreshVar(LocalVar),
+    #[from]
+    OutFreshLabel(LocalLabel),
 }
 
 #[derive(Clone, Debug)]
-pub enum OutVar {
-    Out(Spanned<Path>),
-    OutLet(LocalVar),
+pub struct FreeVarOrLabelArg {
+    pub path: Spanned<Path>,
+    pub is_out: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -121,6 +143,21 @@ pub struct LocalVar {
     pub ident: Spanned<Ident>,
     pub is_mut: bool,
     pub type_: Option<Spanned<Path>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalLabel {
+    pub ident: Spanned<Ident>,
+    pub ir: Option<Spanned<Path>>,
+}
+
+impl From<Label> for LocalLabel {
+    fn from(label: Label) -> Self {
+        LocalLabel {
+            ident: label.ident,
+            ir: Some(label.ir),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

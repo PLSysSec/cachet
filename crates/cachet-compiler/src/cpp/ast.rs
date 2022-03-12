@@ -152,6 +152,8 @@ pub enum IrMemberTypeIdent {
     LabelLocal,
     #[display(fmt = "LabelRef")]
     LabelRef,
+    #[display(fmt = "LabelMutRef")]
+    LabelMutRef,
     #[display(fmt = "OpsRef")]
     OpsRef,
 }
@@ -436,6 +438,8 @@ pub enum IrMemberFnIdent {
     NewLabel,
     #[display(fmt = "ToLabelRef")]
     ToLabelRef,
+    #[display(fmt = "ToLabelMutRef")]
+    ToLabelMutRef,
     #[display(fmt = "GotoLabel")]
     GotoLabel,
     #[display(fmt = "BindLabel")]
@@ -449,6 +453,7 @@ impl IrMemberFnIdent {
             IrMemberFnIdent::GetOutput
             | IrMemberFnIdent::NewLabel
             | IrMemberFnIdent::ToLabelRef
+            | IrMemberFnIdent::ToLabelMutRef
             | IrMemberFnIdent::GotoLabel
             | IrMemberFnIdent::BindLabel => NamespaceKind::Ir,
             IrMemberFnIdent::Emit(_) => EmitIrMemberFnIdent::PARENT_NAMESPACE_KIND,

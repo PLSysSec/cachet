@@ -15,10 +15,10 @@ use crate::ast::{
 use crate::resolver;
 pub use crate::resolver::{
     CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem,
-    IrIndex, IrItem, Label, LabelIndex, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex,
-    LocalVarIndex, OpIndex, OutVar, OutVarParam, OutVarParamIndex, ParamIndex, Params,
-    ParentIndex, StructIndex, StructItem, TypeIndex, Typed, VarIndex, VarParam, VarParamIndex,
-    VariantIndex,
+    IrIndex, IrItem, Label, LabelIndex, LabelParam, LabelParamIndex, LabelStmt, Literal,
+    LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel, OutVar, OutVarParam, OutVarParamIndex,
+    ParamIndex, Params, ParentIndex, StructIndex, StructItem, TypeIndex, Typed, VarIndex,
+    VarParam, VarParamIndex, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -172,10 +172,9 @@ impl Typed for CallableItem {
 pub enum Arg {
     Expr(Expr),
     OutVar(OutVarArg),
-    Label(LabelIndex),
+    Label(LabelArg),
+    OutLabel(OutLabelArg),
 }
-
-deref_from!(&LabelIndex => Arg);
 
 #[derive(Clone, Debug)]
 pub struct OutVarArg {
@@ -188,6 +187,18 @@ impl Typed for OutVarArg {
     fn type_(&self) -> TypeIndex {
         self.type_
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct LabelArg {
+    pub label: Spanned<LabelIndex>,
+    pub ir: IrIndex,
+}
+
+#[derive(Clone, Debug)]
+pub struct OutLabelArg {
+    pub out_label: OutLabel,
+    pub ir: IrIndex,
 }
 
 #[derive(Clone, Debug)]

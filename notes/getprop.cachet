@@ -3,8 +3,6 @@
 struct Heap;
 var mut heap: Heap;
 
-var zero: Int32;
-
 enum ValueType {
   Double,
   Int32,
@@ -23,7 +21,6 @@ struct Value;
 
 impl Value {
     fn typeOf(value: Value) -> ValueType;
-    fn setType(value: Value, valueTy: ValueType);
 
     // ...
 
@@ -166,11 +163,7 @@ impl Class {
 }
 
 struct Reg;
-
-// #[cfg(cpp)]
 struct ValueReg;
-// #[cfg(verify)]
-// type ValueReg = Reg;
 
 enum Condition {
     Equal,
@@ -224,7 +217,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let objectHasShape = Object::shapeOf(object) == shape;
 
-        MASM::setInt32(scratchReg, zero);
+        MASM::setInt32(scratchReg, 0);
 
         if condition == Condition::Equal {
             if objectHasShape {
@@ -301,44 +294,54 @@ ir MASM {
     fn setObject(reg: Reg, object: Object);
 }
 
-//#[cfg(cpp)]
 //impl MASM {
+    //spec var mut regs: Map<Reg, Value>;
+    //spec var mut valueRegs: Map<ValueReg, Value>;
+
     //fn getValue(valueReg: ValueReg) -> Value;
+
+    //refine fn getValue(valueReg: ValueReg) -> Value {
+        //Map::get(MASM::valueRegs, valueReg)
+    //}
+
     //fn setValue(valueReg: ValueReg, value: Value);
 
+    //refine fn setValue(valueReg: ValueReg, value: Value) {
+        //MASM::valueRegs = Map::set(MASM::valueRegs, valueReg, value);
+    //}
+
+    //spec fn getUnboxedValue(reg: Reg) -> Value {
+        //Map::get(MASM::regs, reg)
+    //}
+
+    //fn setUnboxedValue(reg: Reg, value: Value);
+
+    //refine fn setUnboxedValue(reg: Reg, value: Value) {
+        //MASM::regs = Map::set(MASM::regs, reg, value);
+    //}
+
     //fn getInt32(reg: Reg) -> Int32;
+
+    //refine fn getInt32(reg: Reg) -> Int32 {
+        //Value::toInt32(MASM::getUnboxedValue(reg))
+    //}
+
     //fn setInt32(reg: Reg, int32: Int32);
 
+    //refine fn setInt32(reg: Reg, int32: Int32) {
+        //MASM::setUnboxedValue(reg, Value::fromInt32(int32));
+    //}
+
     //fn getObject(reg: Reg) -> Object;
+
+    //refine fn getObject(reg: Reg) -> Object {
+        //Value::toObject(MASM::getUnboxedValue(reg))
+    //}
+
     //fn setObject(reg: Reg, object: Object);
-//}
 
-//#[cfg(verify)]
-//impl MASM {
-    //var mut regs: Map<Reg, Value>;
-
-    //fn getValue(valueReg: ValueReg) -> Value {
-        //Map::get(MASM::regs, valueReg)
-    //}
-
-    //fn setValue(valueReg: ValueReg, value: Value) {
-        //MASM::regs = Map::set(MASM::regs, valueReg, value);
-    //}
-
-    //fn getInt32(reg: Reg) -> Int32 {
-        //Value::toInt32(MASM::getValue(reg))
-    //}
-
-    //fn setInt32(reg: Reg, int32: Int32) {
-        //MASM::setValue(reg, Value::fromInt32(int32));
-    //}
-
-    //fn getObject(reg: Reg) -> Object {
-        //Value::toObject(MASM::getValue(reg))
-    //}
-
-    //fn setObject(reg: Reg, object: Object) {
-        //MASM::setValue(reg, Value::fromObject(object));
+    //refine fn setObject(reg: Reg, object: Object) {
+        //MASM::setUnboxedValue(reg, Value::fromObject(object));
     //}
 //}
 
@@ -349,21 +352,27 @@ struct Int32Field;
 struct ShapeField;
 
 ir CacheIR emits MASM {
-    op GuardIsNull(valueId: ValueId, label failure: MASM){
+    op GuardIsNull(valueId: ValueId){
         let valueReg = CacheIR::useValueReg(valueId);
+        CacheIR::addFailurePath(out label failure);
         emit MASM::BranchTestNull(Condition::NotEqual, valueReg, failure);
     }
 
-    op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure: MASM) {
+    op GuardToObject(valueId: ValueId, objectId: ObjectId) {
         let valueReg = CacheIR::useValueReg(valueId);
         let objectReg = CacheIR::useObjectReg(objectId);
+
+        CacheIR::addFailurePath(out label failure);
+
         emit MASM::BranchTestObject(Condition::NotEqual, valueReg, failure);
         emit MASM::UnboxObject(valueReg, objectReg);
     }
 
-    op GuardShape(objectId: ObjectId, shapeField: ShapeField, label failure: MASM) {
+    op GuardShape(objectId: ObjectId, shapeField: ShapeField) {
         let objectReg = CacheIR::useObjectReg(objectId);
         let shape = CacheIR::readShapeField(shapeField);
+
+        CacheIR::addFailurePath(out label failure);
 
         let needsSpectreMitigations = CacheIR::objectGuardNeedsSpectreMitigations(objectId);
 
@@ -386,15 +395,19 @@ ir CacheIR emits MASM {
         emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
     }
 
-    op LoadArgumentsObjectLengthResult(objectId: ObjectId, label failure: MASM) {
+    op LoadArgumentsObjectLengthResult(objectId: ObjectId) {
         let objectReg = CacheIR::useObjectReg(objectId);
         let argObjLengthReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
 
         emit MASM::LoadArgumentsObjectLength(objectReg, argObjLengthReg, failure);
         emit MASM::TagValue(ValueType::Int32, argObjLengthReg, CacheIR::outputReg);
 
         CacheIR::releaseReg(argObjLengthReg);
     }
+
+    fn addFailurePath(out label failure: MASM);
 
     fn allocateReg() -> Reg;
     fn releaseReg(reg: Reg);
@@ -413,38 +426,50 @@ ir CacheIR emits MASM {
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
 }
 
-//#[cfg(cpp)]
+//spec struct RegAllocState;
+
 //impl CacheIR {
+    //spec var mut regAllocState: RegAllocState;
+
+    //spec var mut allocatedRegs: Set<Reg>;
+    //spec var mut allocatedValueRegs: Set<ValueReg>;
+
+    //#[reads(CacheIR::regAllocState)]
+    //#[writes(CacheIR::regAllocState)]
     //fn allocateReg() -> Reg;
-    //fn releaseReg(reg: Reg);
 
-    //fn allocateValueReg() -> ValueReg;
-    //fn releaseValueReg(valueReg: ValueReg);
-//}
-
-//#[cfg(verify)]
-//impl CacheIR {
-    //var mut allocatedRegs: Set<Reg>;
-
-    //fn allocateReg() -> Reg {
-        //let reg = unsafe { CacheIR::allocateRegUnchecked(CacheIR::allocatedRegs) };
+    //refine fn allocateReg() -> Reg {
+        //let reg = raw CacheIR::allocateReg();
         //assume !Set::contains(CacheIR::allocatedRegs, reg);
         //CacheIR::allocatedRegs = Set::add(CacheIR::allocatedRegs, reg);
         //reg
     //}
 
-    //unsafe fn allocateRegUnchecked(allocatedRegs: Set<Reg>) -> Reg;
+    //#[writes(CacheIR::regAllocState)]
+    //fn releaseReg(reg: Reg);
 
-    //fn releaseReg(reg: Reg) {
+    //refine fn releaseReg(reg: Reg) {
+        //raw CacheIR::releaseReg(reg);
         //CacheIR::allocatedRegs = Set::remove(CacheIR::allocatedRegs, reg);
     //}
 
-    //fn allocateValueReg() -> ValueReg {
-        //CacheIR::allocateReg()
+    //#[reads(CacheIR::regAllocState)]
+    //#[writes(CacheIR::regAllocState)]
+    //fn allocateValueReg() -> ValueReg;
+
+    //refine fn allocateValueReg() -> ValueReg {
+        //let valueReg = raw CacheIR::allocateValueReg();
+        //assume !Set::contains(CacheIR::allocatedValueRegs, valueReg);
+        //CacheIR::allocatedValueRegs = Set::add(CacheIR::allocatedValueRegs, valueReg);
+        //valueReg
     //}
 
-    //fn releaseValueReg(valueReg: ValueReg) {
-        //CacheIR::releaseReg(valueReg);
+    //#[writes(CacheIR::regAllocState)]
+    //fn releaseValueReg(valueReg: ValueReg);
+
+    //refine fn releaseValueReg(valueReg: ValueReg) {
+        //raw CacheIR::releaseValueReg(valueReg);
+        //CacheIR::allocatedValueRegs = Set::remove(CacheIR::allocatedValueRegs, valueReg);
     //}
 //}
 
@@ -454,7 +479,6 @@ ir CacheStub emits CacheIR {
         objectId: ObjectId,
         shapeField: ShapeField,
         slotField: Int32Field,
-        label failure: MASM,
     ) {
         assume CacheIR::useValueReg(valueId) == CacheIR::allocateValueReg();
         assume CacheIR::useObjectReg(objectId) == CacheIR::allocateReg();
@@ -470,8 +494,8 @@ ir CacheStub emits CacheIR {
         let slot = CacheIR::readInt32Field(slotField);
         assume slot == 1;
 
-        emit CacheIR::GuardToObject(valueId, objectId, failure);
-        emit CacheIR::GuardShape(objectId, shapeField, failure);
+        emit CacheIR::GuardToObject(valueId, objectId);
+        emit CacheIR::GuardShape(objectId, shapeField);
         emit CacheIR::LoadFixedSlotResult(objectId, slotField);
     }
 }

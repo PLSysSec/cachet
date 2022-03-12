@@ -25,7 +25,7 @@ use crate::type_checker::graphs::{CallGraph, TypeGraph};
 pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     // Set up an internal placeholder type used to "turn off" type-checking for
     // variables whose types can't be inferred. This type shouldn't escape the
-    // type-checking phase.
+    // type-checking phase. We do the same for IRs as well.
     let unknown_type_index = env
         .struct_items
         .push_and_get_key(StructItem {
@@ -33,21 +33,33 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
             supertype: None,
         })
         .into();
+    let unknown_ir_index = env
+        .ir_items
+        .push_and_get_key(IrItem {
+            ident: Spanned::new(Span::initial(), *UNKNOWN_IDENT),
+            emits: None,
+        })
+        .into();
 
-    let mut type_checker = TypeChecker::new(&env, unknown_type_index);
+    let mut type_checker = TypeChecker::new(&env, unknown_type_index, unknown_ir_index);
 
     let fn_items = type_checker.type_check_fn_items();
     let op_items = type_checker.type_check_op_items();
 
     let decl_order = type_checker.finish()?;
 
-    // Strip out the internal "unknown" type, so it doesn't escape the
+    // Strip out the internal "unknown" type and IR, so they doesn't escape the
     // type-checking phase.
     let popped_type_index = env
         .struct_items
         .pop_key_value()
         .map(|(struct_index, _)| struct_index.into());
+    let popped_ir_index = env
+        .ir_items
+        .pop_key_value()
+        .map(|(ir_index, _)| ir_index.into());
     debug_assert_eq!(popped_type_index, Some(unknown_type_index));
+    debug_assert_eq!(popped_ir_index, Some(unknown_ir_index));
 
     Ok(Env {
         enum_items: env.enum_items,
@@ -84,15 +96,21 @@ struct TypeChecker<'a> {
     env: &'a resolver::Env,
     call_graph: CallGraph,
     unknown_type: TypeIndex,
+    unknown_ir: IrIndex,
 }
 
 impl<'a> TypeChecker<'a> {
-    fn new(env: &'a resolver::Env, unknown_type_index: TypeIndex) -> Self {
+    fn new(
+        env: &'a resolver::Env,
+        unknown_type_index: TypeIndex,
+        unknown_ir_index: IrIndex,
+    ) -> Self {
         TypeChecker {
             errors: Vec::new(),
             env,
             call_graph: CallGraph::new(env.fn_items.len(), env.op_items.len()),
             unknown_type: unknown_type_index,
+            unknown_ir: unknown_ir_index,
         }
     }
 
@@ -232,7 +250,16 @@ impl<'a> TypeChecker<'a> {
                         ),
                     })
                     .collect(),
-                local_labels: locals.local_labels,
+                local_labels: locals
+                    .local_labels
+                    .into_iter()
+                    .map(|local_label| Label {
+                        ident: local_label.ident,
+                        ir: local_label.ir.expect(
+                            "the IRs of all local labels should be inferred by this point",
+                        ),
+                    })
+                    .collect(),
             };
 
             Body { locals, block }
@@ -317,6 +344,12 @@ impl<'a> TypeChecker<'a> {
         // Consider the internal "unknown" type to be numeric for the purposes
         // of the type-checking phase.
         type_index.is_numeric() || type_index == self.unknown_type
+    }
+
+    fn try_match_irs(&self, found_ir_index: IrIndex, expected_ir_index: IrIndex) -> bool {
+        return found_ir_index == expected_ir_index
+            || found_ir_index == self.unknown_ir
+            || expected_ir_index == self.unknown_ir;
     }
 
     fn get_type_ident(&self, type_index: TypeIndex) -> Ident {
@@ -421,10 +454,14 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             resolver::ParamIndex::Label(label_param_index) => {
                 let label_param = &callable_item.params[label_param_index];
                 ParamSummary {
-                    ident: callable_item.params[label_param_index].ident,
+                    ident: label_param.label.ident,
                     type_: None,
-                    ir: Some(label_param.ir),
-                    expected_arg_kind: ArgKind::Label,
+                    ir: Some(label_param.label.ir),
+                    expected_arg_kind: if label_param.is_out {
+                        ArgKind::OutLabel
+                    } else {
+                        ArgKind::Label
+                    },
                 }
             }
         });
@@ -449,14 +486,24 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 )
                 .into(),
             ),
-            resolver::Arg::Label(label_index) => {
+            resolver::Arg::Label(label_index) => (
+                ArgKind::Label,
                 self.type_check_label_arg(
                     callable_item.path.value,
                     param_summary.as_ref(),
                     Spanned::new(arg_span, *label_index),
-                );
-                (ArgKind::Label, label_index.into())
-            }
+                )
+                .into(),
+            ),
+            resolver::Arg::OutLabel(out_label) => (
+                ArgKind::OutLabel,
+                self.type_check_out_label_arg(
+                    callable_item.path.value,
+                    param_summary.as_ref(),
+                    Spanned::new(arg_span, *out_label),
+                )
+                .into(),
+            ),
         };
 
         if let Some(ParamSummary {
@@ -528,25 +575,25 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             .and_then(|param_summary| param_summary.type_)
             .unwrap_or(self.unknown_type);
 
-        let out_var_type_index = match arg.value {
-            OutVar::Out(out_var_index) => self.get_var_type(out_var_index),
+        let arg_type_index = match arg.value {
+            OutVar::Free(var_index) => self.get_var_type(var_index),
             // If this is an `out let foo`-style argument with no type
             // ascription, infer the type from the parameter.
-            OutVar::OutLet(out_let_var_index) => *self.locals[out_let_var_index]
+            OutVar::Fresh(local_var_index) => *self.locals[local_var_index]
                 .type_
                 .get_or_insert(param_type_index),
         };
 
         // Upcasting may be needed to convert from the type the out-parameter
         // yields to the type of the variable being written.
-        let upcast_route = match self.try_match_types(out_var_type_index, param_type_index) {
+        let upcast_route = match self.try_match_types(arg_type_index, param_type_index) {
             Some(upcast_route) => upcast_route,
             None => {
                 self.type_checker
                     .errors
                     .push(TypeCheckError::ArgTypeMismatch {
                         expected_type: self.get_type_ident(param_type_index),
-                        found_type: self.get_type_ident(out_var_type_index),
+                        found_type: self.get_type_ident(arg_type_index),
                         arg_span: arg.span,
                         target,
                         param: param_summary.unwrap().ident,
@@ -567,15 +614,16 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         target: Path,
         param_summary: Option<&ParamSummary>,
         arg: Spanned<LabelIndex>,
-    ) {
+    ) -> LabelArg {
+        let arg_ir_index = self.get_label_ir(arg);
+
         if let Some(&ParamSummary {
             ident: param_ident,
             ir: Some(param_ir_index),
             ..
         }) = param_summary
         {
-            let arg_ir_index = self.get_label_ir(arg.value);
-            if arg_ir_index != param_ir_index {
+            if !self.try_match_irs(arg_ir_index, param_ir_index) {
                 self.type_checker
                     .errors
                     .push(TypeCheckError::ArgIrMismatch {
@@ -586,6 +634,51 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                         param: param_ident,
                     });
             }
+        }
+
+        LabelArg {
+            label: arg,
+            ir: arg_ir_index,
+        }
+    }
+
+    fn type_check_out_label_arg(
+        &mut self,
+        target: Path,
+        param_summary: Option<&ParamSummary>,
+        arg: Spanned<OutLabel>,
+    ) -> OutLabelArg {
+        let arg_label_index = match arg.value {
+            OutLabel::Free(label_index) => label_index.value,
+            OutLabel::Fresh(local_label_index) => {
+                // Infer the label IR from the parameter if one isn't specified
+                // explicitly.
+                let unknown_ir_index = self.unknown_ir;
+                let local_label_ir = &mut self.locals[local_label_index].ir;
+                if local_label_ir.is_none() {
+                    // As with variable out-parameters, we assign the internal "unknown" IR
+                    // if we don't have a corresponding parameter IR.
+                    let param_ir_index = param_summary
+                        .and_then(|param_summary| param_summary.ir)
+                        .unwrap_or(unknown_ir_index);
+                    *local_label_ir = Some(param_ir_index);
+                }
+
+                local_label_index.into()
+            }
+        };
+
+        let arg_ir_index = self
+            .type_check_label_arg(
+                target,
+                param_summary,
+                Spanned::new(arg.span, arg_label_index),
+            )
+            .ir;
+
+        OutLabelArg {
+            out_label: arg.value,
+            ir: arg_ir_index,
         }
     }
 
@@ -732,8 +825,12 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     }
 
     fn type_check_goto_stmt(&mut self, goto_stmt: &resolver::GotoStmt) -> GotoStmt {
-        let ir_index = self.get_label_ir(goto_stmt.label.value);
-        if Some(ir_index) != self.interprets.map(|interprets| interprets.value) {
+        let ir_index = self.get_label_ir(goto_stmt.label);
+
+        if !self
+            .interprets
+            .is_some_with(|interprets| self.try_match_irs(ir_index, interprets.value))
+        {
             self.type_checker
                 .errors
                 .push(TypeCheckError::GotoIrMismatch {
@@ -756,8 +853,12 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     }
 
     fn type_check_bind_stmt(&mut self, bind_stmt: &resolver::BindStmt) -> BindStmt {
-        let ir_index = self.get_label_ir(bind_stmt.label.value);
-        if Some(ir_index) != self.emits.map(|emits| emits.value) {
+        let ir_index = self.get_label_ir(bind_stmt.label);
+
+        if !self
+            .emits
+            .is_some_with(|emits| self.try_match_irs(ir_index, emits.value))
+        {
             self.type_checker
                 .errors
                 .push(TypeCheckError::BindIrMismatch {
@@ -1069,27 +1170,43 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             VarIndex::OutParam(out_var_param_index) => {
                 self.callable_item.params[out_var_param_index].type_
             }
-            VarIndex::Local(local_var_index) => self.locals[local_var_index]
-                .type_
-                .expect("local variable used before its declaration"),
+            VarIndex::Local(local_var_index) => {
+                let local_var = &self.locals[local_var_index];
+                match local_var.type_ {
+                    Some(type_) => type_,
+                    None => panic!(
+                        "local variable {} used at {} before its declaration at {}",
+                        local_var.ident, var_index.span, local_var.ident.span
+                    ),
+                }
+            }
         }
     }
 
     fn get_label_ident(&self, label_index: LabelIndex) -> Spanned<Ident> {
         match label_index {
             LabelIndex::Param(label_param_index) => {
-                self.callable_item.params[label_param_index].ident
+                self.callable_item.params[label_param_index].label.ident
             }
             LabelIndex::Local(local_label_index) => self.locals[local_label_index].ident,
         }
     }
 
-    fn get_label_ir(&self, label_index: LabelIndex) -> IrIndex {
-        match label_index {
+    fn get_label_ir(&self, label_index: Spanned<LabelIndex>) -> IrIndex {
+        match label_index.value {
             LabelIndex::Param(label_param_index) => {
-                self.callable_item.params[label_param_index].ir
+                self.callable_item.params[label_param_index].label.ir
             }
-            LabelIndex::Local(local_label_index) => self.locals[local_label_index].ir,
+            LabelIndex::Local(local_label_index) => {
+                let local_label = &self.locals[local_label_index];
+                match local_label.ir {
+                    Some(ir) => ir,
+                    None => panic!(
+                        "local label {} used at {} before its declaration at {}",
+                        local_label.ident, label_index.span, local_label.ident.span,
+                    ),
+                }
+            }
         }
     }
 }

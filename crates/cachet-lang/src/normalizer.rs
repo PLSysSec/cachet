@@ -143,6 +143,7 @@ impl<'a> Normalizer<'a> {
 struct ScopedNormalizer<'a, 'b> {
     normalizer: &'b mut Normalizer<'a>,
     stmts: &'b mut Vec<Stmt>,
+    exported_stmts: Option<&'b mut Vec<Stmt>>,
 }
 
 impl<'a> Deref for ScopedNormalizer<'a, '_> {
@@ -161,13 +162,22 @@ impl<'a> DerefMut for ScopedNormalizer<'a, '_> {
 
 impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn new(normalizer: &'b mut Normalizer<'a>, stmts: &'b mut Vec<Stmt>) -> Self {
-        ScopedNormalizer { normalizer, stmts }
+        ScopedNormalizer { normalizer, stmts, exported_stmts: None }
     }
 
     fn recurse<'c>(&'c mut self, stmts: &'c mut Vec<Stmt>) -> ScopedNormalizer<'a, 'c> {
         ScopedNormalizer {
             normalizer: self.normalizer,
             stmts,
+            exported_stmts: Some(self.exported_stmts.as_deref_mut().unwrap_or(&mut self.stmts)),
+        }
+    }
+
+    fn nest<'c>(&'c mut self, stmts: &'c mut Vec<Stmt>) -> ScopedNormalizer<'a, 'c> {
+        ScopedNormalizer {
+            normalizer: self.normalizer,
+            stmts,
+            exported_stmts: None,
         }
     }
 
@@ -175,7 +185,29 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         match arg {
             type_checker::Arg::Expr(expr) => self.normalize_atom_expr(expr).into(),
             type_checker::Arg::OutVar(out_var_arg) => out_var_arg.into(),
-            type_checker::Arg::Label(label_index) => label_index.into(),
+            type_checker::Arg::Label(label_arg) => LabelArg {
+                label: label_arg.label.value,
+                is_out: false,
+                ir: label_arg.ir,
+            }
+            .into(),
+            type_checker::Arg::OutLabel(out_label_arg) => LabelArg {
+                label: match out_label_arg.out_label {
+                    type_checker::OutLabel::Free(label_index) => label_index.value,
+                    type_checker::OutLabel::Fresh(local_label_index) => {
+                        self.export_stmt(
+                            LabelStmt {
+                                label: local_label_index,
+                            }
+                            .into(),
+                        );
+                        local_label_index.into()
+                    }
+                },
+                is_out: true,
+                ir: out_label_arg.ir,
+            }
+            .into(),
         }
     }
 
@@ -328,31 +360,6 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         }
     }
 
-    fn push_tmp_expr(&mut self, expr: Expr) -> VarExpr {
-        let tmp_local_var_type_index = expr.type_();
-
-        let tmp_local_var = LocalVar {
-            ident: Spanned::new(Span::initial(), *TMP_VAR_IDENT),
-            is_mut: false,
-            type_: tmp_local_var_type_index,
-        };
-
-        let tmp_local_var_index = self.local_vars.push_and_get_key(tmp_local_var);
-
-        self.stmts.push(
-            LetStmt {
-                lhs: tmp_local_var_index,
-                rhs: expr,
-            }
-            .into(),
-        );
-
-        VarExpr {
-            var: tmp_local_var_index.into(),
-            type_: tmp_local_var_type_index,
-        }
-    }
-
     fn normalize_used_expr(&mut self, expr: type_checker::Expr) -> Expr {
         debug_assert_ne!(expr.type_(), BuiltInType::Unit.into());
 
@@ -402,7 +409,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_used_block_expr(&mut self, block_expr: type_checker::BlockExpr) -> Expr {
         let mut stmts = self.normalize_block_stmts(block_expr.block.stmts);
 
-        let mut scoped_normalizer = self.recurse(&mut stmts);
+        let mut scoped_normalizer = self.nest(&mut stmts);
         let value = scoped_normalizer.normalize_expr(block_expr.block.value);
 
         if stmts.is_empty() {
@@ -420,7 +427,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_unused_block_expr(&mut self, block_expr: type_checker::BlockExpr) {
         let mut stmts = self.normalize_block_stmts(block_expr.block.stmts);
 
-        let mut scoped_normalizer = self.recurse(&mut stmts);
+        let mut scoped_normalizer = self.nest(&mut stmts);
         scoped_normalizer.normalize_unused_expr(block_expr.block.value);
 
         if !stmts.is_empty() {
@@ -522,5 +529,34 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             }
             .into(),
         );
+    }
+
+    fn push_tmp_expr(&mut self, expr: Expr) -> VarExpr {
+        let tmp_local_var_type_index = expr.type_();
+
+        let tmp_local_var = LocalVar {
+            ident: Spanned::new(Span::initial(), *TMP_VAR_IDENT),
+            is_mut: false,
+            type_: tmp_local_var_type_index,
+        };
+
+        let tmp_local_var_index = self.local_vars.push_and_get_key(tmp_local_var);
+
+        self.stmts.push(
+            LetStmt {
+                lhs: tmp_local_var_index,
+                rhs: expr,
+            }
+            .into(),
+        );
+
+        VarExpr {
+            var: tmp_local_var_index.into(),
+            type_: tmp_local_var_type_index,
+        }
+    }
+
+    fn export_stmt(&mut self, stmt: Stmt) {
+        self.exported_stmts.as_deref_mut().unwrap_or(self.stmts).push(stmt);
     }
 }

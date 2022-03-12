@@ -114,11 +114,7 @@ impl Object {
 }
 
 struct Reg;
-
-// #[cfg(cpp)]
 struct ValueReg;
-// #[cfg(verify)]
-// type ValueReg = Reg;
 
 enum Condition {
     Equal,
@@ -237,17 +233,22 @@ struct ValueId;
 struct ObjectId;
 
 ir CacheIR emits MASM {
-    op GuardToObject(valueId: ValueId, objectId: ObjectId, label failure: MASM) {
+    op GuardToObject(valueId: ValueId, objectId: ObjectId) {
         let valueReg = CacheIR::useValueReg(valueId);
         let objectReg = CacheIR::useObjectReg(objectId);
+
+        CacheIR::addFailurePath(out label failure);
+
         emit MASM::BranchTestObject(Condition::NotEqual, valueReg, failure);
         emit MASM::UnboxObject(valueReg, objectReg);
     }
 
-    op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId, label failure: MASM) {
+    op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId) {
         let lhsReg = CacheIR::useValueReg(lhsId);
         let protoReg = CacheIR::useObjectReg(protoId);
         let scratchReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
 
         label loopHead: MASM;
         label returnFalse: MASM;
@@ -282,6 +283,8 @@ ir CacheIR emits MASM {
         CacheIR::releaseReg(scratchReg);
     }
 
+    fn addFailurePath(out label failure: MASM);
+
     fn allocateReg() -> Reg;
     fn releaseReg(reg: Reg);
 
@@ -294,8 +297,11 @@ ir CacheIR emits MASM {
     var outputReg: ValueReg;
 }
 
+// interpreter version:
 //ir CacheIR {
-    //op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId, label failure: MASM) {
+    //op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId) {
+        //CacheIR::getFailurePath(out label failure);
+
         //let lhs = CacheIR::getValue(lhsId);
         //let proto = CacheIR::getObject(protoId);
 
@@ -330,17 +336,12 @@ ir CacheIR emits MASM {
 //}
 
 ir CacheStub emits CacheIR {
-    op InstanceOf(
-        lhsId: ValueId,
-        rhsId: ValueId,
-        protoId: ObjectId,
-        label failure: MASM,
-    ) {
+    op InstanceOf(lhsId: ValueId, rhsId: ValueId, protoId: ObjectId) {
         assume CacheIR::useValueReg(lhsId) == CacheIR::allocateValueReg();
         assume CacheIR::useValueReg(rhsId) == CacheIR::allocateValueReg();
         assume CacheIR::useObjectReg(protoId) == CacheIR::allocateReg();
 
-        emit CacheIR::GuardToObject(rhsId, protoId, failure);
-        emit CacheIR::LoadInstanceOfObjectResult(lhsId, protoId, failure);
+        emit CacheIR::GuardToObject(rhsId, protoId);
+        emit CacheIR::LoadInstanceOfObjectResult(lhsId, protoId);
     }
 }

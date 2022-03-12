@@ -500,16 +500,18 @@ impl Error for TypeCheckErrors {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ArgKind {
     Expr,
-    Label,
     OutVar,
+    Label,
+    OutLabel,
 }
 
 impl fmt::Display for ArgKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             ArgKind::Expr => write!(f, "expression"),
+            ArgKind::OutVar => write!(f, "variable out-parameter"),
             ArgKind::Label => write!(f, "label"),
-            ArgKind::OutVar => write!(f, "out-parameter"),
+            ArgKind::OutLabel => write!(f, "label out-parameter"),
         }
     }
 }

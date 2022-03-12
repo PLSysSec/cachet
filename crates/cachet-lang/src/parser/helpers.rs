@@ -39,6 +39,38 @@ impl VarTags {
 }
 
 #[derive(Default)]
+pub struct ParamTags {
+    pub out_tag: Option<Span>,
+}
+
+pub enum ParamTag {
+    Out,
+}
+
+impl ParamTags {
+    pub fn reduce<T>(tags: impl Iterator<Item = Spanned<ParamTag>>) -> Result<Self, ParseError<T>> {
+        let mut accum = ParamTags::default();
+
+        for tag in tags {
+            match tag.value {
+                ParamTag::Out => {
+                    if accum.out_tag.replace(tag.span).is_some() {
+                        return Err(ParseError::User {
+                            error: Spanned {
+                                span: tag.span,
+                                value: "duplicate `out` tag",
+                            },
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(accum)
+    }
+}
+
+#[derive(Default)]
 pub struct CallableTags {
     pub unsafe_tag: Option<Span>,
 }
