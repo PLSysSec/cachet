@@ -13,7 +13,7 @@ use typed_index_collections::TiVec;
 
 use crate::ast::{
     BlockKind, BuiltInType, BuiltInVar, CastKind, Ident, MaybeSpanned, NegateKind, Path, Span,
-    Spanned,
+    Spanned, VarParamKind,
 };
 use crate::resolver;
 use crate::FrontendError;
@@ -439,16 +439,10 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     ident: var_param.ident,
                     type_: Some(var_param.type_),
                     ir: None,
-                    expected_arg_kind: ArgKind::Expr,
-                }
-            }
-            resolver::ParamIndex::OutVar(out_var_param_index) => {
-                let out_var_param = &callable_item.params[out_var_param_index];
-                ParamSummary {
-                    ident: out_var_param.ident,
-                    type_: Some(out_var_param.type_),
-                    ir: None,
-                    expected_arg_kind: ArgKind::OutVar,
+                    expected_arg_kind: match var_param.kind {
+                        VarParamKind::In | VarParamKind::Mut => ArgKind::Expr,
+                        VarParamKind::Out => ArgKind::OutVar,
+                    },
                 }
             }
             resolver::ParamIndex::Label(label_param_index) => {
@@ -1150,11 +1144,6 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 .ident
                 .map(Path::from)
                 .into(),
-            VarIndex::OutParam(out_var_param_index) => self.callable_item.params
-                [out_var_param_index]
-                .ident
-                .map(Path::from)
-                .into(),
             VarIndex::Local(local_var_index) => {
                 self.locals[local_var_index].ident.map(Path::from).into()
             }
@@ -1167,9 +1156,6 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             VarIndex::EnumVariant(enum_variant_index) => enum_variant_index.type_(),
             VarIndex::Global(global_var_index) => self.env[global_var_index].type_,
             VarIndex::Param(var_param_index) => self.callable_item.params[var_param_index].type_,
-            VarIndex::OutParam(out_var_param_index) => {
-                self.callable_item.params[out_var_param_index].type_
-            }
             VarIndex::Local(local_var_index) => {
                 let local_var = &self.locals[local_var_index];
                 match local_var.type_ {

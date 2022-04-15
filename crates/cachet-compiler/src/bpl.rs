@@ -12,7 +12,9 @@ use lazy_static::lazy_static;
 use typed_index_collections::TiSlice;
 use void::unreachable;
 
-use cachet_lang::ast::{BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path};
+use cachet_lang::ast::{
+    BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path, VarParamKind,
+};
 use cachet_lang::flattener::{self, Typed};
 use cachet_util::MaybeOwned;
 
@@ -615,7 +617,7 @@ impl<'a> Compiler<'a> {
                                 }
                                 _ => None,
                             })
-                            .map(|label_param_index| &callable_item.params[*label_param_index])
+                            .map(|label_param_index| &callable_item.params[label_param_index])
                             .filter(|label_param| label_param.is_out)
                             .map(|label_param| {
                                 let ir_index = label_param.label.ir;
@@ -682,7 +684,13 @@ impl<'a> Compiler<'a> {
             .iter()
             .filter_map(|param_index| match param_index {
                 flattener::ParamIndex::Var(var_param_index) => {
-                    Some(self.compile_var_param(&top_op_item.params[var_param_index]))
+                    let var_param = &top_op_item.params[var_param_index];
+                    match var_param.kind {
+                        VarParamKind::In | VarParamKind::Mut => {
+                            Some(self.compile_var_param(var_param))
+                        }
+                        VarParamKind::Out => None,
+                    }
                 }
                 _ => None,
             })
@@ -940,9 +948,14 @@ impl<'a> Compiler<'a> {
                         .iter()
                         .filter_map(|param_index| match param_index {
                             flattener::ParamIndex::Var(var_param_index) => {
-                                Some(op_item.params[var_param_index].ident.value)
+                                let var_param = &op_item.params[var_param_index];
+                                match var_param.kind {
+                                    VarParamKind::In | VarParamKind::Mut => {
+                                        Some(var_param.ident.value)
+                                    }
+                                    VarParamKind::Out => None,
+                                }
                             }
-                            flattener::ParamIndex::OutVar(_) => None,
                             flattener::ParamIndex::Label(label_param_index) => {
                                 Some(op_item.params[label_param_index].label.ident.value)
                             }
@@ -1035,10 +1048,15 @@ impl<'a> Compiler<'a> {
         for param_index in param_order {
             match param_index {
                 flattener::ParamIndex::Var(var_param_index) => {
-                    param_vars.push(self.compile_var_param(&params[var_param_index]));
+                    let var_param = &params[var_param_index];
+                    // Regular variable parameters become regular parameters;
+                    // variable out-parameters become return variables.
+                    match var_param.kind {
+                        VarParamKind::In | VarParamKind::Mut => &mut param_vars,
+                        VarParamKind::Out => &mut out_param_ret_vars,
+                    }
+                    .push(self.compile_var_param(var_param));
                 }
-                flattener::ParamIndex::OutVar(out_var_param_index) => out_param_ret_vars
-                    .push(self.compile_out_var_param(&params[out_var_param_index])),
                 flattener::ParamIndex::Label(label_param_index) => {
                     param_vars.push(self.compile_label_param(&params[label_param_index]));
                 }
@@ -1053,14 +1071,6 @@ impl<'a> Compiler<'a> {
             ident: UserParamVarIdent::from(var_param.ident.value).into(),
             type_: self.get_type_ident(var_param.type_).into(),
         }
-    }
-
-    fn compile_out_var_param(&self, out_var_param: &flattener::OutVarParam) -> TypedVar {
-        self.compile_var_param(&flattener::VarParam {
-            ident: out_var_param.ident,
-            is_mut: true,
-            type_: out_var_param.type_,
-        })
     }
 
     fn compile_label_param(&self, label_param: &flattener::LabelParam) -> TypedVar {
@@ -1301,11 +1311,12 @@ impl CallableRepr {
                 .param_order
                 .iter()
                 .any(|param_index| match param_index {
-                    flattener::ParamIndex::OutVar(_) => true,
-                    flattener::ParamIndex::Label(label_param_index) => {
-                        callable_item.params[*label_param_index].is_out
+                    flattener::ParamIndex::Var(var_param_index) => {
+                        callable_item.params[var_param_index].kind == VarParamKind::Out
                     }
-                    _ => false,
+                    flattener::ParamIndex::Label(label_param_index) => {
+                        callable_item.params[label_param_index].is_out
+                    }
                 });
 
         match (has_out_params, callable_item.ret, &callable_item.body) {
@@ -1957,10 +1968,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::VarIndex::Param(var_param_index) => {
                 let var_param = &self.callable_item.params[var_param_index];
                 Some(UserParamVarIdent::from(var_param.ident.value).into())
-            }
-            flattener::VarIndex::OutParam(out_var_param_index) => {
-                let out_var_param = &self.callable_item.params[out_var_param_index];
-                Some(UserParamVarIdent::from(out_var_param.ident.value).into())
             }
             flattener::VarIndex::Local(local_var_index) => {
                 let local_var = &self.callable_locals[local_var_index];

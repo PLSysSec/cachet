@@ -9,16 +9,15 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
 use crate::ast::{
-    BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, NegateKind, Path,
+    BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path,
     Spanned,
 };
 use crate::resolver;
 pub use crate::resolver::{
     CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem,
     IrIndex, IrItem, Label, LabelIndex, LabelParam, LabelParamIndex, LabelStmt, Literal,
-    LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel, OutVar, OutVarParam, OutVarParamIndex,
-    ParamIndex, Params, ParentIndex, StructIndex, StructItem, TypeIndex, Typed, VarIndex,
-    VarParam, VarParamIndex, VariantIndex,
+    LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel, OutVar, ParamIndex, Params, ParentIndex,
+    StructIndex, StructItem, TypeIndex, Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -119,7 +118,6 @@ impl TryFrom<VarIndex> for DeclIndex {
             VarIndex::BuiltIn(_)
             | VarIndex::EnumVariant(_)
             | VarIndex::Param(_)
-            | VarIndex::OutParam(_)
             | VarIndex::Local(_) => Err(NotPartOfDeclOrderError),
             VarIndex::Global(global_var_index) => Ok(global_var_index.into()),
         }
@@ -232,7 +230,18 @@ pub struct Locals {
 field_index!(Locals:local_vars[LocalVarIndex] => LocalVar);
 field_index!(Locals:local_labels[LocalLabelIndex] => Label);
 
-pub type LocalVar = VarParam;
+#[derive(Clone, Debug)]
+pub struct LocalVar {
+    pub ident: Spanned<Ident>,
+    pub is_mut: bool,
+    pub type_: TypeIndex,
+}
+
+impl Typed for LocalVar {
+    fn type_(&self) -> TypeIndex {
+        self.type_
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Block {

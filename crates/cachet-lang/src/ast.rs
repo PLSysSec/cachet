@@ -11,6 +11,13 @@ mod ident;
 mod span;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum VarParamKind {
+    In,
+    Mut,
+    Out,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CheckKind {
     Assert,
     Assume,

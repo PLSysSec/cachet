@@ -95,7 +95,7 @@ CallableBody: Option<Block> = {
 };
 
 Param: Param = {
-    <var_param:VarParam> => var_param,
+    <var_param:VarParam> => var_param.into(),
     <label_param:LabelParam> => label_param.into(),
 };
 
@@ -106,23 +106,26 @@ ParamTags: ParamTags =
 ParamTag: ParamTag =
     "out" => ParamTag::Out;
 
-VarParam: Param =
+VarParam: VarParam =
     <param_tags:ParamTags> <var_tags:VarTags> <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> =>?
     {
-        match param_tags.out_tag {
-            None => Ok(VarParam { ident, is_mut: var_tags.mut_tag.is_some(), type_ }.into()),
-            Some(_) => {
-                match var_tags.mut_tag {
-                    None => Ok(OutVarParam { ident, type_ }.into()),
-                    Some(mut_tag_span) => Err(ParseError::User {
-                        error: Spanned::new(
-                            mut_tag_span,
-                            "`mut` is irrelevant for out-parameters"
-                        ),
-                    }),
-                }
-            }
-        }
+        let kind = match param_tags.out_tag {
+            None => match var_tags.mut_tag {
+                None => VarParamKind::In,
+                Some(_) => VarParamKind::Mut,
+            },
+            Some(_) => match var_tags.mut_tag {
+                None => VarParamKind::Out,
+                Some(mut_tag_span) => return Err(ParseError::User {
+                    error: Spanned::new(
+                        mut_tag_span,
+                        "`mut` is irrelevant for out-parameters"
+                    ),
+                }),
+            },
+        };
+
+        Ok(VarParam { ident, kind, type_ })
     };
 
 LabelParam: LabelParam =

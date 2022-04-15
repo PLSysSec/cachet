@@ -668,7 +668,7 @@ impl<'a> Resolver<'a> {
 
 #[derive(Clone, Copy, From)]
 enum ScopedIndex {
-    #[from(types(VarParamIndex, OutVarParamIndex, LocalVarIndex))]
+    #[from(types(VarParamIndex, LocalVarIndex))]
     Var(VarIndex),
     #[from(types(LabelParamIndex, LocalLabelIndex))]
     Label(LabelIndex),
@@ -748,13 +748,6 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 self.register_scoped(var_param_ident, var_param_index.into());
                 var_param_index.into()
             }
-            parser::Param::OutVar(out_var_param) => {
-                let out_var_param = self.resolve_out_var_param(out_var_param);
-                let out_var_param_ident = out_var_param.ident;
-                let out_var_param_index = params.out_var_params.push_and_get_key(out_var_param);
-                self.register_scoped(out_var_param_ident, out_var_param_index.into());
-                out_var_param_index.into()
-            }
             parser::Param::Label(label_param) => {
                 let label_param = self.resolve_label_param(label_param);
                 let label_param_ident = label_param.label.ident;
@@ -766,29 +759,15 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     }
 
     fn resolve_var_param(&mut self, var_param: parser::VarParam) -> VarParam {
-        let local_var = self.resolve_local_var(parser::LocalVar {
-            ident: var_param.ident,
-            is_mut: var_param.is_mut,
-            type_: Some(var_param.type_),
-        });
+        let type_ = self
+            .lookup_type_scoped(var_param.type_)
+            .found(&mut self.errors)
+            .unwrap_or_else(|| BuiltInType::Unit.into());
 
         VarParam {
-            ident: local_var.ident,
-            is_mut: local_var.is_mut,
-            type_: local_var.type_.unwrap_or_else(|| BuiltInType::Unit.into()),
-        }
-    }
-
-    fn resolve_out_var_param(&mut self, out_var_param: parser::OutVarParam) -> OutVarParam {
-        let var_param = self.resolve_var_param(parser::VarParam {
-            ident: out_var_param.ident,
-            is_mut: false,
-            type_: out_var_param.type_,
-        });
-
-        OutVarParam {
             ident: var_param.ident,
-            type_: var_param.type_,
+            kind: var_param.kind,
+            type_,
         }
     }
 
@@ -845,16 +824,20 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 .lookup_var_or_label_scoped(free_arg.path)
                 .found(&mut self.errors)
                 .map(|scoped_index| match scoped_index {
-                    ScopedIndex::Var(var_index) => if free_arg.is_out {
-                        OutVar::Free(Spanned::new(free_arg.path.span, var_index)).into()
-                    } else {
-                        Expr::from(Spanned::new(free_arg.path.span, var_index)).into()
-                    },
-                    ScopedIndex::Label(label_index) => if free_arg.is_out {
-                        OutLabel::Free(Spanned::new(free_arg.path.span, label_index)).into()
-                    } else {
-                        label_index.into()
-                    },
+                    ScopedIndex::Var(var_index) => {
+                        if free_arg.is_out {
+                            OutVar::Free(Spanned::new(free_arg.path.span, var_index)).into()
+                        } else {
+                            Expr::from(Spanned::new(free_arg.path.span, var_index)).into()
+                        }
+                    }
+                    ScopedIndex::Label(label_index) => {
+                        if free_arg.is_out {
+                            OutLabel::Free(Spanned::new(free_arg.path.span, label_index)).into()
+                        } else {
+                            label_index.into()
+                        }
+                    }
                 }),
             parser::Arg::OutFreshVar(local_var) => {
                 let local_var = self.resolve_local_var(local_var);

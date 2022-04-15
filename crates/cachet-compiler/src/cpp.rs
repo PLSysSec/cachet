@@ -10,7 +10,9 @@ use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
-use cachet_lang::ast::{BuiltInType, BuiltInTypeMap, CastKind, Ident, Path, BUILT_IN_TYPES};
+use cachet_lang::ast::{
+    BuiltInType, BuiltInTypeMap, CastKind, Ident, Path, VarParamKind, BUILT_IN_TYPES,
+};
 use cachet_lang::normalizer::{self, Typed};
 
 use crate::cpp::ast::*;
@@ -570,9 +572,6 @@ impl<'a> Compiler<'a> {
             normalizer::ParamIndex::Var(var_param_index) => {
                 self.compile_var_param(&params[var_param_index])
             }
-            normalizer::ParamIndex::OutVar(out_var_param_index) => {
-                self.compile_out_var_param(&params[out_var_param_index])
-            }
             normalizer::ParamIndex::Label(label_param_index) => {
                 self.compile_label_param(&params[label_param_index])
             }
@@ -584,19 +583,11 @@ impl<'a> Compiler<'a> {
 
         let type_ = TypeMemberTypePath {
             parent: self.get_type_ident(var_param.type_),
-            ident: ExprTag::Ref.into(),
-        }
-        .into();
-
-        Param { ident, type_ }
-    }
-
-    fn compile_out_var_param(&mut self, out_var_param: &normalizer::OutVarParam) -> Param {
-        let ident = UserParamVarIdent::from(out_var_param.ident.value).into();
-
-        let type_ = TypeMemberTypePath {
-            parent: self.get_type_ident(out_var_param.type_),
-            ident: ExprTag::MutRef.into(),
+            ident: match var_param.kind {
+                VarParamKind::In | VarParamKind::Mut => ExprTag::Ref,
+                VarParamKind::Out => ExprTag::MutRef,
+            }
+            .into(),
         }
         .into();
 
@@ -731,7 +722,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             if let normalizer::ParamIndex::Var(var_param_index) = param_index {
                 let var_param = &self.params[var_param_index];
 
-                if var_param.is_mut {
+                if var_param.kind == VarParamKind::Mut {
                     // Variable parameters are passed in as immutable `Ref`s. To
                     // let one be mutable within the function body, we store it
                     // in a local variable up front.
@@ -1026,15 +1017,19 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         );
 
         self.stmts.push(match assign_stmt.lhs {
-            normalizer::VarIndex::OutParam(_) => Expr::from(CallExpr {
-                target: TypeMemberFnPath {
-                    parent: self.get_type_ident(assign_stmt.rhs.type_()),
-                    ident: TypeMemberFnIdent::SetMutRef,
-                }
-                .into(),
-                args: vec![lhs, rhs],
-            })
-            .into(),
+            normalizer::VarIndex::Param(var_param_index)
+                if self.params[var_param_index].kind == VarParamKind::Out =>
+            {
+                Expr::from(CallExpr {
+                    target: TypeMemberFnPath {
+                        parent: self.get_type_ident(assign_stmt.rhs.type_()),
+                        ident: TypeMemberFnIdent::SetMutRef,
+                    }
+                    .into(),
+                    args: vec![lhs, rhs],
+                })
+                .into()
+            }
             // TODO(spinda): Review this.
             _ => Expr::from(AssignExpr { lhs, rhs }).into(),
         });
@@ -1198,16 +1193,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 TaggedExpr {
                     expr: UserParamVarIdent::from(var_param.ident.value).into(),
                     type_: var_param.type_,
-                    tags: var_param_tag(var_param.is_mut).into(),
-                }
-            }
-            normalizer::VarIndex::OutParam(out_var_param_index) => {
-                let out_var_param = &self.params[out_var_param_index];
-
-                TaggedExpr {
-                    expr: UserParamVarIdent::from(out_var_param.ident.value).into(),
-                    type_: out_var_param.type_,
-                    tags: ExprTag::MutRef.into(),
+                    tags: var_param_tag(var_param.kind).into(),
                 }
             }
             normalizer::VarIndex::Local(local_var_index) => {
@@ -1362,13 +1348,13 @@ fn global_var_tag(is_mut: bool) -> ExprTag {
     }
 }
 
-fn var_param_tag(is_mut: bool) -> ExprTag {
-    if is_mut {
+fn var_param_tag(kind: VarParamKind) -> ExprTag {
+    match kind {
+        VarParamKind::In => ExprTag::Ref,
         // Mutable variable parameters are stored in local variables at the
         // beginning of a function body.
-        ExprTag::Local
-    } else {
-        ExprTag::Ref
+        VarParamKind::Mut => ExprTag::Local,
+        VarParamKind::Out => ExprTag::MutRef,
     }
 }
 

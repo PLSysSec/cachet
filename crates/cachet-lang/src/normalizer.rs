@@ -9,7 +9,7 @@ use typed_index_collections::{TiSlice, TiVec};
 
 use crate::type_checker;
 
-use crate::ast::{BuiltInType, BuiltInVar, Ident, Span, Spanned};
+use crate::ast::{BuiltInType, BuiltInVar, Ident, Span, Spanned, VarParamKind};
 
 pub use crate::normalizer::ast::*;
 
@@ -132,9 +132,11 @@ impl<'a> Normalizer<'a> {
 
     fn is_mut_var(&self, var_index: VarIndex) -> bool {
         match var_index {
-            VarIndex::BuiltIn(_) | VarIndex::EnumVariant(_) | VarIndex::OutParam(_) => false,
+            VarIndex::BuiltIn(_) | VarIndex::EnumVariant(_) => false,
             VarIndex::Global(global_var_index) => self.global_var_items[global_var_index].is_mut,
-            VarIndex::Param(var_param_index) => self.var_params[var_param_index].is_mut,
+            VarIndex::Param(var_param_index) => {
+                self.var_params[var_param_index].kind == VarParamKind::Mut
+            }
             VarIndex::Local(local_var_index) => self.local_vars[local_var_index].is_mut,
         }
     }
@@ -162,14 +164,22 @@ impl<'a> DerefMut for ScopedNormalizer<'a, '_> {
 
 impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn new(normalizer: &'b mut Normalizer<'a>, stmts: &'b mut Vec<Stmt>) -> Self {
-        ScopedNormalizer { normalizer, stmts, exported_stmts: None }
+        ScopedNormalizer {
+            normalizer,
+            stmts,
+            exported_stmts: None,
+        }
     }
 
     fn recurse<'c>(&'c mut self, stmts: &'c mut Vec<Stmt>) -> ScopedNormalizer<'a, 'c> {
         ScopedNormalizer {
             normalizer: self.normalizer,
             stmts,
-            exported_stmts: Some(self.exported_stmts.as_deref_mut().unwrap_or(&mut self.stmts)),
+            exported_stmts: Some(
+                self.exported_stmts
+                    .as_deref_mut()
+                    .unwrap_or(&mut self.stmts),
+            ),
         }
     }
 
@@ -557,6 +567,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     }
 
     fn export_stmt(&mut self, stmt: Stmt) {
-        self.exported_stmts.as_deref_mut().unwrap_or(self.stmts).push(stmt);
+        self.exported_stmts
+            .as_deref_mut()
+            .unwrap_or(self.stmts)
+            .push(stmt);
     }
 }

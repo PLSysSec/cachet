@@ -5,7 +5,7 @@ use typed_index_collections::TiVec;
 
 use cachet_util::{box_from, deref_from, typed_field_index};
 
-use crate::ast::{BlockKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned};
+use crate::ast::{BlockKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned, VarParamKind};
 
 #[derive(Clone, Debug, From)]
 pub enum Item {
@@ -70,8 +70,6 @@ pub struct CallableItem {
 pub enum Param {
     #[from]
     Var(VarParam),
-    #[from]
-    OutVar(OutVarParam),
     #[from(types(Label))]
     Label(LabelParam),
 }
@@ -79,13 +77,7 @@ pub enum Param {
 #[derive(Clone, Debug)]
 pub struct VarParam {
     pub ident: Spanned<Ident>,
-    pub is_mut: bool,
-    pub type_: Spanned<Path>,
-}
-
-#[derive(Clone, Debug)]
-pub struct OutVarParam {
-    pub ident: Spanned<Ident>,
+    pub kind: VarParamKind,
     pub type_: Spanned<Path>,
 }
 

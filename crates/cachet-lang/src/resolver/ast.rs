@@ -9,7 +9,7 @@ use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_in
 
 use crate::ast::{
     BlockKind, BuiltInType, BuiltInVar, CheckKind, CompareKind, Ident, MaybeSpanned, NegateKind,
-    Path, Spanned,
+    Path, Spanned, VarParamKind,
 };
 pub use crate::parser::{Literal, VariantIndex};
 
@@ -56,7 +56,6 @@ pub enum VarIndex {
     EnumVariant(EnumVariantIndex),
     Global(GlobalVarIndex),
     Param(VarParamIndex),
-    OutParam(OutVarParamIndex),
     Local(LocalVarIndex),
 }
 
@@ -64,7 +63,6 @@ deref_from!(&BuiltInVar => VarIndex);
 deref_from!(&EnumVariantIndex => VarIndex);
 deref_from!(&GlobalVarIndex => VarIndex);
 deref_from!(&VarParamIndex => VarIndex);
-deref_from!(&OutVarParamIndex => VarIndex);
 deref_from!(&LocalVarIndex => VarIndex);
 
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
@@ -258,45 +256,29 @@ impl Typed for CallableItem {
 #[derive(Clone, Debug, Default)]
 pub struct Params {
     pub var_params: TiVec<VarParamIndex, VarParam>,
-    pub out_var_params: TiVec<OutVarParamIndex, OutVarParam>,
     pub label_params: TiVec<LabelParamIndex, LabelParam>,
 }
 
 typed_field_index!(Params:var_params[pub VarParamIndex] => VarParam);
-typed_field_index!(Params:out_var_params[pub OutVarParamIndex] => OutVarParam);
 typed_field_index!(Params:label_params[pub LabelParamIndex] => LabelParam);
 
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
 pub enum ParamIndex {
     Var(VarParamIndex),
-    OutVar(OutVarParamIndex),
     Label(LabelParamIndex),
 }
 
 deref_from!(&VarParamIndex => ParamIndex);
-deref_from!(&OutVarParamIndex => ParamIndex);
 deref_from!(&LabelParamIndex => ParamIndex);
 
 #[derive(Clone, Debug)]
 pub struct VarParam {
     pub ident: Spanned<Ident>,
-    pub is_mut: bool,
+    pub kind: VarParamKind,
     pub type_: TypeIndex,
 }
 
 impl Typed for VarParam {
-    fn type_(&self) -> TypeIndex {
-        self.type_
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct OutVarParam {
-    pub ident: Spanned<Ident>,
-    pub type_: TypeIndex,
-}
-
-impl Typed for OutVarParam {
     fn type_(&self) -> TypeIndex {
         self.type_
     }
