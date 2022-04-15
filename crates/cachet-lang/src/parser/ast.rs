@@ -5,7 +5,9 @@ use typed_index_collections::TiVec;
 
 use cachet_util::{box_from, deref_from, typed_field_index};
 
-use crate::ast::{BlockKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned, VarParamKind};
+use crate::ast::{
+    BlockKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned, VarParamKind,
+};
 
 #[derive(Clone, Debug, From)]
 pub enum Item {

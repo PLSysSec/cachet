@@ -48,7 +48,9 @@ pub enum ParamTag {
 }
 
 impl ParamTags {
-    pub fn reduce<T>(tags: impl Iterator<Item = Spanned<ParamTag>>) -> Result<Self, ParseError<T>> {
+    pub fn reduce<T>(
+        tags: impl Iterator<Item = Spanned<ParamTag>>,
+    ) -> Result<Self, ParseError<T>> {
         let mut accum = ParamTags::default();
 
         for tag in tags {
