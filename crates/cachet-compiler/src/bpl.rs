@@ -1,6 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::iter;
 use std::ops::{Deref, DerefMut};
 
@@ -981,7 +981,11 @@ impl<'a> Compiler<'a> {
                 }
                 .into();
 
-                let mut succ_emit_node_indexes = HashSet::new();
+                // Use a `BTreeSet` (as opposed to a `HashSet`) so the order of
+                // the indexes is consistent for the same input every time the
+                // compiler is run. The order of the indexes determines the
+                // order of the labels in the goto statement generated below.
+                let mut succ_emit_node_indexes = BTreeSet::new();
                 for succ in &emit_node.succs {
                     match succ {
                         EmitSucc::Emit(emit_node_index) => {
