@@ -37,6 +37,13 @@ typed_field_index!(EnumItem:variants[pub VariantIndex] => Spanned<Ident>);
 pub struct StructItem {
     pub ident: Spanned<Ident>,
     pub supertype: Option<Spanned<Path>>,
+    pub fields: Vec<StructField>,
+}
+
+#[derive(Clone, Debug)]
+pub struct StructField {
+    pub ident: Spanned<Ident>,
+    pub type_: Spanned<Path>,
 }
 
 #[derive(Clone, Debug)]
@@ -256,6 +263,8 @@ pub enum Expr {
     Compare(Box<CompareExpr>),
     #[from]
     Assign(Box<AssignExpr>),
+    #[from]
+    FieldAccess(Box<FieldAccessExpr>),
 }
 
 box_from!(KindedBlock => Expr);
@@ -263,6 +272,7 @@ box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
+box_from!(FieldAccessExpr => Expr);
 
 deref_from!(&Literal => Expr);
 deref_from!(&Spanned<Path> => Expr);
@@ -307,4 +317,10 @@ pub struct CompareExpr {
 pub struct AssignExpr {
     pub lhs: Spanned<Path>,
     pub rhs: Spanned<Expr>,
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldAccessExpr {
+    pub parent: Spanned<Expr>,
+    pub field: Spanned<Ident>,
 }

@@ -4,6 +4,7 @@ mod ast;
 mod error;
 mod graphs;
 
+use std::collections::HashMap;
 use std::iter;
 use std::ops::{Deref, DerefMut};
 
@@ -26,13 +27,12 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     // Set up an internal placeholder type used to "turn off" type-checking for
     // variables whose types can't be inferred. This type shouldn't escape the
     // type-checking phase. We do the same for IRs as well.
-    let unknown_type_index = env
-        .struct_items
-        .push_and_get_key(StructItem {
-            ident: Spanned::new(Span::initial(), *UNKNOWN_IDENT),
-            supertype: None,
-        })
-        .into();
+    let unknown_struct_index = env.struct_items.push_and_get_key(StructItem {
+        ident: Spanned::new(Span::initial(), *UNKNOWN_IDENT),
+        supertype: None,
+        fields: HashMap::new(),
+    });
+
     let unknown_ir_index = env
         .ir_items
         .push_and_get_key(IrItem {
@@ -41,7 +41,7 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
         })
         .into();
 
-    let mut type_checker = TypeChecker::new(&env, unknown_type_index, unknown_ir_index);
+    let mut type_checker = TypeChecker::new(&env, unknown_struct_index, unknown_ir_index);
 
     let fn_items = type_checker.type_check_fn_items();
     let op_items = type_checker.type_check_op_items();
@@ -53,12 +53,12 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     let popped_type_index = env
         .struct_items
         .pop_key_value()
-        .map(|(struct_index, _)| struct_index.into());
+        .map(|(struct_index, _)| struct_index);
     let popped_ir_index = env
         .ir_items
         .pop_key_value()
         .map(|(ir_index, _)| ir_index.into());
-    debug_assert_eq!(popped_type_index, Some(unknown_type_index));
+    debug_assert_eq!(popped_type_index, Some(unknown_struct_index));
     debug_assert_eq!(popped_ir_index, Some(unknown_ir_index));
 
     Ok(Env {
@@ -95,23 +95,27 @@ struct TypeChecker<'a> {
     errors: Vec<TypeCheckError>,
     env: &'a resolver::Env,
     call_graph: CallGraph,
-    unknown_type: TypeIndex,
+    unknown_struct: StructIndex,
     unknown_ir: IrIndex,
 }
 
 impl<'a> TypeChecker<'a> {
     fn new(
         env: &'a resolver::Env,
-        unknown_type_index: TypeIndex,
+        unknown_struct_index: StructIndex,
         unknown_ir_index: IrIndex,
     ) -> Self {
         TypeChecker {
             errors: Vec::new(),
             env,
             call_graph: CallGraph::new(env.fn_items.len(), env.op_items.len()),
-            unknown_type: unknown_type_index,
+            unknown_struct: unknown_struct_index,
             unknown_ir: unknown_ir_index,
         }
+    }
+
+    fn unknown_type(&self) -> TypeIndex {
+        self.unknown_struct.into()
     }
 
     fn finish(mut self) -> Result<Vec<DeclIndex>, TypeCheckErrors> {
@@ -120,7 +124,7 @@ impl<'a> TypeChecker<'a> {
             return Err(TypeCheckErrors(self.errors));
         }
 
-        let unknown_type_index = self.unknown_type;
+        let unknown_type_index = self.unknown_type();
         let decl_order = self
             .flatten_type_graph()
             .into_iter()
@@ -310,8 +314,8 @@ impl<'a> TypeChecker<'a> {
         // The internal "unknown" type unifies with everything. No values of
         // this type will ever actually be produced.
         if supertype_index == subtype_index
-            || supertype_index == self.unknown_type
-            || subtype_index == self.unknown_type
+            || supertype_index == self.unknown_type()
+            || subtype_index == self.unknown_type()
         {
             return Some(Vec::new());
         }
@@ -343,7 +347,7 @@ impl<'a> TypeChecker<'a> {
     fn is_numeric_type(&self, type_index: TypeIndex) -> bool {
         // Consider the internal "unknown" type to be numeric for the purposes
         // of the type-checking phase.
-        type_index.is_numeric() || type_index == self.unknown_type
+        type_index.is_numeric() || type_index == self.unknown_type()
     }
 
     fn try_match_irs(&self, found_ir_index: IrIndex, expected_ir_index: IrIndex) -> bool {
@@ -567,7 +571,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         // the internal "unknown" type from escaping the type-checking phase.
         let param_type_index = param_summary
             .and_then(|param_summary| param_summary.type_)
-            .unwrap_or(self.unknown_type);
+            .unwrap_or(self.unknown_type());
 
         let arg_type_index = match arg.value {
             OutVar::Free(var_index) => self.get_var_type(var_index),
@@ -957,6 +961,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 self.type_check_compare_expr(compare_expr).into()
             }
             resolver::Expr::Assign(assign_expr) => self.type_check_assign_expr(assign_expr).into(),
+            resolver::Expr::FieldAccess(field_access_expr) => {
+                self.type_check_field_access_expr(field_access_expr).into()
+            }
         }
     }
 
@@ -973,6 +980,62 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let ret = self.env[call.target.value].type_();
         let call = self.type_check_call(call);
         InvokeExpr { call, ret }
+    }
+
+    fn type_check_field_access_expr(
+        &mut self,
+        field_access: &resolver::FieldAccessExpr,
+    ) -> FieldAccessExpr {
+        let parent = self.type_check_expr(&field_access.parent.value);
+        let parent_type_ = parent.type_();
+        let struct_idx = match parent_type_ {
+            TypeIndex::Struct(struct_idx) => struct_idx,
+            _ => {
+                self.type_checker
+                    .errors
+                    .push(TypeCheckError::NonStructFieldAccess {
+                        field: field_access.field.clone(),
+                        type_: self.get_type_ident(parent_type_),
+                        parent_span: field_access.parent.span,
+                    });
+                return FieldAccessExpr {
+                    parent,
+                    type_: self.unknown_type(),
+                    field: FieldIndex {
+                        struct_: self.unknown_struct,
+                        ident: field_access.field.value,
+                    },
+                };
+            }
+        };
+
+        let struct_item = &self.env[struct_idx];
+
+        match struct_item.fields.get(&field_access.field.value) {
+            None => {
+                self.type_checker
+                    .errors
+                    .push(TypeCheckError::FieldNotFound {
+                        field: field_access.field.clone(),
+                        type_: struct_item.ident,
+                    });
+
+                FieldAccessExpr {
+                    parent,
+                    type_: self.unknown_type(),
+                    field: FieldIndex {
+                        struct_: struct_idx,
+                        ident: field_access.field.value,
+                    },
+                }
+            }
+
+            Some(struct_field) => FieldAccessExpr {
+                parent,
+                type_: struct_field.type_,
+                field: struct_field.into(),
+            },
+        }
     }
 
     fn type_check_negate_expr(&mut self, negate_expr: &resolver::NegateExpr) -> NegateExpr {

@@ -5,6 +5,7 @@ mod error;
 mod registry;
 
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
@@ -39,12 +40,10 @@ pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> 
         .map(resolve_enum_item)
         .collect();
 
-    let struct_items: Option<_> = collect_eager(
-        item_catalog
-            .struct_items
-            .into_iter()
-            .map(|struct_item| resolver.resolve_struct_item(struct_item)),
-    );
+    let struct_items: Option<_> =
+        collect_eager(item_catalog.struct_items.into_iter_enumerated().map(
+            |(struct_idx, struct_item)| resolver.resolve_struct_item(struct_idx, struct_item),
+        ));
 
     let ir_items: Option<TiVec<_, _>> = collect_eager(
         item_catalog
@@ -512,7 +511,11 @@ impl<'a> Resolver<'a> {
         resolver
     }
 
-    fn resolve_struct_item(&mut self, struct_item: parser::StructItem) -> Option<StructItem> {
+    fn resolve_struct_item(
+        &mut self,
+        idx: StructIndex,
+        struct_item: parser::StructItem,
+    ) -> Option<StructItem> {
         let supertype = match struct_item.supertype {
             None => Some(None),
             Some(supertype) => self
@@ -521,9 +524,25 @@ impl<'a> Resolver<'a> {
                 .map(Some),
         };
 
+        let fields: Option<_> = collect_eager(struct_item.fields.into_iter().map(|f| {
+            self.lookup_type_global(f.type_)
+                .found(&mut self.errors)
+                .map(|type_| {
+                    (
+                        f.ident.value,
+                        StructField {
+                            ident: f.ident,
+                            parent: idx,
+                            type_,
+                        },
+                    )
+                })
+        }));
+
         Some(StructItem {
             ident: struct_item.ident,
             supertype: supertype?,
+            fields: fields?,
         })
     }
 
@@ -1060,6 +1079,9 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             parser::Expr::Assign(assign_expr) => {
                 self.resolve_assign_expr(*assign_expr).map(Expr::from)
             }
+            parser::Expr::FieldAccess(field_access_expr) => self
+                .resolve_field_access_expr(*field_access_expr)
+                .map(Expr::from),
         }
     }
 
@@ -1113,6 +1135,20 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         Some(AssignExpr {
             lhs: lhs?,
             rhs: rhs?,
+        })
+    }
+
+    fn resolve_field_access_expr(
+        &mut self,
+        field_access_expr: parser::FieldAccessExpr,
+    ) -> Option<FieldAccessExpr> {
+        let parent = map_spanned(field_access_expr.parent, |parent| {
+            self.resolve_expr(parent.value)
+        });
+
+        Some(FieldAccessExpr {
+            parent: parent?,
+            field: field_access_expr.field,
         })
     }
 

@@ -393,6 +393,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Assign(_) => {
                 unreachable!("assignment expressions should be `Unit`-typed")
             }
+            _ => todo!("access"),
         }
     }
 
@@ -414,6 +415,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Assign(assign_expr) => {
                 self.normalize_unused_assign_expr(*assign_expr)
             }
+            _ => todo!("access"),
         }
     }
 

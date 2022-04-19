@@ -14,10 +14,11 @@ use crate::ast::{
 };
 use crate::resolver;
 pub use crate::resolver::{
-    CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem,
-    IrIndex, IrItem, Label, LabelIndex, LabelParam, LabelParamIndex, LabelStmt, Literal,
-    LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel, OutVar, ParamIndex, Params, ParentIndex,
-    StructIndex, StructItem, TypeIndex, Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
+    CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FieldIndex, FnIndex, GlobalVarIndex,
+    GlobalVarItem, IrIndex, IrItem, Label, LabelIndex, LabelParam, LabelParamIndex, LabelStmt,
+    Literal, LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel, OutVar, ParamIndex, Params,
+    ParentIndex, StructField, StructIndex, StructItem, TypeIndex, Typed, VarIndex, VarParam,
+    VarParamIndex, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -142,6 +143,14 @@ impl From<CallableIndex> for DeclIndex {
 }
 
 deref_from!(&CallableIndex => DeclIndex);
+
+impl Index<FieldIndex> for Env {
+    type Output = StructField;
+
+    fn index(&self, index: FieldIndex) -> &Self::Output {
+        &self[index.struct_].fields[&index.ident]
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, Error)]
 #[error("item is not part of the declaration order")]
@@ -421,6 +430,8 @@ pub enum Expr {
     Compare(Box<CompareExpr>),
     #[from]
     Assign(Box<AssignExpr>),
+    #[from]
+    FieldAccess(Box<FieldAccessExpr>),
 }
 
 impl Typed for Expr {
@@ -434,6 +445,7 @@ impl Typed for Expr {
             Expr::Cast(cast_expr) => cast_expr.type_(),
             Expr::Compare(compare_expr) => compare_expr.type_(),
             Expr::Assign(assign_expr) => assign_expr.type_(),
+            Expr::FieldAccess(field_access_expr) => field_access_expr.type_(),
         }
     }
 }
@@ -443,6 +455,7 @@ box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
+box_from!(FieldAccessExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -542,5 +555,18 @@ impl AssignExpr {
 impl Typed for AssignExpr {
     fn type_(&self) -> TypeIndex {
         AssignExpr::TYPE.into()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldAccessExpr {
+    pub parent: Expr,
+    pub field: FieldIndex,
+    pub type_: TypeIndex,
+}
+
+impl Typed for FieldAccessExpr {
+    fn type_(&self) -> TypeIndex {
+        self.type_
     }
 }
