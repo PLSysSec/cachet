@@ -135,7 +135,7 @@ Label: Label =
     "label" <ident:Spanned<Ident>> ":" <ir:Spanned<Path>> => Label { ident, ir };
 
 Arg: Arg = {
-    <expr:BlockOr<PrecExpr>> => {
+    <expr:PrecExpr> => {
         match expr.expr {
             Expr::Var(path) if !expr.is_grouped => {
                 FreeVarOrLabelArg { path, is_out: false }.into()
@@ -159,73 +159,44 @@ LocalVar: LocalVar =
 LocalLabel: LocalLabel =
     "label" <ident:Spanned<Ident>> <ir:(":" <Spanned<Path>>)?> => LocalLabel { ident, ir };
 
+
 Block: Block = {
-    "{" <stmts:Stmts> <value:Expr?> "}" => Block { stmts, value }, 
-    "{" <value:BlockOr<Expr>?> "}" => Block { stmts: vec![], value },
-
-    "{" <stmts_block:StmtsBlock> "}" => {
-        let (stmts, block) = stmts_block;
-        Block { stmts, value: Some(block.into()) }
-    },
-    "{" <stmts_block:StmtsBlock> <value:Expr> "}" => {
-        let (mut stmts, block) = stmts_block;
-        stmts.push(block.into());
-        Block { stmts, value: Some(value) }
-    },
+    "{" <stmts:BlockOrStmt*> <value:Expr> "}" => Block { stmts, value: Some(value) }, 
+    "{" <stmts:BlockOrStmt*> <stmt: Stmt> "}" => Block { stmts, value: None}, 
+    "{" "}" => Block { stmts: vec![], value: None}, 
 };
 
-Stmts: Vec<Stmt> = {
-    <stmt:Stmt> => vec![stmt],
-    <stmts:Stmts> ";" => stmts,
-    <mut stmts:Stmts> <stmt:Stmt> => {
-        stmts.push(stmt);
-        stmts
+KindedBlock: BlockExpr = {
+    <kind:BlockKind?> <block:Block> => BlockExpr {
+        kind,
+        block,
     },
+}
 
-    <block:Block> ";" => vec![block.into()],
-    <block:Block> <stmt:Stmt> => vec![block.into(), stmt],
-
-    <stmts_block:StmtsBlock> ";" => {
-        let (mut stmts, block) = stmts_block;
-        stmts.push(block.into());
-        stmts
-    },
-    <stmts_block:StmtsBlock> <stmt:Stmt> => {
-        let (mut stmts, block) = stmts_block;
-        stmts.extend([block.into(), stmt]);
-        stmts
-    },
-};
-
-StmtsBlock: (Vec<Stmt>, Block) = {
-    <stmts:Stmts> <block:Block> => (stmts, block),
-    <prev_block:Block> <block:Block> => (vec![prev_block.into()], block),
-    <stmts_block:StmtsBlock> <block:Block> => {
-        let (mut stmts, prev_block) = stmts_block;
-        stmts.push(prev_block.into());
-        (stmts, block)
-    },
-};
+BlockOrStmt: Stmt = {
+    <block: KindedBlock> => Expr::from(block).into(),
+    <stmt: Stmt> => stmt
+}
 
 Stmt: Stmt = {
-    <let_stmt:LetStmt> => let_stmt.into(),
-    <label_stmt:LabelStmt> => label_stmt.into(),
+    <let_stmt:LetStmt> ";" => let_stmt.into(),
+    <label_stmt:LabelStmt> ";" => label_stmt.into(),
     <if_stmt:IfStmt> => if_stmt.into(),
-    <check_stmt:CheckStmt> => check_stmt.into(),
-    <goto_stmt:GotoStmt> => goto_stmt.into(),
-    <bind_stmt:BindStmt> => bind_stmt.into(),
-    <emit_stmt:EmitStmt> => emit_stmt,
+    <check_stmt:CheckStmt> ";" => check_stmt.into(),
+    <goto_stmt:GotoStmt> ";" => goto_stmt.into(),
+    <bind_stmt:BindStmt> ";" => bind_stmt.into(),
+    <emit_stmt:EmitStmt> ";" => emit_stmt,
     <expr:Expr> ";" => expr.into(),
 };
 
 LetStmt: LetStmt =
-    <lhs:LocalVar> "=" <rhs:Spanned<BlockOr<Expr>>> ";" => LetStmt { lhs, rhs };
+    <lhs:LocalVar> "=" <rhs:Spanned<Expr>> => LetStmt { lhs, rhs };
 
 LabelStmt: LabelStmt =
-    <label:Label> ";" => LabelStmt { label };
+    <label:Label> => LabelStmt { label };
 
 IfStmt: IfStmt =
-    "if" <cond:Spanned<BlockOr<Expr>>> <then:Block> <else_:("else" <ElseClause>)?> =>
+    "if" <cond:Spanned<Expr>> <then:Block> <else_:("else" <ElseClause>)?> =>
         IfStmt { cond, then, else_ };
 
 ElseClause: ElseClause = {
@@ -234,7 +205,7 @@ ElseClause: ElseClause = {
 }
 
 CheckStmt: CheckStmt =
-    <kind:CheckKind> <cond:Spanned<BlockOr<Expr>>> ";" => CheckStmt { kind, cond };
+    <kind:CheckKind> <cond:Spanned<Expr>> => CheckStmt { kind, cond };
 
 CheckKind: CheckKind = {
     "assert" => CheckKind::Assert,
@@ -242,33 +213,26 @@ CheckKind: CheckKind = {
 };
 
 GotoStmt: GotoStmt =
-    "goto" <label:Spanned<Path>> ";" => GotoStmt { label };
+    "goto" <label:Spanned<Path>> => GotoStmt { label };
 
 BindStmt: BindStmt =
-    "bind" <label:Spanned<Path>> ";" => BindStmt { label };
+    "bind" <label:Spanned<Path>> => BindStmt { label };
 
 EmitStmt: Stmt =
     "emit" <call:Call> => Stmt::Emit(call);
 
-Expr: Expr =
-    <expr:PrecExpr> => expr.expr;
-
-BlockOr<T>: T = {
-    <block:Block> => Expr::from(block).into(),
-    T,
+Expr: Expr = {
+    <expr:PrecExpr> => expr.expr,
 };
 
 PrecExpr: PrecExpr = {
     #[precedence(level = "0")]
     // Note that this breaks out of the precedence chain: an expression of any
     // precedence level can be grouped inside parentheses.
-    "(" <expr:BlockOr<Expr>> ")" => PrecExpr::grouped(expr),
+    "(" <expr:Expr> ")" => PrecExpr::grouped(expr),
 
     #[precedence(level = "0")]
-    <kind:BlockKind> <block:Block> => Expr::from(BlockExpr {
-        kind: Some(kind),
-        block,
-    }).into(),
+    <block:KindedBlock> => Expr::from(block).into(),
 
     #[precedence(level = "0")]
     <literal:Literal> => Expr::from(literal).into(),
@@ -280,7 +244,7 @@ PrecExpr: PrecExpr = {
     <call:Call> => Expr::Invoke(call).into(),
 
     #[precedence(level = "0")]
-    <kind:Spanned<NegateKind>> <expr:Spanned<BlockOr<PrecExpr>>> => {
+    <kind:Spanned<NegateKind>> <expr:Spanned<PrecExpr>> => {
         let expr_span = expr.span;
         match (kind.value, expr.value.expr) {
             // If we're applying arithmetic negation to a numeric literal, negate
@@ -298,13 +262,13 @@ PrecExpr: PrecExpr = {
     }.into(),
 
     #[precedence(level = "1")]
-    <expr:Spanned<BlockOr<PrecExpr>>> "as" <type_:Spanned<Path>> =>
+    <expr:Spanned<PrecExpr>> "as" <type_:Spanned<Path>> =>
         Expr::from(CastExpr { expr: expr.map(|expr| expr.expr), type_ }).into(),
 
     #[precedence(level = "2")]
     #[assoc(side = "left")]
-    <lhs:Spanned<BlockOr<PrecExpr>>> <kind:Spanned<CompareKind>>
-    <rhs:Spanned<BlockOr<PrecExpr>>> =>?
+    <lhs:Spanned<PrecExpr>> <kind:Spanned<CompareKind>>
+    <rhs:Spanned<PrecExpr>> =>?
     {
         if !lhs.value.is_grouped {
             if let Expr::Compare(_) = lhs.value.expr {
@@ -323,7 +287,7 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "3")]
     #[assoc(side = "right")]
-    <lhs:Spanned<BlockOr<PrecExpr>>> "=" <rhs:Spanned<BlockOr<PrecExpr>>> =>? {
+    <lhs:Spanned<PrecExpr>> "=" <rhs:Spanned<PrecExpr>> =>? {
         match lhs.value.expr {
             Expr::Var(lhs) => Ok(Expr::from(AssignExpr {
                 lhs: lhs,
