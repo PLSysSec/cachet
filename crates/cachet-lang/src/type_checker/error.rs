@@ -131,6 +131,17 @@ pub enum TypeCheckError {
         lhs_defined_at: Option<Span>,
         rhs_span: Span,
     },
+    #[error("attempted to access of field `{field}` of non-struct type `{type_}`")]
+    NonStructFieldAccess {
+        field: Spanned<Ident>,
+        type_: Ident,
+        parent_span: Span,
+    },
+    #[error("field `{field}` does not exist on type `{type_}`")]
+    FieldNotFound {
+        field: Spanned<Ident>,
+        type_: Spanned<Ident>,
+    },
 }
 
 impl FrontendError for TypeCheckError {
@@ -160,6 +171,8 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::BinaryOperatorTypeMismatch { operator_span, .. } => *operator_span,
             TypeCheckError::NumericOperatorTypeMismatch { operand_span, .. } => *operand_span,
             TypeCheckError::AssignTypeMismatch { rhs_span, .. } => *rhs_span,
+            TypeCheckError::NonStructFieldAccess { field, .. } => field.span,
+            TypeCheckError::FieldNotFound { field, .. } => field.span,
         }
     }
 
@@ -319,6 +332,12 @@ impl FrontendError for TypeCheckError {
             } => {
                 label.message = format!("expected `{}`, found `{}`", expected_type, found_type);
             }
+            TypeCheckError::NonStructFieldAccess { .. } => {
+                label.message = format!("fields can only be accessed on structs")
+            }
+            TypeCheckError::FieldNotFound { .. } => {
+                label.message = format!("field must be declared on the struct")
+            }
         }
 
         let mut labels = vec![label];
@@ -470,6 +489,18 @@ impl FrontendError for TypeCheckError {
                             .with_message(format!("variable `{}` defined here", lhs)),
                     );
                 }
+            }
+            TypeCheckError::NonStructFieldAccess {
+                parent_span, type_, ..
+            } => labels.push(
+                Label::secondary(file_id, *parent_span)
+                    .with_message(format!("expression is of type `{}`", type_)),
+            ),
+            TypeCheckError::FieldNotFound { type_, .. } => {
+                labels.push(
+                    Label::secondary(file_id, type_.span)
+                        .with_message(format!("struct `{}` declared here", type_.value)),
+                );
             }
         }
 

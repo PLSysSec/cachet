@@ -1,6 +1,9 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use std::ops::{Index, IndexMut};
+use std::{
+    collections::HashMap,
+    ops::{Index, IndexMut},
+};
 
 use derive_more::From;
 use typed_index_collections::TiVec;
@@ -211,6 +214,29 @@ deref_index!(Env[&EnumVariantIndex] => Spanned<Path>);
 pub struct StructItem {
     pub ident: Spanned<Ident>,
     pub supertype: Option<TypeIndex>,
+    pub fields: HashMap<Ident, StructField>,
+}
+
+#[derive(Clone, Debug)]
+pub struct StructField {
+    pub ident: Spanned<Ident>,
+    pub parent: StructIndex,
+    pub type_: TypeIndex,
+}
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub struct FieldIndex {
+    pub struct_: StructIndex,
+    pub ident: Ident,
+}
+
+impl Into<FieldIndex> for &StructField {
+    fn into(self) -> FieldIndex {
+        FieldIndex {
+            struct_: self.parent,
+            ident: self.ident.value,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -501,9 +527,12 @@ pub enum Expr {
     Compare(Box<CompareExpr>),
     #[from]
     Assign(Box<AssignExpr>),
+    #[from]
+    FieldAccess(Box<FieldAccessExpr>),
 }
 
 box_from!(KindedBlock => Expr);
+box_from!(FieldAccessExpr => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
@@ -573,4 +602,10 @@ impl Typed for AssignExpr {
     fn type_(&self) -> TypeIndex {
         AssignExpr::TYPE.into()
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldAccessExpr {
+    pub parent: Spanned<Expr>,
+    pub field: Spanned<Ident>,
 }

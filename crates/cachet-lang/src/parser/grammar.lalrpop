@@ -36,8 +36,19 @@ EnumItem: EnumItem =
         EnumItem { ident, variants: variants.into() };
 
 StructItem: StructItem =
-    "struct" <ident:Spanned<Ident>> <supertype:("<:" <Spanned<Path>>)?> ";" =>
-        StructItem { ident, supertype };
+    "struct" <ident:Spanned<Ident>> <supertype:("<:" <Spanned<Path>>)?> <fields: StructFields> =>
+        StructItem { ident, supertype, fields };
+
+StructFields: Vec<StructField> = {
+    ";"  => vec![],
+    "{" <fields:StructField*> "}" => fields,
+};
+
+StructField: StructField =
+    <ident: Spanned<Ident>> ":" <type_: Spanned<Path>> ";" => {
+        StructField { ident, type_ }
+    };
+
 
 IrItem: IrItem =
     "ir" <ident:Spanned<Ident>> <emits:("emits" <Spanned<Path>>)?>
@@ -257,6 +268,9 @@ PrecExpr: PrecExpr = {
     <call:Call> => Expr::Invoke(call).into(),
 
     #[precedence(level = "0")]
+    <parent:Spanned<PrecExpr>> "." <field: Spanned<Ident>> => Expr::from(FieldAccessExpr { parent: parent.map(|p| p.expr), field }).into(),
+
+    #[precedence(level = "1")]
     <kind:Spanned<NegateKind>> <expr:Spanned<PrecExpr>> => {
         let expr_span = expr.span;
         match (kind.value, expr.value.expr) {
@@ -274,11 +288,11 @@ PrecExpr: PrecExpr = {
         }
     }.into(),
 
-    #[precedence(level = "1")]
+    #[precedence(level = "2")]
     <expr:Spanned<PrecExpr>> "as" <type_:Spanned<Path>> =>
         Expr::from(CastExpr { expr: expr.map(|expr| expr.expr), type_ }).into(),
 
-    #[precedence(level = "2")]
+    #[precedence(level = "3")]
     #[assoc(side = "left")]
     <lhs:Spanned<PrecExpr>> <kind:Spanned<CompareKind>>
     <rhs:Spanned<PrecExpr>> =>?
@@ -298,7 +312,7 @@ PrecExpr: PrecExpr = {
         }).into())
     },
 
-    #[precedence(level = "3")]
+    #[precedence(level = "4")]
     #[assoc(side = "right")]
     <lhs:Spanned<PrecExpr>> "=" <rhs:Spanned<PrecExpr>> =>? {
         match lhs.value.expr {
