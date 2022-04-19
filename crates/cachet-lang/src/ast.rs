@@ -68,9 +68,9 @@ pub enum CompareKind {
     Lte,
     #[display(fmt = ">=")]
     Gte,
-    #[display(fmt = ">")]
-    Lt,
     #[display(fmt = "<")]
+    Lt,
+    #[display(fmt = ">")]
     Gt,
 }
 

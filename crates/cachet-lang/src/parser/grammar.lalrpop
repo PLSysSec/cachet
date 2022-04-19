@@ -135,7 +135,7 @@ Label: Label =
     "label" <ident:Spanned<Ident>> ":" <ir:Spanned<Path>> => Label { ident, ir };
 
 Arg: Arg = {
-    <expr:RawBlockOrExpr> => {
+    <expr:BlockOr<PrecExpr>> => {
         match expr.expr {
             Expr::Var(path) if !expr.is_grouped => {
                 FreeVarOrLabelArg { path, is_out: false }.into()
@@ -161,7 +161,7 @@ LocalLabel: LocalLabel =
 
 Block: Block = {
     "{" <stmts:Stmts> <value:Expr?> "}" => Block { stmts, value }, 
-    "{" <value:BlockOrExpr?> "}" => Block { stmts: vec![], value },
+    "{" <value:BlockOr<Expr>?> "}" => Block { stmts: vec![], value },
 
     "{" <stmts_block:StmtsBlock> "}" => {
         let (stmts, block) = stmts_block;
@@ -219,13 +219,13 @@ Stmt: Stmt = {
 };
 
 LetStmt: LetStmt =
-    <lhs:LocalVar> "=" <rhs:Spanned<BlockOrExpr>> ";" => LetStmt { lhs, rhs };
+    <lhs:LocalVar> "=" <rhs:Spanned<BlockOr<Expr>>> ";" => LetStmt { lhs, rhs };
 
 LabelStmt: LabelStmt =
     <label:Label> ";" => LabelStmt { label };
 
 IfStmt: IfStmt =
-    "if" <cond:Spanned<BlockOrExpr>> <then:Block> <else_:("else" <ElseClause>)?> =>
+    "if" <cond:Spanned<BlockOr<Expr>>> <then:Block> <else_:("else" <ElseClause>)?> =>
         IfStmt { cond, then, else_ };
 
 ElseClause: ElseClause = {
@@ -234,7 +234,7 @@ ElseClause: ElseClause = {
 }
 
 CheckStmt: CheckStmt =
-    <kind:CheckKind> <cond:Spanned<BlockOrExpr>> ";" => CheckStmt { kind, cond };
+    <kind:CheckKind> <cond:Spanned<BlockOr<Expr>>> ";" => CheckStmt { kind, cond };
 
 CheckKind: CheckKind = {
     "assert" => CheckKind::Assert,
@@ -250,120 +250,61 @@ BindStmt: BindStmt =
 EmitStmt: Stmt =
     "emit" <call:Call> => Stmt::Emit(call);
 
-#[inline]
-Expr: Expr = Expr0;
+Expr: Expr =
+    <expr:PrecExpr> => expr.expr;
 
-#[inline]
-BlockOrExpr: Expr = BlockOrExpr0;
-
-#[inline]
-RawExpr: MaybeGrouped = RawExpr0;
-
-#[inline]
-RawBlockOrExpr: MaybeGrouped = RawBlockOrExpr0;
-
-Expr0: Expr =
-    <expr:RawExpr0> => expr.expr;
-
-BlockOrExpr0: Expr =
-    <expr:RawBlockOrExpr0> => expr.expr;
-
-RawExpr0: MaybeGrouped = {
-    <assign_expr:AssignExpr> => MaybeGrouped::ungrouped(assign_expr.into()),
-    RawExpr1,
+BlockOr<T>: T = {
+    <block:Block> => Expr::from(block).into(),
+    T,
 };
 
-RawBlockOrExpr0: MaybeGrouped = {
-    <block:Block> => MaybeGrouped::ungrouped(block.into()),
-    RawExpr0,
-};
+PrecExpr: PrecExpr = {
+    #[precedence(level = "0")]
+    // Note that this breaks out of the precedence chain: an expression of any
+    // precedence level can be grouped inside parentheses.
+    "(" <expr:BlockOr<Expr>> ")" => PrecExpr::grouped(expr),
 
-Expr1: Expr =
-    <expr:RawExpr1> => expr.expr;
-
-BlockOrExpr1: Expr =
-    <expr:RawBlockOrExpr1> => expr.expr;
-
-RawExpr1: MaybeGrouped = {
-    <compare_expr:CompareExpr> => MaybeGrouped::ungrouped(compare_expr.into()),
-    RawExpr2,
-};
-
-RawBlockOrExpr1: MaybeGrouped = {
-    <block:Block> => MaybeGrouped::ungrouped(block.into()),
-    RawExpr1,
-};
-
-Expr2: Expr =
-    <expr:RawExpr2> => expr.expr;
-
-BlockOrExpr2: Expr =
-    <expr:RawBlockOrExpr2> => expr.expr;
-
-RawExpr2: MaybeGrouped = {
-    <cast_expr:CastExpr> => MaybeGrouped::ungrouped(cast_expr.into()),
-    RawExpr3,
-};
-
-RawBlockOrExpr2: MaybeGrouped = {
-    <block:Block> => MaybeGrouped::ungrouped(block.into()),
-    RawExpr2,
-};
-
-Expr3: Expr =
-    <expr:RawExpr3> => expr.expr;
-
-BlockOrExpr3: Expr =
-    <expr:RawBlockOrExpr3> => expr.expr;
-
-RawExpr3: MaybeGrouped = {
-    "(" <expr:BlockOrExpr0> ")" => MaybeGrouped::grouped(expr),
-    <block_expr:BlockExpr> => MaybeGrouped::ungrouped(block_expr.into()),
-    <literal:Literal> => MaybeGrouped::ungrouped(literal.into()),
-    <path:Spanned<Path>> => MaybeGrouped::ungrouped(path.into()),
-    <call:Call> => MaybeGrouped::ungrouped(Expr::Invoke(call)),
-    <negate_expr:NegateExpr> => MaybeGrouped::ungrouped(negate_expr),
-};
-
-RawBlockOrExpr3: MaybeGrouped = {
-    <block:Block> => MaybeGrouped::ungrouped(block.into()),
-    RawExpr3,
-};
-
-BlockExpr: BlockExpr =
-    <kind:BlockKind> <block:Block> => BlockExpr {
+    #[precedence(level = "0")]
+    <kind:BlockKind> <block:Block> => Expr::from(BlockExpr {
         kind: Some(kind),
         block,
-    };
+    }).into(),
 
-BlockKind: BlockKind = {
-    "unsafe" => BlockKind::Unsafe,
-};
+    #[precedence(level = "0")]
+    <literal:Literal> => Expr::from(literal).into(),
 
-Literal: Literal =
-    <n:Int32Literal> => Literal::Int32(n);
+    #[precedence(level = "0")]
+    <path:Spanned<Path>> => Expr::from(path).into(),
 
-Int32Literal: i32 =
-    <digits:Spanned<r"[0-9]+">> =>? i32::from_str(digits.value).map_err(|error| ParseError::User {
-        error: Spanned::new(digits.span, "number too large to fit in Int32"),
-    });
+    #[precedence(level = "0")]
+    <call:Call> => Expr::Invoke(call).into(),
 
-NegateExpr: Expr =
-    <kind:Spanned<NegateKind>> <expr:Spanned<BlockOrExpr3>> => match (kind.value, &expr.value) {
-        (NegateKind::Arithmetic, Expr::Literal(Literal::Int32(n))) => Literal::Int32(-n).into(),
-        _ => NegateExpr { kind, expr }.into(),
-    };
+    #[precedence(level = "0")]
+    <kind:Spanned<NegateKind>> <expr:Spanned<BlockOr<PrecExpr>>> => {
+        let expr_span = expr.span;
+        match (kind.value, expr.value.expr) {
+            // If we're applying arithmetic negation to a numeric literal, negate
+            // the literal value directly.
+            (NegateKind::Arithmetic, Expr::Literal(Literal::Int32(n))) => {
+                Expr::from(Literal::Int32(-n))
+            }
+            (_, expr) => {
+                Expr::from(NegateExpr {
+                    kind,
+                    expr: Spanned::new(expr_span, expr)
+                })
+            }
+        }
+    }.into(),
 
-NegateKind: NegateKind = {
-    "-" => NegateKind::Arithmetic,
-    "!" => NegateKind::Logical,
-};
+    #[precedence(level = "1")]
+    <expr:Spanned<BlockOr<PrecExpr>>> "as" <type_:Spanned<Path>> =>
+        Expr::from(CastExpr { expr: expr.map(|expr| expr.expr), type_ }).into(),
 
-CastExpr: CastExpr =
-    <expr:Spanned<BlockOrExpr2>> "as" <type_:Spanned<Path>> => CastExpr { expr, type_ };
-
-CompareExpr: CompareExpr =
-    <lhs:Spanned<RawBlockOrExpr1>> <kind:Spanned<CompareKind>> <rhs:Spanned<BlockOrExpr2>> =>?
+    #[precedence(level = "2")]
+    #[assoc(side = "left")]
+    <lhs:Spanned<BlockOr<PrecExpr>>> <kind:Spanned<CompareKind>>
+    <rhs:Spanned<BlockOr<PrecExpr>>> =>?
     {
         if !lhs.value.is_grouped {
             if let Expr::Compare(_) = lhs.value.expr {
@@ -373,12 +314,36 @@ CompareExpr: CompareExpr =
             }
         }
 
-        Ok(CompareExpr {
+        Ok(Expr::from(CompareExpr {
             kind,
             lhs: lhs.map(|lhs| lhs.expr),
-            rhs
-        })
-    };
+            rhs: rhs.map(|rhs| rhs.expr),
+        }).into())
+    },
+
+    #[precedence(level = "3")]
+    #[assoc(side = "right")]
+    <lhs:Spanned<BlockOr<PrecExpr>>> "=" <rhs:Spanned<BlockOr<PrecExpr>>> =>? {
+        match lhs.value.expr {
+            Expr::Var(lhs) => Ok(Expr::from(AssignExpr {
+                lhs: lhs,
+                rhs: rhs.map(|rhs| rhs.expr),
+            }).into()),
+            _ => Err(ParseError::User {
+                error: Spanned::new(lhs.span, "can't assign to this expression"),
+            }),
+        }
+    },
+};
+
+BlockKind: BlockKind = {
+    "unsafe" => BlockKind::Unsafe,
+};
+
+NegateKind: NegateKind = {
+    "-" => NegateKind::Arithmetic,
+    "!" => NegateKind::Logical,
+};
 
 CompareKind: CompareKind = {
     "==" => CompareKind::Eq,
@@ -389,15 +354,13 @@ CompareKind: CompareKind = {
     ">" => CompareKind::Gt,
 };
 
-AssignExpr: AssignExpr =
-    <lhs:Spanned<BlockOrExpr1>> "=" <rhs: Spanned<BlockOrExpr0>> =>? {
-        match lhs.value {
-            Expr::Var(lhs) => Ok(AssignExpr { lhs, rhs }),
-            _ => Err(ParseError::User {
-                error: Spanned::new(lhs.span, "can't assign to this expression"),
-            }),
-        }
-    };
+Literal: Literal =
+    <n:Int32Literal> => Literal::Int32(n);
+
+Int32Literal: i32 =
+    <digits:Spanned<r"[0-9]+">> =>? i32::from_str(digits.value).map_err(|error| ParseError::User {
+        error: Spanned::new(digits.span, "number too large to fit in Int32"),
+    });
 
 Ident: Ident =
     <name:r"[A-Za-z_][A-Za-z0-9_]*"> => Ident::from(name);

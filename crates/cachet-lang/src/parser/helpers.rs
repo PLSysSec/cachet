@@ -1,7 +1,10 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::ops::Deref;
+
 use crate::ast::{Span, Spanned};
-use crate::parser::ast::Expr;
+
+use crate::parser::ast::{Block, Expr};
 
 pub type ParseError<T> = lalrpop_util::ParseError<usize, T, UserParseError>;
 pub type UserParseError = Spanned<&'static str>;
@@ -111,23 +114,39 @@ pub enum CallableKind {
     Op,
 }
 
-pub struct MaybeGrouped {
+pub struct PrecExpr {
     pub is_grouped: bool,
     pub expr: Expr,
 }
 
-impl MaybeGrouped {
+impl PrecExpr {
     pub fn grouped(expr: Expr) -> Self {
-        MaybeGrouped {
+        PrecExpr {
             is_grouped: true,
             expr,
         }
     }
+}
 
-    pub fn ungrouped(expr: Expr) -> Self {
-        MaybeGrouped {
+impl Deref for PrecExpr {
+    type Target = Expr;
+
+    fn deref(&self) -> &Self::Target {
+        &self.expr
+    }
+}
+
+impl From<Expr> for PrecExpr {
+    fn from(expr: Expr) -> Self {
+        PrecExpr {
             is_grouped: false,
             expr,
         }
+    }
+}
+
+impl From<Block> for PrecExpr {
+    fn from(block: Block) -> Self {
+        Expr::from(block).into()
     }
 }
