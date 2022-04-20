@@ -5,7 +5,6 @@ mod error;
 mod registry;
 
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 

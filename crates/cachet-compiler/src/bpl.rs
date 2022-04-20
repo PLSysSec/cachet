@@ -139,7 +139,7 @@ impl<'a> Compiler<'a> {
                         }.into(),
                     ].into(),
                     attr: None,
-                    ret: type_ident.into(),
+                    ret: self.get_type_ident(f.type_).into(),
                     value: None,
                 }
                 .into()
@@ -778,6 +778,7 @@ impl<'a> Compiler<'a> {
                 .into(),
                 expr: CompareExpr {
                     kind: CompareKind::Eq,
+                    type_: PreludeTypeIdent::Pc.into(),
                     lhs: IndexExpr {
                         base: pc_emit_paths_var_ident.into(),
                         key: VarIdent::Pc.into(),
@@ -923,6 +924,7 @@ impl<'a> Compiler<'a> {
                 attr: Some(CheckAttr::Partition),
                 cond: CompareExpr {
                     kind: CompareKind::Eq,
+                    type_: PreludeTypeIdent::Pc.into(),
                     lhs: IndexExpr {
                         base: pc_emit_paths_var_ident.into(),
                         key: pc_var_ident.into(),
@@ -1253,13 +1255,14 @@ fn generate_cast_axiom_item(
     supertype_ident: UserTypeIdent,
     subtype_ident: UserTypeIdent,
 ) -> AxiomItem {
-    let in_var = TypedVar {
-        ident: ParamVarIdent::In.into(),
-        type_: match kind {
+    let type_ = match kind {
             CastKind::Downcast => subtype_ident,
             CastKind::Upcast => supertype_ident,
-        }
-        .into(),
+        };
+
+    let in_var = TypedVar {
+        ident: ParamVarIdent::In.into(),
+        type_: type_.into(),
     };
 
     let inner_call_expr = CallExpr {
@@ -1296,6 +1299,7 @@ fn generate_cast_axiom_item(
         vars: vec![in_var].into(),
         expr: CompareExpr {
             kind: CompareKind::Eq,
+            type_: type_.into(),
             lhs,
             rhs,
         }
@@ -1972,6 +1976,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         CompareExpr {
             kind: compare_expr.kind,
+            type_: self.get_type_ident(compare_expr.lhs.type_()).into(),
             lhs,
             rhs,
         }
