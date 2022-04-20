@@ -14,10 +14,10 @@ use crate::ast::{
 use crate::type_checker;
 pub use crate::type_checker::{
     BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex,
-    GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, Label, LabelIndex, LabelParam,
+    GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, FieldIndex, Label, LabelIndex, LabelParam,
     LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,
     NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
-    StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex,
+    StructIndex, StructItem, StructField, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex,
     VariantIndex,
 };
 
@@ -52,6 +52,15 @@ impl<B> IndexMut<EnumVariantIndex> for Env<B> {
         &mut self.enum_items[index.enum_index][index.variant_index]
     }
 }
+
+impl<B> Index<FieldIndex> for Env<B> {
+    type Output = StructField;
+
+    fn index(&self, index: FieldIndex) -> &Self::Output {
+        &self[index.struct_].fields[&index.ident]
+    }
+}
+
 
 deref_index!(Env<B>[&EnumVariantIndex] => Spanned<Path> | <B>);
 
@@ -226,6 +235,8 @@ pub enum Expr<B = ()> {
     Cast(Box<CastExpr<Expr<B>>>),
     #[from]
     Compare(CompareExpr),
+    #[from]
+    FieldAccess(Box<FieldAccessExpr<Expr<B>>>),
 }
 
 impl<B> Typed for Expr<B> {
@@ -238,6 +249,7 @@ impl<B> Typed for Expr<B> {
             Expr::Negate(negate_expr) => negate_expr.type_(),
             Expr::Cast(cast_expr) => cast_expr.type_(),
             Expr::Compare(compare_expr) => compare_expr.type_(),
+            Expr::FieldAccess(field_access_expr) => field_access_expr.type_(),
         }
     }
 }
@@ -251,6 +263,7 @@ impl<B: Default> From<Box<BlockExpr<B>>> for Expr<B> {
 box_from!(BlockExpr<B> => Expr<B> | <B> where B: Default);
 box_from!(NegateExpr<Expr<B>> => Expr<B> | <B>);
 box_from!(CastExpr<Expr<B>> => Expr<B> | <B>);
+box_from!(FieldAccessExpr<Expr<B>> => Expr<B> | <B>);
 
 deref_from!(&Literal => Expr);
 
@@ -262,6 +275,7 @@ impl<B> From<AtomExpr> for Expr<B> {
             AtomExpr::Negate(negate_expr) => (*negate_expr).into(),
             AtomExpr::Cast(cast_expr) => (*cast_expr).into(),
             AtomExpr::Compare(compare_expr) => (*compare_expr).into(),
+            AtomExpr::FieldAccess(field_access_expr) => (*field_access_expr).into(),
         }
     }
 }
@@ -269,6 +283,12 @@ impl<B> From<AtomExpr> for Expr<B> {
 impl<B> From<NegateExpr<AtomExpr>> for Expr<B> {
     fn from(negate_expr: NegateExpr<AtomExpr>) -> Self {
         Expr::from(NegateExpr::<Expr<B>>::from(negate_expr))
+    }
+}
+
+impl<B> From<FieldAccessExpr<AtomExpr>> for Expr<B> {
+    fn from(field_access_expr: FieldAccessExpr<AtomExpr>) -> Self {
+        Expr::FieldAccess(FieldAccessExpr::<Expr<B>>::from(field_access_expr).into())
     }
 }
 
@@ -290,6 +310,8 @@ pub enum AtomExpr {
     Cast(Box<CastExpr<AtomExpr>>),
     #[from]
     Compare(Box<CompareExpr>),
+    #[from]
+    FieldAccess(Box<FieldAccessExpr<AtomExpr>>),
 }
 
 impl Typed for AtomExpr {
@@ -300,6 +322,7 @@ impl Typed for AtomExpr {
             AtomExpr::Negate(negate_expr) => negate_expr.type_(),
             AtomExpr::Cast(cast_expr) => cast_expr.type_(),
             AtomExpr::Compare(compare_expr) => compare_expr.type_(),
+            AtomExpr::FieldAccess(field_access_expr) => field_access_expr.type_(),
         }
     }
 }
@@ -307,6 +330,7 @@ impl Typed for AtomExpr {
 box_from!(NegateExpr<AtomExpr> => AtomExpr);
 box_from!(CastExpr<AtomExpr> => AtomExpr);
 box_from!(CompareExpr => AtomExpr);
+box_from!(FieldAccessExpr<AtomExpr> => AtomExpr);
 
 deref_from!(&Literal => AtomExpr);
 
@@ -321,6 +345,7 @@ impl<B> TryFrom<Expr<B>> for AtomExpr {
             Expr::Negate(negate_expr) => Ok((*negate_expr).try_into()?),
             Expr::Cast(cast_expr) => Ok((*cast_expr).try_into()?),
             Expr::Compare(compare_expr) => Ok(compare_expr.into()),
+            Expr::FieldAccess(field_access_expr) => Ok((*field_access_expr).try_into()?)
         }
     }
 }
@@ -331,6 +356,16 @@ impl<B> TryFrom<NegateExpr<Expr<B>>> for AtomExpr {
     fn try_from(negate_expr: NegateExpr<Expr<B>>) -> Result<Self, Self::Error> {
         Ok(AtomExpr::from(NegateExpr::<AtomExpr>::try_from(
             negate_expr,
+        )?))
+    }
+}
+
+impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for AtomExpr {
+    type Error = FieldAccessExpr<Expr<B>>;
+
+    fn try_from(field_access_expr: FieldAccessExpr<Expr<B>>) -> Result<Self, Self::Error> {
+        Ok(AtomExpr::from(FieldAccessExpr::<AtomExpr>::try_from(
+            field_access_expr,
         )?))
     }
 }
@@ -401,6 +436,48 @@ impl<B> TryFrom<NegateExpr<Expr<B>>> for NegateExpr<AtomExpr> {
             Err(expr) => Err(NegateExpr {
                 kind: negate_expr.kind,
                 expr,
+            }),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldAccessExpr<E = Expr> {
+    pub parent: E,
+    pub field: FieldIndex,
+    pub type_: TypeIndex,
+}
+
+impl<E> Typed for FieldAccessExpr<E> {
+    fn type_(&self) -> TypeIndex {
+        self.type_
+    }
+}
+
+impl<B> From<FieldAccessExpr<AtomExpr>> for FieldAccessExpr<Expr<B>> {
+    fn from(field_access_expr: FieldAccessExpr<AtomExpr>) -> Self {
+        FieldAccessExpr {
+            parent: field_access_expr.parent.into(),
+            field: field_access_expr.field,
+            type_: field_access_expr.type_
+        }
+    }
+}
+
+impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for FieldAccessExpr<AtomExpr> {
+    type Error = FieldAccessExpr<Expr<B>>;
+
+    fn try_from(field_access_expr: FieldAccessExpr<Expr<B>>) -> Result<Self, Self::Error> {
+        match field_access_expr.parent.try_into() {
+            Ok(expr) => Ok(FieldAccessExpr {
+                parent: expr,
+                field: field_access_expr.field,
+                type_: field_access_expr.type_
+            }),
+            Err(expr) => Err(FieldAccessExpr {
+                parent: expr,
+                field: field_access_expr.field,
+                type_: field_access_expr.type_
             }),
         }
     }

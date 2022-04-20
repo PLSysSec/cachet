@@ -5,7 +5,7 @@ use void::Void;
 use crate::normalizer;
 pub use crate::normalizer::{
     Arg, AtomExpr, BindStmt, Call, CallableIndex, CompareExpr, DeclIndex, EmitStmt, EnumIndex,
-    EnumItem, EnumVariantIndex, FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, InvokeExpr,
+    EnumItem, EnumVariantIndex, FieldIndex, FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, InvokeExpr,
     InvokeStmt, IrIndex, IrItem, Label, LabelArg, LabelIndex, LabelParam, LabelParamIndex,
     LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError,
     OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex, StructIndex, StructItem,
@@ -27,3 +27,4 @@ pub type RetStmt = normalizer::RetStmt<Void>;
 pub type Expr = normalizer::Expr<Void>;
 pub type NegateExpr<E = Expr> = normalizer::NegateExpr<E>;
 pub type CastExpr<E = Expr> = normalizer::CastExpr<E>;
+pub type FieldAccessExpr<E = Expr> = normalizer::FieldAccessExpr<E>;

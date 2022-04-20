@@ -198,6 +198,8 @@ pub enum ParamVarIdent {
     Op,
     #[display(fmt = "label")]
     Label,
+    #[display(fmt = "instance")]
+    Instance,
     User(UserParamVarIdent),
 }
 
@@ -271,8 +273,12 @@ pub struct TypeMemberFnIdent {
 pub enum TypeMemberFnSelector {
     #[display(fmt = "Negate")]
     Negate,
+    #[display(fmt = "cast^{}", _0)]
     Cast(CastTypeMemberFnSelector),
+    #[display(fmt = "variant^{}", _0)]
     Variant(VariantCtorTypeMemberFnSelector),
+    #[display(fmt = "field^{}", _0)]
+    Field(Ident)
 }
 
 #[derive(Clone, Copy, Debug)]
