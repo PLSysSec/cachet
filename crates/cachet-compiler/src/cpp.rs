@@ -1063,6 +1063,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Expr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).map(Expr::from)
             }
+            normalizer::Expr::FieldAccess(field_access_expr) => {
+                self.compile_field_access_expr(&field_access_expr).map(Expr::from)
+            }
         }
     }
 
@@ -1080,6 +1083,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             normalizer::AtomExpr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).map(Expr::from)
+            }
+            normalizer::AtomExpr::FieldAccess(field_access_expr) => {
+                self.compile_field_access_expr(&field_access_expr).map(Expr::from)
             }
         }
     }
@@ -1122,6 +1128,25 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             expr: block.into(),
             type_: block_expr.type_(),
             tags: ExprTag::Val.into(),
+        }
+    }
+
+    fn compile_field_access_expr<E: CompileExpr + Typed>(&self, field_access_expr: &normalizer::FieldAccessExpr<E>) -> TaggedExpr<MemberExpr> {
+        let tagged_parent = field_access_expr.parent.compile(self);
+        let tag = if tagged_parent.tags.contains(ExprTag::Val) {
+            ExprTag::Val
+        } else {
+            ExprTag::Ref
+        };
+
+        let parent = self.use_expr(tagged_parent, EnumSet::empty()).into();
+        TaggedExpr {
+            expr: MemberExpr {
+                parent,
+                member: field_access_expr.field.ident,
+            },
+            type_: field_access_expr.type_(),
+            tags: tag.into(),
         }
     }
 

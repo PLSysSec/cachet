@@ -128,6 +128,25 @@ impl<'a> Compiler<'a> {
             .into(),
         );
 
+        for f in struct_item.fields.values() {
+            self.items.push(
+                FnItem {
+                    ident: self.get_field_fn_ident(f.into()),
+                    param_vars: vec![
+                        TypedVar {
+                            ident: ParamVarIdent::Instance.into(),
+                            type_: type_ident.into()
+                        }.into(),
+                    ].into(),
+                    attr: None,
+                    ret: type_ident.into(),
+                    value: None,
+                }
+                .into()
+            )
+        }
+            
+
         if let Some(supertype_index) = struct_item.supertype {
             let supertype_ident = self.get_type_ident(supertype_index);
 
@@ -1188,6 +1207,14 @@ impl<'a> Compiler<'a> {
 
         UserTypeIdent::from(ident)
     }
+
+    fn get_field_fn_ident(&self, field_index: flattener::FieldIndex) -> FnIdent {
+        let struct_ident = self.env[field_index.struct_].ident.value;
+        TypeMemberFnIdent {
+            type_ident: UserTypeIdent::from(struct_ident),
+            selector: TypeMemberFnSelector::Field(field_index.ident)
+        }.into()
+    }
 }
 
 fn generate_cast_fn_item(
@@ -1804,6 +1831,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Expr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).into()
             }
+            flattener::Expr::FieldAccess(field_access_expr) => {
+                self.compile_field_access_expr(&field_access_expr).into()
+            }
         }
     }
 
@@ -1815,6 +1845,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::AtomExpr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
             flattener::AtomExpr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).into()
+            }
+            flattener::AtomExpr::FieldAccess(field_access_expr) => {
+                self.compile_field_access_expr(&field_access_expr).into()
             }
         }
     }
@@ -1915,6 +1948,20 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 .into(),
             }
             .into(),
+            arg_exprs: vec![expr],
+        }
+    }
+
+    fn compile_field_access_expr<E: CompileExpr + Typed>(
+        &mut self,
+        field_access_expr: &flattener::FieldAccessExpr<E>,
+    ) -> CallExpr {
+        let expr = field_access_expr.parent.compile(self);
+
+        let access_fn_ident = self.get_field_fn_ident(field_access_expr.field);
+
+        CallExpr {
+            target: access_fn_ident,
             arg_exprs: vec![expr],
         }
     }

@@ -393,7 +393,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Assign(_) => {
                 unreachable!("assignment expressions should be `Unit`-typed")
             }
-            _ => todo!("access"),
+            type_checker::Expr::FieldAccess(access_expr) => {
+                self.normalize_used_field_access_expr(*access_expr).into()
+            }
         }
     }
 
@@ -415,7 +417,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Assign(assign_expr) => {
                 self.normalize_unused_assign_expr(*assign_expr)
             }
-            _ => todo!("access"),
+            type_checker::Expr::FieldAccess(access_expr) => {
+                self.normalize_unused_field_access_expr(*access_expr)
+            }
         }
     }
 
@@ -472,6 +476,20 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             }
             .into()
         });
+    }
+
+    fn normalize_used_field_access_expr(&mut self, field_access_expr: type_checker::FieldAccessExpr) -> FieldAccessExpr {
+        let parent = self.normalize_used_expr(field_access_expr.parent);
+
+        FieldAccessExpr {
+            parent,
+            field: field_access_expr.field,
+            type_: field_access_expr.type_,
+        }
+    }
+
+    fn normalize_unused_field_access_expr(&mut self, field_access_expr: type_checker::FieldAccessExpr) {
+        self.normalize_unused_expr(field_access_expr.parent);
     }
 
     fn normalize_used_negate_expr(&mut self, negate_expr: type_checker::NegateExpr) -> NegateExpr {
