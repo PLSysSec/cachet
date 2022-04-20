@@ -500,6 +500,8 @@ pub struct Code {
 
 impl Display for Code {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", include_str!("prelude.bpl"))?;
+
         fmt_join(f, "\n\n", self.items.iter())
     }
 }
@@ -1012,17 +1014,30 @@ pub struct NegateExpr {
     pub expr: Expr,
 }
 
-#[derive(Clone, Debug, Display)]
-#[display(
-    fmt = "{} {} {}",
-    "MaybeGrouped(&self.lhs)",
-    kind,
-    "MaybeGrouped(&self.rhs)"
-)]
+#[derive(Clone, Debug)]
 pub struct CompareExpr {
     pub kind: CompareKind,
+    pub type_: TypeIdent,
     pub lhs: Expr,
     pub rhs: Expr,
+}
+
+impl Display for CompareExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}^{}({}, {})",
+            self.type_,
+            match self.kind {
+                CompareKind::Eq => "Equal",
+                CompareKind::Neq => "NotEqual",
+                CompareKind::Lte => "LessThanOrEqual",
+                CompareKind::Gte => "GreaterThanOrEqual",
+                CompareKind::Lt => "LessThan",
+                CompareKind::Gt => "GreaterThan",
+            },
+            MaybeGrouped(&self.lhs),
+            MaybeGrouped(&self.rhs)
+        )
+    }
 }
 
 #[derive(Clone, Debug, Display)]
