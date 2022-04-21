@@ -94,5 +94,5 @@ for f in $(ls -d $repo_dir/tests/cpp/*.cachet); do
         echo -e "$PASS"
     fi
 
-    rm $INCLUDE_DIR/*
 done
+echo $INCLUDE_DIR;

@@ -1131,22 +1131,17 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_field_access_expr<E: CompileExpr + Typed>(&self, field_access_expr: &normalizer::FieldAccessExpr<E>) -> TaggedExpr<MemberExpr> {
+    fn compile_field_access_expr<E: CompileExpr + Typed>(&self, field_access_expr: &normalizer::FieldAccessExpr<E>) -> TaggedExpr<ArrowMemberExpr> {
         let tagged_parent = field_access_expr.parent.compile(self);
-        let tag = if tagged_parent.tags.contains(ExprTag::Val) {
-            ExprTag::Val
-        } else {
-            ExprTag::Ref
-        };
+        let parent = self.use_expr(tagged_parent, ExprTag::Ref.into()).into();
 
-        let parent = self.use_expr(tagged_parent, EnumSet::empty()).into();
         TaggedExpr {
-            expr: MemberExpr {
-                parent,
-                member: field_access_expr.field.ident,
+            expr: ArrowMemberExpr {
+                    parent: parent,
+                    member: field_access_expr.field.ident,
             },
             type_: field_access_expr.type_(),
-            tags: tag.into(),
+            tags: ExprTag::Ref | ExprTag::Val,
         }
     }
 
