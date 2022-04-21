@@ -973,7 +973,7 @@ impl FromIterator<Stmt> for BlockExpr {
 
 #[derive(Clone, Copy, Debug, Display)]
 pub enum Literal {
-    #[display(fmt = "{:?}_int32", _0)]
+    #[display(fmt = "{:?}", _0)]
     Int32(i32),
 }
 

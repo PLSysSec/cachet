@@ -67,3 +67,32 @@ for f in $(ls -d $repo_dir/tests/verifier/fail/*); do
     fi
     rm $TMP_BPL
 done
+
+INCLUDE_DIR=$(mktemp -d)
+TMP_INC="$INCLUDE_DIR/test.inc"
+TMP_H="$INCLUDE_DIR/test.h"
+TMP_OUT="$INCLUDE_DIR/test"
+
+for f in $(ls -d $repo_dir/tests/cpp/*.cachet); do
+    test_name="$(basename $f)"
+    cpp_file="${f%.cachet}.cpp"
+    echo -en "cpp/$test_name..."
+    cargo run --manifest-path "$repo_dir/Cargo.toml" --quiet --bin cachet-compiler $f $TMP_H $TMP_INC /dev/null
+    COMP_OUT=$(clang++ -std=c++17 -I $INCLUDE_DIR -I $repo_dir/tests/cpp $cpp_file -o $TMP_OUT)
+    if [[ $? -ne 0 ]]
+    then
+        echo -e "$FAIL"
+        echo $COMP_OUT
+    fi
+
+    OUT=$($TMP_OUT)
+    if [[ $? -ne 0 ]]
+    then
+        echo -e "$FAIL"
+        echo $OUT
+    else
+        echo -e "$PASS"
+    fi
+
+    rm $INCLUDE_DIR/*
+done
