@@ -330,12 +330,14 @@ pub enum TypeMemberFnIdent {
     Cast(CastTypeMemberFnIdent),
     Compare(CompareTypeMemberFnIdent),
     Variant(VariantTypeMemberFnIdent),
+    #[display(fmt = "FieldAccess")]
+    FieldAccess
 }
 
 impl TypeMemberFnIdent {
     pub const fn parent_namespace_kind(self) -> NamespaceKind {
         match self {
-            TypeMemberFnIdent::EmptyLocal | TypeMemberFnIdent::SetMutRef => NamespaceKind::Type,
+            TypeMemberFnIdent::EmptyLocal | TypeMemberFnIdent::SetMutRef | TypeMemberFnIdent::FieldAccess => NamespaceKind::Type,
             TypeMemberFnIdent::ToTag(_) => ToTagTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Cast(_) => CastTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Compare(_) => CompareTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
@@ -879,6 +881,8 @@ pub enum Expr {
     #[from]
     Member(Box<MemberExpr>),
     #[from]
+    ArrowMember(Box<ArrowMemberExpr>),
+    #[from]
     Call(Box<CallExpr>),
     #[from]
     Cast(Box<CastExpr>),
@@ -890,6 +894,8 @@ pub enum Expr {
     Assign(Box<AssignExpr>),
     #[from]
     Comma(Box<CommaExpr>),
+    #[from]
+    Hack(String),
 }
 
 box_from!(TemplateExpr => Expr);
@@ -900,6 +906,7 @@ box_from!(NegateExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 box_from!(CommaExpr => Expr);
+box_from!(ArrowMemberExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -926,9 +933,10 @@ impl Display for MaybeGrouped<'_> {
             | Expr::Fn(_)
             | Expr::Template(_)
             | Expr::Member(_)
+            | Expr::ArrowMember(_)
             | Expr::Call(_)
             | Expr::Comma(_) => false,
-            Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) => true,
+            Expr::Hack(_) | Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) => true,
             Expr::Cast(cast_expr) => match cast_expr.kind {
                 CastStyle::Functional(_) => false,
                 CastStyle::C => true,
@@ -994,6 +1002,13 @@ impl Display for TemplateExpr {
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "{}.{}", "MaybeGrouped(&self.parent)", member)]
 pub struct MemberExpr {
+    pub parent: Expr,
+    pub member: Ident,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "{}->{}", "MaybeGrouped(&self.parent)", member)]
+pub struct ArrowMemberExpr {
     pub parent: Expr,
     pub member: Ident,
 }
