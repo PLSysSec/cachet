@@ -15,12 +15,13 @@ TMP_OUT="$INCLUDE_DIR/test"
 TMP_BPL="$INCLUDE_DIR/test.bpl"
 
 FILTER=$1
+
 function matches() {
-    if [[ $1 == $FILTER ]]
+    if [[ -z "$FILTER" ]] || [[ $1 == *"$FILTER"* ]]
     then
-        return 1
-    else
         return 0
+    else
+        return 1
     fi
 }
 
@@ -84,6 +85,11 @@ FAILED_TESTS=()
 for f in $(ls -d $repo_dir/tests/**/*.cachet); do
     test_name="${f#"$repo_dir/tests/"}"
     echo -en "$test_name...\t"
+    if ! ( matches $test_name ); then
+        echo "SKIP"
+        continue
+    fi
+
     ERROR=$(case $test_name in
         ("cpp/"*) cpp_test "$f" ;;
         ("verifier/pass"*) verifier_test "$f" 0;;
