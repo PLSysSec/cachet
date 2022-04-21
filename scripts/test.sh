@@ -1,3 +1,5 @@
+shopt -s globstar
+
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && cd .. && pwd)"
 
 RED='\033[0;31m'
@@ -6,93 +8,109 @@ NC='\033[0m' # No Color
 PASS="${GREEN}PASS${NC}"
 FAIL="${RED}FAIL${NC}"
 
-TMP_BPL=.test.tmp.bpl
-
-# Frontend Tests
-#
-# These are just smoke tests that don't inspect the output.
-# Currently there's no way to stop after type-checking so these tests will also detect
-# panics during code emission.
-for f in $(ls -d $repo_dir/tests/frontend/pass/*); do
-    test_name="$(basename $f)...\t"
-    echo -en "frontend/pass/$test_name"
-    cargo run --manifest-path "$repo_dir/Cargo.toml" --quiet --bin cachet-compiler $f /dev/null /dev/null /dev/null
-    if [[ $? -eq 0 ]]
-    then
-        echo -e "$PASS"
-    else
-        echo -e "$FAIL"
-    fi
-done
-
-
-function has_bugs() {
-    if [[ "$1" == *"potential bug"* ]]
-    then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Verifier tests
-#
-# These tests run corral against the generated boogie, looking for an entrypoint called #test
-for f in $(ls -d $repo_dir/tests/verifier/pass/*); do
-    test_name="$(basename $f)...\t"
-    echo -en "verifier/pass/$test_name"
-    cargo run --manifest-path "$repo_dir/Cargo.toml" --quiet --bin cachet-compiler $f /dev/null /dev/null $TMP_BPL
-    OUT=$(corral "/main:#test" $TMP_BPL 2>&1)
-    if has_bugs "$OUT"
-    then
-        echo -e "$FAIL"
-        echo $OUT
-    else
-        echo -e "$PASS"
-    fi
-    rm $TMP_BPL
-done
-
-for f in $(ls -d $repo_dir/tests/verifier/fail/*); do
-    test_name="$(basename $f)...\t"
-    echo -en "verifier/fail/$test_name"
-    cargo run --manifest-path "$repo_dir/Cargo.toml" --quiet --bin cachet-compiler $f /dev/null /dev/null $TMP_BPL
-    OUT=$(corral "/main:#test" $TMP_BPL 2>&1)
-    if has_bugs "$OUT"
-    then
-        echo -e "$PASS"
-    else
-        echo -e "$FAIL"
-        echo $OUT
-    fi
-    rm $TMP_BPL
-done
-
 INCLUDE_DIR=$(mktemp -d)
 TMP_INC="$INCLUDE_DIR/test.inc"
 TMP_H="$INCLUDE_DIR/test.h"
 TMP_OUT="$INCLUDE_DIR/test"
+TMP_BPL="$INCLUDE_DIR/test.bpl"
 
-for f in $(ls -d $repo_dir/tests/cpp/*.cachet); do
-    test_name="$(basename $f)"
-    cpp_file="${f%.cachet}.cpp"
-    echo -en "cpp/$test_name..."
-    cargo run --manifest-path "$repo_dir/Cargo.toml" --quiet --bin cachet-compiler $f $TMP_H $TMP_INC /dev/null
-    COMP_OUT=$(clang++ -std=c++17 -I $INCLUDE_DIR -I $repo_dir/tests/cpp $cpp_file -o $TMP_OUT)
-    if [[ $? -ne 0 ]]
+FILTER=$1
+function matches() {
+    if [[ $1 == $FILTER ]]
     then
-        echo -e "$FAIL"
-        echo $COMP_OUT
-    fi
-
-    OUT=$($TMP_OUT)
-    if [[ $? -ne 0 ]]
-    then
-        echo -e "$FAIL"
-        echo $OUT
+        return 1
     else
-        echo -e "$PASS"
+        return 0
+    fi
+}
+
+function build() {
+    cachet_file=$1
+    cargo run --manifest-path "$repo_dir/Cargo.toml" --quiet --bin cachet-compiler $cachet_file $TMP_H $TMP_INC $TMP_BPL 2>&1
+    return $?
+}
+
+function cpp_test() {
+    cachet_file=$1
+    build $cachet_file
+    if [ $? -ne 0 ]; then
+        return 1
     fi
 
+    cpp_file="${cachet_file%.cachet}.cpp"
+
+    clang++ -std=c++17 -I $INCLUDE_DIR -I $repo_dir/tests/cpp $cpp_file -o $TMP_OUT 2>&1
+    if [[ $? -ne 0 ]]; then
+        return 1
+    fi
+
+    $TMP_OUT
+    if [[ $? -ne 0 ]]; then
+        echo "Compiled program returned a non-zero status"
+        return 1
+    fi
+
+    return 0
+}
+
+function verifier_test() {
+    cachet_file=$1
+    build $cachet_file
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    OUT=$(corral "/main:#test" $TMP_BPL 2>&1)
+    echo -e "$OUT"
+
+    if [[ "$OUT" != *"potential bug"* ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+function should_fail() {
+    if [[ $? -eq 0 ]]; then
+        echo -e "${RED}Test passed when it should have failed${NC}"
+        return 1
+    fi
+
+    return 0
+}
+
+PASSED_COUNT=0
+FAILED_TESTS=()
+for f in $(ls -d $repo_dir/tests/**/*.cachet); do
+    test_name="${f#"$repo_dir/tests/"}"
+    echo -en "$test_name...\t"
+    ERROR=$(case $test_name in
+        ("cpp/"*) cpp_test "$f" ;;
+        ("verifier/pass"*) verifier_test "$f" 0;;
+        ("verifier/fail"*) verifier_test "$f"; should_fail ;;
+        ("frontend/pass"*) build "$f";;
+        ("frontend/fail"*) build "$f"; should_fail;;
+        (*) echo "Unknown test $f"; false ;;
+    esac)
+
+    if [[ $? -eq 0 ]]; then
+        PASSED_COUNT=$((PASSED_COUNT+1))
+        echo -e "$PASS"
+    else
+        FAILED_TESTS+=($test_name)
+        echo -e "$FAIL" 
+        echo -e "$ERROR"
+    fi
 done
-echo $INCLUDE_DIR;
+
+FAILED_COUNT=${#FAILED_TESTS[@]}
+echo -e "${GREEN}$PASSED_COUNT${NC} tests passed"
+if [[ $FAILED_COUNT  -eq 0 ]]; then
+    exit 0
+fi
+
+echo -e "${RED}$FAILED_COUNT${NC} tests failed:"
+for failed_test in "${FAILED_TESTS[@]}"; do
+    echo -e "\t$failed_test"
+done
+exit 1
