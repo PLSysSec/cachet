@@ -159,24 +159,37 @@ LocalVar: LocalVar =
 LocalLabel: LocalLabel =
     "label" <ident:Spanned<Ident>> <ir:(":" <Spanned<Path>>)?> => LocalLabel { ident, ir };
 
+Block: Block =
+    "{" ";"* <block:BlockInner> "}" => block;
 
-Block: Block = {
-    "{" <stmts:BlockOrStmt*> <value:Expr> "}" => Block { stmts, value: Some(value) }, 
-    "{" <stmts:BlockOrStmt*> <stmt: Stmt> "}" => Block { stmts, value: None}, 
-    "{" "}" => Block { stmts: vec![], value: None}, 
+BlockInner: Block = {
+    <stmts:BlockOrStmt*> <value:Expr> => Block { stmts, value: Some(value) }, 
+    <mut stmts:BlockOrStmt*> <stmt:SemiStmt> => {
+        stmts.push(stmt);
+        Block { stmts, value: None }
+    },
+    => Block { stmts: vec![], value: None }, 
 };
 
-KindedBlock: BlockExpr = {
-    <kind:BlockKind?> <block:Block> => BlockExpr {
+BlockOrStmt: Spanned<Stmt> = {
+    <block:Spanned<KindedBlock>> => block.map(Stmt::from),
+    <stmt:SemiStmt> => stmt
+};
+
+KindedBlock: KindedBlock = {
+    <kind:BlockKind?> <block:Block> => KindedBlock {
         kind,
         block,
     },
-}
+};
 
-BlockOrStmt: Stmt = {
-    <block: KindedBlock> => Expr::from(block).into(),
-    <stmt: Stmt> => stmt
-}
+BlockKind: BlockKind = {
+    "unsafe" => BlockKind::Unsafe,
+};
+
+#[inline]
+SemiStmt: Spanned<Stmt> =
+    <stmt:Spanned<Stmt>> ";"* => stmt;
 
 Stmt: Stmt = {
     <let_stmt:LetStmt> ";" => let_stmt.into(),
@@ -226,9 +239,9 @@ Expr: Expr = {
 };
 
 PrecExpr: PrecExpr = {
-    #[precedence(level = "0")]
     // Note that this breaks out of the precedence chain: an expression of any
     // precedence level can be grouped inside parentheses.
+    #[precedence(level = "0")]
     "(" <expr:Expr> ")" => PrecExpr::grouped(expr),
 
     #[precedence(level = "0")]
@@ -298,10 +311,6 @@ PrecExpr: PrecExpr = {
             }),
         }
     },
-};
-
-BlockKind: BlockKind = {
-    "unsafe" => BlockKind::Unsafe,
 };
 
 NegateKind: NegateKind = {

@@ -13,7 +13,7 @@ use typed_index_collections::TiVec;
 
 use crate::ast::{
     BlockKind, BuiltInType, BuiltInVar, CastKind, Ident, MaybeSpanned, NegateKind, Path, Span,
-    Spanned, VarParamKind,
+    Spanned, VarParamKind, UNIT_TYPE_IDENT,
 };
 use crate::resolver;
 use crate::FrontendError;
@@ -282,10 +282,10 @@ impl<'a> TypeChecker<'a> {
         let expr_span = expr.span;
         let (success, expr) = self.try_build_upcast_chain(expr.value, type_index);
         if !success {
-            self.errors.push(TypeCheckError::ExprTypeMismatch {
+            self.errors.push(TypeCheckError::TypeMismatch {
                 expected_type: self.get_type_ident(type_index),
                 found_type: self.get_type_ident(expr.type_()),
-                expr_span,
+                span: expr_span,
             });
         }
         expr
@@ -745,7 +745,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let stmts = block
             .stmts
             .iter()
-            .filter_map(|stmt| self.type_check_stmt(stmt))
+            .filter_map(|stmt| self.type_check_stmt(stmt.as_ref()))
             .collect();
 
         let value = match &block.value {
@@ -756,8 +756,25 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         Block { stmts, value }
     }
 
-    fn type_check_stmt(&mut self, stmt: &resolver::Stmt) -> Option<Stmt> {
-        match stmt {
+    fn type_check_kinded_block(&mut self, kinded_block: &resolver::KindedBlock) -> KindedBlock {
+        let block = match kinded_block.kind {
+            None => self.type_check_block(&kinded_block.block),
+            Some(kind) => self
+                .recurse(kind == BlockKind::Unsafe)
+                .type_check_block(&kinded_block.block),
+        };
+
+        KindedBlock {
+            kind: kinded_block.kind,
+            block,
+        }
+    }
+
+    fn type_check_stmt(&mut self, stmt: Spanned<&resolver::Stmt>) -> Option<Stmt> {
+        let stmt_span = stmt.span;
+
+        let stmt: Option<Stmt> = match stmt.value {
+            resolver::Stmt::Block(block) => Some(self.type_check_kinded_block(block).into()),
             resolver::Stmt::Let(let_stmt) => Some(self.type_check_let_stmt(let_stmt).into()),
             resolver::Stmt::Label(LabelStmt { label }) => Some(LabelStmt { label: *label }.into()),
             resolver::Stmt::If(if_stmt) => Some(self.type_check_if_stmt(if_stmt).into()),
@@ -768,7 +785,21 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             resolver::Stmt::Bind(bind_stmt) => Some(self.type_check_bind_stmt(bind_stmt).into()),
             resolver::Stmt::Emit(call) => self.type_check_emit_stmt(call).map(Into::into),
             resolver::Stmt::Expr(expr) => Some(self.type_check_expr(expr).into()),
+        };
+
+        if let Some(stmt) = &stmt {
+            let stmt_type = stmt.type_();
+            if stmt_type != BuiltInType::Unit.into() {
+                let stmt_type_ident = self.get_type_ident(stmt_type);
+                self.errors.push(TypeCheckError::TypeMismatch {
+                    expected_type: *UNIT_TYPE_IDENT,
+                    found_type: stmt_type_ident,
+                    span: stmt_span,
+                });
+            }
         }
+
+        stmt
     }
 
     fn type_check_let_stmt(&mut self, let_stmt: &resolver::LetStmt) -> LetStmt {
@@ -916,7 +947,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
     fn type_check_expr(&mut self, expr: &resolver::Expr) -> Expr {
         match expr {
-            resolver::Expr::Block(block_expr) => self.type_check_block_expr(block_expr).into(),
+            resolver::Expr::Block(block) => self.type_check_kinded_block(block).into(),
             resolver::Expr::Literal(literal) => literal.into(),
             resolver::Expr::Var(var_index) => self.type_check_var_expr(*var_index).into(),
             resolver::Expr::Invoke(call) => self.type_check_invoke_expr(call).into(),
@@ -926,20 +957,6 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 self.type_check_compare_expr(compare_expr).into()
             }
             resolver::Expr::Assign(assign_expr) => self.type_check_assign_expr(assign_expr).into(),
-        }
-    }
-
-    fn type_check_block_expr(&mut self, block_expr: &resolver::BlockExpr) -> BlockExpr {
-        let block = match block_expr.kind {
-            None => self.type_check_block(&block_expr.block),
-            Some(kind) => self
-                .recurse(kind == BlockKind::Unsafe)
-                .type_check_block(&block_expr.block),
-        };
-
-        BlockExpr {
-            kind: block_expr.kind,
-            block,
         }
     }
 

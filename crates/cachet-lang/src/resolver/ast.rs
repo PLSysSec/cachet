@@ -40,8 +40,8 @@ pub enum TypeIndex {
 impl TypeIndex {
     pub fn is_numeric(&self) -> bool {
         match self {
-            TypeIndex::BuiltIn(built_in_type) => built_in_type.is_numeric(),
-            TypeIndex::Enum(_) | TypeIndex::Struct(_) => false,
+            Self::BuiltIn(built_in_type) => built_in_type.is_numeric(),
+            Self::Enum(_) | Self::Struct(_) => false,
         }
     }
 }
@@ -166,7 +166,7 @@ impl Typed for TypeIndex {
 impl Typed for Literal {
     fn type_(&self) -> TypeIndex {
         match self {
-            Literal::Int32(_) => BuiltInType::Int32.into(),
+            Self::Int32(_) => BuiltInType::Int32.into(),
         }
     }
 }
@@ -375,12 +375,26 @@ impl From<Label> for LocalLabel {
 
 #[derive(Clone, Debug)]
 pub struct Block {
-    pub stmts: Vec<Stmt>,
+    pub stmts: Vec<Spanned<Stmt>>,
     pub value: Option<Expr>,
+}
+
+#[derive(Clone, Debug)]
+pub struct KindedBlock {
+    pub kind: Option<BlockKind>,
+    pub block: Block,
+}
+
+impl From<Block> for KindedBlock {
+    fn from(block: Block) -> KindedBlock {
+        KindedBlock { kind: None, block }
+    }
 }
 
 #[derive(Clone, Debug, From)]
 pub enum Stmt {
+    #[from(types(Block))]
+    Block(KindedBlock),
     #[from]
     Let(LetStmt),
     #[from]
@@ -394,7 +408,7 @@ pub enum Stmt {
     #[from]
     Bind(BindStmt),
     Emit(Call),
-    #[from(types(Block))]
+    #[from]
     Expr(Expr),
 }
 
@@ -404,9 +418,21 @@ pub struct LetStmt {
     pub rhs: Spanned<Expr>,
 }
 
+impl Typed for LetStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
+}
+
 #[derive(Clone, Debug, From)]
 pub struct LabelStmt {
     pub label: LocalLabelIndex,
+}
+
+impl Typed for LabelStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -430,9 +456,21 @@ pub struct CheckStmt {
     pub cond: Spanned<Expr>,
 }
 
+impl Typed for CheckStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct GotoStmt {
     pub label: Spanned<LabelIndex>,
+}
+
+impl Typed for GotoStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -440,10 +478,16 @@ pub struct BindStmt {
     pub label: Spanned<LabelIndex>,
 }
 
+impl Typed for BindStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
+}
+
 #[derive(Clone, Debug, From)]
 pub enum Expr {
     #[from]
-    Block(Box<BlockExpr>),
+    Block(Box<KindedBlock>),
     #[from]
     Literal(Literal),
     #[from]
@@ -459,7 +503,7 @@ pub enum Expr {
     Assign(Box<AssignExpr>),
 }
 
-box_from!(BlockExpr => Expr);
+box_from!(KindedBlock => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
@@ -467,7 +511,7 @@ box_from!(AssignExpr => Expr);
 
 impl From<Block> for Expr {
     fn from(block: Block) -> Self {
-        BlockExpr::from(block).into()
+        KindedBlock::from(block).into()
     }
 }
 
@@ -477,18 +521,6 @@ deref_from!(&Spanned<VarIndex> => Expr);
 impl From<Spanned<&VarIndex>> for Expr {
     fn from(var_index: Spanned<&VarIndex>) -> Self {
         var_index.copied().into()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct BlockExpr {
-    pub kind: Option<BlockKind>,
-    pub block: Block,
-}
-
-impl From<Block> for BlockExpr {
-    fn from(block: Block) -> BlockExpr {
-        BlockExpr { kind: None, block }
     }
 }
 

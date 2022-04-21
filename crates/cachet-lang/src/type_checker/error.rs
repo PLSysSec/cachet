@@ -50,10 +50,10 @@ pub enum TypeCheckError {
         found_ir: Ident,
     },
     #[error("mismatched types")]
-    ExprTypeMismatch {
+    TypeMismatch {
         expected_type: Ident,
         found_type: Ident,
-        expr_span: Span,
+        span: Span,
     },
     #[error("casting `{source_type}` to `{target_type}` is invalid")]
     InvalidCast {
@@ -149,7 +149,7 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::GotoIrMismatch { label, .. } => label.span,
             TypeCheckError::BindIrMismatch { label, .. } => label.span,
             TypeCheckError::EmitIrMismatch { op, .. } => op.span,
-            TypeCheckError::ExprTypeMismatch { expr_span, .. } => *expr_span,
+            TypeCheckError::TypeMismatch { span: expr_span, .. } => *expr_span,
             TypeCheckError::InvalidCast { expr_span, .. } => *expr_span,
             TypeCheckError::UnsafeCallInSafeContext { target, .. } => target.span,
             TypeCheckError::UnsafeCastInSafeContext { target_type, .. } => target_type.span,
@@ -256,7 +256,7 @@ impl FrontendError for TypeCheckError {
                     ),
                 };
             }
-            TypeCheckError::ExprTypeMismatch {
+            TypeCheckError::TypeMismatch {
                 expected_type,
                 found_type,
                 ..
@@ -396,7 +396,7 @@ impl FrontendError for TypeCheckError {
                     );
                 }
             }
-            TypeCheckError::ExprTypeMismatch { .. } => (),
+            TypeCheckError::TypeMismatch { .. } => (),
             TypeCheckError::InvalidCast { .. } => (),
             TypeCheckError::UnsafeCallInSafeContext {
                 target,

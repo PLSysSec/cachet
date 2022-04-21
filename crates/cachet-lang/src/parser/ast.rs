@@ -156,12 +156,30 @@ impl From<Label> for LocalLabel {
 
 #[derive(Clone, Debug)]
 pub struct Block {
-    pub stmts: Vec<Stmt>,
+    pub stmts: Vec<Spanned<Stmt>>,
     pub value: Option<Expr>,
+}
+
+#[derive(Clone, Debug)]
+pub struct KindedBlock {
+    pub kind: Option<BlockKind>,
+    pub block: Block,
+}
+
+impl From<Block> for KindedBlock {
+    fn from(block: Block) -> Self {
+        Self { kind: None, block }
+    }
 }
 
 #[derive(Clone, Debug, From)]
 pub enum Stmt {
+    /// Represents a freestanding block in the statement position, *without*
+    /// a trailing semicolon. Requires that the block be unit-typed. A trailing
+    /// semicolon should cause the block to be parsed as an expression
+    /// statement, which ignores the type.
+    #[from(types(Block))]
+    Block(KindedBlock),
     #[from]
     Let(LetStmt),
     #[from]
@@ -175,7 +193,7 @@ pub enum Stmt {
     #[from]
     Bind(BindStmt),
     Emit(Call),
-    #[from(types(Block))]
+    #[from]
     Expr(Expr),
 }
 
@@ -224,7 +242,7 @@ pub struct BindStmt {
 #[derive(Clone, Debug, From)]
 pub enum Expr {
     #[from]
-    Block(Box<BlockExpr>),
+    Block(Box<KindedBlock>),
     #[from]
     Literal(Literal),
     #[from]
@@ -240,7 +258,7 @@ pub enum Expr {
     Assign(Box<AssignExpr>),
 }
 
-box_from!(BlockExpr => Expr);
+box_from!(KindedBlock => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
@@ -251,25 +269,13 @@ deref_from!(&Spanned<Path> => Expr);
 
 impl From<Block> for Expr {
     fn from(block: Block) -> Self {
-        BlockExpr::from(block).into()
+        KindedBlock::from(block).into()
     }
 }
 
 impl From<Spanned<&Path>> for Expr {
     fn from(path: Spanned<&Path>) -> Self {
         path.copied().into()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct BlockExpr {
-    pub kind: Option<BlockKind>,
-    pub block: Block,
-}
-
-impl From<Block> for BlockExpr {
-    fn from(block: Block) -> Self {
-        Self { kind: None, block }
     }
 }
 

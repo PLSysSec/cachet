@@ -911,8 +911,12 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     /// `resolve_nested_block`. `resolve_block_impl` should not be called
     /// directly.
     fn resolve_block_impl(&mut self, block: parser::Block) -> Option<Block> {
-        let stmts: Option<_> =
-            collect_eager(block.stmts.into_iter().map(|stmt| self.resolve_stmt(stmt)));
+        let stmts: Option<_> = collect_eager(
+            block
+                .stmts
+                .into_iter()
+                .map(|stmt| map_spanned(stmt, |stmt| self.resolve_stmt(stmt.value))),
+        );
 
         let value = match block.value {
             Some(value) => self.resolve_expr(value).map(Some),
@@ -925,8 +929,18 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         })
     }
 
+    fn resolve_kinded_block(&mut self, kinded_block: parser::KindedBlock) -> Option<KindedBlock> {
+        let block = self.resolve_nested_block(kinded_block.block);
+
+        Some(KindedBlock {
+            kind: kinded_block.kind,
+            block: block?,
+        })
+    }
+
     fn resolve_stmt(&mut self, stmt: parser::Stmt) -> Option<Stmt> {
         match stmt {
+            parser::Stmt::Block(block) => self.resolve_kinded_block(block).map(Stmt::from),
             parser::Stmt::Let(let_stmt) => self.resolve_let_stmt(let_stmt).map(Stmt::from),
             parser::Stmt::Label(label_stmt) => self.resolve_label_stmt(label_stmt).map(Stmt::from),
             parser::Stmt::If(if_stmt) => self.resolve_if_stmt(if_stmt).map(Stmt::from),
@@ -1026,9 +1040,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
 
     fn resolve_expr(&mut self, expr: parser::Expr) -> Option<Expr> {
         match expr {
-            parser::Expr::Block(block_expr) => {
-                self.resolve_block_expr(*block_expr).map(Expr::from)
-            }
+            parser::Expr::Block(block) => self.resolve_kinded_block(*block).map(Expr::from),
             parser::Expr::Literal(literal) => Some(literal.into()),
             parser::Expr::Var(var_path) => self.resolve_var_expr(var_path).map(Expr::from),
             parser::Expr::Invoke(call) => self
@@ -1054,15 +1066,6 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     fn resolve_var_expr(&mut self, var_path: Spanned<Path>) -> Option<Spanned<VarIndex>> {
         map_spanned(var_path, |var_path| {
             self.lookup_var_scoped(var_path).found(&mut self.errors)
-        })
-    }
-
-    fn resolve_block_expr(&mut self, block_expr: parser::BlockExpr) -> Option<BlockExpr> {
-        let block = self.resolve_nested_block(block_expr.block);
-
-        Some(BlockExpr {
-            kind: block_expr.kind,
-            block: block?,
         })
     }
 

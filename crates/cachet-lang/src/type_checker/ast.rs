@@ -255,8 +255,28 @@ impl Typed for Block {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct KindedBlock {
+    pub kind: Option<BlockKind>,
+    pub block: Block,
+}
+
+impl Typed for KindedBlock {
+    fn type_(&self) -> TypeIndex {
+        self.block.type_()
+    }
+}
+
+impl From<Block> for KindedBlock {
+    fn from(block: Block) -> KindedBlock {
+        KindedBlock { kind: None, block }
+    }
+}
+
 #[derive(Clone, Debug, From)]
 pub enum Stmt {
+    #[from(types(Block))]
+    Block(KindedBlock),
     #[from]
     Let(LetStmt),
     #[from]
@@ -271,8 +291,26 @@ pub enum Stmt {
     Bind(BindStmt),
     #[from]
     Emit(EmitStmt),
-    #[from(types(Block))]
+    #[from]
     Expr(Expr),
+}
+
+impl Typed for Stmt {
+    fn type_(&self) -> TypeIndex {
+        match self {
+            Self::Block(block) => block.type_(),
+            Self::Let(let_stmt) => let_stmt.type_(),
+            Self::Label(label_stmt) => label_stmt.type_(),
+            Self::If(if_stmt) => if_stmt.type_(),
+            Self::Check(check_stmt) => check_stmt.type_(),
+            Self::Goto(goto_stmt) => goto_stmt.type_(),
+            Self::Bind(bind_stmt) => bind_stmt.type_(),
+            Self::Emit(emit_stmt) => emit_stmt.type_(),
+            // The final value of an expression statement is ignored, so the
+            // statement itself is inherently unit-typed.
+            Self::Expr(_) => BuiltInType::Unit.into(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -281,11 +319,23 @@ pub struct LetStmt {
     pub rhs: Expr,
 }
 
+impl Typed for LetStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct IfStmt {
     pub cond: Expr,
     pub then: Block,
     pub else_: Option<ElseClause>,
+}
+
+impl Typed for IfStmt {
+    fn type_(&self) -> TypeIndex {
+        self.then.type_()
+    }
 }
 
 #[derive(Clone, Debug, From)]
@@ -296,10 +346,25 @@ pub enum ElseClause {
     Else(Block),
 }
 
+impl Typed for ElseClause {
+    fn type_(&self) -> TypeIndex {
+        match self {
+            Self::ElseIf(if_stmt) => if_stmt.type_(),
+            Self::Else(block) => block.type_(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct CheckStmt {
     pub kind: CheckKind,
     pub cond: Expr,
+}
+
+impl Typed for CheckStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -308,10 +373,22 @@ pub struct GotoStmt {
     pub ir: IrIndex,
 }
 
+impl Typed for GotoStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct BindStmt {
     pub label: LabelIndex,
     pub ir: IrIndex,
+}
+
+impl Typed for BindStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -320,10 +397,16 @@ pub struct EmitStmt {
     pub ir: IrIndex,
 }
 
+impl Typed for EmitStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
+}
+
 #[derive(Clone, Debug, From)]
 pub enum Expr {
     #[from]
-    Block(Box<BlockExpr>),
+    Block(Box<KindedBlock>),
     #[from]
     Literal(Literal),
     #[from(types(BuiltInVar, "&BuiltInVar"))]
@@ -355,7 +438,7 @@ impl Typed for Expr {
     }
 }
 
-box_from!(BlockExpr => Expr);
+box_from!(KindedBlock => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
@@ -365,25 +448,7 @@ deref_from!(&Literal => Expr);
 
 impl From<Block> for Expr {
     fn from(block: Block) -> Self {
-        BlockExpr::from(block).into()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct BlockExpr {
-    pub kind: Option<BlockKind>,
-    pub block: Block,
-}
-
-impl Typed for BlockExpr {
-    fn type_(&self) -> TypeIndex {
-        self.block.type_()
-    }
-}
-
-impl From<Block> for BlockExpr {
-    fn from(block: Block) -> BlockExpr {
-        BlockExpr { kind: None, block }
+        KindedBlock::from(block).into()
     }
 }
 
