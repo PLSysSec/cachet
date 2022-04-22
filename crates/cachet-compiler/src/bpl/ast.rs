@@ -273,6 +273,14 @@ pub struct TypeMemberFnIdent {
 pub enum TypeMemberFnSelector {
     #[display(fmt = "Negate")]
     Negate,
+    #[display(fmt = "LessThanOrEqual")]
+    LessThanOrEqual,
+    #[display(fmt = "GreaterThanOrEqual")]
+    GreaterThanOrEqual,
+    #[display(fmt = "LessThan")]
+    LessThan,
+    #[display(fmt = "GreaterThan")]
+    GreaterThan,
     #[display(fmt = "cast^{}", _0)]
     Cast(CastTypeMemberFnSelector),
     #[display(fmt = "variant^{}", _0)]
@@ -1027,21 +1035,8 @@ impl Display for CompareExpr {
         let lhs = MaybeGrouped(&self.lhs);
         let rhs = MaybeGrouped(&self.rhs);
 
-        let fname = 
-            match self.kind {
-                CompareKind::Eq => return write!(f, "{} = {}", lhs, rhs),
-                CompareKind::Neq => return write!(f, "{} != {}", lhs, rhs),
-                CompareKind::Lte => "LessThanOrEqual",
-                CompareKind::Gte => "GreaterThanOrEqual",
-                CompareKind::Lt => "LessThan",
-                CompareKind::Gt => "GreaterThan",
-            };
-
-        write!(f, "{}^{}({}, {})",
-            self.type_,
-            fname,
-            MaybeGrouped(&self.lhs),
-            MaybeGrouped(&self.rhs)
+        write!(f, "{} {} {}",
+            lhs, self.kind, rhs
         )
     }
 }

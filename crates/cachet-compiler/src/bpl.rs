@@ -1970,16 +1970,36 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_compare_expr(&mut self, compare_expr: &flattener::CompareExpr) -> CompareExpr {
+    fn compile_compare_expr(&mut self, compare_expr: &flattener::CompareExpr) -> Expr {
         let lhs = self.compile_atom_expr(&compare_expr.lhs);
         let rhs = self.compile_atom_expr(&compare_expr.rhs);
+        let type_ident = self.get_type_ident(compare_expr.lhs.type_());
 
-        CompareExpr {
-            kind: compare_expr.kind,
-            type_: self.get_type_ident(compare_expr.lhs.type_()).into(),
-            lhs,
-            rhs,
-        }
+        let selector = match compare_expr.kind {
+            CompareKind::Eq | CompareKind::Neq => 
+                return CompareExpr {
+                    kind: compare_expr.kind,
+                    type_: type_ident.into(),
+                    lhs,
+                    rhs,
+                }.into(),
+
+            CompareKind::Lte => TypeMemberFnSelector::LessThanOrEqual,
+            CompareKind::Gte => TypeMemberFnSelector::GreaterThanOrEqual,
+            CompareKind::Lt => TypeMemberFnSelector::LessThan,
+            CompareKind::Gt => TypeMemberFnSelector::GreaterThan,
+        };
+
+        CallExpr {
+            target: TypeMemberFnIdent {
+                type_ident,
+                selector,
+            }.into(),
+            arg_exprs: vec![
+                lhs,
+                rhs
+            ],
+        }.into()
     }
 
     fn generate_synthetic_var(
