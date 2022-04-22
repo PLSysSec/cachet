@@ -283,7 +283,7 @@ pub enum TypeMemberFnSelector {
     GreaterThan,
     #[display(fmt = "{}", _0)]
     Cast(CastTypeMemberFnSelector),
-    #[display(fmt = "variant^{}", _0)]
+    #[display(fmt = "{}", _0)]
     Variant(VariantCtorTypeMemberFnSelector),
     #[display(fmt = "field^{}", _0)]
     Field(Ident)
