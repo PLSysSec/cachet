@@ -1,6 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-#![feature(type_alias_impl_trait)]
+#![feature(type_alias_impl_trait, let_chains)]
 
 pub use bpl::{compile as compile_bpl, BplCode};
 pub use cpp::{compile as compile_cpp, CppCode, CppCompilerOutput};

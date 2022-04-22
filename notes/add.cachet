@@ -32,9 +32,9 @@ impl Value {
     }
 
     fn fromInt32(int32: Int32) -> Value {
-        let value = unsafe { Value::fromInt32Unchecked(int32) };
+        let value = (unsafe { Value::fromInt32Unchecked(int32) });
         assume Value::isInt32(value);
-        assume unsafe { Value::toInt32Unchecked(value) } == int32;
+        assume (unsafe { Value::toInt32Unchecked(value) }) == int32;
         value
     }
 
@@ -42,8 +42,8 @@ impl Value {
 
     fn toInt32(value: Value) -> Int32 {
         assert Value::isInt32(value);
-        let int32 = unsafe { Value::toInt32Unchecked(value) };
-        assume unsafe { Value::fromInt32Unchecked(int32) } == value;
+        let int32 = (unsafe { Value::toInt32Unchecked(value) });
+        assume (unsafe { Value::fromInt32Unchecked(int32) }) == value;
         int32
     }
 
@@ -54,9 +54,9 @@ impl Value {
     }
 
     fn fromBool(bool: Bool) -> Value {
-        let value = unsafe { Value::fromBoolUnchecked(bool) };
+        let value = (unsafe { Value::fromBoolUnchecked(bool) });
         assume Value::isBool(value);
-        assume unsafe { Value::toBoolUnchecked(value) } == bool;
+        assume (unsafe { Value::toBoolUnchecked(value) }) == bool;
         value
     }
 
@@ -64,8 +64,8 @@ impl Value {
 
     fn toBool(value: Value) -> Bool {
         assert Value::isBool(value);
-        let bool = unsafe { Value::toBoolUnchecked(value) };
-        assume unsafe { Value::fromBoolUnchecked(bool) } == value;
+        let bool = (unsafe { Value::toBoolUnchecked(value) });
+        assume (unsafe { Value::fromBoolUnchecked(bool) }) == value;
         bool
     }
 
@@ -76,9 +76,9 @@ impl Value {
     }
 
     fn fromObject(object: Object) -> Value {
-        let value = unsafe { Value::fromObjectUnchecked(object) };
+        let value = (unsafe { Value::fromObjectUnchecked(object) });
         assume Value::isObject(value);
-        assume unsafe { Value::toObjectUnchecked(value) } == object;
+        assume (unsafe { Value::toObjectUnchecked(value) }) == object;
         value
     }
 
@@ -86,8 +86,8 @@ impl Value {
 
     fn toObject(value: Value) -> Object {
         assert Value::isObject(value);
-        let object = unsafe { Value::toObjectUnchecked(value) };
-        assume unsafe { Value::fromObjectUnchecked(object) } == value;
+        let object = (unsafe { Value::toObjectUnchecked(value) });
+        assume (unsafe { Value::fromObjectUnchecked(object) }) == value;
         object
     }
 
@@ -151,17 +151,24 @@ ir MASM {
 
       let result = lhsInt32 + rhsInt32;
       
-      if condition == Condition::Overflow {
-        if lhsInt32 > 0 && rhsInt32 > 0 && result < 0 {
-          goto branch;
-        }
-
-        if lhsInt32 < 0 && rhsInt32 < 0 && result > 0 {
-          goto branch;
+      assert condition == Condition::Overflow;
+      if lhsInt32 > 0 {
+        if rhsInt32 > 0 {
+          if result < 0 {
+            goto branch;
+          }
         }
       }
- 
-      MASM::setValue(dstReg, result);
+
+      if lhsInt32 < 0 {
+        if rhsInt32 < 0 {
+          if result > 0 {
+            goto branch;
+          }
+        }
+      }
+
+      MASM::setInt32(dstReg, result);
     }
 
     fn getValue(valueReg: ValueReg) -> Value;

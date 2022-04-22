@@ -9,8 +9,8 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
 use crate::ast::{
-    BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path,
-    Spanned,
+    ArithKind, BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, Ident,
+    NegateKind, Path, Spanned,
 };
 use crate::resolver;
 pub use crate::resolver::{
@@ -432,6 +432,8 @@ pub enum Expr {
     Compare(Box<CompareExpr>),
     #[from]
     Assign(Box<AssignExpr>),
+    #[from]
+    Arith(Box<ArithExpr>),
 }
 
 impl Typed for Expr {
@@ -446,6 +448,7 @@ impl Typed for Expr {
             Expr::Cast(cast_expr) => cast_expr.type_(),
             Expr::Compare(compare_expr) => compare_expr.type_(),
             Expr::Assign(assign_expr) => assign_expr.type_(),
+            Expr::Arith(arith_expr) => arith_expr.type_(),
         }
     }
 }
@@ -456,6 +459,7 @@ box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
+box_from!(ArithExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -568,5 +572,18 @@ impl AssignExpr {
 impl Typed for AssignExpr {
     fn type_(&self) -> TypeIndex {
         AssignExpr::TYPE.into()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ArithExpr {
+    pub kind: ArithKind,
+    pub lhs: Expr,
+    pub rhs: Expr,
+}
+
+impl Typed for ArithExpr {
+    fn type_(&self) -> TypeIndex {
+        self.lhs.type_()
     }
 }

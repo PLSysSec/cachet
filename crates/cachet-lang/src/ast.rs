@@ -78,3 +78,15 @@ pub enum NumericCompareKind {
     #[display(fmt = ">")]
     Gt,
 }
+
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum ArithKind {
+    #[display(fmt = "+")]
+    Add,
+    #[display(fmt = "-")]
+    Sub,
+    #[display(fmt = "*")]
+    Mul,
+    #[display(fmt = "/")]
+    Div,
+}

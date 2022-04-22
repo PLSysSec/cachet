@@ -6,7 +6,7 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, typed_field_index};
 
 use crate::ast::{
-    BlockKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned, VarParamKind,
+    ArithKind, BlockKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned, VarParamKind,
 };
 
 #[derive(Clone, Debug, From)]
@@ -262,6 +262,8 @@ pub enum Expr {
     #[from]
     Cast(Box<CastExpr>),
     #[from]
+    Arith(Box<ArithExpr>),
+    #[from]
     Compare(Box<CompareExpr>),
     #[from]
     Assign(Box<AssignExpr>),
@@ -273,6 +275,7 @@ box_from!(FieldAccessExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
+box_from!(ArithExpr => Expr);
 
 deref_from!(&Literal => Expr);
 deref_from!(&Spanned<Path> => Expr);
@@ -324,5 +327,12 @@ pub struct CompareExpr {
 #[derive(Clone, Debug)]
 pub struct AssignExpr {
     pub lhs: Spanned<Path>,
+    pub rhs: Spanned<Expr>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ArithExpr {
+    pub kind: Spanned<ArithKind>,
+    pub lhs: Spanned<Expr>,
     pub rhs: Spanned<Expr>,
 }

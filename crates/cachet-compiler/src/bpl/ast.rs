@@ -10,7 +10,9 @@ use std::ops::{Deref, DerefMut};
 use derive_more::{Display, From};
 use enum_map::Enum;
 
-use cachet_lang::ast::{CastKind, CheckKind, CompareKind, Ident, NegateKind, NumericCompareKind};
+use cachet_lang::ast::{
+    ArithKind, CastKind, CheckKind, CompareKind, Ident, NegateKind, NumericCompareKind,
+};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 use cachet_util::{
     box_from, deref_from, fmt_join, fmt_join_leading, fmt_join_trailing, typed_index, AffixWriter,
@@ -273,6 +275,22 @@ pub struct TypeMemberFnIdent {
 pub enum TypeMemberFnSelector {
     #[display(fmt = "negate")]
     Negate,
+    #[display(fmt = "LessThanOrEqual")]
+    LessThanOrEqual,
+    #[display(fmt = "GreaterThanOrEqual")]
+    GreaterThanOrEqual,
+    #[display(fmt = "LessThan")]
+    LessThan,
+    #[display(fmt = "GreaterThan")]
+    GreaterThan,
+    #[display(fmt = "Add")]
+    Add,
+    #[display(fmt = "Sub")]
+    Sub,
+    #[display(fmt = "Mul")]
+    Mul,
+    #[display(fmt = "Div")]
+    Div,
     #[display(fmt = "{}", _0)]
     #[from]
     Cast(CastTypeMemberFnSelector),
@@ -1058,10 +1076,13 @@ pub struct CompareExpr {
 
 impl Display for CompareExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lhs = MaybeGrouped(&self.lhs);
-        let rhs = MaybeGrouped(&self.rhs);
-
-        write!(f, "{} {} {}", lhs, self.kind, rhs)
+        write!(
+            f,
+            "{} {} {}",
+            MaybeGrouped(&self.lhs),
+            self.kind,
+            MaybeGrouped(&self.rhs)
+        )
     }
 }
 
@@ -1076,12 +1097,6 @@ pub struct ArithExpr {
     pub kind: ArithKind,
     pub lhs: Expr,
     pub rhs: Expr,
-}
-
-#[derive(Clone, Copy, Debug, Display)]
-pub enum ArithKind {
-    #[display(fmt = "+")]
-    Add,
 }
 
 #[derive(Clone, Debug, Display)]

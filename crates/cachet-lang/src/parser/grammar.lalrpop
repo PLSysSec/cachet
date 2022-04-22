@@ -256,7 +256,7 @@ PrecExpr: PrecExpr = {
     "(" <expr:Expr> ")" => PrecExpr::grouped(expr),
 
     #[precedence(level = "0")]
-    <block:KindedBlock> => Expr::from(block).into(),
+    "(" <block:KindedBlock> ")" => Expr::from(block).into(),
 
     #[precedence(level = "0")]
     <literal:Literal> => Expr::from(literal).into(),
@@ -297,6 +297,26 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "3")]
     #[assoc(side = "left")]
+    <lhs:Spanned<PrecExpr>> <kind:Spanned<MulArithKind>>
+    <rhs:Spanned<PrecExpr>> =>
+      Expr::from(ArithExpr {
+        kind, 
+        lhs: lhs.map(|lhs| lhs.expr),
+        rhs: rhs.map(|rhs| rhs.expr)
+      }).into(),
+
+    #[precedence(level = "3")]
+    #[assoc(side = "left")]
+    <lhs:Spanned<PrecExpr>> <kind:Spanned<AddArithKind>>
+    <rhs:Spanned<PrecExpr>> =>
+      Expr::from(ArithExpr {
+        kind, 
+        lhs: lhs.map(|lhs| lhs.expr),
+        rhs: rhs.map(|rhs| rhs.expr)
+      }).into(),
+
+    #[precedence(level = "4")]
+    #[assoc(side = "left")]
     <lhs:Spanned<PrecExpr>> <kind:Spanned<CompareKind>>
     <rhs:Spanned<PrecExpr>> =>?
     {
@@ -315,7 +335,7 @@ PrecExpr: PrecExpr = {
         }).into())
     },
 
-    #[precedence(level = "4")]
+    #[precedence(level = "5")]
     #[assoc(side = "right")]
     <lhs:Spanned<PrecExpr>> "=" <rhs:Spanned<PrecExpr>> =>? {
         match lhs.value.expr {
@@ -347,6 +367,16 @@ NumericCompareKind: NumericCompareKind = {
     "<" => NumericCompareKind::Lt,
     ">" => NumericCompareKind::Gt,
 };
+
+AddArithKind: ArithKind = {
+  "+" => ArithKind::Add,
+  "-" => ArithKind::Sub,
+}
+
+MulArithKind: ArithKind = {
+  "*" => ArithKind::Mul,
+  "/" => ArithKind::Div,
+}
 
 Literal: Literal = {
     <n:Int32Literal> => Literal::Int32(n),

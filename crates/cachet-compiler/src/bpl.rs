@@ -13,7 +13,7 @@ use typed_index_collections::TiSlice;
 use void::unreachable;
 
 use cachet_lang::ast::{
-    BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path, VarParamKind,
+    ArithKind, BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path, VarParamKind,
 };
 use cachet_lang::flattener::{self, Typed};
 use cachet_util::MaybeOwned;
@@ -1843,6 +1843,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Expr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).into()
             }
+            flattener::Expr::Arith(arith_expr) => self.compile_arith_expr(&arith_expr).into(),
         }
     }
 
@@ -1858,6 +1859,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::PureExpr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).into()
             }
+            flattener::PureExpr::Arith(arith_expr) => self.compile_arith_expr(&arith_expr).into(),
         }
     }
 
@@ -1989,6 +1991,30 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 .into();
             }
             CompareKind::Numeric(kind) => kind.into(),
+        };
+
+        CallExpr {
+            target: TypeMemberFnIdent {
+                type_ident,
+                selector,
+            }
+            .into(),
+            arg_exprs: vec![lhs, rhs],
+        }
+        .into()
+    }
+
+    fn compile_arith_expr(&mut self, arith_expr: &flattener::ArithExpr) -> CallExpr {
+        let lhs = self.compile_pure_expr(&arith_expr.lhs);
+        let rhs = self.compile_pure_expr(&arith_expr.rhs);
+
+        let type_ident = self.get_type_ident(arith_expr.type_()).into();
+
+        let selector = match arith_expr.kind {
+            ArithKind::Add => TypeMemberFnSelector::Add,
+            ArithKind::Sub => TypeMemberFnSelector::Sub,
+            ArithKind::Mul => TypeMemberFnSelector::Mul,
+            ArithKind::Div => TypeMemberFnSelector::Div,
         };
 
         CallExpr {
