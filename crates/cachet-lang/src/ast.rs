@@ -60,7 +60,7 @@ impl CastKind {
 
 #[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum CompareKind {
-    #[display(fmt = "=")]
+    #[display(fmt = "==")]
     Eq,
     #[display(fmt = "!=")]
     Neq,
