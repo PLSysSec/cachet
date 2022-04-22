@@ -16,6 +16,8 @@ TMP_H="$INCLUDE_DIR/test.h"
 TMP_OUT="$INCLUDE_DIR/test"
 TMP_BPL="$INCLUDE_DIR/test.bpl"
 
+CARGO_FLAGS="--manifest-path "$repo_dir/Cargo.toml" --quiet --bin cachet-compiler"
+
 FILTER=$1
 
 function matches() {
@@ -29,7 +31,7 @@ function matches() {
 
 function build() {
     cachet_file=$1
-    cargo run --manifest-path "$repo_dir/Cargo.toml" --quiet --bin cachet-compiler $cachet_file $TMP_H $TMP_INC $TMP_BPL 2>&1
+    cargo run $CARGO_FLAGS $cachet_file $TMP_H $TMP_INC $TMP_BPL 2>&1
     return $?
 }
 
@@ -91,6 +93,13 @@ for f in $(ls -d $repo_dir/tests/**/*.cachet); do
     fi
 done
 
+echo -n "Building..."
+cargo build $CARGO_FLAGS 
+if [[ $? -ne 0 ]]; then
+    exit 1;
+fi
+echo -e "DONE\n"
+
 
 PASSED_COUNT=0
 FAILED_TESTS=()
@@ -120,6 +129,8 @@ for f in $(ls -d $repo_dir/tests/**/*.cachet); do
         echo -e "$ERROR"
     fi
 done
+
+echo ""
 
 FAILED_COUNT=${#FAILED_TESTS[@]}
 echo -e "${GREEN}$PASSED_COUNT${NC} tests passed"
