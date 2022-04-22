@@ -1,7 +1,7 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     ops::{Index, IndexMut},
 };
 
@@ -214,7 +214,7 @@ deref_index!(Env[&EnumVariantIndex] => Spanned<Path>);
 pub struct StructItem {
     pub ident: Spanned<Ident>,
     pub supertype: Option<TypeIndex>,
-    pub fields: HashMap<Ident, StructField>,
+    pub fields: BTreeMap<Ident, StructField>,
 }
 
 #[derive(Clone, Debug)]

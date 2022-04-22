@@ -4,7 +4,7 @@ mod ast;
 mod error;
 mod graphs;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::iter;
 use std::ops::{Deref, DerefMut};
 
@@ -30,7 +30,7 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     let unknown_struct_index = env.struct_items.push_and_get_key(StructItem {
         ident: Spanned::new(Span::initial(), *UNKNOWN_IDENT),
         supertype: None,
-        fields: HashMap::new(),
+        fields: BTreeMap::new(),
     });
 
     let unknown_ir_index = env
