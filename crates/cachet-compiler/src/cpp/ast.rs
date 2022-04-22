@@ -894,8 +894,6 @@ pub enum Expr {
     Assign(Box<AssignExpr>),
     #[from]
     Comma(Box<CommaExpr>),
-    #[from]
-    Hack(String),
 }
 
 box_from!(TemplateExpr => Expr);
@@ -936,7 +934,7 @@ impl Display for MaybeGrouped<'_> {
             | Expr::ArrowMember(_)
             | Expr::Call(_)
             | Expr::Comma(_) => false,
-            Expr::Hack(_) | Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) => true,
+            Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) => true,
             Expr::Cast(cast_expr) => match cast_expr.kind {
                 CastStyle::Functional(_) => false,
                 CastStyle::C => true,
