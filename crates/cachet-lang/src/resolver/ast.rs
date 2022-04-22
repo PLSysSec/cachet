@@ -11,8 +11,8 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_index};
 
 use crate::ast::{
-    BlockKind, BuiltInType, BuiltInVar, CheckKind, CompareKind, Ident, MaybeSpanned, NegateKind,
-    Path, Spanned, VarParamKind,
+    ArithKind, BlockKind, BuiltInType, BuiltInVar, CheckKind, CompareKind, Ident, MaybeSpanned,
+    NegateKind, Path, Spanned, VarParamKind,
 };
 pub use crate::parser::{Literal, VariantIndex};
 
@@ -538,6 +538,8 @@ pub enum Expr {
     Compare(Box<CompareExpr>),
     #[from]
     Assign(Box<AssignExpr>),
+    #[from]
+    Arith(Box<ArithExpr>),
 }
 
 box_from!(KindedBlock => Expr);
@@ -546,6 +548,7 @@ box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
+box_from!(ArithExpr => Expr);
 
 impl From<Block> for Expr {
     fn from(block: Block) -> Self {
@@ -617,4 +620,11 @@ impl Typed for AssignExpr {
     fn type_(&self) -> TypeIndex {
         AssignExpr::TYPE.into()
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct ArithExpr {
+    pub kind: Spanned<ArithKind>,
+    pub lhs: Spanned<Expr>,
+    pub rhs: Spanned<Expr>,
 }

@@ -971,6 +971,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 self.type_check_compare_expr(compare_expr).into()
             }
             resolver::Expr::Assign(assign_expr) => self.type_check_assign_expr(assign_expr).into(),
+            resolver::Expr::Arith(arith_expr) => self.type_check_arith_expr(arith_expr).into(),
         }
     }
 
@@ -1134,6 +1135,66 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             type_: target_type_index.value,
         }
         .into()
+    }
+
+    fn type_check_arith_expr(&mut self, arith_expr: &resolver::ArithExpr) -> ArithExpr {
+        let lhs = self.type_check_expr(&arith_expr.lhs.value);
+        let rhs = self.type_check_expr(&arith_expr.rhs.value);
+
+        let lhs_type_index = lhs.type_();
+        let rhs_type_index = rhs.type_();
+
+        let (lhs, rhs) = if let Some(rhs_upcast_route) =
+            self.try_match_types(lhs_type_index, rhs_type_index)
+        {
+            (
+                lhs,
+                build_cast_chain(CastKind::Upcast, rhs, rhs_upcast_route.into_iter()),
+            )
+        } else if let Some(lhs_upcast_route) = self.try_match_types(rhs_type_index, lhs_type_index)
+        {
+            (
+                build_cast_chain(CastKind::Upcast, lhs, lhs_upcast_route.into_iter()),
+                rhs,
+            )
+        } else {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::BinaryOperatorTypeMismatch {
+                    operator_span: arith_expr.kind.span,
+                    lhs_span: arith_expr.lhs.span,
+                    lhs_type: self.get_type_ident(lhs_type_index),
+                    rhs_span: arith_expr.rhs.span,
+                    rhs_type: self.get_type_ident(rhs_type_index),
+                });
+            (lhs, rhs)
+        };
+
+        if !self.is_numeric_type(lhs_type_index) {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::NumericOperatorTypeMismatch {
+                    operand_span: arith_expr.lhs.span,
+                    operand_type: self.get_type_ident(lhs_type_index),
+                    operator_span: arith_expr.kind.span,
+                });
+        }
+
+        if !self.is_numeric_type(rhs_type_index) {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::NumericOperatorTypeMismatch {
+                    operand_span: arith_expr.rhs.span,
+                    operand_type: self.get_type_ident(rhs_type_index),
+                    operator_span: arith_expr.kind.span,
+                });
+        }
+
+        ArithExpr {
+            kind: arith_expr.kind.value,
+            lhs,
+            rhs,
+        }
     }
 
     fn type_check_compare_expr(&mut self, compare_expr: &resolver::CompareExpr) -> CompareExpr {

@@ -8,8 +8,8 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
 use crate::ast::{
-    BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, NegateKind, Path,
-    Spanned,
+    ArithKind, BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, NegateKind,
+    Path, Spanned,
 };
 use crate::type_checker;
 pub use crate::type_checker::{
@@ -236,6 +236,8 @@ pub enum Expr<B = ()> {
     Cast(Box<CastExpr<Expr<B>>>),
     #[from]
     Compare(CompareExpr),
+    #[from]
+    Arith(ArithExpr),
 }
 
 impl<B> Typed for Expr<B> {
@@ -249,6 +251,7 @@ impl<B> Typed for Expr<B> {
             Expr::Negate(negate_expr) => negate_expr.type_(),
             Expr::Cast(cast_expr) => cast_expr.type_(),
             Expr::Compare(compare_expr) => compare_expr.type_(),
+            Expr::Arith(arith_expr) => arith_expr.type_(),
         }
     }
 }
@@ -275,6 +278,7 @@ impl<B> From<PureExpr> for Expr<B> {
             PureExpr::Negate(negate_expr) => (*negate_expr).into(),
             PureExpr::Cast(cast_expr) => (*cast_expr).into(),
             PureExpr::Compare(compare_expr) => (*compare_expr).into(),
+            PureExpr::Arith(arith_expr) => (*arith_expr).into(),
         }
     }
 }
@@ -311,6 +315,8 @@ pub enum PureExpr {
     Cast(Box<CastExpr<PureExpr>>),
     #[from]
     Compare(Box<CompareExpr>),
+    #[from]
+    Arith(Box<ArithExpr>),
 }
 
 impl Typed for PureExpr {
@@ -322,6 +328,7 @@ impl Typed for PureExpr {
             PureExpr::Negate(negate_expr) => negate_expr.type_(),
             PureExpr::Cast(cast_expr) => cast_expr.type_(),
             PureExpr::Compare(compare_expr) => compare_expr.type_(),
+            PureExpr::Arith(arith_expr) => arith_expr.type_(),
         }
     }
 }
@@ -330,6 +337,7 @@ box_from!(FieldAccessExpr<PureExpr> => PureExpr);
 box_from!(NegateExpr<PureExpr> => PureExpr);
 box_from!(CastExpr<PureExpr> => PureExpr);
 box_from!(CompareExpr => PureExpr);
+box_from!(ArithExpr => PureExpr);
 
 deref_from!(&Literal => PureExpr);
 
@@ -345,6 +353,7 @@ impl<B> TryFrom<Expr<B>> for PureExpr {
             Expr::Negate(negate_expr) => Ok((*negate_expr).try_into()?),
             Expr::Cast(cast_expr) => Ok((*cast_expr).try_into()?),
             Expr::Compare(compare_expr) => Ok(compare_expr.into()),
+            Expr::Arith(arith_expr) => Ok(arith_expr.into()),
         }
     }
 }
@@ -538,5 +547,18 @@ impl CompareExpr {
 impl Typed for CompareExpr {
     fn type_(&self) -> TypeIndex {
         CompareExpr::TYPE.into()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ArithExpr {
+    pub kind: ArithKind,
+    pub lhs: PureExpr,
+    pub rhs: PureExpr,
+}
+
+impl Typed for ArithExpr {
+    fn type_(&self) -> TypeIndex {
+        self.lhs.type_()
     }
 }

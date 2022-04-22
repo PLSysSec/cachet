@@ -1081,6 +1081,9 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             parser::Expr::Assign(assign_expr) => {
                 self.resolve_assign_expr(*assign_expr).map(Expr::from)
             }
+            parser::Expr::Arith(arith_expr) => {
+                self.resolve_arith_expr(*arith_expr).map(Expr::from)
+            }
         }
     }
 
@@ -1123,6 +1126,18 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         Some(CastExpr {
             expr: expr?,
             type_: type_?,
+        })
+    }
+
+    fn resolve_arith_expr(&mut self, arith_expr: parser::ArithExpr) -> Option<ArithExpr> {
+        let lhs = map_spanned(arith_expr.lhs, |lhs| self.resolve_expr(lhs.value));
+
+        let rhs = map_spanned(arith_expr.rhs, |rhs| self.resolve_expr(rhs.value));
+
+        Some(ArithExpr {
+            kind: arith_expr.kind,
+            lhs: lhs?,
+            rhs: rhs?,
         })
     }
 

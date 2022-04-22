@@ -1066,6 +1066,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Expr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).map(Expr::from)
             }
+            normalizer::Expr::Arith(arith_expr) => {
+                self.compile_arith_expr(&arith_expr).map(Expr::from)
+            }
         }
     }
 
@@ -1086,6 +1089,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             normalizer::PureExpr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).map(Expr::from)
+            }
+            normalizer::PureExpr::Arith(arith_expr) => {
+                self.compile_arith_expr(&arith_expr).map(Expr::from)
             }
         }
     }
@@ -1352,6 +1358,25 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 args: vec![lhs, rhs],
             },
             type_: compare_expr.type_(),
+            tags: ExprTag::Ref | ExprTag::Val,
+        }
+    }
+
+    fn compile_arith_expr(&self, arith_expr: &normalizer::ArithExpr) -> TaggedExpr<ArithExpr> {
+        let lhs_type = arith_expr.lhs.type_();
+        let rhs_type = arith_expr.rhs.type_();
+        debug_assert_eq!(lhs_type, rhs_type);
+
+        let lhs = self.use_expr(self.compile_pure_expr(&arith_expr.lhs), ExprTag::Ref.into());
+        let rhs = self.use_expr(self.compile_pure_expr(&arith_expr.rhs), ExprTag::Ref.into());
+
+        TaggedExpr {
+            expr: ArithExpr {
+                kind: arith_expr.kind,
+                lhs,
+                rhs,
+            },
+            type_: arith_expr.type_(),
             tags: ExprTag::Ref | ExprTag::Val,
         }
     }

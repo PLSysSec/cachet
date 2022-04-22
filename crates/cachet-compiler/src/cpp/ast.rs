@@ -9,7 +9,7 @@ use derive_more::{Display, From};
 use enum_map::Enum;
 use enumset::EnumSetType;
 
-use cachet_lang::ast::{CastKind, CompareKind, Ident, NegateKind, NumericCompareKind};
+use cachet_lang::ast::{ArithKind, CastKind, CompareKind, Ident, NegateKind, NumericCompareKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 
 use cachet_util::{box_from, chain_from, deref_from, fmt_join, fmt_join_trailing, AffixWriter};
@@ -898,6 +898,8 @@ pub enum Expr {
     Assign(Box<AssignExpr>),
     #[from]
     Comma(Box<CommaExpr>),
+    #[from]
+    Arith(Box<ArithExpr>),
 }
 
 box_from!(TemplateExpr => Expr);
@@ -909,6 +911,7 @@ box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 box_from!(CommaExpr => Expr);
 box_from!(ArrowMemberExpr => Expr);
+box_from!(ArithExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -938,7 +941,7 @@ impl Display for MaybeGrouped<'_> {
             | Expr::ArrowMember(_)
             | Expr::Call(_)
             | Expr::Comma(_) => false,
-            Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) => true,
+            Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) | Expr::Arith(_) => true,
             Expr::Cast(cast_expr) => match cast_expr.kind {
                 CastStyle::Functional(_) => false,
                 CastStyle::C => true,
@@ -1097,6 +1100,19 @@ pub struct AssignExpr {
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "({}, {})", "MaybeGrouped(&self.lhs)", "MaybeGrouped(&self.rhs)")]
 pub struct CommaExpr {
+    pub lhs: Expr,
+    pub rhs: Expr,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(
+    fmt = "{} {} {}",
+    "MaybeGrouped(&self.lhs)",
+    kind,
+    "MaybeGrouped(&self.rhs)"
+)]
+pub struct ArithExpr {
+    pub kind: ArithKind,
     pub lhs: Expr,
     pub rhs: Expr,
 }
