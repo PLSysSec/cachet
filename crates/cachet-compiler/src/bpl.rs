@@ -135,17 +135,18 @@ impl<'a> Compiler<'a> {
                     param_vars: vec![
                         TypedVar {
                             ident: ParamVarIdent::Instance.into(),
-                            type_: type_ident.into()
-                        }.into(),
-                    ].into(),
+                            type_: type_ident.into(),
+                        }
+                        .into(),
+                    ]
+                    .into(),
                     attr: None,
                     ret: self.get_type_ident(f.type_).into(),
                     value: None,
                 }
-                .into()
+                .into(),
             )
         }
-            
 
         if let Some(supertype_index) = struct_item.supertype {
             let supertype_ident = self.get_type_ident(supertype_index);
@@ -1212,8 +1213,9 @@ impl<'a> Compiler<'a> {
         let struct_ident = self.env[field_index.struct_].ident.value;
         TypeMemberFnIdent {
             type_ident: UserTypeIdent::from(struct_ident),
-            selector: TypeMemberFnSelector::Field(field_index.ident)
-        }.into()
+            selector: TypeMemberFnSelector::Field(field_index.ident),
+        }
+        .into()
     }
 }
 
@@ -1254,9 +1256,9 @@ fn generate_cast_axiom_item(
     subtype_ident: UserTypeIdent,
 ) -> AxiomItem {
     let type_ = match kind {
-            CastKind::Downcast => subtype_ident,
-            CastKind::Upcast => supertype_ident,
-        };
+        CastKind::Downcast => subtype_ident,
+        CastKind::Upcast => supertype_ident,
+    };
 
     let in_var = TypedVar {
         ident: ParamVarIdent::In.into(),
@@ -1972,12 +1974,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let type_ident = self.get_type_ident(compare_expr.lhs.type_());
 
         let selector = match compare_expr.kind {
-            CompareKind::Eq | CompareKind::Neq => 
+            CompareKind::Eq | CompareKind::Neq => {
                 return CompareExpr {
                     kind: compare_expr.kind,
                     lhs,
                     rhs,
-                }.into(),
+                }
+                .into();
+            }
 
             CompareKind::Lte => TypeMemberFnSelector::LessThanOrEqual,
             CompareKind::Gte => TypeMemberFnSelector::GreaterThanOrEqual,
@@ -1989,12 +1993,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             target: TypeMemberFnIdent {
                 type_ident,
                 selector,
-            }.into(),
-            arg_exprs: vec![
-                lhs,
-                rhs
-            ],
-        }.into()
+            }
+            .into(),
+            arg_exprs: vec![lhs, rhs],
+        }
+        .into()
     }
 
     fn generate_synthetic_var(

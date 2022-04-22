@@ -160,7 +160,9 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::GotoIrMismatch { label, .. } => label.span,
             TypeCheckError::BindIrMismatch { label, .. } => label.span,
             TypeCheckError::EmitIrMismatch { op, .. } => op.span,
-            TypeCheckError::TypeMismatch { span: expr_span, .. } => *expr_span,
+            TypeCheckError::TypeMismatch {
+                span: expr_span, ..
+            } => *expr_span,
             TypeCheckError::InvalidCast { expr_span, .. } => *expr_span,
             TypeCheckError::UnsafeCallInSafeContext { target, .. } => target.span,
             TypeCheckError::UnsafeCastInSafeContext { target_type, .. } => target_type.span,

@@ -1063,9 +1063,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Expr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).map(Expr::from)
             }
-            normalizer::Expr::FieldAccess(field_access_expr) => {
-                self.compile_field_access_expr(&field_access_expr).map(Expr::from)
-            }
+            normalizer::Expr::FieldAccess(field_access_expr) => self
+                .compile_field_access_expr(&field_access_expr)
+                .map(Expr::from),
         }
     }
 
@@ -1084,9 +1084,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::AtomExpr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).map(Expr::from)
             }
-            normalizer::AtomExpr::FieldAccess(field_access_expr) => {
-                self.compile_field_access_expr(&field_access_expr).map(Expr::from)
-            }
+            normalizer::AtomExpr::FieldAccess(field_access_expr) => self
+                .compile_field_access_expr(&field_access_expr)
+                .map(Expr::from),
         }
     }
 
@@ -1131,22 +1131,25 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_field_access_expr<E: CompileExpr + Typed>(&self, field_access_expr: &normalizer::FieldAccessExpr<E>) -> TaggedExpr<ArrowMemberExpr> {
+    fn compile_field_access_expr<E: CompileExpr + Typed>(
+        &self,
+        field_access_expr: &normalizer::FieldAccessExpr<E>,
+    ) -> TaggedExpr<ArrowMemberExpr> {
         let parent = field_access_expr.parent.compile(self).expr;
         let parent_type = field_access_expr.parent.type_();
 
         TaggedExpr {
             expr: ArrowMemberExpr {
-                    parent: CallExpr {
-                        target: TypeMemberFnPath {
-                            parent: self.get_type_ident(parent_type),
-                            ident: TypeMemberFnIdent::Fields
-                        }.into(),
-                        args: vec![
-                            parent
-                        ]
-                    }.into(),
-                    member: field_access_expr.field.ident,
+                parent: CallExpr {
+                    target: TypeMemberFnPath {
+                        parent: self.get_type_ident(parent_type),
+                        ident: TypeMemberFnIdent::Fields,
+                    }
+                    .into(),
+                    args: vec![parent],
+                }
+                .into(),
+                member: field_access_expr.field.ident,
             },
             type_: field_access_expr.type_(),
             tags: ExprTag::Val.into(),
