@@ -987,15 +987,15 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         field_access: &resolver::FieldAccessExpr,
     ) -> FieldAccessExpr {
         let parent = self.type_check_expr(&field_access.parent.value);
-        let parent_type_ = parent.type_();
-        let struct_idx = match parent_type_ {
+        let parent_type = parent.type_();
+        let struct_idx = match parent_type {
             TypeIndex::Struct(struct_idx) => struct_idx,
             _ => {
                 self.type_checker
                     .errors
                     .push(TypeCheckError::NonStructFieldAccess {
                         field: field_access.field.clone(),
-                        type_: self.get_type_ident(parent_type_),
+                        type_: self.get_type_ident(parent_type),
                         parent_span: field_access.parent.span,
                     });
                 return FieldAccessExpr {

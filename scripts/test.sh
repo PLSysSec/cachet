@@ -61,7 +61,7 @@ function verifier_test() {
         return 1
     fi
 
-    OUT=$(corral "/main:#test" $TMP_BPL 2>&1)
+    OUT=$(corral "/main:#test" /trackAllVars /recursionBound:4 $TMP_BPL 2>&1)
     echo -e "$OUT"
 
     if [[ "$OUT" != *"potential bug"* ]]; then
