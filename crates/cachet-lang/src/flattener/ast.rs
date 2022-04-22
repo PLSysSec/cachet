@@ -26,6 +26,6 @@ pub type AssignStmt = normalizer::AssignStmt<Void>;
 pub type RetStmt = normalizer::RetStmt<Void>;
 
 pub type Expr = normalizer::Expr<Void>;
+pub type FieldAccessExpr<E = Expr> = normalizer::FieldAccessExpr<E>;
 pub type NegateExpr<E = Expr> = normalizer::NegateExpr<E>;
 pub type CastExpr<E = Expr> = normalizer::CastExpr<E>;
-pub type FieldAccessExpr<E = Expr> = normalizer::FieldAccessExpr<E>;

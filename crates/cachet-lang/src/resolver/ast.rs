@@ -520,6 +520,8 @@ pub enum Expr {
     Var(Spanned<VarIndex>),
     Invoke(Call),
     #[from]
+    FieldAccess(Box<FieldAccessExpr>),
+    #[from]
     Negate(Box<NegateExpr>),
     #[from]
     Cast(Box<CastExpr>),
@@ -527,8 +529,6 @@ pub enum Expr {
     Compare(Box<CompareExpr>),
     #[from]
     Assign(Box<AssignExpr>),
-    #[from]
-    FieldAccess(Box<FieldAccessExpr>),
 }
 
 box_from!(KindedBlock => Expr);
@@ -551,6 +551,12 @@ impl From<Spanned<&VarIndex>> for Expr {
     fn from(var_index: Spanned<&VarIndex>) -> Self {
         var_index.copied().into()
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldAccessExpr {
+    pub parent: Spanned<Expr>,
+    pub field: Spanned<Ident>,
 }
 
 #[derive(Clone, Debug)]
@@ -602,10 +608,4 @@ impl Typed for AssignExpr {
     fn type_(&self) -> TypeIndex {
         AssignExpr::TYPE.into()
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct FieldAccessExpr {
-    pub parent: Spanned<Expr>,
-    pub field: Spanned<Ident>,
 }

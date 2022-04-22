@@ -256,6 +256,8 @@ pub enum Expr {
     Var(Spanned<Path>),
     Invoke(Call),
     #[from]
+    FieldAccess(Box<FieldAccessExpr>),
+    #[from]
     Negate(Box<NegateExpr>),
     #[from]
     Cast(Box<CastExpr>),
@@ -263,16 +265,14 @@ pub enum Expr {
     Compare(Box<CompareExpr>),
     #[from]
     Assign(Box<AssignExpr>),
-    #[from]
-    FieldAccess(Box<FieldAccessExpr>),
 }
 
 box_from!(KindedBlock => Expr);
 box_from!(NegateExpr => Expr);
+box_from!(FieldAccessExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
-box_from!(FieldAccessExpr => Expr);
 
 deref_from!(&Literal => Expr);
 deref_from!(&Spanned<Path> => Expr);
@@ -292,6 +292,12 @@ impl From<Spanned<&Path>> for Expr {
 #[derive(Clone, Copy, Debug)]
 pub enum Literal {
     Int32(i32),
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldAccessExpr {
+    pub parent: Spanned<Expr>,
+    pub field: Spanned<Ident>,
 }
 
 #[derive(Clone, Debug)]
@@ -317,10 +323,4 @@ pub struct CompareExpr {
 pub struct AssignExpr {
     pub lhs: Spanned<Path>,
     pub rhs: Spanned<Expr>,
-}
-
-#[derive(Clone, Debug)]
-pub struct FieldAccessExpr {
-    pub parent: Spanned<Expr>,
-    pub field: Spanned<Ident>,
 }

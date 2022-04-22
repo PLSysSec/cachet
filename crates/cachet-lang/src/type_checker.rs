@@ -955,15 +955,15 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             resolver::Expr::Literal(literal) => literal.into(),
             resolver::Expr::Var(var_index) => self.type_check_var_expr(*var_index).into(),
             resolver::Expr::Invoke(call) => self.type_check_invoke_expr(call).into(),
+            resolver::Expr::FieldAccess(field_access_expr) => {
+                self.type_check_field_access_expr(field_access_expr).into()
+            }
             resolver::Expr::Negate(negate_expr) => self.type_check_negate_expr(negate_expr).into(),
             resolver::Expr::Cast(cast_expr) => self.type_check_cast_expr(cast_expr),
             resolver::Expr::Compare(compare_expr) => {
                 self.type_check_compare_expr(compare_expr).into()
             }
             resolver::Expr::Assign(assign_expr) => self.type_check_assign_expr(assign_expr).into(),
-            resolver::Expr::FieldAccess(field_access_expr) => {
-                self.type_check_field_access_expr(field_access_expr).into()
-            }
         }
     }
 

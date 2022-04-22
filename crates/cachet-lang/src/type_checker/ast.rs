@@ -423,6 +423,8 @@ pub enum Expr {
     #[from]
     Invoke(InvokeExpr),
     #[from]
+    FieldAccess(Box<FieldAccessExpr>),
+    #[from]
     Negate(Box<NegateExpr>),
     #[from]
     Cast(Box<CastExpr>),
@@ -430,8 +432,6 @@ pub enum Expr {
     Compare(Box<CompareExpr>),
     #[from]
     Assign(Box<AssignExpr>),
-    #[from]
-    FieldAccess(Box<FieldAccessExpr>),
 }
 
 impl Typed for Expr {
@@ -441,21 +441,21 @@ impl Typed for Expr {
             Expr::Literal(literal) => literal.type_(),
             Expr::Var(var_expr) => var_expr.type_(),
             Expr::Invoke(call_expr) => call_expr.type_(),
+            Expr::FieldAccess(field_access_expr) => field_access_expr.type_(),
             Expr::Negate(negate_expr) => negate_expr.type_(),
             Expr::Cast(cast_expr) => cast_expr.type_(),
             Expr::Compare(compare_expr) => compare_expr.type_(),
             Expr::Assign(assign_expr) => assign_expr.type_(),
-            Expr::FieldAccess(field_access_expr) => field_access_expr.type_(),
         }
     }
 }
 
 box_from!(KindedBlock => Expr);
+box_from!(FieldAccessExpr => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
-box_from!(FieldAccessExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -497,6 +497,19 @@ pub struct InvokeExpr {
 impl Typed for InvokeExpr {
     fn type_(&self) -> TypeIndex {
         self.ret
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldAccessExpr {
+    pub parent: Expr,
+    pub field: FieldIndex,
+    pub type_: TypeIndex,
+}
+
+impl Typed for FieldAccessExpr {
+    fn type_(&self) -> TypeIndex {
+        self.type_
     }
 }
 
@@ -555,18 +568,5 @@ impl AssignExpr {
 impl Typed for AssignExpr {
     fn type_(&self) -> TypeIndex {
         AssignExpr::TYPE.into()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct FieldAccessExpr {
-    pub parent: Expr,
-    pub field: FieldIndex,
-    pub type_: TypeIndex,
-}
-
-impl Typed for FieldAccessExpr {
-    fn type_(&self) -> TypeIndex {
-        self.type_
     }
 }

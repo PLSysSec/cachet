@@ -1068,6 +1068,9 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                         .map_found(Into::into)
                 })
                 .map(Expr::Invoke),
+            parser::Expr::FieldAccess(field_access_expr) => self
+                .resolve_field_access_expr(*field_access_expr)
+                .map(Expr::from),
             parser::Expr::Negate(negate_expr) => {
                 self.resolve_negate_expr(*negate_expr).map(Expr::from)
             }
@@ -1078,15 +1081,26 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             parser::Expr::Assign(assign_expr) => {
                 self.resolve_assign_expr(*assign_expr).map(Expr::from)
             }
-            parser::Expr::FieldAccess(field_access_expr) => self
-                .resolve_field_access_expr(*field_access_expr)
-                .map(Expr::from),
         }
     }
 
     fn resolve_var_expr(&mut self, var_path: Spanned<Path>) -> Option<Spanned<VarIndex>> {
         map_spanned(var_path, |var_path| {
             self.lookup_var_scoped(var_path).found(&mut self.errors)
+        })
+    }
+
+    fn resolve_field_access_expr(
+        &mut self,
+        field_access_expr: parser::FieldAccessExpr,
+    ) -> Option<FieldAccessExpr> {
+        let parent = map_spanned(field_access_expr.parent, |parent| {
+            self.resolve_expr(parent.value)
+        });
+
+        Some(FieldAccessExpr {
+            parent: parent?,
+            field: field_access_expr.field,
         })
     }
 
@@ -1134,20 +1148,6 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         Some(AssignExpr {
             lhs: lhs?,
             rhs: rhs?,
-        })
-    }
-
-    fn resolve_field_access_expr(
-        &mut self,
-        field_access_expr: parser::FieldAccessExpr,
-    ) -> Option<FieldAccessExpr> {
-        let parent = map_spanned(field_access_expr.parent, |parent| {
-            self.resolve_expr(parent.value)
-        });
-
-        Some(FieldAccessExpr {
-            parent: parent?,
-            field: field_access_expr.field,
         })
     }
 

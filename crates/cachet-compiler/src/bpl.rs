@@ -1829,13 +1829,13 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Expr::Literal(literal) => compile_literal(*literal).into(),
             flattener::Expr::Var(var_expr) => self.compile_var_expr(var_expr),
             flattener::Expr::Invoke(invoke_expr) => self.compile_invoke_expr(invoke_expr),
+            flattener::Expr::FieldAccess(field_access_expr) => {
+                self.compile_field_access_expr(&field_access_expr).into()
+            }
             flattener::Expr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr),
             flattener::Expr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
             flattener::Expr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).into()
-            }
-            flattener::Expr::FieldAccess(field_access_expr) => {
-                self.compile_field_access_expr(&field_access_expr).into()
             }
         }
     }
@@ -1844,13 +1844,13 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         match atom_expr {
             flattener::AtomExpr::Literal(literal) => compile_literal(*literal).into(),
             flattener::AtomExpr::Var(var_expr) => self.compile_var_expr(var_expr),
+            flattener::AtomExpr::FieldAccess(field_access_expr) => {
+                self.compile_field_access_expr(&field_access_expr).into()
+            }
             flattener::AtomExpr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr),
             flattener::AtomExpr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
             flattener::AtomExpr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).into()
-            }
-            flattener::AtomExpr::FieldAccess(field_access_expr) => {
-                self.compile_field_access_expr(&field_access_expr).into()
             }
         }
     }
@@ -1897,6 +1897,19 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         match compiled_invocation {
             CompiledInvocation::FnCall(call_expr) => call_expr.into(),
             CompiledInvocation::ProcCall(ret_var_ident) => ret_var_ident.into(),
+        }
+    }
+
+    fn compile_field_access_expr<E: CompileExpr + Typed>(
+        &mut self,
+        field_access_expr: &flattener::FieldAccessExpr<E>,
+    ) -> CallExpr {
+        let expr = field_access_expr.parent.compile(self);
+        let access_fn_ident = self.get_field_fn_ident(field_access_expr.field);
+
+        CallExpr {
+            target: access_fn_ident,
+            arg_exprs: vec![expr],
         }
     }
 
@@ -1951,19 +1964,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 .into(),
             }
             .into(),
-            arg_exprs: vec![expr],
-        }
-    }
-
-    fn compile_field_access_expr<E: CompileExpr + Typed>(
-        &mut self,
-        field_access_expr: &flattener::FieldAccessExpr<E>,
-    ) -> CallExpr {
-        let expr = field_access_expr.parent.compile(self);
-        let access_fn_ident = self.get_field_fn_ident(field_access_expr.field);
-
-        CallExpr {
-            target: access_fn_ident,
             arg_exprs: vec![expr],
         }
     }

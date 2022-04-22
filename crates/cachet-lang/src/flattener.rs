@@ -190,10 +190,10 @@ impl Flattener {
             normalizer::Expr::Literal(literal) => literal.into(),
             normalizer::Expr::Var(var_expr) => var_expr.into(),
             normalizer::Expr::Invoke(invoke_expr) => invoke_expr.into(),
-            normalizer::Expr::Negate(negate_expr) => self.flatten_negate_expr(*negate_expr).into(),
             normalizer::Expr::FieldAccess(field_access_expr) => {
                 self.flatten_field_access_expr(*field_access_expr).into()
             }
+            normalizer::Expr::Negate(negate_expr) => self.flatten_negate_expr(*negate_expr).into(),
             normalizer::Expr::Cast(cast_expr) => self.flatten_cast_expr(*cast_expr).into(),
             normalizer::Expr::Compare(compare_expr) => compare_expr.into(),
         }
@@ -203,15 +203,6 @@ impl Flattener {
         self.flatten_stmts(block_expr.stmts);
 
         self.flatten_expr(block_expr.value)
-    }
-
-    fn flatten_negate_expr(&mut self, negate_expr: normalizer::NegateExpr) -> NegateExpr {
-        let expr = self.flatten_expr(negate_expr.expr);
-
-        NegateExpr {
-            kind: negate_expr.kind,
-            expr,
-        }
     }
 
     fn flatten_field_access_expr(
@@ -224,6 +215,15 @@ impl Flattener {
             parent,
             field: field_access_expr.field,
             type_: field_access_expr.type_,
+        }
+    }
+
+    fn flatten_negate_expr(&mut self, negate_expr: normalizer::NegateExpr) -> NegateExpr {
+        let expr = self.flatten_expr(negate_expr.expr);
+
+        NegateExpr {
+            kind: negate_expr.kind,
+            expr,
         }
     }
 
