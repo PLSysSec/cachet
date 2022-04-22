@@ -778,7 +778,6 @@ impl<'a> Compiler<'a> {
                 .into(),
                 expr: CompareExpr {
                     kind: CompareKind::Eq,
-                    type_: PreludeTypeIdent::Pc.into(),
                     lhs: IndexExpr {
                         base: pc_emit_paths_var_ident.into(),
                         key: VarIdent::Pc.into(),
@@ -924,7 +923,6 @@ impl<'a> Compiler<'a> {
                 attr: Some(CheckAttr::Partition),
                 cond: CompareExpr {
                     kind: CompareKind::Eq,
-                    type_: PreludeTypeIdent::Pc.into(),
                     lhs: IndexExpr {
                         base: pc_emit_paths_var_ident.into(),
                         key: pc_var_ident.into(),
@@ -1299,7 +1297,6 @@ fn generate_cast_axiom_item(
         vars: vec![in_var].into(),
         expr: CompareExpr {
             kind: CompareKind::Eq,
-            type_: type_.into(),
             lhs,
             rhs,
         }
@@ -1978,7 +1975,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             CompareKind::Eq | CompareKind::Neq => 
                 return CompareExpr {
                     kind: compare_expr.kind,
-                    type_: type_ident.into(),
                     lhs,
                     rhs,
                 }.into(),
