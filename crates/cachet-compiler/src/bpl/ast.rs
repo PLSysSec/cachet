@@ -285,8 +285,8 @@ pub enum TypeMemberFnSelector {
     Cast(CastTypeMemberFnSelector),
     #[display(fmt = "{}", _0)]
     Variant(VariantCtorTypeMemberFnSelector),
-    #[display(fmt = "field^{}", _0)]
-    Field(Ident),
+    #[display(fmt = "{}", _0)]
+    Field(FieldCtorTypeMemberFnSelector),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -314,6 +314,12 @@ impl Display for CastTypeMemberFnSelector {
 #[display(fmt = "Variant~{}", variant_ident)]
 pub struct VariantCtorTypeMemberFnSelector {
     pub variant_ident: Ident,
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+#[display(fmt = "field~{}", field_ident)]
+pub struct FieldCtorTypeMemberFnSelector {
+    pub field_ident: Ident,
 }
 
 #[derive(Clone, Copy, Debug, Display)]

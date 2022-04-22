@@ -1,3 +1,5 @@
+#!/bin/bash
+
 shopt -s globstar
 
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && cd .. && pwd)"

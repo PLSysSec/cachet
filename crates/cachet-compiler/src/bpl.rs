@@ -1213,7 +1213,7 @@ impl<'a> Compiler<'a> {
         let struct_ident = self.env[field_index.struct_].ident.value;
         TypeMemberFnIdent {
             type_ident: UserTypeIdent::from(struct_ident),
-            selector: TypeMemberFnSelector::Field(field_index.ident),
+            selector: TypeMemberFnSelector::Field(field_index.ident.into()),
         }
         .into()
     }
