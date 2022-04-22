@@ -1024,16 +1024,22 @@ pub struct CompareExpr {
 
 impl Display for CompareExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}^{}({}, {})",
-            self.type_,
+        let lhs = MaybeGrouped(&self.lhs);
+        let rhs = MaybeGrouped(&self.rhs);
+
+        let fname = 
             match self.kind {
-                CompareKind::Eq => "Equal",
-                CompareKind::Neq => "NotEqual",
+                CompareKind::Eq => return write!(f, "{} = {}", lhs, rhs),
+                CompareKind::Neq => return write!(f, "{} != {}", lhs, rhs),
                 CompareKind::Lte => "LessThanOrEqual",
                 CompareKind::Gte => "GreaterThanOrEqual",
                 CompareKind::Lt => "LessThan",
                 CompareKind::Gt => "GreaterThan",
-            },
+            };
+
+        write!(f, "{}^{}({}, {})",
+            self.type_,
+            fname,
             MaybeGrouped(&self.lhs),
             MaybeGrouped(&self.rhs)
         )
