@@ -41,11 +41,11 @@ StructItem: StructItem =
 
 StructFields: Vec<StructField> = {
     ";"  => vec![],
-    "{" <fields:StructField*> "}" => fields,
+    "{" <fields:Comma<StructField>> "}" => fields,
 };
 
 StructField: StructField =
-    <ident: Spanned<Ident>> ":" <type_: Spanned<Path>> ";" => {
+    <ident: Spanned<Ident>> ":" <type_: Spanned<Path>> => {
         StructField { ident, type_ }
     };
 
