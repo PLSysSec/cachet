@@ -80,11 +80,21 @@ function should_fail() {
     return 0
 }
 
+max_length=0
+for f in $(ls -d $repo_dir/tests/**/*.cachet); do
+    test_name="${f#"$repo_dir/tests/"}"
+    name_length=${#test_name}
+    if [[ $name_length -gt $max_length ]]; then
+        max_length=$name_length
+    fi
+done
+
+
 PASSED_COUNT=0
 FAILED_TESTS=()
 for f in $(ls -d $repo_dir/tests/**/*.cachet); do
     test_name="${f#"$repo_dir/tests/"}"
-    echo -en "$test_name...\t"
+    printf "%-${max_length}s   " "$test_name" | tr " " "."
     if ! ( matches $test_name ); then
         echo "SKIP"
         continue
