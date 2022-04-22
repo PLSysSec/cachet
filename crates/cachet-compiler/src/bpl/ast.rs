@@ -1025,7 +1025,6 @@ pub struct NegateExpr {
 #[derive(Clone, Debug)]
 pub struct CompareExpr {
     pub kind: CompareKind,
-    pub type_: TypeIdent,
     pub lhs: Expr,
     pub rhs: Expr,
 }
