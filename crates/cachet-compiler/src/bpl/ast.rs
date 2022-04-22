@@ -281,7 +281,7 @@ pub enum TypeMemberFnSelector {
     LessThan,
     #[display(fmt = "GreaterThan")]
     GreaterThan,
-    #[display(fmt = "cast^{}", _0)]
+    #[display(fmt = "{}", _0)]
     Cast(CastTypeMemberFnSelector),
     #[display(fmt = "variant^{}", _0)]
     Variant(VariantCtorTypeMemberFnSelector),
