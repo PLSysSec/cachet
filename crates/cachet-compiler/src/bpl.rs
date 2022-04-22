@@ -1961,7 +1961,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         field_access_expr: &flattener::FieldAccessExpr<E>,
     ) -> CallExpr {
         let expr = field_access_expr.parent.compile(self);
-
         let access_fn_ident = self.get_field_fn_ident(field_access_expr.field);
 
         CallExpr {
