@@ -191,7 +191,9 @@ impl Flattener {
             normalizer::Expr::Var(var_expr) => var_expr.into(),
             normalizer::Expr::Invoke(invoke_expr) => invoke_expr.into(),
             normalizer::Expr::Negate(negate_expr) => self.flatten_negate_expr(*negate_expr).into(),
-            normalizer::Expr::FieldAccess(field_access_expr) => self.flatten_field_access_expr(*field_access_expr).into(),
+            normalizer::Expr::FieldAccess(field_access_expr) => {
+                self.flatten_field_access_expr(*field_access_expr).into()
+            }
             normalizer::Expr::Cast(cast_expr) => self.flatten_cast_expr(*cast_expr).into(),
             normalizer::Expr::Compare(compare_expr) => compare_expr.into(),
         }
@@ -212,7 +214,10 @@ impl Flattener {
         }
     }
 
-    fn flatten_field_access_expr(&mut self, field_access_expr: normalizer::FieldAccessExpr) -> FieldAccessExpr {
+    fn flatten_field_access_expr(
+        &mut self,
+        field_access_expr: normalizer::FieldAccessExpr,
+    ) -> FieldAccessExpr {
         let parent = self.flatten_expr(field_access_expr.parent);
 
         FieldAccessExpr {

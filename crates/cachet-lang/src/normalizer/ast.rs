@@ -13,12 +13,12 @@ use crate::ast::{
 };
 use crate::type_checker;
 pub use crate::type_checker::{
-    BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FnIndex,
-    GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, FieldIndex, Label, LabelIndex, LabelParam,
-    LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,
-    NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
-    StructIndex, StructItem, StructField, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex,
-    VariantIndex,
+    BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FieldIndex,
+    FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, Label, LabelIndex,
+    LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex,
+    Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
+    StructField, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam,
+    VarParamIndex, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -60,7 +60,6 @@ impl<B> Index<FieldIndex> for Env<B> {
         &self[index.struct_].fields[&index.ident]
     }
 }
-
 
 deref_index!(Env<B>[&EnumVariantIndex] => Spanned<Path> | <B>);
 
@@ -345,7 +344,7 @@ impl<B> TryFrom<Expr<B>> for AtomExpr {
             Expr::Negate(negate_expr) => Ok((*negate_expr).try_into()?),
             Expr::Cast(cast_expr) => Ok((*cast_expr).try_into()?),
             Expr::Compare(compare_expr) => Ok(compare_expr.into()),
-            Expr::FieldAccess(field_access_expr) => Ok((*field_access_expr).try_into()?)
+            Expr::FieldAccess(field_access_expr) => Ok((*field_access_expr).try_into()?),
         }
     }
 }
@@ -459,7 +458,7 @@ impl<B> From<FieldAccessExpr<AtomExpr>> for FieldAccessExpr<Expr<B>> {
         FieldAccessExpr {
             parent: field_access_expr.parent.into(),
             field: field_access_expr.field,
-            type_: field_access_expr.type_
+            type_: field_access_expr.type_,
         }
     }
 }
@@ -472,12 +471,12 @@ impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for FieldAccessExpr<AtomExpr> {
             Ok(expr) => Ok(FieldAccessExpr {
                 parent: expr,
                 field: field_access_expr.field,
-                type_: field_access_expr.type_
+                type_: field_access_expr.type_,
             }),
             Err(expr) => Err(FieldAccessExpr {
                 parent: expr,
                 field: field_access_expr.field,
-                type_: field_access_expr.type_
+                type_: field_access_expr.type_,
             }),
         }
     }

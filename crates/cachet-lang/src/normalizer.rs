@@ -478,7 +478,10 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         });
     }
 
-    fn normalize_used_field_access_expr(&mut self, field_access_expr: type_checker::FieldAccessExpr) -> FieldAccessExpr {
+    fn normalize_used_field_access_expr(
+        &mut self,
+        field_access_expr: type_checker::FieldAccessExpr,
+    ) -> FieldAccessExpr {
         let parent = self.normalize_used_expr(field_access_expr.parent);
 
         FieldAccessExpr {
@@ -488,7 +491,10 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         }
     }
 
-    fn normalize_unused_field_access_expr(&mut self, field_access_expr: type_checker::FieldAccessExpr) {
+    fn normalize_unused_field_access_expr(
+        &mut self,
+        field_access_expr: type_checker::FieldAccessExpr,
+    ) {
         self.normalize_unused_expr(field_access_expr.parent);
     }
 

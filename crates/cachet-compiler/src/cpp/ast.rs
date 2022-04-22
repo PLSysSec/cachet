@@ -337,7 +337,9 @@ pub enum TypeMemberFnIdent {
 impl TypeMemberFnIdent {
     pub const fn parent_namespace_kind(self) -> NamespaceKind {
         match self {
-            TypeMemberFnIdent::EmptyLocal | TypeMemberFnIdent::SetMutRef | TypeMemberFnIdent::Fields => NamespaceKind::Type,
+            TypeMemberFnIdent::EmptyLocal
+            | TypeMemberFnIdent::SetMutRef
+            | TypeMemberFnIdent::Fields => NamespaceKind::Type,
             TypeMemberFnIdent::ToTag(_) => ToTagTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Cast(_) => CastTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Compare(_) => CompareTypeMemberFnIdent::PARENT_NAMESPACE_KIND,

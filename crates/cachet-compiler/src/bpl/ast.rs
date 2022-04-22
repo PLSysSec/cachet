@@ -286,7 +286,7 @@ pub enum TypeMemberFnSelector {
     #[display(fmt = "{}", _0)]
     Variant(VariantCtorTypeMemberFnSelector),
     #[display(fmt = "field^{}", _0)]
-    Field(Ident)
+    Field(Ident),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1034,9 +1034,7 @@ impl Display for CompareExpr {
         let lhs = MaybeGrouped(&self.lhs);
         let rhs = MaybeGrouped(&self.rhs);
 
-        write!(f, "{} {} {}",
-            lhs, self.kind, rhs
-        )
+        write!(f, "{} {} {}", lhs, self.kind, rhs)
     }
 }
 
