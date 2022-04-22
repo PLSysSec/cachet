@@ -1,10 +1,10 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
 use std::collections::{BTreeSet, HashSet};
+use std::fmt::{self, Display};
 use std::iter;
 use std::ops::{Deref, DerefMut};
 
-use derive_more::Display;
 use enum_map::EnumMap;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
@@ -24,8 +24,14 @@ use crate::bpl::flow::{trace_entry_point, EmitSucc, FlowGraph};
 mod ast;
 mod flow;
 
-#[derive(Clone, Debug, Display)]
+#[derive(Clone, Debug)]
 pub struct BplCode(Code);
+
+impl Display for BplCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}\n\n{}", include_str!("bpl/prelude.bpl"), self.0)
+    }
+}
 
 pub fn compile(env: &flattener::Env) -> BplCode {
     let mut compiler = Compiler::new(env);
@@ -1982,11 +1988,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 }
                 .into();
             }
-
-            CompareKind::Lte => TypeMemberFnSelector::LessThanOrEqual,
-            CompareKind::Gte => TypeMemberFnSelector::GreaterThanOrEqual,
-            CompareKind::Lt => TypeMemberFnSelector::LessThan,
-            CompareKind::Gt => TypeMemberFnSelector::GreaterThan,
+            CompareKind::Numeric(kind) => kind.into(),
         };
 
         CallExpr {

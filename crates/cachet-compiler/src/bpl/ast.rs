@@ -10,7 +10,7 @@ use std::ops::{Deref, DerefMut};
 use derive_more::{Display, From};
 use enum_map::Enum;
 
-use cachet_lang::ast::{CastKind, CheckKind, CompareKind, Ident, NegateKind};
+use cachet_lang::ast::{CastKind, CheckKind, CompareKind, Ident, NegateKind, NumericCompareKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 use cachet_util::{
     box_from, deref_from, fmt_join, fmt_join_leading, fmt_join_trailing, typed_index, AffixWriter,
@@ -271,22 +271,20 @@ pub struct TypeMemberFnIdent {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum TypeMemberFnSelector {
-    #[display(fmt = "Negate")]
+    #[display(fmt = "negate")]
     Negate,
-    #[display(fmt = "LessThanOrEqual")]
-    LessThanOrEqual,
-    #[display(fmt = "GreaterThanOrEqual")]
-    GreaterThanOrEqual,
-    #[display(fmt = "LessThan")]
-    LessThan,
-    #[display(fmt = "GreaterThan")]
-    GreaterThan,
     #[display(fmt = "{}", _0)]
+    #[from]
     Cast(CastTypeMemberFnSelector),
     #[display(fmt = "{}", _0)]
+    #[from(types(NumericCompareKind))]
+    Compare(CompareTypeMemberFnSelector),
+    #[display(fmt = "{}", _0)]
+    #[from]
     Variant(VariantCtorTypeMemberFnSelector),
     #[display(fmt = "{}", _0)]
-    Field(FieldCtorTypeMemberFnSelector),
+    #[from]
+    Field(FieldTypeMemberFnSelector),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -310,6 +308,27 @@ impl Display for CastTypeMemberFnSelector {
     }
 }
 
+#[derive(Clone, Copy, Debug, From)]
+pub struct CompareTypeMemberFnSelector {
+    pub kind: NumericCompareKind,
+}
+
+impl Display for CompareTypeMemberFnSelector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self.kind {
+                NumericCompareKind::Lte => "lte",
+                NumericCompareKind::Gte => "gte",
+                NumericCompareKind::Lt => "lt",
+                NumericCompareKind::Gt => "gt",
+            },
+        )?;
+        Ok(())
+    }
+}
+
 #[derive(Clone, Copy, Debug, Display, From)]
 #[display(fmt = "Variant~{}", variant_ident)]
 pub struct VariantCtorTypeMemberFnSelector {
@@ -318,7 +337,7 @@ pub struct VariantCtorTypeMemberFnSelector {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 #[display(fmt = "field~{}", field_ident)]
-pub struct FieldCtorTypeMemberFnSelector {
+pub struct FieldTypeMemberFnSelector {
     pub field_ident: Ident,
 }
 
@@ -514,8 +533,6 @@ pub struct Code {
 
 impl Display for Code {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", include_str!("prelude.bpl"))?;
-
         fmt_join(f, "\n\n", self.items.iter())
     }
 }

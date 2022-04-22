@@ -13,8 +13,8 @@ use lazy_static::lazy_static;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
-    BlockKind, BuiltInType, BuiltInVar, CastKind, Ident, MaybeSpanned, NegateKind, Path, Span,
-    Spanned, VarParamKind, UNIT_TYPE_IDENT,
+    BlockKind, BuiltInType, BuiltInVar, CastKind, CompareKind, Ident, MaybeSpanned, NegateKind,
+    Path, Span, Spanned, VarParamKind, UNIT_TYPE_IDENT,
 };
 use crate::resolver;
 use crate::FrontendError;
@@ -1162,7 +1162,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             (lhs, rhs)
         };
 
-        if compare_expr.kind.value.is_numeric() {
+        if let CompareKind::Numeric(_) = compare_expr.kind.value {
             if !self.is_numeric_type(lhs_type_index) {
                 self.type_checker
                     .errors

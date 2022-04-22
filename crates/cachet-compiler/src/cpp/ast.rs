@@ -9,7 +9,7 @@ use derive_more::{Display, From};
 use enum_map::Enum;
 use enumset::EnumSetType;
 
-use cachet_lang::ast::{CastKind, CompareKind, Ident, NegateKind};
+use cachet_lang::ast::{CastKind, CompareKind, Ident, NegateKind, NumericCompareKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 
 use cachet_util::{box_from, chain_from, deref_from, fmt_join, fmt_join_trailing, AffixWriter};
@@ -399,10 +399,12 @@ impl Display for CompareTypeMemberFnIdent {
             match self.kind {
                 CompareKind::Eq => "Eq",
                 CompareKind::Neq => "Neq",
-                CompareKind::Lte => "Lte",
-                CompareKind::Gte => "Gte",
-                CompareKind::Lt => "Lt",
-                CompareKind::Gt => "Gt",
+                CompareKind::Numeric(kind) => match kind {
+                    NumericCompareKind::Lte => "Lte",
+                    NumericCompareKind::Gte => "Gte",
+                    NumericCompareKind::Lt => "Lt",
+                    NumericCompareKind::Gt => "Gt",
+                },
             }
         )
     }

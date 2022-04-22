@@ -8,7 +8,7 @@ repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && cd .. && p
 
 notes_dir="${repo_dir}/notes"
 cachet_file="${notes_dir}/${sample_name}.cachet"
-prelude_bpl_file="${notes_dir}/prelude.bpl"
+hacks_bpl_file="${notes_dir}/hacks.bpl"
 
 out_dir="${repo_dir}/out"
 mkdir -p "${out_dir}"
@@ -18,4 +18,4 @@ bpl_file="${out_dir}/${sample_name}.bpl"
 
 cargo run --bin cachet-compiler -- \
   "${cachet_file}" "${cpp_decls_file}" "${cpp_defs_file}" "${bpl_file}" "${@}"
-cat "${prelude_bpl_file}" "${bpl_file}" | sponge "${bpl_file}"
+cat "${hacks_bpl_file}" "${bpl_file}" | sponge "${bpl_file}"

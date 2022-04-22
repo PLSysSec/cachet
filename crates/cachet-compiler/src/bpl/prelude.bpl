@@ -16,12 +16,12 @@ type #Bool = bool;
 
 type #Int32 = bv32;
 
-function {:bvbuiltin "bvadd"} #Int32^Add(x: #Int32, y: #Int32): #Int32;
-function {:bvbuiltin "bvneg"} #Int32^Negate(n: #Int32): #Int32;
-function {:bvbuiltin "bvsgt"} #Int32^GreaterThan(a: #Int32, y: #Int32): #Bool;
-function {:bvbuiltin "bvslt"} #Int32^LessThan(a: #Int32, y: #Int32): #Bool;
-function {:bvbuiltin "bvsge"} #Int32^GreaterThanOrEqual(a: #Int32, y: #Int32): #Bool;
-function {:bvbuiltin "bvsle"} #Int32^LessThanOrEqual(a: #Int32, y: #Int32): #Bool;
+function {:bvbuiltin "bvneg"} #Int32^negate(n: #Int32): #Int32;
+function {:bvbuiltin "bvadd"} #Int32^add(x: #Int32, y: #Int32): #Int32;
+function {:bvbuiltin "bvsle"} #Int32^lte(a: #Int32, y: #Int32): #Bool;
+function {:bvbuiltin "bvsge"} #Int32^gte(a: #Int32, y: #Int32): #Bool;
+function {:bvbuiltin "bvslt"} #Int32^lt(a: #Int32, y: #Int32): #Bool;
+function {:bvbuiltin "bvsgt"} #Int32^gt(a: #Int32, y: #Int32): #Bool;
 
 // etc; see https://boogie-docs.readthedocs.io/en/latest/LangRef.html#other-operators
 

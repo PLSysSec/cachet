@@ -1,6 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use derive_more::Display;
+use derive_more::{Display, From};
 
 pub use crate::ast::built_ins::*;
 pub use crate::ast::ident::*;
@@ -58,12 +58,17 @@ impl CastKind {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, Hash, PartialEq)]
 pub enum CompareKind {
     #[display(fmt = "==")]
     Eq,
     #[display(fmt = "!=")]
     Neq,
+    Numeric(NumericCompareKind),
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum NumericCompareKind {
     #[display(fmt = "<=")]
     Lte,
     #[display(fmt = ">=")]
@@ -72,13 +77,4 @@ pub enum CompareKind {
     Lt,
     #[display(fmt = ">")]
     Gt,
-}
-
-impl CompareKind {
-    pub fn is_numeric(&self) -> bool {
-        match self {
-            CompareKind::Lte | CompareKind::Gte | CompareKind::Lt | CompareKind::Gt => true,
-            CompareKind::Eq | CompareKind::Neq => false,
-        }
-    }
 }
