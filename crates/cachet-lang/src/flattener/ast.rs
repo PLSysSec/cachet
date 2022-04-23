@@ -4,7 +4,7 @@ use void::Void;
 
 use crate::normalizer;
 pub use crate::normalizer::{
-    Arg, AtomExpr, BindStmt, Call, CallableIndex, CompareExpr, DeclIndex, EmitStmt, EnumIndex,
+    Arg, PureExpr, BindStmt, Call, CallableIndex, CompareExpr, DeclIndex, EmitStmt, EnumIndex,
     EnumItem, EnumVariantIndex, FieldIndex, FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt,
     InvokeExpr, InvokeStmt, IrIndex, IrItem, Label, LabelArg, LabelIndex, LabelParam,
     LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,

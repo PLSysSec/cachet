@@ -106,7 +106,7 @@ impl<B> Typed for CallableItem<B> {
 
 #[derive(Clone, Debug, From)]
 pub enum Arg {
-    Expr(AtomExpr),
+    Expr(PureExpr),
     OutVar(OutVarArg),
     Label(LabelArg),
 }
@@ -266,74 +266,74 @@ box_from!(CastExpr<Expr<B>> => Expr<B> | <B>);
 
 deref_from!(&Literal => Expr);
 
-impl<B> From<AtomExpr> for Expr<B> {
-    fn from(atom_expr: AtomExpr) -> Self {
-        match atom_expr {
-            AtomExpr::Var(var_expr) => var_expr.into(),
-            AtomExpr::Literal(literal) => literal.into(),
-            AtomExpr::FieldAccess(field_access_expr) => (*field_access_expr).into(),
-            AtomExpr::Negate(negate_expr) => (*negate_expr).into(),
-            AtomExpr::Cast(cast_expr) => (*cast_expr).into(),
-            AtomExpr::Compare(compare_expr) => (*compare_expr).into(),
+impl<B> From<PureExpr> for Expr<B> {
+    fn from(pure_expr: PureExpr) -> Self {
+        match pure_expr {
+            PureExpr::Var(var_expr) => var_expr.into(),
+            PureExpr::Literal(literal) => literal.into(),
+            PureExpr::FieldAccess(field_access_expr) => (*field_access_expr).into(),
+            PureExpr::Negate(negate_expr) => (*negate_expr).into(),
+            PureExpr::Cast(cast_expr) => (*cast_expr).into(),
+            PureExpr::Compare(compare_expr) => (*compare_expr).into(),
         }
     }
 }
 
-impl<B> From<FieldAccessExpr<AtomExpr>> for Expr<B> {
-    fn from(field_access_expr: FieldAccessExpr<AtomExpr>) -> Self {
+impl<B> From<FieldAccessExpr<PureExpr>> for Expr<B> {
+    fn from(field_access_expr: FieldAccessExpr<PureExpr>) -> Self {
         Expr::FieldAccess(FieldAccessExpr::<Expr<B>>::from(field_access_expr).into())
     }
 }
 
-impl<B> From<NegateExpr<AtomExpr>> for Expr<B> {
-    fn from(negate_expr: NegateExpr<AtomExpr>) -> Self {
+impl<B> From<NegateExpr<PureExpr>> for Expr<B> {
+    fn from(negate_expr: NegateExpr<PureExpr>) -> Self {
         Expr::from(NegateExpr::<Expr<B>>::from(negate_expr))
     }
 }
 
-impl<B> From<CastExpr<AtomExpr>> for Expr<B> {
-    fn from(cast_expr: CastExpr<AtomExpr>) -> Self {
+impl<B> From<CastExpr<PureExpr>> for Expr<B> {
+    fn from(cast_expr: CastExpr<PureExpr>) -> Self {
         Expr::from(CastExpr::<Expr<B>>::from(cast_expr))
     }
 }
 
 #[derive(Clone, Debug, From)]
-pub enum AtomExpr {
+pub enum PureExpr {
     #[from]
     Literal(Literal),
     #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
     #[from]
-    FieldAccess(Box<FieldAccessExpr<AtomExpr>>),
+    FieldAccess(Box<FieldAccessExpr<PureExpr>>),
     #[from]
-    Negate(Box<NegateExpr<AtomExpr>>),
+    Negate(Box<NegateExpr<PureExpr>>),
     #[from]
-    Cast(Box<CastExpr<AtomExpr>>),
+    Cast(Box<CastExpr<PureExpr>>),
     #[from]
     Compare(Box<CompareExpr>),
 }
 
-impl Typed for AtomExpr {
+impl Typed for PureExpr {
     fn type_(&self) -> TypeIndex {
         match self {
-            AtomExpr::Literal(literal) => literal.type_(),
-            AtomExpr::Var(var_expr) => var_expr.type_(),
-            AtomExpr::FieldAccess(field_access_expr) => field_access_expr.type_(),
-            AtomExpr::Negate(negate_expr) => negate_expr.type_(),
-            AtomExpr::Cast(cast_expr) => cast_expr.type_(),
-            AtomExpr::Compare(compare_expr) => compare_expr.type_(),
+            PureExpr::Literal(literal) => literal.type_(),
+            PureExpr::Var(var_expr) => var_expr.type_(),
+            PureExpr::FieldAccess(field_access_expr) => field_access_expr.type_(),
+            PureExpr::Negate(negate_expr) => negate_expr.type_(),
+            PureExpr::Cast(cast_expr) => cast_expr.type_(),
+            PureExpr::Compare(compare_expr) => compare_expr.type_(),
         }
     }
 }
 
-box_from!(FieldAccessExpr<AtomExpr> => AtomExpr);
-box_from!(NegateExpr<AtomExpr> => AtomExpr);
-box_from!(CastExpr<AtomExpr> => AtomExpr);
-box_from!(CompareExpr => AtomExpr);
+box_from!(FieldAccessExpr<PureExpr> => PureExpr);
+box_from!(NegateExpr<PureExpr> => PureExpr);
+box_from!(CastExpr<PureExpr> => PureExpr);
+box_from!(CompareExpr => PureExpr);
 
-deref_from!(&Literal => AtomExpr);
+deref_from!(&Literal => PureExpr);
 
-impl<B> TryFrom<Expr<B>> for AtomExpr {
+impl<B> TryFrom<Expr<B>> for PureExpr {
     type Error = Expr<B>;
 
     fn try_from(expr: Expr<B>) -> Result<Self, Self::Error> {
@@ -349,31 +349,31 @@ impl<B> TryFrom<Expr<B>> for AtomExpr {
     }
 }
 
-impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for AtomExpr {
+impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for PureExpr {
     type Error = FieldAccessExpr<Expr<B>>;
 
     fn try_from(field_access_expr: FieldAccessExpr<Expr<B>>) -> Result<Self, Self::Error> {
-        Ok(AtomExpr::from(FieldAccessExpr::<AtomExpr>::try_from(
+        Ok(PureExpr::from(FieldAccessExpr::<PureExpr>::try_from(
             field_access_expr,
         )?))
     }
 }
 
-impl<B> TryFrom<NegateExpr<Expr<B>>> for AtomExpr {
+impl<B> TryFrom<NegateExpr<Expr<B>>> for PureExpr {
     type Error = NegateExpr<Expr<B>>;
 
     fn try_from(negate_expr: NegateExpr<Expr<B>>) -> Result<Self, Self::Error> {
-        Ok(AtomExpr::from(NegateExpr::<AtomExpr>::try_from(
+        Ok(PureExpr::from(NegateExpr::<PureExpr>::try_from(
             negate_expr,
         )?))
     }
 }
 
-impl<B> TryFrom<CastExpr<Expr<B>>> for AtomExpr {
+impl<B> TryFrom<CastExpr<Expr<B>>> for PureExpr {
     type Error = CastExpr<Expr<B>>;
 
     fn try_from(cast_expr: CastExpr<Expr<B>>) -> Result<Self, Self::Error> {
-        Ok(AtomExpr::from(CastExpr::<AtomExpr>::try_from(cast_expr)?))
+        Ok(PureExpr::from(CastExpr::<PureExpr>::try_from(cast_expr)?))
     }
 }
 
@@ -414,8 +414,8 @@ impl<E: Typed> Typed for NegateExpr<E> {
     }
 }
 
-impl<B> From<NegateExpr<AtomExpr>> for NegateExpr<Expr<B>> {
-    fn from(negate_expr: NegateExpr<AtomExpr>) -> Self {
+impl<B> From<NegateExpr<PureExpr>> for NegateExpr<Expr<B>> {
+    fn from(negate_expr: NegateExpr<PureExpr>) -> Self {
         NegateExpr {
             kind: negate_expr.kind,
             expr: negate_expr.expr.into(),
@@ -423,7 +423,7 @@ impl<B> From<NegateExpr<AtomExpr>> for NegateExpr<Expr<B>> {
     }
 }
 
-impl<B> TryFrom<NegateExpr<Expr<B>>> for NegateExpr<AtomExpr> {
+impl<B> TryFrom<NegateExpr<Expr<B>>> for NegateExpr<PureExpr> {
     type Error = NegateExpr<Expr<B>>;
 
     fn try_from(negate_expr: NegateExpr<Expr<B>>) -> Result<Self, Self::Error> {
@@ -453,8 +453,8 @@ impl<E> Typed for FieldAccessExpr<E> {
     }
 }
 
-impl<B> From<FieldAccessExpr<AtomExpr>> for FieldAccessExpr<Expr<B>> {
-    fn from(field_access_expr: FieldAccessExpr<AtomExpr>) -> Self {
+impl<B> From<FieldAccessExpr<PureExpr>> for FieldAccessExpr<Expr<B>> {
+    fn from(field_access_expr: FieldAccessExpr<PureExpr>) -> Self {
         FieldAccessExpr {
             parent: field_access_expr.parent.into(),
             field: field_access_expr.field,
@@ -463,7 +463,7 @@ impl<B> From<FieldAccessExpr<AtomExpr>> for FieldAccessExpr<Expr<B>> {
     }
 }
 
-impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for FieldAccessExpr<AtomExpr> {
+impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for FieldAccessExpr<PureExpr> {
     type Error = FieldAccessExpr<Expr<B>>;
 
     fn try_from(field_access_expr: FieldAccessExpr<Expr<B>>) -> Result<Self, Self::Error> {
@@ -495,8 +495,8 @@ impl<E> Typed for CastExpr<E> {
     }
 }
 
-impl<B> From<CastExpr<AtomExpr>> for CastExpr<Expr<B>> {
-    fn from(cast_expr: CastExpr<AtomExpr>) -> Self {
+impl<B> From<CastExpr<PureExpr>> for CastExpr<Expr<B>> {
+    fn from(cast_expr: CastExpr<PureExpr>) -> Self {
         CastExpr {
             kind: cast_expr.kind,
             expr: cast_expr.expr.into(),
@@ -505,7 +505,7 @@ impl<B> From<CastExpr<AtomExpr>> for CastExpr<Expr<B>> {
     }
 }
 
-impl<B> TryFrom<CastExpr<Expr<B>>> for CastExpr<AtomExpr> {
+impl<B> TryFrom<CastExpr<Expr<B>>> for CastExpr<PureExpr> {
     type Error = CastExpr<Expr<B>>;
 
     fn try_from(cast_expr: CastExpr<Expr<B>>) -> Result<Self, Self::Error> {
@@ -527,8 +527,8 @@ impl<B> TryFrom<CastExpr<Expr<B>>> for CastExpr<AtomExpr> {
 #[derive(Clone, Debug)]
 pub struct CompareExpr {
     pub kind: CompareKind,
-    pub lhs: AtomExpr,
-    pub rhs: AtomExpr,
+    pub lhs: PureExpr,
+    pub rhs: PureExpr,
 }
 
 impl CompareExpr {

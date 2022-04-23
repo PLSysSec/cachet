@@ -1430,8 +1430,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         for arg in args {
             match arg {
-                flattener::Arg::Expr(atom_expr) => {
-                    arg_exprs.push(self.compile_expr_arg(atom_expr))
+                flattener::Arg::Expr(pure_expr) => {
+                    arg_exprs.push(self.compile_expr_arg(pure_expr))
                 }
                 flattener::Arg::OutVar(out_var_arg) => {
                     ret_var_idents.push(self.compile_out_var_arg(out_var_arg))
@@ -1445,8 +1445,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         (arg_exprs, ret_var_idents)
     }
 
-    fn compile_expr_arg(&mut self, atom_expr: &flattener::AtomExpr) -> Expr {
-        self.compile_atom_expr(atom_expr)
+    fn compile_expr_arg(&mut self, pure_expr: &flattener::PureExpr) -> Expr {
+        self.compile_pure_expr(pure_expr)
     }
 
     fn compile_out_var_arg(&mut self, out_var_arg: &flattener::OutVarArg) -> VarIdent {
@@ -1846,16 +1846,16 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_atom_expr(&mut self, atom_expr: &flattener::AtomExpr) -> Expr {
-        match atom_expr {
-            flattener::AtomExpr::Literal(literal) => compile_literal(*literal).into(),
-            flattener::AtomExpr::Var(var_expr) => self.compile_var_expr(var_expr),
-            flattener::AtomExpr::FieldAccess(field_access_expr) => {
+    fn compile_pure_expr(&mut self, pure_expr: &flattener::PureExpr) -> Expr {
+        match pure_expr {
+            flattener::PureExpr::Literal(literal) => compile_literal(*literal).into(),
+            flattener::PureExpr::Var(var_expr) => self.compile_var_expr(var_expr),
+            flattener::PureExpr::FieldAccess(field_access_expr) => {
                 self.compile_field_access_expr(&field_access_expr).into()
             }
-            flattener::AtomExpr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr),
-            flattener::AtomExpr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
-            flattener::AtomExpr::Compare(compare_expr) => {
+            flattener::PureExpr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr),
+            flattener::PureExpr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
+            flattener::PureExpr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).into()
             }
         }
@@ -1975,8 +1975,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_compare_expr(&mut self, compare_expr: &flattener::CompareExpr) -> Expr {
-        let lhs = self.compile_atom_expr(&compare_expr.lhs);
-        let rhs = self.compile_atom_expr(&compare_expr.rhs);
+        let lhs = self.compile_pure_expr(&compare_expr.lhs);
+        let rhs = self.compile_pure_expr(&compare_expr.rhs);
         let type_ident = self.get_type_ident(compare_expr.lhs.type_());
 
         let selector = match compare_expr.kind {
@@ -2082,9 +2082,9 @@ impl CompileExpr for flattener::Expr {
     }
 }
 
-impl CompileExpr for flattener::AtomExpr {
+impl CompileExpr for flattener::PureExpr {
     fn compile<'a, 'b>(&self, scoped_compiler: &mut ScopedCompiler<'a, 'b>) -> Expr {
-        scoped_compiler.compile_atom_expr(self)
+        scoped_compiler.compile_pure_expr(self)
     }
 }
 

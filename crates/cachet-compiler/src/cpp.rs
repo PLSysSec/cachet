@@ -747,14 +747,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_arg(&self, arg: &normalizer::Arg) -> Expr {
         match arg {
-            normalizer::Arg::Expr(atom_expr) => self.compile_expr_arg(atom_expr),
+            normalizer::Arg::Expr(pure_expr) => self.compile_expr_arg(pure_expr),
             normalizer::Arg::OutVar(out_var_arg) => self.compile_out_var_arg(out_var_arg),
             normalizer::Arg::Label(label_arg) => self.compile_label_arg(label_arg),
         }
     }
 
-    fn compile_expr_arg(&self, atom_expr: &normalizer::AtomExpr) -> Expr {
-        self.use_expr(self.compile_atom_expr(atom_expr), ExprTag::Ref.into())
+    fn compile_expr_arg(&self, pure_expr: &normalizer::PureExpr) -> Expr {
+        self.use_expr(self.compile_pure_expr(pure_expr), ExprTag::Ref.into())
     }
 
     fn compile_out_var_arg(&self, out_var_arg: &normalizer::OutVarArg) -> Expr {
@@ -1069,22 +1069,22 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_atom_expr(&self, atom_expr: &normalizer::AtomExpr) -> TaggedExpr {
-        match atom_expr {
-            normalizer::AtomExpr::Literal(literal) => {
+    fn compile_pure_expr(&self, pure_expr: &normalizer::PureExpr) -> TaggedExpr {
+        match pure_expr {
+            normalizer::PureExpr::Literal(literal) => {
                 self.compile_literal(literal).map(Expr::from)
             }
-            normalizer::AtomExpr::Var(var_expr) => self.compile_var_expr(var_expr),
-            normalizer::AtomExpr::FieldAccess(field_access_expr) => self
+            normalizer::PureExpr::Var(var_expr) => self.compile_var_expr(var_expr),
+            normalizer::PureExpr::FieldAccess(field_access_expr) => self
                 .compile_field_access_expr(&field_access_expr)
                 .map(Expr::from),
-            normalizer::AtomExpr::Negate(negate_expr) => {
+            normalizer::PureExpr::Negate(negate_expr) => {
                 self.compile_negate_expr(&negate_expr).map(Expr::from)
             }
-            normalizer::AtomExpr::Cast(cast_expr) => {
+            normalizer::PureExpr::Cast(cast_expr) => {
                 self.compile_cast_expr(&cast_expr).map(Expr::from)
             }
-            normalizer::AtomExpr::Compare(compare_expr) => {
+            normalizer::PureExpr::Compare(compare_expr) => {
                 self.compile_compare_expr(&compare_expr).map(Expr::from)
             }
         }
@@ -1324,11 +1324,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         debug_assert_eq!(lhs_type, rhs_type);
 
         let lhs = self.use_expr(
-            self.compile_atom_expr(&compare_expr.lhs),
+            self.compile_pure_expr(&compare_expr.lhs),
             ExprTag::Ref.into(),
         );
         let rhs = self.use_expr(
-            self.compile_atom_expr(&compare_expr.rhs),
+            self.compile_pure_expr(&compare_expr.rhs),
             ExprTag::Ref.into(),
         );
 
@@ -1417,8 +1417,8 @@ impl CompileExpr for normalizer::Expr {
     }
 }
 
-impl CompileExpr for normalizer::AtomExpr {
+impl CompileExpr for normalizer::PureExpr {
     fn compile<'a, 'b>(&self, scoped_compiler: &ScopedCompiler<'a, 'b>) -> TaggedExpr {
-        scoped_compiler.compile_atom_expr(self)
+        scoped_compiler.compile_pure_expr(self)
     }
 }

@@ -193,7 +193,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
 
     fn normalize_arg(&mut self, arg: type_checker::Arg) -> Arg {
         match arg {
-            type_checker::Arg::Expr(expr) => self.normalize_atom_expr(expr).into(),
+            type_checker::Arg::Expr(expr) => self.normalize_pure_expr(expr).into(),
             type_checker::Arg::OutVar(out_var_arg) => out_var_arg.into(),
             type_checker::Arg::Label(label_arg) => LabelArg {
                 label: label_arg.label.value,
@@ -354,15 +354,15 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         }
     }
 
-    fn normalize_atom_expr(&mut self, expr: type_checker::Expr) -> AtomExpr {
+    fn normalize_pure_expr(&mut self, expr: type_checker::Expr) -> PureExpr {
         match self.normalize_expr(expr).try_into() {
-            Ok(atom_expr) => match atom_expr {
+            Ok(pure_expr) => match pure_expr {
                 // If the variable is mutable, we need to save its value at the
                 // correct point in evaluation.
-                AtomExpr::Var(var_expr) if self.is_mut_var(var_expr.var) => {
+                PureExpr::Var(var_expr) if self.is_mut_var(var_expr.var) => {
                     self.push_tmp_expr(var_expr.into()).into()
                 }
-                atom_expr @ _ => atom_expr,
+                pure_expr @ _ => pure_expr,
             },
             Err(expr) => {
                 debug_assert_ne!(expr.type_(), BuiltInType::Unit.into());
@@ -529,8 +529,8 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         let mut stmts = Vec::new();
         let mut scoped_normalizer = self.recurse(&mut stmts);
 
-        let lhs = scoped_normalizer.normalize_atom_expr(compare_expr.lhs);
-        let rhs = scoped_normalizer.normalize_atom_expr(compare_expr.rhs);
+        let lhs = scoped_normalizer.normalize_pure_expr(compare_expr.lhs);
+        let rhs = scoped_normalizer.normalize_pure_expr(compare_expr.rhs);
 
         let value = CompareExpr {
             kind: compare_expr.kind,
