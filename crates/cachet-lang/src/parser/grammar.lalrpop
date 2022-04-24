@@ -256,7 +256,7 @@ PrecExpr: PrecExpr = {
     "(" <expr:Expr> ")" => PrecExpr::grouped(expr),
 
     #[precedence(level = "0")]
-    <block:KindedBlock> => Expr::from(block).into(),
+    "(" <block:KindedBlock> ")" => Expr::from(block).into(),
 
     #[precedence(level = "0")]
     <literal:Literal> => Expr::from(literal).into(),
@@ -370,7 +370,7 @@ NumericCompareKind: NumericCompareKind = {
 
 AddArithKind: ArithKind = {
   "+" => ArithKind::Add,
-//  "-" => ArithKind::Sub,
+  "-" => ArithKind::Sub,
 }
 
 MulArithKind: ArithKind = {
