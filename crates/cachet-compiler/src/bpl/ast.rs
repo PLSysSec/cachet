@@ -1082,13 +1082,10 @@ pub struct CompareExpr {
 
 impl Display for CompareExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} {} {}",
-            MaybeGrouped(&self.lhs),
-            self.kind,
-            MaybeGrouped(&self.rhs)
-        )
+        let lhs = MaybeGrouped(&self.lhs);
+        let rhs = MaybeGrouped(&self.rhs);
+
+        write!(f, "{} {} {}", lhs, self.kind, rhs)
     }
 }
 
