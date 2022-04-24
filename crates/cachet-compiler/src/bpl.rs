@@ -2009,13 +2009,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let rhs = self.compile_pure_expr(&arith_expr.rhs);
 
         let type_ident = self.get_type_ident(arith_expr.type_()).into();
-
-        let selector = match arith_expr.kind {
-            ArithKind::Add => TypeMemberFnSelector::Add,
-            ArithKind::Sub => TypeMemberFnSelector::Sub,
-            ArithKind::Mul => TypeMemberFnSelector::Mul,
-            ArithKind::Div => TypeMemberFnSelector::Div,
-        };
+        let selector = arith_expr.kind.into();
 
         CallExpr {
             target: TypeMemberFnIdent {

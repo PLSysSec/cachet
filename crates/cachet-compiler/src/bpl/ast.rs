@@ -275,23 +275,9 @@ pub struct TypeMemberFnIdent {
 pub enum TypeMemberFnSelector {
     #[display(fmt = "negate")]
     Negate,
-    #[display(fmt = "LessThanOrEqual")]
-    LessThanOrEqual,
-    #[display(fmt = "GreaterThanOrEqual")]
-    GreaterThanOrEqual,
-    #[display(fmt = "LessThan")]
-    LessThan,
-    #[display(fmt = "GreaterThan")]
-    GreaterThan,
-    #[display(fmt = "Add")]
-    Add,
-    #[display(fmt = "Sub")]
-    Sub,
-    #[display(fmt = "Mul")]
-    Mul,
-    #[display(fmt = "Div")]
-    Div,
     #[display(fmt = "{}", _0)]
+    #[from(types(ArithKind))]
+    Arith(ArithTypeMemberFnSelector),
     #[from]
     Cast(CastTypeMemberFnSelector),
     #[display(fmt = "{}", _0)]
@@ -303,6 +289,26 @@ pub enum TypeMemberFnSelector {
     #[display(fmt = "{}", _0)]
     #[from]
     Field(FieldTypeMemberFnSelector),
+}
+
+#[derive(Clone, Copy, Debug, From)]
+pub struct ArithTypeMemberFnSelector {
+    pub kind: ArithKind,
+}
+
+impl Display for ArithTypeMemberFnSelector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self.kind {
+                ArithKind::Add => "add",
+                ArithKind::Sub => "sub",
+                ArithKind::Mul => "mul",
+                ArithKind::Div => "div",
+            },
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

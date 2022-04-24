@@ -59,13 +59,14 @@ function cpp_test() {
 }
 
 function verifier_test() {
+    corral_exe="${repo_dir}/vendor/corral/source/Corral/bin/Release/net5.0/corral"
     cachet_file=$1
     build $cachet_file
     if [ $? -ne 0 ]; then
         return 1
     fi
 
-    OUT=$(corral "/main:#test" /trackAllVars /recursionBound:4 $TMP_BPL 2>&1)
+    OUT=$($corral_exe "/main:#test" /trackAllVars /recursionBound:4 $TMP_BPL 2>&1)
     echo -e "$OUT"
 
     if [[ "$OUT" != *"potential bug"* ]]; then
