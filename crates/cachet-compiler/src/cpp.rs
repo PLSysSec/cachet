@@ -1362,7 +1362,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_arith_expr(&self, arith_expr: &normalizer::ArithExpr) -> TaggedExpr<ArithExpr> {
+    fn compile_arith_expr(&self, arith_expr: &normalizer::ArithExpr) -> TaggedExpr<CallExpr> {
         let lhs_type = arith_expr.lhs.type_();
         let rhs_type = arith_expr.rhs.type_();
         debug_assert_eq!(lhs_type, rhs_type);
@@ -1371,10 +1371,13 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let rhs = self.use_expr(self.compile_pure_expr(&arith_expr.rhs), ExprTag::Ref.into());
 
         TaggedExpr {
-            expr: ArithExpr {
-                kind: arith_expr.kind,
-                lhs,
-                rhs,
+            expr: CallExpr {
+                target: TypeMemberFnPath {
+                    parent: self.get_type_ident(lhs_type),
+                    ident: ArithTypeMemberFnIdent::from(arith_expr.kind).into(),
+                }
+                .into(),
+                args: vec![lhs, rhs],
             },
             type_: arith_expr.type_(),
             tags: ExprTag::Ref | ExprTag::Val,

@@ -332,6 +332,7 @@ pub enum TypeMemberFnIdent {
     Cast(CastTypeMemberFnIdent),
     Compare(CompareTypeMemberFnIdent),
     Variant(VariantTypeMemberFnIdent),
+    Arith(ArithTypeMemberFnIdent),
 }
 
 impl TypeMemberFnIdent {
@@ -344,6 +345,7 @@ impl TypeMemberFnIdent {
             TypeMemberFnIdent::Cast(_) => CastTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Compare(_) => CompareTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Variant(_) => VariantTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
+            TypeMemberFnIdent::Arith(_) => ArithTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
         }
     }
 }
@@ -405,6 +407,30 @@ impl Display for CompareTypeMemberFnIdent {
                     NumericCompareKind::Lt => "Lt",
                     NumericCompareKind::Gt => "Gt",
                 },
+            }
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, From)]
+pub struct ArithTypeMemberFnIdent {
+    pub kind: ArithKind,
+}
+
+impl ArithTypeMemberFnIdent {
+    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
+}
+
+impl Display for ArithTypeMemberFnIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "Arith{}",
+            match self.kind {
+                ArithKind::Add => "Add",
+                ArithKind::Sub => "Sub",
+                ArithKind::Mul => "Mul",
+                ArithKind::Div => "Div",
             }
         )
     }
@@ -898,8 +924,6 @@ pub enum Expr {
     Assign(Box<AssignExpr>),
     #[from]
     Comma(Box<CommaExpr>),
-    #[from]
-    Arith(Box<ArithExpr>),
 }
 
 box_from!(TemplateExpr => Expr);
@@ -911,7 +935,6 @@ box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 box_from!(CommaExpr => Expr);
 box_from!(ArrowMemberExpr => Expr);
-box_from!(ArithExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -941,7 +964,7 @@ impl Display for MaybeGrouped<'_> {
             | Expr::ArrowMember(_)
             | Expr::Call(_)
             | Expr::Comma(_) => false,
-            Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) | Expr::Arith(_) => true,
+            Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) => true,
             Expr::Cast(cast_expr) => match cast_expr.kind {
                 CastStyle::Functional(_) => false,
                 CastStyle::C => true,
@@ -1100,19 +1123,6 @@ pub struct AssignExpr {
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "({}, {})", "MaybeGrouped(&self.lhs)", "MaybeGrouped(&self.rhs)")]
 pub struct CommaExpr {
-    pub lhs: Expr,
-    pub rhs: Expr,
-}
-
-#[derive(Clone, Debug, Display)]
-#[display(
-    fmt = "{} {} {}",
-    "MaybeGrouped(&self.lhs)",
-    kind,
-    "MaybeGrouped(&self.rhs)"
-)]
-pub struct ArithExpr {
-    pub kind: ArithKind,
     pub lhs: Expr,
     pub rhs: Expr,
 }
