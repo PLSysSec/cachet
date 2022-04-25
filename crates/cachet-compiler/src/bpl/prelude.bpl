@@ -14,7 +14,9 @@ axiom (forall x: #Unit, y: #Unit :: x == y);
 
 type #Bool = bool;
 
+type #UInt16 = bv16;
 type #Int32 = bv32;
+type #Int64 = bv64;
 
 function {:bvbuiltin "bvneg"} #Int32^negate(n: #Int32): #Int32;
 function {:bvbuiltin "bvadd"} #Int32^add(x: #Int32, y: #Int32): #Int32;
