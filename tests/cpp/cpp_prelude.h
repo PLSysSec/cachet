@@ -95,6 +95,8 @@ using Type_Unit = PrimitiveType<std::monostate>;
 using Type_Bool = NumericType<bool>;
 using Type_Int32 = NumericType<int32_t>;
 using Type_Double = NumericType<double>;
+using Type_Int64 = NumericType<int64_t>;
+using Type_UInt16 = NumericType<uint16_t>;
 
 inline Type_Unit::Ref Var_unit() {
   return std::monostate();
