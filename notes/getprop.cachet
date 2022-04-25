@@ -217,7 +217,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let objectHasShape = Object::shapeOf(object) == shape;
 
-        MASM::setInt32(scratchReg, 0);
+        MASM::setInt32(scratchReg, 0_i32);
 
         if condition == Condition::Equal {
             if objectHasShape {
@@ -487,12 +487,12 @@ ir CacheStub emits CacheIR {
 
         assume Class::isNativeObject(Shape::classOf(shape));
 
-        assume Shape::hasFixedSlot(shape, 0);
-        assume Shape::hasFixedSlot(shape, 1);
-        assume Shape::hasFixedSlot(shape, 2);
+        assume Shape::hasFixedSlot(shape, 0_i32);
+        assume Shape::hasFixedSlot(shape, 1_i32);
+        assume Shape::hasFixedSlot(shape, 2_i32);
 
         let slot = CacheIR::readInt32Field(slotField);
-        assume slot == 1;
+        assume slot == 1_i32;
 
         emit CacheIR::GuardToObject(valueId, objectId);
         emit CacheIR::GuardShape(objectId, shapeField);
