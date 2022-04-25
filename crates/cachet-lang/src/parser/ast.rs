@@ -292,6 +292,8 @@ impl From<Spanned<&Path>> for Expr {
 #[derive(Clone, Copy, Debug)]
 pub enum Literal {
     Int32(i32),
+    Int64(i64),
+    UInt16(u16),
 }
 
 #[derive(Clone, Debug)]

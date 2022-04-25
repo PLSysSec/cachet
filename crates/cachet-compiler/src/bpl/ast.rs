@@ -996,6 +996,10 @@ pub enum Literal {
     Int(usize),
     #[display(fmt = "{:?}bv32", _0)]
     Bv32(u32),
+    #[display(fmt = "{:?}bv64", _0)]
+    Bv64(u64),
+    #[display(fmt = "{:?}bv16", _0)]
+    Bv16(u16),
 }
 
 deref_from!(&bool => Literal);

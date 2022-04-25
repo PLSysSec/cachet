@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 
 use crate::ast::ident::{Ident, Path};
 
-pub const NUM_BUILT_IN_TYPES: usize = 4;
+pub const NUM_BUILT_IN_TYPES: usize = 6;
 pub const NUM_BUILT_IN_VARS: usize = 3;
 
 // TODO(spinda): It would be awesome if we could replace this with something
@@ -19,11 +19,15 @@ lazy_static! {
     pub static ref UNIT_TYPE_IDENT: Ident = Ident::from("Unit");
     pub static ref BOOL_TYPE_IDENT: Ident = Ident::from("Bool");
     pub static ref INT32_TYPE_IDENT: Ident = Ident::from("Int32");
+    pub static ref INT64_TYPE_IDENT: Ident = Ident::from("Int64");
+    pub static ref UINT16_TYPE_IDENT: Ident = Ident::from("UInt16");
     pub static ref DOUBLE_TYPE_IDENT: Ident = Ident::from("Double");
     pub static ref BUILT_IN_TYPE_IDENTS: BuiltInTypeMap<Ident> = [
         *UNIT_TYPE_IDENT,
         *BOOL_TYPE_IDENT,
         *INT32_TYPE_IDENT,
+        *INT64_TYPE_IDENT,
+        *UINT16_TYPE_IDENT,
         *DOUBLE_TYPE_IDENT,
     ];
 }
@@ -32,11 +36,15 @@ lazy_static! {
     pub static ref UNIT_TYPE_PATH: Path = (*UNIT_TYPE_IDENT).into();
     pub static ref BOOL_TYPE_PATH: Path = (*BOOL_TYPE_IDENT).into();
     pub static ref INT32_TYPE_PATH: Path = (*INT32_TYPE_IDENT).into();
+    pub static ref INT64_TYPE_PATH: Path = (*INT64_TYPE_IDENT).into();
+    pub static ref UINT16_TYPE_PATH: Path = (*UINT16_TYPE_IDENT).into();
     pub static ref DOUBLE_TYPE_PATH: Path = (*DOUBLE_TYPE_IDENT).into();
     pub static ref BUILT_IN_TYPE_PATHS: BuiltInTypeMap<Path> = [
         *UNIT_TYPE_PATH,
         *BOOL_TYPE_PATH,
         *INT32_TYPE_PATH,
+        *INT64_TYPE_PATH,
+        *UINT16_TYPE_PATH,
         *DOUBLE_TYPE_PATH,
     ];
 }
@@ -63,6 +71,8 @@ pub enum BuiltInType {
     Unit,
     Bool,
     Int32,
+    Int64,
+    UInt16,
     Double,
 }
 
@@ -70,6 +80,8 @@ pub const BUILT_IN_TYPES: BuiltInTypeMap<BuiltInType> = [
     BuiltInType::Unit,
     BuiltInType::Bool,
     BuiltInType::Int32,
+    BuiltInType::Int64,
+    BuiltInType::UInt16,
     BuiltInType::Double,
 ];
 
@@ -91,7 +103,9 @@ impl BuiltInType {
             BuiltInType::Unit => 0,
             BuiltInType::Bool => 1,
             BuiltInType::Int32 => 2,
-            BuiltInType::Double => 3,
+            BuiltInType::Int64 => 3,
+            BuiltInType::UInt16 => 4,
+            BuiltInType::Double => 5,
         }
     }
 
@@ -118,14 +132,31 @@ impl BuiltInType {
     pub const fn supertype(self) -> Option<BuiltInType> {
         match self {
             BuiltInType::Bool => Some(BuiltInType::Int32),
-            BuiltInType::Unit | BuiltInType::Int32 | BuiltInType::Double => None,
+            BuiltInType::Unit
+            | BuiltInType::Int64
+            | BuiltInType::Int32
+            | BuiltInType::UInt16
+            | BuiltInType::Double => None,
         }
     }
 
     pub const fn is_numeric(self) -> bool {
         match self {
-            BuiltInType::Bool | BuiltInType::Int32 | BuiltInType::Double => true,
+            BuiltInType::Bool
+            | BuiltInType::Int32
+            | BuiltInType::Int64
+            | BuiltInType::UInt16
+            | BuiltInType::Double => true,
             BuiltInType::Unit => false,
+        }
+    }
+
+    pub const fn is_signed_numeric(self) -> bool {
+        match self {
+            BuiltInType::Bool | BuiltInType::Int32 | BuiltInType::Int64 | BuiltInType::Double => {
+                true
+            }
+            BuiltInType::UInt16 | BuiltInType::Unit => false,
         }
     }
 }

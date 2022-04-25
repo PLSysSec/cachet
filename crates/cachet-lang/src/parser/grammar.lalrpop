@@ -279,6 +279,9 @@ PrecExpr: PrecExpr = {
             (NegateKind::Arithmetic, Expr::Literal(Literal::Int32(n))) => {
                 Expr::from(Literal::Int32(-n))
             }
+            (NegateKind::Arithmetic, Expr::Literal(Literal::Int64(n))) => {
+                Expr::from(Literal::Int64(-n))
+            }
             (_, expr) => {
                 Expr::from(NegateExpr {
                     kind,
@@ -345,12 +348,25 @@ NumericCompareKind: NumericCompareKind = {
     ">" => NumericCompareKind::Gt,
 };
 
-Literal: Literal =
-    <n:Int32Literal> => Literal::Int32(n);
+Literal: Literal = {
+    <n:Int32Literal> => Literal::Int32(n),
+    <n:Int64Literal> => Literal::Int64(n),
+    <n:UInt16Literal> => Literal::UInt16(n),
+};
 
 Int32Literal: i32 =
-    <digits:Spanned<r"[0-9]+">> =>? i32::from_str(digits.value).map_err(|error| ParseError::User {
+    <digits:Spanned<r"[0-9]+_i32">> =>? i32::from_str(&digits.value[..digits.value.len() - 4]).map_err(|error| ParseError::User {
         error: Spanned::new(digits.span, "number too large to fit in Int32"),
+    });
+
+Int64Literal: i64 =
+    <digits:Spanned<r"[0-9]+_i64">> =>? i64::from_str(&digits.value[..digits.value.len() - 4]).map_err(|error| ParseError::User {
+        error: Spanned::new(digits.span, "number too large to fit in Int64"),
+    });
+
+UInt16Literal: u16 =
+    <digits:Spanned<r"[0-9]+_u16">> =>? u16::from_str(&digits.value[..digits.value.len() - 4]).map_err(|error| ParseError::User {
+        error: Spanned::new(digits.span, "number too large to fit in UInt16"),
     });
 
 Ident: Ident =

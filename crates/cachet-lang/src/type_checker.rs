@@ -344,6 +344,13 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
+    fn is_signed_numeric_type(&self, type_index: TypeIndex) -> bool {
+        // Consider the internal "unknown" type to be numeric for the purposes
+        // of the type-checking phase.
+
+        type_index.is_signed_numeric() || type_index == self.unknown_type()
+    }
+
     fn is_numeric_type(&self, type_index: TypeIndex) -> bool {
         // Consider the internal "unknown" type to be numeric for the purposes
         // of the type-checking phase.
@@ -1047,7 +1054,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         let expr = match negate_expr.kind.value {
             NegateKind::Arithmetic => {
-                if !self.is_numeric_type(expr_type_index) {
+                if !self.is_signed_numeric_type(expr_type_index) {
                     self.type_checker
                         .errors
                         .push(TypeCheckError::NumericOperatorTypeMismatch {

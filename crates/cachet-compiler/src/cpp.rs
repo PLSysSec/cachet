@@ -1138,6 +1138,16 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 type_: BuiltInType::Int32.into(),
                 tags: ExprTag::Val.into(),
             },
+            normalizer::Literal::Int64(n) => TaggedExpr {
+                expr: Literal::Int64(*n),
+                type_: BuiltInType::Int64.into(),
+                tags: ExprTag::Val.into(),
+            },
+            normalizer::Literal::UInt16(n) => TaggedExpr {
+                expr: Literal::UInt16(*n),
+                type_: BuiltInType::UInt16.into(),
+                tags: ExprTag::Val.into(),
+            },
         }
     }
 

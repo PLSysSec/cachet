@@ -47,6 +47,13 @@ impl TypeIndex {
             Self::Enum(_) | Self::Struct(_) => false,
         }
     }
+
+    pub fn is_signed_numeric(&self) -> bool {
+        match self {
+            Self::BuiltIn(built_in_type) => built_in_type.is_signed_numeric(),
+            Self::Enum(_) | Self::Struct(_) => false,
+        }
+    }
 }
 
 deref_from!(&BuiltInType => TypeIndex);
@@ -170,6 +177,8 @@ impl Typed for Literal {
     fn type_(&self) -> TypeIndex {
         match self {
             Self::Int32(_) => BuiltInType::Int32.into(),
+            Self::Int64(_) => BuiltInType::Int64.into(),
+            Self::UInt16(_) => BuiltInType::UInt16.into(),
         }
     }
 }
