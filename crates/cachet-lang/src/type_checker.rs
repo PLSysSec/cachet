@@ -1144,20 +1144,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let lhs_type_index = lhs.type_();
         let rhs_type_index = rhs.type_();
 
-        let (lhs, rhs) = if let Some(rhs_upcast_route) =
-            self.try_match_types(lhs_type_index, rhs_type_index)
-        {
-            (
-                lhs,
-                build_cast_chain(CastKind::Upcast, rhs, rhs_upcast_route.into_iter()),
-            )
-        } else if let Some(lhs_upcast_route) = self.try_match_types(rhs_type_index, lhs_type_index)
-        {
-            (
-                build_cast_chain(CastKind::Upcast, lhs, lhs_upcast_route.into_iter()),
-                rhs,
-            )
-        } else {
+        if lhs_type_index != rhs_type_index {
             self.type_checker
                 .errors
                 .push(TypeCheckError::BinaryOperatorTypeMismatch {
@@ -1167,8 +1154,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     rhs_span: arith_expr.rhs.span,
                     rhs_type: self.get_type_ident(rhs_type_index),
                 });
-            (lhs, rhs)
-        };
+        }
 
         if !self.is_numeric_type(lhs_type_index) {
             self.type_checker

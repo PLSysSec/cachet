@@ -425,7 +425,7 @@ impl Display for ArithTypeMemberFnIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "Arith{}",
+            "{}",
             match self.kind {
                 ArithKind::Add => "Add",
                 ArithKind::Sub => "Sub",
