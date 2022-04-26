@@ -67,9 +67,11 @@ function verifier_test() {
     fi
 
     OUT=$($corral_exe "/main:#test" /trackAllVars /recursionBound:4 $TMP_BPL 2>&1)
+    EXIT_CODE=$?
+
     echo -e "$OUT"
 
-    if [[ "$OUT" != *"potential bug"* ]]; then
+    if [[ $EXIT_CODE -eq 0 && "$OUT" != *"potential bug"* ]]; then
         return 0
     fi
 
@@ -131,6 +133,7 @@ for f in $(ls -d $repo_dir/tests/**/*.cachet); do
     fi
 done
 
+rm -rf "$INCLUDE_DIR"
 echo ""
 
 FAILED_COUNT=${#FAILED_TESTS[@]}
