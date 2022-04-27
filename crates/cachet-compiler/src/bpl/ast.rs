@@ -1024,6 +1024,35 @@ pub enum Literal {
     Bv64(u64),
     #[display(fmt = "{:?}bv16", _0)]
     Bv16(u16),
+    #[display(fmt = "{}", "fmt_double(*_0)")]
+    Float64(f64),
+}
+
+fn fmt_double(f: f64) -> String {
+    let sig_size = 53;
+    let exp_size = 11;
+
+    if f.is_nan() {
+        // Don't forward the NaN code
+        format!("0NaN{sig_size}e{exp_size}")
+    } else if f == f64::INFINITY {
+        format!("0+oo{sig_size}e{exp_size}")
+    } else if f == f64::NEG_INFINITY {
+        format!("0-oo{sig_size}e{exp_size}")
+    } else {
+        let bits: u64 = f.to_bits();
+        let sign = if bits >> 63 == 0 { "" } else { "-" };
+        let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
+        let mantissa = if exponent == 0 {
+            (bits & 0xfffffffffffff) << 1
+        } else {
+            (bits & 0xfffffffffffff) | 0x10000000000000
+        };
+        // Exponent bias + mantissa shift
+        exponent -= 1023 + 52;
+
+        format!("{sign}0x{mantissa:x}.0e{exponent}f53e11")
+    }
 }
 
 deref_from!(&bool => Literal);

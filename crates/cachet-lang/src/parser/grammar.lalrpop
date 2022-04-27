@@ -382,11 +382,17 @@ Literal: Literal = {
     <n:Int32Literal> => Literal::Int32(n),
     <n:Int64Literal> => Literal::Int64(n),
     <n:UInt16Literal> => Literal::UInt16(n),
+    <n:DoubleLiteral> => Literal::Double(n),
 };
 
 Int32Literal: i32 =
     <digits:Spanned<r"[0-9]+_i32">> =>? i32::from_str(&digits.value[..digits.value.len() - 4]).map_err(|error| ParseError::User {
         error: Spanned::new(digits.span, "number too large to fit in Int32"),
+    });
+
+DoubleLiteral : f64 =
+    <digits:Spanned<r"[0-9]+.[0-9]+">> =>? f64::from_str(digits.value).map_err(|error| ParseError::User {
+        error: Spanned::new(digits.span, "number is not a valid double"),
     });
 
 Int64Literal: i64 =

@@ -1015,6 +1015,8 @@ pub enum Literal {
     Int64(i64),
     #[display(fmt = "{:?}", _0)]
     UInt16(u16),
+    #[display(fmt = "{:?}", _0)]
+    Double(f64),
 }
 
 #[derive(Clone, Debug)]

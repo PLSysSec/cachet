@@ -2085,6 +2085,7 @@ fn compile_literal(literal: flattener::Literal) -> Literal {
         flattener::Literal::Int32(n) => Literal::Bv32(n as u32),
         flattener::Literal::Int64(n) => Literal::Bv64(n as u64),
         flattener::Literal::UInt16(n) => Literal::Bv16(n),
+        flattener::Literal::Double(n) => Literal::Float64(n),
     }
 }
 

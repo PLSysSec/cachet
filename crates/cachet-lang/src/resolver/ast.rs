@@ -180,6 +180,7 @@ impl Typed for Literal {
             Self::Int32(_) => BuiltInType::Int32.into(),
             Self::Int64(_) => BuiltInType::Int64.into(),
             Self::UInt16(_) => BuiltInType::UInt16.into(),
+            Self::Double(_) => BuiltInType::Double.into(),
         }
     }
 }

@@ -17,6 +17,7 @@ type #Bool = bool;
 type #UInt16 = bv16;
 type #Int32 = bv32;
 type #Int64 = bv64;
+type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/issues/29#issuecomment-231239065
 
 function {:bvbuiltin "bvneg"} #Int32^negate(n: #Int32): #Int32;
 function {:bvbuiltin "bvadd"} #Int32^add(x: #Int32, y: #Int32): #Int32;
@@ -27,6 +28,9 @@ function {:bvbuiltin "bvsle"} #Int32^lte(a: #Int32, y: #Int32): #Bool;
 function {:bvbuiltin "bvsge"} #Int32^gte(a: #Int32, y: #Int32): #Bool;
 function {:bvbuiltin "bvslt"} #Int32^lt(a: #Int32, y: #Int32): #Bool;
 function {:bvbuiltin "bvsgt"} #Int32^gt(a: #Int32, y: #Int32): #Bool;
+
+function {:bvbuiltin "fp.neg"} #Double^negate(n: #Double): #Double;
+function {:bvbuiltin "fp.add RTZ"} #Double^add(x: #Double, y: #Double): #Double;
 
 function {:bvbuiltin "bvneg"} #Int64^negate(n: #Int64): #Int64;
 function {:bvbuiltin "bvadd"} #Int64^add(x: #Int64, y: #Int64): #Int64;
@@ -49,7 +53,6 @@ function {:bvbuiltin "bvsgt"} #UInt16^gt(a: #UInt16, y: #UInt16): #Bool;
 
 // etc; see https://boogie-docs.readthedocs.io/en/latest/LangRef.html#other-operators
 
-type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/issues/29#issuecomment-231239065
 
 type #Map k v = [k]v;
 
