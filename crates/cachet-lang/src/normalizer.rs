@@ -9,7 +9,8 @@ use typed_index_collections::{TiSlice, TiVec};
 
 use crate::type_checker;
 
-use crate::ast::{BuiltInType, BuiltInVar, Ident, Span, Spanned, VarParamKind};
+use crate::ast::{Ident, Span, Spanned, VarParamKind};
+use crate::built_in::{BuiltInType, BuiltInVar};
 
 pub use crate::normalizer::ast::*;
 

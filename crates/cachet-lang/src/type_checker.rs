@@ -13,9 +13,10 @@ use lazy_static::lazy_static;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
-    BlockKind, BuiltInType, BuiltInVar, CastKind, CompareKind, Ident, MaybeSpanned, NegateKind,
-    Path, Span, Spanned, VarParamKind,
+    BlockKind, CastKind, CompareKind, Ident, MaybeSpanned, NegateKind, Path, Span, Spanned,
+    VarParamKind,
 };
+use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::resolver;
 use crate::FrontendError;
 

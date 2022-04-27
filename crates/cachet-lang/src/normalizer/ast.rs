@@ -5,12 +5,10 @@ use std::ops::{Index, IndexMut};
 use derive_more::From;
 use typed_index_collections::TiVec;
 
-use cachet_util::{box_from, deref_from, deref_index, field_index};
-
 use crate::ast::{
-    ArithKind, BlockKind, BuiltInType, BuiltInVar, CastKind, CheckKind, CompareKind, NegateKind,
-    Path, Spanned,
+    ArithKind, BlockKind, CastKind, CheckKind, CompareKind, NegateKind, Path, Spanned,
 };
+use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::type_checker;
 pub use crate::type_checker::{
     BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FieldIndex,
@@ -20,6 +18,7 @@ pub use crate::type_checker::{
     StructField, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam,
     VarParamIndex, VariantIndex,
 };
+use cachet_util::{box_from, deref_from, deref_index, field_index};
 
 #[derive(Clone, Debug)]
 pub struct Env<B = ()> {

@@ -13,8 +13,9 @@ use typed_index_collections::TiSlice;
 use void::unreachable;
 
 use cachet_lang::ast::{
-    ArithKind, BuiltInVar, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path, VarParamKind,
+    ArithKind, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path, VarParamKind,
 };
+use cachet_lang::built_in::BuiltInVar;
 use cachet_lang::flattener::{self, Typed};
 use cachet_util::MaybeOwned;
 

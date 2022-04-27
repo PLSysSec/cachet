@@ -6,7 +6,8 @@ use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use typed_index_collections::TiSlice;
 
-use crate::ast::{BuiltInType, Span, Spanned};
+use crate::ast::{Span, Spanned};
+use crate::built_in::BuiltInType;
 
 use crate::type_checker::ast::{
     CallableIndex, EnumIndex, EnumItem, FnIndex, OpIndex, StructIndex, StructItem, TypeIndex,
