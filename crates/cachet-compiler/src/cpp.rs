@@ -123,7 +123,7 @@ impl From<normalizer::IrIndex> for IrItemBucketIndex {
 
 #[derive(Clone)]
 struct ItemBuckets {
-    built_in_type_namespace_items: [NamespaceItem; BuiltInType::ALL.len()],
+    built_in_type_namespace_items: [NamespaceItem; BuiltInType::COUNT],
     enum_namespace_items: TiVec<normalizer::EnumIndex, NamespaceItem>,
     struct_namespace_items: TiVec<normalizer::StructIndex, NamespaceItem>,
     ir_item_buckets: TiVec<normalizer::IrIndex, IrItemBuckets>,
