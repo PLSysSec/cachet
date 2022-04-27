@@ -10,7 +10,8 @@ use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
-use cachet_lang::ast::{BuiltInType, CastKind, Ident, Path, VarParamKind};
+use cachet_lang::ast::{CastKind, Ident, Path, VarParamKind};
+use cachet_lang::built_in::BuiltInType;
 use cachet_lang::normalizer::{self, Typed};
 
 use crate::cpp::ast::*;
