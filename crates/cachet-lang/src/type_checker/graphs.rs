@@ -1,7 +1,5 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use std::collections::HashMap;
-
 use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use typed_index_collections::TiSlice;
