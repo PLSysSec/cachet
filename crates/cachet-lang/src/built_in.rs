@@ -1,7 +1,7 @@
 use crate::ast::ident::{Ident, Path};
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::mem::transmute;
-use lazy_static::lazy_static;
 
 macro_rules! ordered_ident_enum {
     ($t:ident { $($i:ident = $l:literal),+ }) => {
@@ -75,7 +75,7 @@ impl BuiltInType {
     }
 
     pub fn from_index(idx: usize) -> Option<BuiltInType> {
-        (idx < Self::ALL.len()).then(|| unsafe { std::mem::transmute(idx) })
+        (idx < Self::COUNT).then(|| unsafe { std::mem::transmute(idx) })
     }
 
     pub const fn supertype(self) -> Option<BuiltInType> {

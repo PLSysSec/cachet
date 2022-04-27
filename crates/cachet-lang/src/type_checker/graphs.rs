@@ -23,7 +23,7 @@ impl TypeGraph {
     ) -> Self {
         let num_enum_items = enum_items.len();
         let num_struct_items = struct_items.len();
-        let num_built_in_types = BuiltInType::ALL.len();
+        let num_built_in_types = BuiltInType::COUNT;
         let num_types = num_built_in_types + num_enum_items + num_struct_items;
 
         let mut inner = DiGraph::with_capacity(num_types, 0);
@@ -106,7 +106,7 @@ impl<'a> TypeSccs<'a> {
             return built_in.into();
         }
 
-        node_index -= BuiltInType::ALL.len();
+        node_index -= BuiltInType::COUNT;
 
         if node_index < self.num_enum_items {
             return EnumIndex::from(node_index).into();

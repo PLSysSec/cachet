@@ -169,7 +169,7 @@ struct ItemCatalog {
 impl ItemCatalog {
     fn new() -> Self {
         let mut global_registry =
-            GlobalRegistry::with_capacity(BuiltInType::ALL.len() + BuiltInVar::ALL.len());
+            GlobalRegistry::with_capacity(BuiltInType::COUNT + BuiltInVar::COUNT);
 
         for built_in_type in BuiltInType::ALL {
             global_registry
