@@ -4,7 +4,6 @@ use derive_more::{Display, From};
 
 pub use crate::ast::ident::*;
 pub use crate::ast::span::*;
-use crate::built_in::*;
 
 pub mod ident;
 mod span;

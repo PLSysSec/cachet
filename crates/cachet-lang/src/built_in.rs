@@ -5,21 +5,21 @@ macro_rules! count {
     ( $x:ident $($xs:ident)* ) => (1usize + count!($($xs)*));
 }
 
-macro_rules! built_in_types {
-    ($($i:ident),+) => {
+macro_rules! ordered_ident_enum {
+    ($t:ident { $($i:ident = $l:literal),+ }) => {
         #[repr(usize)]
         #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-        pub enum BuiltInType {
+        pub enum $t {
             $($i),+
         }
 
-        impl BuiltInType {
+        impl $t {
             pub const ALL: [Self; count!($($i)*)] = [$(Self::$i),*];
 
             pub fn ident(self) -> Ident {
                 match self {
                     $(
-                        Self::$i => Ident::from(stringify!($i))
+                        Self::$i => Ident::from($l)
                     ),+
                 }
             }
@@ -27,7 +27,7 @@ macro_rules! built_in_types {
             pub fn from_ident(ident: Ident) -> Option<Self> {
                 match ident.as_ref() {
                     $(
-                        stringify!($i) => Some(Self::$i)
+                        $l => Some(Self::$i)
                     ),+,
                     _ => None
                 }
@@ -36,13 +36,15 @@ macro_rules! built_in_types {
     }
 }
 
-built_in_types! {
-    Unit,
-    Bool,
-    Int32,
-    Int64,
-    UInt16,
-    Double
+ordered_ident_enum! {
+    BuiltInType {
+        Unit = "Unit",
+        Bool = "Bool",
+        Int32 = "Int32",
+        Int64 = "Int64",
+        UInt16 = "UInt16",
+        Double = "Double"
+    }
 }
 
 impl BuiltInType {
@@ -98,40 +100,12 @@ impl BuiltInType {
     }
 }
 
-macro_rules! built_in_vars{
-    ($($i:ident = $l:literal),+) => {
-        #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-        pub enum BuiltInVar {
-            $($i),*
-        }
-
-        impl BuiltInVar {
-            pub const ALL: [Self; count!($($i)*)] = [$(Self::$i),*];
-
-            pub fn ident(self) -> Ident {
-                match self {
-                    $(
-                        BuiltInVar::$i => Ident::from($l)
-                    ),+
-                }
-            }
-
-            pub fn from_ident(ident: Ident) -> Option<BuiltInVar> {
-                match ident.as_ref() {
-                    $(
-                        $l => Some(BuiltInVar::$i)
-                    ),+,
-                    _ => None
-                }
-            }
-        }
+ordered_ident_enum! {
+    BuiltInVar {
+        Unit = "unit",
+        True = "true",
+        False = "false"
     }
-}
-
-built_in_vars! {
-    Unit = "unit",
-    True = "true",
-    False = "false"
 }
 
 impl BuiltInVar {
