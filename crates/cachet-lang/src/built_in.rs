@@ -1,9 +1,7 @@
 use crate::ast::ident::{Ident, Path};
-
-macro_rules! count {
-    () => (0usize);
-    ( $x:ident $($xs:ident)* ) => (1usize + count!($($xs)*));
-}
+use std::collections::HashMap;
+use std::mem::transmute;
+use lazy_static::lazy_static;
 
 macro_rules! ordered_ident_enum {
     ($t:ident { $($i:ident = $l:literal),+ }) => {
@@ -14,23 +12,35 @@ macro_rules! ordered_ident_enum {
         }
 
         impl $t {
-            pub const ALL: [Self; count!($($i)*)] = [$(Self::$i),*];
+            pub const ALL: [Self;  [$(Self::$i),*].len()] = [$(Self::$i),*];
+            pub const COUNT: usize = Self::ALL.len();
+
+            fn idents() -> &'static [Ident] {
+                lazy_static! {
+                    static ref IDENTS: [Ident; $t::COUNT] = {
+                        [$($l.into()),*]
+                    };
+                }
+
+                return &*IDENTS;
+            }
+
+            fn ident_reverse_map() -> &'static HashMap<Ident, $t> {
+                lazy_static! {
+                    static ref IDENTS: HashMap<Ident, $t> = {
+                        $t::idents().iter().enumerate().map(|(i, ident)| (*ident, unsafe {transmute(i)})).collect()
+                    };
+                }
+
+                return &*IDENTS;
+            }
 
             pub fn ident(self) -> Ident {
-                match self {
-                    $(
-                        Self::$i => Ident::from($l)
-                    ),+
-                }
+                Self::idents()[self as usize]
             }
 
             pub fn from_ident(ident: Ident) -> Option<Self> {
-                match ident.as_ref() {
-                    $(
-                        $l => Some(Self::$i)
-                    ),+,
-                    _ => None
-                }
+                Self::ident_reverse_map().get(&ident).cloned()
             }
         }
     }
