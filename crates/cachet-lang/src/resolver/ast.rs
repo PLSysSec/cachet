@@ -11,9 +11,10 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_index};
 
 use crate::ast::{
-    ArithKind, BlockKind, BuiltInType, BuiltInVar, CheckKind, CompareKind, Ident, MaybeSpanned,
-    NegateKind, Path, Spanned, VarParamKind,
+    ArithKind, BlockKind, CheckKind, CompareKind, Ident, MaybeSpanned, NegateKind, Path, Spanned,
+    VarParamKind,
 };
+use crate::built_in::{BuiltInType, BuiltInVar};
 pub use crate::parser::{Literal, VariantIndex};
 
 #[derive(Clone, Debug)]

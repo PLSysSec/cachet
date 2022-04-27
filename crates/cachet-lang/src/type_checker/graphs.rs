@@ -1,10 +1,12 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::collections::HashMap;
+
 use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use typed_index_collections::TiSlice;
 
-use crate::ast::{BuiltInType, Span, Spanned, BUILT_IN_TYPES, NUM_BUILT_IN_TYPES};
+use crate::ast::{BuiltInType, Span, Spanned};
 
 use crate::type_checker::ast::{
     CallableIndex, EnumIndex, EnumItem, FnIndex, OpIndex, StructIndex, StructItem, TypeIndex,
@@ -22,7 +24,8 @@ impl TypeGraph {
     ) -> Self {
         let num_enum_items = enum_items.len();
         let num_struct_items = struct_items.len();
-        let num_types = NUM_BUILT_IN_TYPES + num_enum_items + num_struct_items;
+        let num_built_in_types = BuiltInType::ALL.len();
+        let num_types = num_built_in_types + num_enum_items + num_struct_items;
 
         let mut inner = DiGraph::with_capacity(num_types, 0);
 
@@ -33,9 +36,9 @@ impl TypeGraph {
         let get_built_in_type_node_index =
             |built_in_type: BuiltInType| NodeIndex::new(built_in_type.index());
         let get_enum_node_index =
-            |enum_index: EnumIndex| NodeIndex::new(NUM_BUILT_IN_TYPES + usize::from(enum_index));
+            |enum_index: EnumIndex| NodeIndex::new(num_built_in_types + usize::from(enum_index));
         let get_struct_node_index = |struct_index: StructIndex| {
-            NodeIndex::new(NUM_BUILT_IN_TYPES + num_enum_items + usize::from(struct_index))
+            NodeIndex::new(num_built_in_types + num_enum_items + usize::from(struct_index))
         };
         let get_type_node_index = |type_index| match type_index {
             TypeIndex::BuiltIn(built_in_type) => get_built_in_type_node_index(built_in_type),
@@ -43,7 +46,7 @@ impl TypeGraph {
             TypeIndex::Struct(struct_index) => get_struct_node_index(struct_index),
         };
 
-        for built_in_type in BUILT_IN_TYPES {
+        for built_in_type in BuiltInType::ALL {
             if let Some(supertype) = built_in_type.supertype() {
                 inner.add_edge(
                     get_built_in_type_node_index(supertype),
@@ -100,10 +103,11 @@ impl<'a> TypeSccs<'a> {
     fn get_type_index(&self, node_index: NodeIndex) -> TypeIndex {
         let mut node_index = node_index.index();
 
-        if node_index < NUM_BUILT_IN_TYPES {
-            return BUILT_IN_TYPES[node_index].into();
+        if let Some(built_in) = BuiltInType::from_index(node_index) {
+            return built_in.into();
         }
-        node_index -= NUM_BUILT_IN_TYPES;
+
+        node_index -= BuiltInType::ALL.len();
 
         if node_index < self.num_enum_items {
             return EnumIndex::from(node_index).into();
