@@ -14,7 +14,8 @@ use typed_index_collections::{TiSlice, TiVec};
 
 use cachet_util::{collect_eager, deref_from, MaybeOwned};
 
-use crate::ast::{BuiltInType, BuiltInVar, Ident, Path, Spanned, BUILT_IN_TYPES, BUILT_IN_VARS};
+use crate::ast::{Ident, Path, Spanned};
+use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::parser;
 use crate::util::map_spanned;
 use crate::FrontendError;
@@ -167,10 +168,9 @@ struct ItemCatalog {
 
 impl ItemCatalog {
     fn new() -> Self {
-        let mut global_registry =
-            GlobalRegistry::with_capacity(BUILT_IN_TYPES.len() + BUILT_IN_VARS.len());
+        let mut global_registry = GlobalRegistry::new();
 
-        for built_in_type in BUILT_IN_TYPES {
+        for built_in_type in BuiltInType::ALL {
             global_registry
                 .register(
                     Path::from(built_in_type.ident().to_owned()).into(),
@@ -179,7 +179,7 @@ impl ItemCatalog {
                 .expect("built-in types shouldn't shadow other built-ins");
         }
 
-        for built_in_var in BUILT_IN_VARS {
+        for built_in_var in BuiltInVar::ALL {
             global_registry
                 .register(
                     Path::from(built_in_var.ident().to_owned()).into(),

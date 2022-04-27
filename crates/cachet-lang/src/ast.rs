@@ -2,12 +2,11 @@
 
 use derive_more::{Display, From};
 
-pub use crate::ast::built_ins::*;
 pub use crate::ast::ident::*;
 pub use crate::ast::span::*;
+pub use crate::built_in::*;
 
-mod built_ins;
-mod ident;
+pub mod ident;
 mod span;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

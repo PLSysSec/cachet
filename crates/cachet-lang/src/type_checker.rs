@@ -14,7 +14,7 @@ use typed_index_collections::TiVec;
 
 use crate::ast::{
     BlockKind, BuiltInType, BuiltInVar, CastKind, CompareKind, Ident, MaybeSpanned, NegateKind,
-    Path, Span, Spanned, VarParamKind, UNIT_TYPE_IDENT,
+    Path, Span, Spanned, VarParamKind,
 };
 use crate::resolver;
 use crate::FrontendError;
@@ -803,7 +803,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             if stmt_type != BuiltInType::Unit.into() {
                 let stmt_type_ident = self.get_type_ident(stmt_type);
                 self.errors.push(TypeCheckError::TypeMismatch {
-                    expected_type: *UNIT_TYPE_IDENT,
+                    expected_type: BuiltInVar::Unit.ident(),
                     found_type: stmt_type_ident,
                     span: stmt_span,
                 });

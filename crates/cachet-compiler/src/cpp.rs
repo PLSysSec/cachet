@@ -10,9 +10,7 @@ use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
-use cachet_lang::ast::{
-    BuiltInType, BuiltInTypeMap, CastKind, Ident, Path, VarParamKind, BUILT_IN_TYPES,
-};
+use cachet_lang::ast::{BuiltInType, CastKind, Ident, Path, VarParamKind};
 use cachet_lang::normalizer::{self, Typed};
 
 use crate::cpp::ast::*;
@@ -124,7 +122,7 @@ impl From<normalizer::IrIndex> for IrItemBucketIndex {
 
 #[derive(Clone)]
 struct ItemBuckets {
-    built_in_type_namespace_items: BuiltInTypeMap<NamespaceItem>,
+    built_in_type_namespace_items: [NamespaceItem; BuiltInType::ALL.len()],
     enum_namespace_items: TiVec<normalizer::EnumIndex, NamespaceItem>,
     struct_namespace_items: TiVec<normalizer::StructIndex, NamespaceItem>,
     ir_item_buckets: TiVec<normalizer::IrIndex, IrItemBuckets>,
@@ -146,7 +144,7 @@ impl ItemBuckets {
         };
 
         ItemBuckets {
-            built_in_type_namespace_items: BUILT_IN_TYPES
+            built_in_type_namespace_items: BuiltInType::ALL
                 .map(|built_in_type| init_namespace_item(built_in_type.ident())),
             enum_namespace_items: enum_items
                 .iter()
@@ -183,7 +181,7 @@ impl ItemBuckets {
     }
 
     fn bucket_for_built_in_type(&mut self, built_in_type: BuiltInType) -> &mut Vec<Item> {
-        &mut self.built_in_type_namespace_items[built_in_type].items
+        &mut self.built_in_type_namespace_items[built_in_type.index()].items
     }
 
     fn bucket_for_enum(&mut self, enum_index: normalizer::EnumIndex) -> &mut Vec<Item> {
