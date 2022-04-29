@@ -34,6 +34,14 @@ macro_rules! ordered_ident_enum {
                 return &*IDENTS;
             }
 
+            pub fn index(self) -> usize {
+                self as usize
+            }
+
+            pub fn from_index(idx: usize) -> Option<BuiltInType> {
+                (idx < Self::COUNT).then(|| unsafe { std::mem::transmute(idx) })
+            }
+
             pub fn ident(self) -> Ident {
                 Self::idents()[self as usize]
             }
@@ -69,13 +77,6 @@ impl BuiltInType {
         }
     }
 
-    pub fn index(self) -> usize {
-        self as usize
-    }
-
-    pub fn from_index(idx: usize) -> Option<BuiltInType> {
-        (idx < Self::COUNT).then(|| unsafe { std::mem::transmute(idx) })
-    }
 
     pub const fn supertype(self) -> Option<BuiltInType> {
         match self {
