@@ -1,7 +1,6 @@
-use crate::ast::ident::{Ident, Path};
+use crate::ast::{Ident, Path};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
-use std::mem::transmute;
 
 macro_rules! ordered_ident_enum {
     ($t:ident { $($i:ident = $l:literal),+ }) => {
@@ -28,7 +27,7 @@ macro_rules! ordered_ident_enum {
             fn ident_reverse_map() -> &'static HashMap<Ident, $t> {
                 lazy_static! {
                     static ref IDENTS: HashMap<Ident, $t> = {
-                        $t::idents().iter().enumerate().map(|(i, ident)| (*ident, unsafe {transmute(i)})).collect()
+                        $t::idents().iter().copied().zip($t::ALL.iter().copied()).collect()
                     };
                 }
 
@@ -40,7 +39,7 @@ macro_rules! ordered_ident_enum {
             }
 
             pub fn from_ident(ident: Ident) -> Option<Self> {
-                Self::ident_reverse_map().get(&ident).cloned()
+                Self::ident_reverse_map().get(&ident).copied()
             }
         }
     }

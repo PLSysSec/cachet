@@ -5,7 +5,7 @@ use derive_more::{Display, From};
 pub use crate::ast::ident::*;
 pub use crate::ast::span::*;
 
-pub mod ident;
+mod ident;
 mod span;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
