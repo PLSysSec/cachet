@@ -11,7 +11,8 @@ use derive_more::{Display, From};
 use enum_map::Enum;
 
 use cachet_lang::ast::{
-    ArithKind, CastKind, CheckKind, CompareKind, Ident, NegateKind, NumericCompareKind,
+    ArithKind, BitwiseKind, CastKind, CheckKind, CompareKind, Ident, NegateKind,
+    NumericCompareKind,
 };
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 use cachet_util::{
@@ -278,6 +279,9 @@ pub enum TypeMemberFnSelector {
     #[display(fmt = "{}", _0)]
     #[from(types(ArithKind))]
     Arith(ArithTypeMemberFnSelector),
+    #[display(fmt = "{}", _0)]
+    #[from(types(BitwiseKind))]
+    Bitwise(BitwiseTypeMemberFnSelector),
     #[from]
     Cast(CastTypeMemberFnSelector),
     #[display(fmt = "{}", _0)]
@@ -306,6 +310,26 @@ impl Display for ArithTypeMemberFnSelector {
                 ArithKind::Sub => "sub",
                 ArithKind::Mul => "mul",
                 ArithKind::Div => "div",
+            },
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, From)]
+pub struct BitwiseTypeMemberFnSelector {
+    pub kind: BitwiseKind,
+}
+
+impl Display for BitwiseTypeMemberFnSelector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self.kind {
+                BitwiseKind::Or => "bitor",
+                BitwiseKind::And => "bitand",
+                BitwiseKind::Xor => "bitxor",
+                BitwiseKind::Lsh => "lsh",
             },
         )
     }

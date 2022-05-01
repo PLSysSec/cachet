@@ -358,6 +358,12 @@ impl<'a> TypeChecker<'a> {
         type_index.is_numeric() || type_index == self.unknown_type()
     }
 
+    fn is_integral_type(&self, type_index: TypeIndex) -> bool {
+        // Consider the internal "unknown" type to be integral for the purposes
+        // of the type-checking phase.
+        type_index.is_integral() || type_index == self.unknown_type()
+    }
+
     fn try_match_irs(&self, found_ir_index: IrIndex, expected_ir_index: IrIndex) -> bool {
         return found_ir_index == expected_ir_index
             || found_ir_index == self.unknown_ir
@@ -973,6 +979,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             }
             resolver::Expr::Assign(assign_expr) => self.type_check_assign_expr(assign_expr).into(),
             resolver::Expr::Arith(arith_expr) => self.type_check_arith_expr(arith_expr).into(),
+            resolver::Expr::Bitwise(bitwise_expr) => {
+                self.type_check_bitwise_expr(bitwise_expr).into()
+            }
         }
     }
 
@@ -1179,6 +1188,52 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         ArithExpr {
             kind: arith_expr.kind.value,
+            lhs,
+            rhs,
+        }
+    }
+
+    fn type_check_bitwise_expr(&mut self, bitwise_expr: &resolver::BitwiseExpr) -> BitwiseExpr {
+        let lhs = self.type_check_expr(&bitwise_expr.lhs.value);
+        let rhs = self.type_check_expr(&bitwise_expr.rhs.value);
+
+        let lhs_type_index = lhs.type_();
+        let rhs_type_index = rhs.type_();
+
+        if lhs_type_index != rhs_type_index {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::BinaryOperatorTypeMismatch {
+                    operator_span: bitwise_expr.kind.span,
+                    lhs_span: bitwise_expr.lhs.span,
+                    lhs_type: self.get_type_ident(lhs_type_index),
+                    rhs_span: bitwise_expr.rhs.span,
+                    rhs_type: self.get_type_ident(rhs_type_index),
+                });
+        }
+
+        if !self.is_integral_type(lhs_type_index) {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::NumericOperatorTypeMismatch {
+                    operand_span: bitwise_expr.lhs.span,
+                    operand_type: self.get_type_ident(lhs_type_index),
+                    operator_span: bitwise_expr.kind.span,
+                });
+        }
+
+        if !self.is_integral_type(rhs_type_index) {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::NumericOperatorTypeMismatch {
+                    operand_span: bitwise_expr.rhs.span,
+                    operand_type: self.get_type_ident(rhs_type_index),
+                    operator_span: bitwise_expr.kind.span,
+                });
+        }
+
+        BitwiseExpr {
+            kind: bitwise_expr.kind.value,
             lhs,
             rhs,
         }

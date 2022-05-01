@@ -317,6 +317,48 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "5")]
     #[assoc(side = "left")]
+    <lhs:Spanned<PrecExpr>> <op:Spanned<"<<">>
+    <rhs:Spanned<PrecExpr>> =>
+      Expr::from(BitwiseExpr {
+        kind: Spanned::new(op.span, BitwiseKind::Lsh),
+        lhs: lhs.map(|lhs| lhs.expr),
+        rhs: rhs.map(|rhs| rhs.expr)
+      }).into(),
+
+    #[precedence(level = "6")]
+    #[assoc(side = "left")]
+    <lhs:Spanned<PrecExpr>> <op:Spanned<"&">>
+    <rhs:Spanned<PrecExpr>> =>
+      Expr::from(BitwiseExpr {
+        kind: Spanned::new(op.span, BitwiseKind::And),
+        lhs: lhs.map(|lhs| lhs.expr),
+        rhs: rhs.map(|rhs| rhs.expr)
+      }).into(),
+
+    #[precedence(level = "7")]
+    #[assoc(side = "left")]
+    <lhs:Spanned<PrecExpr>> <op:Spanned<"^">>
+    <rhs:Spanned<PrecExpr>> =>
+      Expr::from(BitwiseExpr {
+        kind: Spanned::new(op.span, BitwiseKind::Xor),
+        lhs: lhs.map(|lhs| lhs.expr),
+        rhs: rhs.map(|rhs| rhs.expr)
+      }).into(),
+
+    #[precedence(level = "8")]
+    #[assoc(side = "left")]
+    <lhs:Spanned<PrecExpr>> <op:Spanned<"|">>
+    <rhs:Spanned<PrecExpr>> =>
+      Expr::from(BitwiseExpr {
+        kind: Spanned::new(op.span, BitwiseKind::Or),
+        lhs: lhs.map(|lhs| lhs.expr),
+        rhs: rhs.map(|rhs| rhs.expr)
+      }).into(),
+    
+    
+
+    #[precedence(level = "9")]
+    #[assoc(side = "left")]
     <lhs:Spanned<PrecExpr>> <kind:Spanned<CompareKind>>
     <rhs:Spanned<PrecExpr>> =>?
     {
@@ -335,7 +377,7 @@ PrecExpr: PrecExpr = {
         }).into())
     },
 
-    #[precedence(level = "6")]
+    #[precedence(level = "10")]
     #[assoc(side = "right")]
     <lhs:Spanned<PrecExpr>> "=" <rhs:Spanned<PrecExpr>> =>? {
         match lhs.value.expr {

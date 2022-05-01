@@ -1085,6 +1085,9 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             parser::Expr::Arith(arith_expr) => {
                 self.resolve_arith_expr(*arith_expr).map(Expr::from)
             }
+            parser::Expr::Bitwise(bitwise_expr) => {
+                self.resolve_bitwise_expr(*bitwise_expr).map(Expr::from)
+            }
         }
     }
 
@@ -1137,6 +1140,18 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
 
         Some(ArithExpr {
             kind: arith_expr.kind,
+            lhs: lhs?,
+            rhs: rhs?,
+        })
+    }
+
+    fn resolve_bitwise_expr(&mut self, bitwise_expr: parser::BitwiseExpr) -> Option<BitwiseExpr> {
+        let lhs = map_spanned(bitwise_expr.lhs, |lhs| self.resolve_expr(lhs.value));
+
+        let rhs = map_spanned(bitwise_expr.rhs, |rhs| self.resolve_expr(rhs.value));
+
+        Some(BitwiseExpr {
+            kind: bitwise_expr.kind,
             lhs: lhs?,
             rhs: rhs?,
         })
