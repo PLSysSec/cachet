@@ -77,7 +77,6 @@ impl BuiltInType {
         }
     }
 
-
     pub const fn supertype(self) -> Option<BuiltInType> {
         match self {
             BuiltInType::Bool => Some(BuiltInType::Int32),
@@ -106,6 +105,15 @@ impl BuiltInType {
                 true
             }
             BuiltInType::UInt16 | BuiltInType::Unit => false,
+        }
+    }
+
+    pub const fn is_integral(self) -> bool {
+        match self {
+            BuiltInType::Bool | BuiltInType::Int32 | BuiltInType::Int64 | BuiltInType::UInt16 => {
+                true
+            }
+            BuiltInType::Unit | BuiltInType::Double => false,
         }
     }
 }

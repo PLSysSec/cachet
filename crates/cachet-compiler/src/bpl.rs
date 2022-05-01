@@ -1845,6 +1845,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 self.compile_compare_expr(&compare_expr).into()
             }
             flattener::Expr::Arith(arith_expr) => self.compile_arith_expr(&arith_expr).into(),
+            flattener::Expr::Bitwise(bitwise_expr) => {
+                self.compile_bitwise_expr(&bitwise_expr).into()
+            }
         }
     }
 
@@ -1861,6 +1864,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 self.compile_compare_expr(&compare_expr).into()
             }
             flattener::PureExpr::Arith(arith_expr) => self.compile_arith_expr(&arith_expr).into(),
+            flattener::PureExpr::Bitwise(bitwise_expr) => {
+                self.compile_bitwise_expr(&bitwise_expr).into()
+            }
         }
     }
 
@@ -2011,6 +2017,24 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let type_ident = self.get_type_ident(arith_expr.type_()).into();
         let selector = arith_expr.kind.into();
+
+        CallExpr {
+            target: TypeMemberFnIdent {
+                type_ident,
+                selector,
+            }
+            .into(),
+            arg_exprs: vec![lhs, rhs],
+        }
+        .into()
+    }
+
+    fn compile_bitwise_expr(&mut self, bitwise_expr: &flattener::BitwiseExpr) -> CallExpr {
+        let lhs = self.compile_pure_expr(&bitwise_expr.lhs);
+        let rhs = self.compile_pure_expr(&bitwise_expr.rhs);
+
+        let type_ident = self.get_type_ident(bitwise_expr.type_()).into();
+        let selector = bitwise_expr.kind.into();
 
         CallExpr {
             target: TypeMemberFnIdent {

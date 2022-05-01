@@ -88,3 +88,15 @@ pub enum ArithKind {
     #[display(fmt = "/")]
     Div,
 }
+
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum BitwiseKind {
+    #[display(fmt = "|")]
+    Or,
+    #[display(fmt = "&")]
+    And,
+    #[display(fmt = "^")]
+    Xor,
+    #[display(fmt = "<<")]
+    Lsh,
+}

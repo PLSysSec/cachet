@@ -11,8 +11,8 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_index};
 
 use crate::ast::{
-    ArithKind, BlockKind, CheckKind, CompareKind, Ident, MaybeSpanned, NegateKind, Path, Spanned,
-    VarParamKind,
+    ArithKind, BitwiseKind, BlockKind, CheckKind, CompareKind, Ident, MaybeSpanned, NegateKind,
+    Path, Spanned, VarParamKind,
 };
 use crate::built_in::{BuiltInType, BuiltInVar};
 pub use crate::parser::{Literal, VariantIndex};
@@ -52,6 +52,13 @@ impl TypeIndex {
     pub fn is_signed_numeric(&self) -> bool {
         match self {
             Self::BuiltIn(built_in_type) => built_in_type.is_signed_numeric(),
+            Self::Enum(_) | Self::Struct(_) => false,
+        }
+    }
+
+    pub fn is_integral(&self) -> bool {
+        match self {
+            Self::BuiltIn(built_in_type) => built_in_type.is_integral(),
             Self::Enum(_) | Self::Struct(_) => false,
         }
     }
@@ -543,6 +550,8 @@ pub enum Expr {
     Assign(Box<AssignExpr>),
     #[from]
     Arith(Box<ArithExpr>),
+    #[from]
+    Bitwise(Box<BitwiseExpr>),
 }
 
 box_from!(KindedBlock => Expr);
@@ -552,6 +561,7 @@ box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 box_from!(ArithExpr => Expr);
+box_from!(BitwiseExpr => Expr);
 
 impl From<Block> for Expr {
     fn from(block: Block) -> Self {
@@ -628,6 +638,13 @@ impl Typed for AssignExpr {
 #[derive(Clone, Debug)]
 pub struct ArithExpr {
     pub kind: Spanned<ArithKind>,
+    pub lhs: Spanned<Expr>,
+    pub rhs: Spanned<Expr>,
+}
+
+#[derive(Clone, Debug)]
+pub struct BitwiseExpr {
+    pub kind: Spanned<BitwiseKind>,
     pub lhs: Spanned<Expr>,
     pub rhs: Spanned<Expr>,
 }

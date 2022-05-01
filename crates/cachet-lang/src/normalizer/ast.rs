@@ -6,7 +6,7 @@ use derive_more::From;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
-    ArithKind, BlockKind, CastKind, CheckKind, CompareKind, NegateKind, Path, Spanned,
+    ArithKind, BitwiseKind, BlockKind, CastKind, CheckKind, CompareKind, NegateKind, Path, Spanned,
 };
 use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::type_checker;
@@ -237,6 +237,8 @@ pub enum Expr<B = ()> {
     Compare(CompareExpr),
     #[from]
     Arith(ArithExpr),
+    #[from]
+    Bitwise(BitwiseExpr),
 }
 
 impl<B> Typed for Expr<B> {
@@ -251,6 +253,7 @@ impl<B> Typed for Expr<B> {
             Expr::Cast(cast_expr) => cast_expr.type_(),
             Expr::Compare(compare_expr) => compare_expr.type_(),
             Expr::Arith(arith_expr) => arith_expr.type_(),
+            Expr::Bitwise(bitwise_expr) => bitwise_expr.type_(),
         }
     }
 }
@@ -278,6 +281,7 @@ impl<B> From<PureExpr> for Expr<B> {
             PureExpr::Cast(cast_expr) => (*cast_expr).into(),
             PureExpr::Compare(compare_expr) => (*compare_expr).into(),
             PureExpr::Arith(arith_expr) => (*arith_expr).into(),
+            PureExpr::Bitwise(bitwise_expr) => (*bitwise_expr).into(),
         }
     }
 }
@@ -316,6 +320,8 @@ pub enum PureExpr {
     Compare(Box<CompareExpr>),
     #[from]
     Arith(Box<ArithExpr>),
+    #[from]
+    Bitwise(Box<BitwiseExpr>),
 }
 
 impl Typed for PureExpr {
@@ -328,6 +334,7 @@ impl Typed for PureExpr {
             PureExpr::Cast(cast_expr) => cast_expr.type_(),
             PureExpr::Compare(compare_expr) => compare_expr.type_(),
             PureExpr::Arith(arith_expr) => arith_expr.type_(),
+            PureExpr::Bitwise(bitwise_expr) => bitwise_expr.type_(),
         }
     }
 }
@@ -337,6 +344,7 @@ box_from!(NegateExpr<PureExpr> => PureExpr);
 box_from!(CastExpr<PureExpr> => PureExpr);
 box_from!(CompareExpr => PureExpr);
 box_from!(ArithExpr => PureExpr);
+box_from!(BitwiseExpr => PureExpr);
 
 deref_from!(&Literal => PureExpr);
 
@@ -353,6 +361,7 @@ impl<B> TryFrom<Expr<B>> for PureExpr {
             Expr::Cast(cast_expr) => Ok((*cast_expr).try_into()?),
             Expr::Compare(compare_expr) => Ok(compare_expr.into()),
             Expr::Arith(arith_expr) => Ok(arith_expr.into()),
+            Expr::Bitwise(bitwise_expr) => Ok(bitwise_expr.into()),
         }
     }
 }
@@ -557,6 +566,19 @@ pub struct ArithExpr {
 }
 
 impl Typed for ArithExpr {
+    fn type_(&self) -> TypeIndex {
+        self.lhs.type_()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BitwiseExpr {
+    pub kind: BitwiseKind,
+    pub lhs: PureExpr,
+    pub rhs: PureExpr,
+}
+
+impl Typed for BitwiseExpr {
     fn type_(&self) -> TypeIndex {
         self.lhs.type_()
     }

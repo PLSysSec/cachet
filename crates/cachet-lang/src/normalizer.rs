@@ -400,6 +400,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Arith(arith_expr) => {
                 self.normalize_used_arith_expr(*arith_expr).into()
             }
+            type_checker::Expr::Bitwise(bitwise_expr) => {
+                self.normalize_used_bitwise_expr(*bitwise_expr).into()
+            }
         }
     }
 
@@ -425,6 +428,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
                 self.normalize_unused_field_access_expr(*access_expr)
             }
             type_checker::Expr::Arith(arith_expr) => self.normalize_unused_arith_expr(*arith_expr),
+            type_checker::Expr::Bitwise(bitwise_expr) => {
+                self.normalize_unused_bitwise_expr(*bitwise_expr)
+            }
         }
     }
 
@@ -590,6 +596,37 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_unused_arith_expr(&mut self, arith_expr: type_checker::ArithExpr) {
         self.normalize_unused_expr(arith_expr.lhs);
         self.normalize_unused_expr(arith_expr.rhs);
+    }
+
+    fn normalize_used_bitwise_expr(&mut self, bitwise_expr: type_checker::BitwiseExpr) -> Expr {
+        let mut stmts = Vec::new();
+        let mut scoped_normalizer = self.recurse(&mut stmts);
+
+        let lhs = scoped_normalizer.normalize_pure_expr(bitwise_expr.lhs);
+        let rhs = scoped_normalizer.normalize_pure_expr(bitwise_expr.rhs);
+
+        let value = BitwiseExpr {
+            kind: bitwise_expr.kind,
+            lhs,
+            rhs,
+        }
+        .into();
+
+        if stmts.is_empty() {
+            value
+        } else {
+            BlockExpr {
+                kind: None,
+                stmts,
+                value,
+            }
+            .into()
+        }
+    }
+
+    fn normalize_unused_bitwise_expr(&mut self, bitwise_expr: type_checker::BitwiseExpr) {
+        self.normalize_unused_expr(bitwise_expr.lhs);
+        self.normalize_unused_expr(bitwise_expr.rhs);
     }
 
     fn normalize_unused_assign_expr(&mut self, assign_expr: type_checker::AssignExpr) {

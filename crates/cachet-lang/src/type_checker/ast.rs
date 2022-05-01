@@ -9,7 +9,8 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
 use crate::ast::{
-    ArithKind, BlockKind, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned,
+    ArithKind, BitwiseKind, BlockKind, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path,
+    Spanned,
 };
 use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::resolver;
@@ -434,6 +435,8 @@ pub enum Expr {
     Assign(Box<AssignExpr>),
     #[from]
     Arith(Box<ArithExpr>),
+    #[from]
+    Bitwise(Box<BitwiseExpr>),
 }
 
 impl Typed for Expr {
@@ -449,6 +452,7 @@ impl Typed for Expr {
             Expr::Compare(compare_expr) => compare_expr.type_(),
             Expr::Assign(assign_expr) => assign_expr.type_(),
             Expr::Arith(arith_expr) => arith_expr.type_(),
+            Expr::Bitwise(bitwise_expr) => bitwise_expr.type_(),
         }
     }
 }
@@ -460,6 +464,7 @@ box_from!(CastExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 box_from!(ArithExpr => Expr);
+box_from!(BitwiseExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -583,6 +588,19 @@ pub struct ArithExpr {
 }
 
 impl Typed for ArithExpr {
+    fn type_(&self) -> TypeIndex {
+        self.lhs.type_()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BitwiseExpr {
+    pub kind: BitwiseKind,
+    pub lhs: Expr,
+    pub rhs: Expr,
+}
+
+impl Typed for BitwiseExpr {
     fn type_(&self) -> TypeIndex {
         self.lhs.type_()
     }
