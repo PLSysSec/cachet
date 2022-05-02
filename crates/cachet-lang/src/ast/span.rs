@@ -1,11 +1,38 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use derive_more::Display;
 use std::error;
 use std::fmt::{self, Debug, Display};
+use std::ops::Range;
 
-// TODO(spinda): Define own `Span` type as enum with `Internal` and `External`
-// variants.
-pub use codespan::Span;
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Ord, PartialOrd)]
+pub enum Span {
+    #[display(fmt = "[internal]")]
+    Internal,
+    #[display(fmt = "{}", _0)]
+    External(codespan::Span),
+}
+
+impl<T> From<Span> for Range<T>
+where
+    Range<T>: From<codespan::Span> + Default,
+{
+    fn from(span: Span) -> Self {
+        match span {
+            Span::Internal => Default::default(),
+            Span::External(csp) => Range::<T>::from(csp),
+        }
+    }
+}
+
+impl<T> From<T> for Span
+where
+    codespan::Span: From<T>,
+{
+    fn from(t: T) -> Self {
+        Span::External(codespan::Span::from(t))
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct Spanned<T> {

@@ -29,7 +29,7 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     // variables whose types can't be inferred. This type shouldn't escape the
     // type-checking phase. We do the same for IRs as well.
     let unknown_struct_index = env.struct_items.push_and_get_key(StructItem {
-        ident: Spanned::new(Span::initial(), *UNKNOWN_IDENT),
+        ident: Spanned::new(Span::Internal, *UNKNOWN_IDENT),
         supertype: None,
         fields: BTreeMap::new(),
     });
@@ -37,7 +37,7 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     let unknown_ir_index = env
         .ir_items
         .push_and_get_key(IrItem {
-            ident: Spanned::new(Span::initial(), *UNKNOWN_IDENT),
+            ident: Spanned::new(Span::Internal, *UNKNOWN_IDENT),
             emits: None,
         })
         .into();
@@ -271,7 +271,7 @@ impl<'a> TypeChecker<'a> {
         });
 
         CallableItem {
-            path: callable_item.path,
+            path: callable_item.path.into(),
             parent: callable_item.parent,
             is_unsafe: callable_item.is_unsafe,
             params: callable_item.params.clone(),

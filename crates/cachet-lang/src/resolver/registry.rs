@@ -111,7 +111,7 @@ impl<K: Clone + Eq + Hash + Into<Path>, V: Registrable> Registry<K, V> {
                 Err(DuplicateDefError {
                     path: occupied_entry.key().clone().into(),
                     first_defined_at: occupied_entry.get().first_defined_at,
-                    redefined_at: key.span.unwrap_or_else(Span::initial),
+                    redefined_at: key.span.unwrap_or(Span::Internal),
                 })
             }
         }

@@ -608,7 +608,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         let tmp_local_var_type_index = expr.type_();
 
         let tmp_local_var = LocalVar {
-            ident: Spanned::new(Span::initial(), *TMP_VAR_IDENT),
+            ident: Spanned::new(Span::Internal, *TMP_VAR_IDENT),
             is_mut: false,
             type_: tmp_local_var_type_index,
         };

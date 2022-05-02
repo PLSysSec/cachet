@@ -615,13 +615,14 @@ impl<'a> Resolver<'a> {
         };
 
         Some(CallableItem {
-            path: callable_item.path,
+            path: callable_item.path.into(),
             parent: parent_index?,
             is_unsafe: callable_item.item.is_unsafe,
             params,
             param_order,
             ret: ret?,
             body: body?,
+            is_builtin: false,
         })
     }
 

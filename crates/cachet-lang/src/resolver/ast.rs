@@ -279,6 +279,7 @@ pub struct CallableItem {
     pub param_order: Vec<ParamIndex>,
     pub ret: Option<Spanned<TypeIndex>>,
     pub body: Spanned<Option<Body>>,
+    pub is_builtin: bool,
 }
 
 impl Typed for CallableItem {

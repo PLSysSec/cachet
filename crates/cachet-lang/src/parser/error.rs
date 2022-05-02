@@ -61,18 +61,20 @@ impl FrontendError for ParseError {
     fn span(&self) -> Span {
         match &self.0 {
             helpers::ParseError::InvalidToken { location } => {
-                Span::new(*location as RawIndex, *location as RawIndex)
+                (*location as RawIndex..*location as RawIndex).into()
             }
             helpers::ParseError::UnrecognizedEOF { location, .. } => {
-                Span::new(*location as RawIndex, *location as RawIndex)
+                (*location as RawIndex..*location as RawIndex).into()
             }
             helpers::ParseError::UnrecognizedToken {
                 token: (start, _, end),
                 ..
-            } => Span::new(*start as RawIndex, *end as RawIndex),
+            } => (*start as RawIndex..*end as RawIndex).into(),
+
             helpers::ParseError::ExtraToken {
                 token: (start, _, end),
-            } => Span::new(*start as RawIndex, *end as RawIndex),
+            } => (*start as RawIndex..*end as RawIndex).into(),
+
             helpers::ParseError::User { error } => error.span,
         }
     }
