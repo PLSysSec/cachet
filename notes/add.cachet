@@ -171,6 +171,42 @@ ir MASM {
       MASM::setInt32(dstReg, result);
     }
 
+    op Or32(srcReg: Reg, dstReg: Reg) {
+      let lhsInt32 = MASM::getInt32(srcReg);
+      let rhsInt32 = MASM::getInt32(dstReg);
+
+      let result = lhsInt32 | rhsInt32;
+
+      MASM::setInt32(dstReg, result);
+    }
+
+    op Xor32(srcReg: Reg, dstReg: Reg) {
+      let lhsInt32 = MASM::getInt32(srcReg);
+      let rhsInt32 = MASM::getInt32(dstReg);
+
+      let result = lhsInt32 ^ rhsInt32;
+
+      MASM::setInt32(dstReg, result);
+    }
+
+    op And32(srcReg: Reg, dstReg: Reg) {
+      let lhsInt32 = MASM::getInt32(srcReg);
+      let rhsInt32 = MASM::getInt32(dstReg);
+
+      let result = lhsInt32 & rhsInt32;
+
+      MASM::setInt32(dstReg, result);
+    }
+
+    op FlexibleLshift32(shiftReg: Reg, srcDestReg: Reg) {
+      let shiftInt32 = MASM::getInt32(shiftReg);
+      let srcInt32 = MASM::getInt32(srcDestReg);
+
+      let result = srcInt32 << shiftInt32;
+
+      MASM::setInt32(srcDestReg, result);
+    }
+
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);
 
@@ -189,7 +225,7 @@ ir CacheIR emits MASM {
     emit MASM::UnboxInt32(valueReg, int32Reg);
   }
 
-  op AddInt32Result(lhsId: Int32Id, rhsId: Int32Id, label failure: MASM) {
+  op Int32AddResult(lhsId: Int32Id, rhsId: Int32Id, label failure: MASM) {
     let lhsReg = CacheIR::useInt32Reg(lhsId);
     let rhsReg = CacheIR::useInt32Reg(rhsId);
 
@@ -197,8 +233,56 @@ ir CacheIR emits MASM {
     emit MASM::Mov(rhsReg, scratchReg);
     emit MASM::BranchAdd32(Condition::Overflow, lhsReg, scratchReg, failure);
     emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
-    
+
     CacheIR::releaseReg(scratchReg); 
+  }
+
+  op Int32BitOrResult(lhsId: Int32Id, rhsId: Int32Id) {
+    let lhsReg = CacheIR::useInt32Reg(lhsId);
+    let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+    let scratchReg = CacheIR::allocateReg();
+    emit MASM::Mov(rhsReg, scratchReg);
+    emit MASM::Or32(lhsReg, scratchReg);
+    emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+    CacheIR::releaseReg(scratchReg);
+  }
+
+  op Int32BitXorResult(lhsId: Int32Id, rhsId: Int32Id) {
+    let lhsReg = CacheIR::useInt32Reg(lhsId);
+    let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+    let scratchReg = CacheIR::allocateReg();
+    emit MASM::Mov(rhsReg, scratchReg);
+    emit MASM::Xor32(lhsReg, scratchReg);
+    emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+    CacheIR::releaseReg(scratchReg);
+  }
+
+  op Int32BitAndResult(lhsId: Int32Id, rhsId: Int32Id) {
+    let lhsReg = CacheIR::useInt32Reg(lhsId);
+    let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+    let scratchReg = CacheIR::allocateReg();
+    emit MASM::Mov(rhsReg, scratchReg);
+    emit MASM::And32(lhsReg, scratchReg);
+    emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+    CacheIR::releaseReg(scratchReg);
+  }
+
+  op Int32LeftShiftResult(lhsId: Int32Id, rhsId: Int32Id) {
+    let lhsReg = CacheIR::useInt32Reg(lhsId);
+    let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+    let scratchReg = CacheIR::allocateReg();
+    emit MASM::Mov(lhsReg, scratchReg);
+    emit MASM::FlexibleLshift32(rhsReg, scratchReg);
+    emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+    CacheIR::releaseReg(scratchReg);
   }
 
   fn allocateReg() -> Reg;
@@ -214,6 +298,42 @@ ir CacheIR emits MASM {
 }
 
 ir CacheStub emits CacheIR {
+    op BitOr(
+        lhsValueId: ValueId,
+        rhsValueId: ValueId,
+        lhsInt32Id: Int32Id,
+        rhsInt32Id: Int32Id,
+        label failure: MASM,
+    ) {
+        emit CacheIR::GuardToInt32(lhsValueId, lhsInt32Id, failure);
+        emit CacheIR::GuardToInt32(rhsValueId, rhsInt32Id, failure);
+        emit CacheIR::Int32BitOrResult(lhsInt32Id, rhsInt32Id);
+    }
+
+    op BitXor(
+        lhsValueId: ValueId,
+        rhsValueId: ValueId,
+        lhsInt32Id: Int32Id,
+        rhsInt32Id: Int32Id,
+        label failure: MASM,
+    ) {
+        emit CacheIR::GuardToInt32(lhsValueId, lhsInt32Id, failure);
+        emit CacheIR::GuardToInt32(rhsValueId, rhsInt32Id, failure);
+        emit CacheIR::Int32BitXorResult(lhsInt32Id, rhsInt32Id);
+    }
+
+    op BitAnd(
+        lhsValueId: ValueId,
+        rhsValueId: ValueId,
+        lhsInt32Id: Int32Id,
+        rhsInt32Id: Int32Id,
+        label failure: MASM,
+    ) {
+        emit CacheIR::GuardToInt32(lhsValueId, lhsInt32Id, failure);
+        emit CacheIR::GuardToInt32(rhsValueId, rhsInt32Id, failure);
+        emit CacheIR::Int32BitAndResult(lhsInt32Id, rhsInt32Id);
+    }
+
     op Add(
         lhsValueId: ValueId,
         rhsValueId: ValueId,
@@ -223,6 +343,6 @@ ir CacheStub emits CacheIR {
     ) {
         emit CacheIR::GuardToInt32(lhsValueId, lhsInt32Id, failure);
         emit CacheIR::GuardToInt32(rhsValueId, rhsInt32Id, failure);
-        emit CacheIR::AddInt32Result(lhsInt32Id, rhsInt32Id, failure);
+        emit CacheIR::Int32AddResult(lhsInt32Id, rhsInt32Id, failure);
     }
 }
