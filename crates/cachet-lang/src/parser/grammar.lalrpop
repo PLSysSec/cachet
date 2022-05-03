@@ -13,7 +13,7 @@ use crate::ast::*;
 use crate::parser::ast::*;
 use crate::parser::helpers::*;
 
-grammar;
+grammar(file_id: FileId);
 
 extern {
     // TODO(spinda): Collect user errors as we go and discharge them at the end. 
@@ -455,7 +455,7 @@ Path: Path =
 
 Spanned<Rule>: Spanned<Rule> =
     <start: @L> <value: Rule> <end: @R> =>
-        Spanned::new((start as RawIndex..end as RawIndex).into(), value);
+        Spanned::new(Span::new(file_id, start as RawIndex..end as RawIndex), value);
 
 Box<Rule>: Box<Rule> =
     <value: Rule> =>

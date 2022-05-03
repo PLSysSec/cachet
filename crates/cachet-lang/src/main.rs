@@ -7,7 +7,8 @@ use std::iter;
 use std::path::PathBuf;
 
 use anyhow::{Context, Error};
-use codespan_reporting::files::SimpleFile;
+use cachet_lang::parser::{parse, Parser, Files};
+use codespan_reporting::files::{SimpleFile, SimpleFiles};
 use codespan_reporting::term;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use structopt::clap::AppSettings;
@@ -17,7 +18,6 @@ use structopt::StructOpt;
 
 use cachet_lang::flattener::flatten;
 use cachet_lang::normalizer::normalize;
-use cachet_lang::parser::parse;
 use cachet_lang::resolver::{resolve, ResolveErrors};
 use cachet_lang::type_checker::{type_check, TypeCheckErrors};
 use cachet_lang::FrontendError;
@@ -72,16 +72,22 @@ fn main() -> Result<(), Error> {
     let src = read_to_string(&opt.input)
         .with_context(|| format!("Failed to read {}", opt.input.display()))?;
 
-    let items = match parse(&src) {
-        Ok(items) => items,
-        Err(error) => {
-            report_all(&opt.input.display(), &src, iter::once(&error));
-            return Err(Error::msg(format!(
-                "Failed to parse {}",
-                opt.input.display()
-            )));
-        }
-    };
+    let mut parser = Parser::new();
+    let prelude = parser.parse("prelude.cachet".into(), cachet_lang::PRELUDE);
+    let main = parser.parse(opt.input.to_string_lossy().to_string(), &src);
+
+    if prelude.is_err() || main.is_err() {
+        let errors = prelude.err().into_iter().chain(main.err().into_iter()).collect::<Vec<_>>();
+        report_all(parser.files, errors.iter());
+
+        return Err(Error::msg(format!(
+            "Failed to parse {}",
+            opt.input.display()
+        )));
+    }
+
+    let items = parser.items;
+
     if opt.dump_parser {
         println!("=== PARSER ===\n\n{:#?}\n\n", items);
     }
@@ -89,7 +95,7 @@ fn main() -> Result<(), Error> {
     let env = match resolve(items) {
         Ok(env) => env,
         Err(ResolveErrors(errors)) => {
-            report_all(&opt.input.display(), &src, errors.iter());
+            report_all(parser.files, errors.iter());
             return Err(Error::msg(format!(
                 "Failed to resolve names in {}",
                 opt.input.display()
@@ -103,7 +109,7 @@ fn main() -> Result<(), Error> {
     let env = match type_check(env) {
         Ok(env) => env,
         Err(TypeCheckErrors(errors)) => {
-            report_all(&opt.input.display(), &src, errors.iter());
+            report_all(parser.files, errors.iter());
             return Err(Error::msg(format!(
                 "Failed to type check {}",
                 opt.input.display()
@@ -151,18 +157,15 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn report_all<'a, N: Clone + fmt::Display, E: 'a + FrontendError>(
-    name: N,
-    src: &str,
+fn report_all<'a, E: 'a + FrontendError>(
+    files: Files,
     errors: impl Iterator<Item = &'a E>,
 ) -> () {
-    let file = SimpleFile::new(name, src);
-
     let writer = StandardStream::stderr(ColorChoice::Auto);
     let config = term::Config::default();
 
     for error in errors {
-        let diagnostic = error.build_diagnostic(());
-        term::emit(&mut writer.lock(), &config, &file, &diagnostic).unwrap();
+        let diagnostic = error.build_diagnostic();
+        term::emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
     }
 }

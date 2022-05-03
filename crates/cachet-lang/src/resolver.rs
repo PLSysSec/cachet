@@ -443,6 +443,12 @@ impl ItemCatalog {
     }
 }
 
+impl Default for ItemCatalog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 trait LookupResultExt<T> {
     fn found(self, errors: &mut Vec<ResolveError>) -> Option<T>;
 
@@ -622,7 +628,6 @@ impl<'a> Resolver<'a> {
             param_order,
             ret: ret?,
             body: body?,
-            is_builtin: false,
         })
     }
 

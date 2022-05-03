@@ -3,10 +3,10 @@
 use std::error::Error;
 use std::fmt;
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
+use codespan_reporting::diagnostic::{Diagnostic};
 use thiserror::Error;
 
-use crate::ast::{Ident, Path, Span, Spanned};
+use crate::ast::{Ident, FileId, Path, Span, Spanned, labels};
 use crate::FrontendError;
 
 // TODO(spinda): Break up TypeCheckError like ResolveError.
@@ -178,15 +178,13 @@ impl FrontendError for TypeCheckError {
         }
     }
 
-    fn build_diagnostic<T: Copy>(&self, file_id: T) -> Diagnostic<T> {
-        let mut label = Label::primary(file_id, self.span());
-
-        match self {
+    fn build_diagnostic(&self) -> Diagnostic<FileId> {
+        let msg = match self {
             TypeCheckError::SubtypeCycle {
                 first_cycle_type,
                 other_cycle_types,
             } => {
-                label.message = format!(
+                format!(
                     "{}`{}` is a subtype of `{}`",
                     if other_cycle_types.is_empty() {
                         ""
@@ -195,13 +193,13 @@ impl FrontendError for TypeCheckError {
                     },
                     first_cycle_type,
                     other_cycle_types.last().unwrap_or(first_cycle_type)
-                );
+                )
             }
             TypeCheckError::CallCycle {
                 first_cycle_callable,
                 other_cycle_callables,
             } => {
-                label.message = format!(
+                format!(
                     "{}`{}` calls `{}`",
                     if other_cycle_callables.is_empty() {
                         ""
@@ -210,12 +208,12 @@ impl FrontendError for TypeCheckError {
                     },
                     other_cycle_callables.last().unwrap_or(first_cycle_callable),
                     first_cycle_callable
-                );
+                )
             }
             TypeCheckError::OpHasOutParam { .. }
             | TypeCheckError::OpReturnsValue { .. }
             | TypeCheckError::MissingOpBody { .. } => {
-                label.message = "allowed for functions but not for ops".to_owned();
+                "allowed for functions but not for ops".to_owned()
             }
             TypeCheckError::GotoIrMismatch {
                 callable,
@@ -223,7 +221,7 @@ impl FrontendError for TypeCheckError {
                 found_ir,
                 ..
             } => {
-                label.message = match expected_ir {
+                match expected_ir {
                     Some(expected_ir) => {
                         format!(
                             "expected `{}` label, found `{}` label",
@@ -234,7 +232,7 @@ impl FrontendError for TypeCheckError {
                         "unexpected jump to `{}` label inside non-interpreter `{}`",
                         found_ir, callable
                     ),
-                };
+                }
             }
             TypeCheckError::BindIrMismatch {
                 callable,
@@ -242,7 +240,7 @@ impl FrontendError for TypeCheckError {
                 found_ir,
                 ..
             } => {
-                label.message = match expected_ir {
+                match expected_ir {
                     Some(expected_ir) => {
                         format!(
                             "expected `{}` label, found `{}` label",
@@ -253,7 +251,7 @@ impl FrontendError for TypeCheckError {
                         "unexpected bind of `{}` label inside non-emitter `{}`",
                         found_ir, callable
                     ),
-                };
+                }
             }
             TypeCheckError::EmitIrMismatch {
                 callable,
@@ -261,7 +259,7 @@ impl FrontendError for TypeCheckError {
                 found_ir,
                 ..
             } => {
-                label.message = match expected_ir {
+                match expected_ir {
                     Some(expected_ir) => {
                         format!("expected `{}` op, found `{}` op", expected_ir, found_ir)
                     }
@@ -269,47 +267,46 @@ impl FrontendError for TypeCheckError {
                         "unexpected emit of `{}` op inside non-emitter `{}`",
                         found_ir, callable
                     ),
-                };
+                }
             }
             TypeCheckError::TypeMismatch {
                 expected_type,
                 found_type,
                 ..
             } => {
-                label.message = format!("expected `{}`, found `{}`", expected_type, found_type);
+                format!("expected `{}`, found `{}`", expected_type, found_type)
             }
             TypeCheckError::InvalidCast {
                 source_type,
                 target_type,
                 ..
             } => {
-                label.message = format!(
+                format!(
                     "`{}` isn't a subtype of `{}', and vice-versa",
                     source_type, target_type
-                );
+                )
             }
             TypeCheckError::UnsafeCallInSafeContext { .. } => {
-                label.message = "call to unsafe function".to_owned();
+                "call to unsafe function".to_owned()
             }
             TypeCheckError::UnsafeCastInSafeContext { .. } => {
-                label.message = "unsafe cast".to_owned();
+                "unsafe cast".to_owned()
             }
             TypeCheckError::ArgCountMismatch {
                 expected_arg_count, ..
             } => {
-                label.message = format!(
+                format!(
                     "expected {} argument{}",
                     expected_arg_count,
                     if *expected_arg_count == 1 { "" } else { "s" }
-                );
+                )
             }
             TypeCheckError::ArgKindMismatch {
                 expected_arg_kind,
                 found_arg_kind,
                 ..
             } => {
-                label.message =
-                    format!("expected {}, found {}", expected_arg_kind, found_arg_kind);
+                format!("expected {}, found {}", expected_arg_kind, found_arg_kind)
             }
             TypeCheckError::ArgTypeMismatch {
                 expected_type: expected,
@@ -321,28 +318,30 @@ impl FrontendError for TypeCheckError {
                 found_ir: found,
                 ..
             } => {
-                label.message = format!("expected `{}`, found `{}`", expected, found);
+                format!("expected `{}`, found `{}`", expected, found)
             }
-            TypeCheckError::BinaryOperatorTypeMismatch { .. } => (),
+            TypeCheckError::BinaryOperatorTypeMismatch { .. } => format!(""),
             TypeCheckError::NumericOperatorTypeMismatch { operand_type, .. } => {
-                label.message = format!("expected numeric type, found `{}`", operand_type);
+                format!("expected numeric type, found `{}`", operand_type)
             }
             TypeCheckError::AssignTypeMismatch {
                 expected_type,
                 found_type,
                 ..
             } => {
-                label.message = format!("expected `{}`, found `{}`", expected_type, found_type);
+                format!("expected `{}`, found `{}`", expected_type, found_type)
             }
             TypeCheckError::NonStructFieldAccess { .. } => {
-                label.message = format!("fields can only be accessed on structs")
+                format!("fields can only be accessed on structs")
             }
             TypeCheckError::FieldNotFound { .. } => {
-                label.message = format!("field must be declared on the struct")
+                format!("field must be declared on the struct")
             }
-        }
+        };
 
-        let mut labels = vec![label];
+        let mut labels = Vec::from_iter(labels![
+            Primary (self.span()) |l| l.with_message(msg)
+        ]);
 
         match self {
             TypeCheckError::SubtypeCycle {
@@ -350,15 +349,16 @@ impl FrontendError for TypeCheckError {
                 other_cycle_types,
             } => {
                 let mut prev_cycle_type = first_cycle_type;
-                labels.extend(other_cycle_types.iter().enumerate().map(
+                labels.extend(other_cycle_types.iter().enumerate().flat_map(
                     |(curr_cycle_type_index, curr_cycle_type)| {
-                        let label =
-                            Label::secondary(file_id, curr_cycle_type.span).with_message(format!(
+                        let label = labels![
+                            Secondary (curr_cycle_type.span) |l| l.with_message(format!(
                                 "({}) `{}` is a subtype of `{}`",
                                 curr_cycle_type_index + 2,
                                 curr_cycle_type,
                                 prev_cycle_type
-                            ));
+                            ))
+                        ];
                         prev_cycle_type = curr_cycle_type;
                         label
                     },
@@ -369,15 +369,16 @@ impl FrontendError for TypeCheckError {
                 other_cycle_callables,
             } => {
                 let mut prev_cycle_callable = first_cycle_callable;
-                labels.extend(other_cycle_callables.iter().enumerate().map(
+                labels.extend(other_cycle_callables.iter().enumerate().flat_map(
                     |(curr_cycle_callable_index, curr_cycle_callable)| {
-                        let label = Label::secondary(file_id, curr_cycle_callable.span)
-                            .with_message(format!(
+                        let label = labels! [
+                            Secondary (curr_cycle_callable.span) |l| l.with_message(format!(
                                 "({}) `{}` calls `{}`",
                                 curr_cycle_callable_index + 2,
                                 prev_cycle_callable,
                                 curr_cycle_callable
-                            ));
+                            ))
+                        ];
                         prev_cycle_callable = curr_cycle_callable;
                         label
                     },
@@ -392,12 +393,12 @@ impl FrontendError for TypeCheckError {
                 ..
             } => {
                 if let Some(expected_ir) = expected_ir {
-                    labels.push(
-                        Label::secondary(file_id, expected_ir.span).with_message(format!(
+                    labels.extend(labels! [
+                        Secondary (expected_ir.span) |l| l.with_message(format!(
                             "`{}` interprets `{}` ops",
                             callable, expected_ir
-                        )),
-                    );
+                        ))
+                    ]);
                 }
             }
             TypeCheckError::BindIrMismatch {
@@ -411,10 +412,9 @@ impl FrontendError for TypeCheckError {
                 ..
             } => {
                 if let Some(expected_ir) = expected_ir {
-                    labels.push(
-                        Label::secondary(file_id, expected_ir.span)
-                            .with_message(format!("`{}` emits `{}` ops", callable, expected_ir)),
-                    );
+                    labels.extend(labels![
+                        Secondary (expected_ir.span) |l| l.with_message(format!("`{}` emits `{}` ops", callable, expected_ir))
+                    ]);
                 }
             }
             TypeCheckError::TypeMismatch { .. } => (),
@@ -424,10 +424,9 @@ impl FrontendError for TypeCheckError {
                 target_defined_at,
                 ..
             } => {
-                labels.push(
-                    Label::secondary(file_id, *target_defined_at)
-                        .with_message(format!("function `{}` defined here", target)),
-                );
+                labels.extend(labels![
+                    Secondary (*target_defined_at) |l| l.with_message(format!("function `{}` defined here", target))
+                ]);
             }
             TypeCheckError::UnsafeCastInSafeContext { .. } => (),
             TypeCheckError::ArgCountMismatch {
@@ -437,28 +436,27 @@ impl FrontendError for TypeCheckError {
                 args_span,
                 ..
             } => {
-                labels.extend([
-                    Label::secondary(file_id, *args_span).with_message(format!(
+                labels.extend(labels! [
+                    Secondary (*args_span) |l| l.with_message(format!(
                         "found {} argument{}",
                         found_arg_count,
                         if *found_arg_count == 1 { "" } else { "s" }
                     )),
-                    Label::secondary(file_id, *target_defined_at)
-                        .with_message(format!("function `{}` defined here", target)),
+
+                    Secondary (*target_defined_at) |l|
+                        l.with_message(format!("function `{}` defined here", target))
                 ]);
             }
             TypeCheckError::ArgKindMismatch { param, .. } => {
-                labels.push(
-                    Label::secondary(file_id, param.span)
-                        .with_message(format!("parameter `{}` defined here", param)),
-                );
+                labels.extend(labels! [
+                    Secondary (param.span) |l| l.with_message(format!("parameter `{}` defined here", param))
+                ]);
             }
             TypeCheckError::ArgTypeMismatch { param, .. }
             | TypeCheckError::ArgIrMismatch { param, .. } => {
-                labels.push(
-                    Label::secondary(file_id, param.span)
-                        .with_message(format!("parameter `{}` defined here", param)),
-                );
+                labels.extend(labels! [
+                    Secondary (param.span) |l| l.with_message(format!("parameter `{}` defined here", param))
+                ]);
             }
             TypeCheckError::BinaryOperatorTypeMismatch {
                 lhs_span,
@@ -467,18 +465,18 @@ impl FrontendError for TypeCheckError {
                 rhs_type,
                 ..
             } => {
-                labels.extend([
-                    Label::secondary(file_id, *lhs_span)
-                        .with_message(format!("type `{}`", lhs_type)),
-                    Label::secondary(file_id, *rhs_span)
-                        .with_message(format!("type `{}`", rhs_type)),
+                labels.extend(labels! [
+                    Secondary (*lhs_span) |l|
+                        l.with_message(format!("type `{}`", lhs_type)),
+                    Secondary (*rhs_span) |l|
+                        l.with_message(format!("type `{}`", rhs_type))
                 ]);
             }
             TypeCheckError::NumericOperatorTypeMismatch { operator_span, .. } => {
-                labels.push(
-                    Label::secondary(file_id, *operator_span)
-                        .with_message("operator is only defined for numeric types"),
-                );
+                labels.extend(labels! [
+                    Secondary (*operator_span) |l|
+                        l.with_message("operator is only defined for numeric types")
+                ]);
             }
             TypeCheckError::AssignTypeMismatch {
                 lhs,
@@ -486,23 +484,23 @@ impl FrontendError for TypeCheckError {
                 ..
             } => {
                 if let Some(lhs_defined_at) = lhs_defined_at {
-                    labels.push(
-                        Label::secondary(file_id, *lhs_defined_at)
-                            .with_message(format!("variable `{}` defined here", lhs)),
-                    );
+                    labels.extend(labels! [
+                        Secondary (*lhs_defined_at) |l|
+                            l.with_message(format!("variable `{}` defined here", lhs))
+                    ]);
                 }
             }
             TypeCheckError::NonStructFieldAccess {
                 parent_span, type_, ..
-            } => labels.push(
-                Label::secondary(file_id, *parent_span)
-                    .with_message(format!("expression is of type `{}`", type_)),
-            ),
+            } => labels.extend(labels! [
+                Secondary (*parent_span) |l|
+                    l.with_message(format!("expression is of type `{}`", type_))
+            ]),
             TypeCheckError::FieldNotFound { type_, .. } => {
-                labels.push(
-                    Label::secondary(file_id, type_.span)
-                        .with_message(format!("struct `{}` declared here", type_.value)),
-                );
+                labels.extend(labels! [
+                    Secondary (type_.span) |l|
+                        l.with_message(format!("struct `{}` declared here", type_.value))
+                ]);
             }
         }
 
