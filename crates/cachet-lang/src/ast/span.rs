@@ -1,16 +1,18 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use codespan_reporting::diagnostic::{Label, LabelStyle};
 use derive_more::Display;
 use std::error;
 use std::fmt::{self, Debug, Display};
 use std::ops::Range;
+pub use codespan::FileId;
 
 #[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Span {
     #[display(fmt = "[internal]")]
     Internal,
-    #[display(fmt = "{}", _0)]
-    External(codespan::Span),
+    #[display(fmt = "{:?} {}", _0, _1)]
+    External(FileId, codespan::Span),
 }
 
 impl<T> From<Span> for Range<T>
@@ -20,17 +22,37 @@ where
     fn from(span: Span) -> Self {
         match span {
             Span::Internal => Default::default(),
-            Span::External(csp) => Range::<T>::from(csp),
+            Span::External(_, csp) => Range::<T>::from(csp),
         }
     }
 }
 
-impl<T> From<T> for Span
-where
-    codespan::Span: From<T>,
+
+macro_rules! labels {
+    ($($style:ident ($span:expr) $closure:expr),*) => {
+        std::iter::empty()$(
+            .chain(
+                $span.label(codespan_reporting::diagnostic::LabelStyle::$style).map($closure).into_iter()
+            )
+        )*
+    }
+}
+
+pub(crate) use labels;
+
+impl Span 
 {
-    fn from(t: T) -> Self {
-        Span::External(codespan::Span::from(t))
+    pub fn new<T>(f: FileId, t: T) -> Self
+    where codespan::Span: From<T>
+    {
+        Span::External(f, codespan::Span::from(t))
+    }
+
+    pub fn label(&self, kind: LabelStyle) -> Option<Label<FileId>> {
+        match self {
+            Span::Internal => None,
+            Span::External(file_id, csp) => Some(Label::new(kind, *file_id, csp.clone()))
+        }
     }
 }
 

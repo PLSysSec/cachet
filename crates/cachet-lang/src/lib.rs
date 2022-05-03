@@ -23,7 +23,9 @@ pub mod type_checker;
 // TODO(spinda): pub mod well_formedness_checker;
 mod util;
 
+pub static PRELUDE: &str = include_str!("prelude.cachet");
+
 pub trait FrontendError: Error {
     fn span(&self) -> Span;
-    fn build_diagnostic<T: Copy>(&self, file_id: T) -> Diagnostic<T>;
+    fn build_diagnostic(&self) -> Diagnostic<ast::FileId>;
 }

@@ -8,13 +8,25 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 
 use cachet_util::fmt_join_or;
 
-use crate::ast::Span;
+use crate::ast::{Span, FileId};
 use crate::FrontendError;
 
 use crate::parser::helpers;
 
 #[derive(Clone, Debug)]
-pub struct ParseError(pub(super) helpers::ParseError<String>);
+pub struct ParseError {
+    pub file_id: FileId,
+    pub(super) underlying_error: helpers::ParseError<String>
+}
+
+impl ParseError {
+    pub fn new<T: ToString>(file_id: FileId, underlying_error: helpers::ParseError<T>) -> Self {
+        Self {
+            file_id,
+            underlying_error: underlying_error.map_token(|t| t.to_string())
+        }
+    }
+}
 
 fn fmt_expected(f: &mut fmt::Formatter, expected: &[String]) -> Result<(), fmt::Error> {
     if !expected.is_empty() {
@@ -29,7 +41,7 @@ fn fmt_expected(f: &mut fmt::Formatter, expected: &[String]) -> Result<(), fmt::
 
 impl Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match &self.0 {
+        match &self.underlying_error {
             helpers::ParseError::InvalidToken { .. } => write!(f, "invalid token")?,
             helpers::ParseError::UnrecognizedEOF { expected, .. } => {
                 write!(f, "unexpected end of input")?;
@@ -59,29 +71,34 @@ impl Error for ParseError {}
 
 impl FrontendError for ParseError {
     fn span(&self) -> Span {
-        match &self.0 {
+        match &self.underlying_error {
             helpers::ParseError::InvalidToken { location } => {
-                (*location as RawIndex..*location as RawIndex).into()
+                Span::new(self.file_id, *location as RawIndex..*location as RawIndex)
             }
             helpers::ParseError::UnrecognizedEOF { location, .. } => {
-                (*location as RawIndex..*location as RawIndex).into()
+                Span::new(self.file_id, *location as RawIndex..*location as RawIndex)
             }
             helpers::ParseError::UnrecognizedToken {
                 token: (start, _, end),
                 ..
-            } => (*start as RawIndex..*end as RawIndex).into(),
+            } =>
+            Span::new(self.file_id, *start as RawIndex..*end as RawIndex),
 
             helpers::ParseError::ExtraToken {
                 token: (start, _, end),
-            } => (*start as RawIndex..*end as RawIndex).into(),
+            } => Span::new(self.file_id, *start as RawIndex..*end as RawIndex),
 
-            helpers::ParseError::User { error } => error.span,
+            helpers::ParseError::User { error } => return error.span,
         }
     }
 
-    fn build_diagnostic<T: Copy>(&self, file_id: T) -> Diagnostic<T> {
-        Diagnostic::error()
-            .with_message(self.to_string())
-            .with_labels(vec![Label::primary(file_id, self.span())])
+    fn build_diagnostic(&self) -> Diagnostic<FileId> {
+        let d = Diagnostic::error()
+            .with_message(self.to_string());
+
+        match self.span() {
+            Span::Internal => d,
+            Span::External(file, range) => d.with_labels(vec![Label::primary(file, range)]),
+        }
     }
 }
