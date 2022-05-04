@@ -80,11 +80,10 @@ impl BuiltInType {
     pub const fn supertype(self) -> Option<BuiltInType> {
         match self {
             BuiltInType::Bool => Some(BuiltInType::Int32),
-            BuiltInType::Unit
-            | BuiltInType::Int64
-            | BuiltInType::Int32
-            | BuiltInType::UInt16
-            | BuiltInType::Double => None,
+            BuiltInType::Int32 => Some(BuiltInType::Int64),
+            BuiltInType::Unit | BuiltInType::Int64 | BuiltInType::UInt16 | BuiltInType::Double => {
+                None
+            }
         }
     }
 
