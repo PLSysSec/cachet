@@ -326,7 +326,7 @@ impl<'a> TypeChecker<'a> {
         let mut curr_type_index = subtype_index;
         loop {
             curr_type_index = match curr_type_index {
-                TypeIndex::BuiltIn(_) => return None,
+                TypeIndex::BuiltIn(built_in_type) => built_in_type.supertype()?.type_(),
                 TypeIndex::Enum(_) => return None,
                 TypeIndex::Struct(struct_index) => self.env[struct_index].supertype?,
             };

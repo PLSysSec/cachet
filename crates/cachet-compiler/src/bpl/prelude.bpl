@@ -19,6 +19,9 @@ type #Int32 = bv32;
 type #Int64 = bv64;
 type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/issues/29#issuecomment-231239065
 
+function {:bvbuiltin "(_ sign_extend 32)"} #Int32^to#Int64(n: #Int32): #Int64;
+function {:bvbuiltin "(_ extract 31 0)"} #Int32^from#Int64(n: #Int64): #Int32;
+
 function {:bvbuiltin "bvneg"} #Int32^negate(n: #Int32): #Int32;
 function {:bvbuiltin "bvadd"} #Int32^add(x: #Int32, y: #Int32): #Int32;
 function {:bvbuiltin "bvsub"} #Int32^sub(x: #Int32, y: #Int32): #Int32;
