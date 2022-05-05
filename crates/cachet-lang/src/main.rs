@@ -7,7 +7,7 @@ use std::iter;
 use std::path::PathBuf;
 
 use anyhow::{Context, Error};
-use cachet_lang::parser::{parse, Parser, Files};
+use cachet_lang::parser::{parse, Files, Parser};
 use codespan_reporting::files::{SimpleFile, SimpleFiles};
 use codespan_reporting::term;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
@@ -77,7 +77,11 @@ fn main() -> Result<(), Error> {
     let main = parser.parse(opt.input.to_string_lossy().to_string(), &src);
 
     if prelude.is_err() || main.is_err() {
-        let errors = prelude.err().into_iter().chain(main.err().into_iter()).collect::<Vec<_>>();
+        let errors = prelude
+            .err()
+            .into_iter()
+            .chain(main.err().into_iter())
+            .collect::<Vec<_>>();
         report_all(parser.files, errors.iter());
 
         return Err(Error::msg(format!(
@@ -157,10 +161,7 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn report_all<'a, E: 'a + FrontendError>(
-    files: Files,
-    errors: impl Iterator<Item = &'a E>,
-) -> () {
+fn report_all<'a, E: 'a + FrontendError>(files: Files, errors: impl Iterator<Item = &'a E>) -> () {
     let writer = StandardStream::stderr(ColorChoice::Auto);
     let config = term::Config::default();
 

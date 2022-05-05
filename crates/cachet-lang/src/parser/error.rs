@@ -8,7 +8,7 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 
 use cachet_util::fmt_join_or;
 
-use crate::ast::{Span, FileId};
+use crate::ast::{FileId, Span};
 use crate::FrontendError;
 
 use crate::parser::helpers;
@@ -16,14 +16,14 @@ use crate::parser::helpers;
 #[derive(Clone, Debug)]
 pub struct ParseError {
     pub file_id: FileId,
-    pub(super) underlying_error: helpers::ParseError<String>
+    pub(super) underlying_error: helpers::ParseError<String>,
 }
 
 impl ParseError {
     pub fn new<T: ToString>(file_id: FileId, underlying_error: helpers::ParseError<T>) -> Self {
         Self {
             file_id,
-            underlying_error: underlying_error.map_token(|t| t.to_string())
+            underlying_error: underlying_error.map_token(|t| t.to_string()),
         }
     }
 }
@@ -81,8 +81,7 @@ impl FrontendError for ParseError {
             helpers::ParseError::UnrecognizedToken {
                 token: (start, _, end),
                 ..
-            } =>
-            Span::new(self.file_id, *start as RawIndex..*end as RawIndex),
+            } => Span::new(self.file_id, *start as RawIndex..*end as RawIndex),
 
             helpers::ParseError::ExtraToken {
                 token: (start, _, end),
@@ -93,8 +92,7 @@ impl FrontendError for ParseError {
     }
 
     fn build_diagnostic(&self) -> Diagnostic<FileId> {
-        let d = Diagnostic::error()
-            .with_message(self.to_string());
+        let d = Diagnostic::error().with_message(self.to_string());
 
         match self.span() {
             Span::Internal => d,

@@ -13,9 +13,6 @@ use crate::ast::Spanned;
 pub use crate::parser::ast::*;
 pub use crate::parser::error::*;
 
-
-
-
 lazy_static! {
     static ref PARSER: grammar::ItemsParser = grammar::ItemsParser::new();
 }
@@ -24,21 +21,21 @@ pub type Files = codespan::Files<String>;
 
 pub struct Parser {
     pub files: Files,
-    pub items: Vec<Spanned<Item>>
+    pub items: Vec<Spanned<Item>>,
 }
 
 impl Parser {
     pub fn new() -> Self {
         Self {
             files: Files::new(),
-            items: vec![]
+            items: vec![],
         }
     }
 
     pub fn parse(&mut self, name: String, src: &str) -> Result<(), ParseError> {
         let file_id = self.files.add(name, src.into());
         let items = parse(file_id, src)?;
-        
+
         self.items.splice(0..0, items);
         Ok(())
     }

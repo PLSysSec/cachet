@@ -3,14 +3,14 @@
 use std::error::Error;
 use std::fmt;
 
-use codespan_reporting::diagnostic::{Diagnostic};
+use codespan_reporting::diagnostic::Diagnostic;
 use enumset::{EnumSet, EnumSetType};
 use iterate::iterate;
 use thiserror::Error;
 
 use cachet_util::fmt_join_or;
 
-use crate::ast::{labels, Ident, Path, Span, Spanned, FileId};
+use crate::ast::{labels, FileId, Ident, Path, Span, Spanned};
 use crate::FrontendError;
 
 #[derive(Clone, Debug, Error)]
@@ -89,14 +89,18 @@ impl FrontendError for BadNestingError {
     fn build_diagnostic(&self) -> Diagnostic<FileId> {
         Diagnostic::error()
             .with_message(self.to_string())
-            .with_labels(labels! [
-                Primary (self.span) |l| l.with_message(format!(
-                        "{} items can't be nested under {} items",
-                        self.kind, self.parent_kind
-                )),
-
-                Secondary (self.parent.span) |l| l.with_message("parent item")
-            ].collect())
+            .with_labels(
+                labels![
+                    Primary(self.span)
+                        | l
+                        | l.with_message(format!(
+                            "{} items can't be nested under {} items",
+                            self.kind, self.parent_kind
+                        )),
+                    Secondary(self.parent.span) | l | l.with_message("parent item")
+                ]
+                .collect(),
+            )
     }
 }
 
@@ -116,11 +120,17 @@ impl FrontendError for OrphanItemError {
     fn build_diagnostic(&self) -> Diagnostic<FileId> {
         Diagnostic::error()
             .with_message(self.to_string())
-            .with_labels(labels! [
-                Primary (self.span()) |l| l.with_message(
-                    format!("{} items must be nested under another item", self.kind)
-                )
-            ].collect())
+            .with_labels(
+                labels![
+                    Primary(self.span())
+                        | l
+                        | l.with_message(format!(
+                            "{} items must be nested under another item",
+                            self.kind
+                        ))
+                ]
+                .collect(),
+            )
     }
 }
 
@@ -150,14 +160,21 @@ impl FrontendError for DuplicateDefError {
             .with_labels(
                 iterate![
                     ..labels![
-                        Primary (self.span()) |l| l.with_message(format!("`{}` redefined here", self.path))
+                        Primary(self.span())
+                            | l
+                            | l.with_message(format!("`{}` redefined here", self.path))
                     ],
-                    ..self.first_defined_at.into_iter().flat_map(|first_defined_at| labels![
-                        Secondary (first_defined_at) |l| l.with_message(format!(
-                            "original definition of `{}` is here",
-                            self.path
-                        ))
-                    ]),
+                    ..self
+                        .first_defined_at
+                        .into_iter()
+                        .flat_map(|first_defined_at| labels![
+                            Secondary(first_defined_at)
+                                | l
+                                | l.with_message(format!(
+                                    "original definition of `{}` is here",
+                                    self.path
+                                ))
+                        ]),
                 ]
                 .collect(),
             )
@@ -179,9 +196,10 @@ impl FrontendError for UndefinedError {
     fn build_diagnostic(&self) -> Diagnostic<FileId> {
         Diagnostic::error()
             .with_message(self.to_string())
-            .with_labels(labels![
-                Primary (self.span()) |l| l.with_message("not found in this scope")
-            ].collect())
+            .with_labels(
+                labels![Primary(self.span()) | l | l.with_message("not found in this scope")]
+                    .collect(),
+            )
     }
 }
 
@@ -205,10 +223,14 @@ impl FrontendError for WrongKindError {
             .with_labels(
                 iterate![
                     ..labels![
-                        Primary (self.span()) |l| l.with_message(format!("expected {}", NameKinds(&self.expected)))
+                        Primary(self.span())
+                            | l
+                            | l.with_message(format!("expected {}", NameKinds(&self.expected)))
                     ],
-                    ..self.defined_at.into_iter().flat_map(|defined_at| labels! [
-                        Secondary (defined_at) |l| l.with_message(format!("`{}` defined here", self.path))
+                    ..self.defined_at.into_iter().flat_map(|defined_at| labels![
+                        Secondary(defined_at)
+                            | l
+                            | l.with_message(format!("`{}` defined here", self.path))
                     ]),
                 ]
                 .collect(),
@@ -231,10 +253,17 @@ impl FrontendError for InvalidLabelIrError {
     fn build_diagnostic(&self) -> Diagnostic<FileId> {
         Diagnostic::error()
             .with_message(self.to_string())
-            .with_labels(labels![
-                Primary (self.span()) |l| l.with_message(format!("`{}` isn't an interpreted IR", self.ir)),
-                Secondary (self.ir_defined_at) |l| l.with_message(format!("IR `{}` defined here", self.ir))
-            ].collect())
+            .with_labels(
+                labels![
+                    Primary(self.span())
+                        | l
+                        | l.with_message(format!("`{}` isn't an interpreted IR", self.ir)),
+                    Secondary(self.ir_defined_at)
+                        | l
+                        | l.with_message(format!("IR `{}` defined here", self.ir))
+                ]
+                .collect(),
+            )
     }
 }
 

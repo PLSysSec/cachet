@@ -1,5 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::collections::HashSet;
 use std::iter;
 use std::ops::Deref;
 
@@ -8,6 +9,7 @@ use enum_map::EnumMap;
 use enumset::EnumSet;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
+use lazy_static::lazy_static;
 use typed_index_collections::{TiSlice, TiVec};
 
 use cachet_lang::ast::{CastKind, Ident, Path, VarParamKind};
@@ -439,6 +441,10 @@ impl<'a> Compiler<'a> {
 
     fn compile_callable_item(&mut self, callable_index: normalizer::CallableIndex) {
         let callable_item = &self.env[callable_index];
+
+        if IGNORED_PATHS.contains(&callable_item.path.value) {
+            return;
+        }
 
         let callable_parent_ident = callable_item.path.value.parent().map(Path::ident);
         let callable_ident = callable_item.path.value.ident();
@@ -1500,4 +1506,9 @@ impl CompileExpr for normalizer::PureExpr {
     fn compile<'a, 'b>(&self, scoped_compiler: &ScopedCompiler<'a, 'b>) -> TaggedExpr {
         scoped_compiler.compile_pure_expr(self)
     }
+}
+
+lazy_static! {
+    static ref IGNORED_PATHS: HashSet<Path> =
+        HashSet::from([Ident::from("Double").nest("from_i32".into())]);
 }

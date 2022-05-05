@@ -90,4 +90,8 @@ function {:inline} #Set~remove<a>(set: #Set a, value: a): #Set a {
   #Map~set(set, value, false)
 }
 
+// Impls for cachet's prelude...
+function {:builtin "(_ to_fp 11 53) RNE"} #Double~from_i32(n: #Int32): #Double;
+
+
 // ... end prelude ...
