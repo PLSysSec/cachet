@@ -77,7 +77,6 @@ impl BuiltInType {
         }
     }
 
-
     pub const fn supertype(self) -> Option<BuiltInType> {
         match self {
             BuiltInType::Bool => Some(BuiltInType::Int32),

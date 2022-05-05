@@ -12,7 +12,7 @@ use structopt::StructOpt;
 
 use cachet_lang::flattener::flatten;
 use cachet_lang::normalizer::normalize;
-use cachet_lang::parser::{Parser, Files};
+use cachet_lang::parser::{Files, Parser};
 use cachet_lang::resolver::{resolve, ResolveErrors};
 use cachet_lang::type_checker::{type_check, TypeCheckErrors};
 use cachet_lang::FrontendError;
@@ -82,7 +82,11 @@ fn main() -> Result<(), Error> {
     let main = parser.parse(opt.input.to_string_lossy().to_string(), &src);
 
     if prelude.is_err() || main.is_err() {
-        let errors = prelude.err().into_iter().chain(main.err().into_iter()).collect::<Vec<_>>();
+        let errors = prelude
+            .err()
+            .into_iter()
+            .chain(main.err().into_iter())
+            .collect::<Vec<_>>();
         report_all(parser.files, errors.iter());
 
         return Err(Error::msg(format!(
@@ -172,10 +176,7 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn report_all<'a, E: 'a + FrontendError>(
-    files: Files,
-    errors: impl Iterator<Item = &'a E>,
-) {
+fn report_all<'a, E: 'a + FrontendError>(files: Files, errors: impl Iterator<Item = &'a E>) {
     let writer = StandardStream::stderr(ColorChoice::Auto);
     let config = term::Config::default();
 

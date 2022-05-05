@@ -1,11 +1,11 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+pub use codespan::FileId;
 use codespan_reporting::diagnostic::{Label, LabelStyle};
 use derive_more::Display;
 use std::error;
 use std::fmt::{self, Debug, Display};
 use std::ops::Range;
-pub use codespan::FileId;
 
 #[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Span {
@@ -27,7 +27,6 @@ where
     }
 }
 
-
 macro_rules! labels {
     ($($style:ident ($span:expr) $closure:expr),*) => {
         std::iter::empty()$(
@@ -40,10 +39,10 @@ macro_rules! labels {
 
 pub(crate) use labels;
 
-impl Span 
-{
+impl Span {
     pub fn new<T>(f: FileId, t: T) -> Self
-    where codespan::Span: From<T>
+    where
+        codespan::Span: From<T>,
     {
         Span::External(f, codespan::Span::from(t))
     }
@@ -51,7 +50,7 @@ impl Span
     pub fn label(&self, kind: LabelStyle) -> Option<Label<FileId>> {
         match self {
             Span::Internal => None,
-            Span::External(file_id, csp) => Some(Label::new(kind, *file_id, csp.clone()))
+            Span::External(file_id, csp) => Some(Label::new(kind, *file_id, csp.clone())),
         }
     }
 }

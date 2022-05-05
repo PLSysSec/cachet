@@ -1,6 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{self, Display};
 use std::iter;
 use std::ops::{Deref, DerefMut};
@@ -120,7 +120,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_struct_item(&mut self, struct_item: &flattener::StructItem) {
-        if BLOCKED_PATHS.contains(&struct_item.ident.value.into()) {
+        if BLOCKED_PATHS.get(&struct_item.ident.value.into()).is_some() {
             return;
         }
 
@@ -507,7 +507,7 @@ impl<'a> Compiler<'a> {
 
     fn compile_callable_item(&mut self, callable_index: flattener::CallableIndex) {
         let callable_item = &self.env[callable_index];
-        if BLOCKED_PATHS.contains(&callable_item.path.value) {
+        if BLOCKED_PATHS.get(&callable_item.path.value).is_some() {
             return;
         }
 
@@ -1343,9 +1343,11 @@ enum CallableRepr {
 
 impl CallableRepr {
     fn for_callable(callable_item: &flattener::CallableItem) -> Self {
-        if BLOCKED_PATHS.contains(&callable_item.path.value) {
-            return Self::Proc;
-        }
+        match BLOCKED_PATHS.get(&callable_item.path.value) {
+            Some(BlockedType::Proc) => return Self::Proc,
+            Some(BlockedType::Fn) => return Self::Fn,
+            _ => (),
+        };
 
         let has_out_params =
             callable_item
@@ -2117,22 +2119,33 @@ enum CompiledInvocation {
     ProcCall(VarIdent),
 }
 
+pub enum BlockedType {
+    Proc,
+    Fn,
+    Var,
+}
+
 lazy_static! {
     // Temporary hack to implement a few functions in Boogie, until we implement
     // support for conditional compilation and polymorphism in Cachet.
-    pub static ref BLOCKED_PATHS: HashSet<Path> = HashSet::from([
-        Ident::from("ValueReg").into(),
-        Ident::from("MASM").nest("getValue".into()),
-        Ident::from("MASM").nest("setValue".into()),
-        Ident::from("MASM").nest("getInt32".into()),
-        Ident::from("MASM").nest("setInt32".into()),
-        Ident::from("MASM").nest("getBool".into()),
-        Ident::from("MASM").nest("setBool".into()),
-        Ident::from("MASM").nest("getObject".into()),
-        Ident::from("MASM").nest("setObject".into()),
-        Ident::from("CacheIR").nest("allocateValueReg".into()),
-        Ident::from("CacheIR").nest("releaseValueReg".into()),
-        Ident::from("CacheIR").nest("allocateReg".into()),
-        Ident::from("CacheIR").nest("releaseReg".into()),
-    ]);
+    pub static ref BLOCKED_PATHS: HashMap<Path, BlockedType> = {
+        use BlockedType::*;
+        HashMap::from([
+            (Ident::from("ValueReg").into(), Var),
+            (Ident::from("MASM").nest("getValue".into()), Proc),
+            (Ident::from("MASM").nest("setValue".into()), Proc),
+            (Ident::from("MASM").nest("getInt32".into()), Proc),
+            (Ident::from("MASM").nest("setInt32".into()), Proc),
+            (Ident::from("MASM").nest("getBool".into()), Proc),
+            (Ident::from("MASM").nest("setBool".into()), Proc),
+            (Ident::from("MASM").nest("getObject".into()), Proc),
+            (Ident::from("MASM").nest("setObject".into()), Proc),
+            (Ident::from("CacheIR").nest("allocateValueReg".into()), Proc),
+            (Ident::from("CacheIR").nest("releaseValueReg".into()), Proc),
+            (Ident::from("CacheIR").nest("allocateReg".into()), Proc),
+            (Ident::from("CacheIR").nest("releaseReg".into()), Proc),
+            (Ident::from("Double").nest("from_i32".into()), Fn),
+        ])
+    };
+
 }

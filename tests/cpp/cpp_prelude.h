@@ -89,7 +89,12 @@ struct NumericType : public PrimitiveType<T> {
   static bool CompareGt(Ref lhs, Ref rhs) {
     return lhs > rhs;
   }
+
+  static Val Add(Ref lhs, Ref rhs) {
+    return lhs + rhs;
+  }
 };
+
 
 using Type_Unit = PrimitiveType<std::monostate>;
 using Type_Bool = NumericType<bool>;
@@ -97,6 +102,13 @@ using Type_Int32 = NumericType<int32_t>;
 using Type_Double = NumericType<double>;
 using Type_Int64 = NumericType<int64_t>;
 using Type_UInt16 = NumericType<uint16_t>;
+
+namespace Impl_Double {
+  template <typename T>
+  inline Type_Double::Val Fn_from_i32(T ctx, Type_Int32::Ref v) {
+    return static_cast<Type_Double::Val>(v);
+  }
+}
 
 inline Type_Unit::Ref Var_unit() {
   return std::monostate();

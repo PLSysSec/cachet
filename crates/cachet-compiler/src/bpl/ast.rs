@@ -1043,13 +1043,43 @@ fn fmt_double(f: f64) -> String {
         let bits: u64 = f.to_bits();
         let sign = if bits >> 63 == 0 { "" } else { "-" };
         let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
-        let mantissa = if exponent == 0 {
+        let mut mantissa = if exponent == 0 {
             (bits & 0xfffffffffffff) << 1
         } else {
             (bits & 0xfffffffffffff) | 0x10000000000000
         };
         // Exponent bias + mantissa shift
         exponent -= 1023 + 52;
+
+        // If this were a sane floating point impl we would stop here
+        // but while a normal fp representation is m * 2 ^ e,
+        // boogie uses m * 16 ^ e, which means we need to divide e by four.
+        // Except that would leave us with a fractional exponent, which is verboten.
+        // So we split the fractional bit off and get:
+        //
+        // m * 16 ^ ((e % 4) / 4) * 16 ^ (e/4)
+        // m * 2  ^  (e % 4)      * 16 ^ (e/4)
+        //
+        // or:
+        //
+        // (m << (e % 4)) * 16 ^ (e/4)
+        //
+        // This is why we use an i128 for the mantissa, to allow us to freely shift left
+        // (at most 3) But what about when e is negative? We could shift right,
+        // but this could result in data loss. so instead we shift left and
+        // decrement the exponent just enough so that it's evenly divisible by 4.
+
+        let shift = exponent % 4;
+
+        if shift >= 0 {
+            mantissa = mantissa << shift.abs();
+        } else {
+            let diff = 4 + shift;
+            mantissa = mantissa << diff;
+            exponent -= diff;
+        }
+
+        exponent /= 4;
 
         format!("{sign}0x{mantissa:x}.0e{exponent}f53e11")
     }
