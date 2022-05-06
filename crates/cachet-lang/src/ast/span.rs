@@ -28,10 +28,10 @@ where
 }
 
 macro_rules! labels {
-    ($($style:ident ($span:expr) $closure:expr),*) => {
+    ($($style:ident ($span:expr) => $string:expr),*) => {
         std::iter::empty()$(
             .chain(
-                $span.label(codespan_reporting::diagnostic::LabelStyle::$style).map($closure).into_iter()
+                $span.label(codespan_reporting::diagnostic::LabelStyle::$style).map(|l| l.with_message($string)).into_iter()
             )
         )*
     }
