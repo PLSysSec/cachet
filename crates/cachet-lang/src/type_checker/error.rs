@@ -329,7 +329,7 @@ impl FrontendError for TypeCheckError {
             }
         };
 
-        let mut labels = Vec::from_iter(labels![Primary(self.span()) | l | l.with_message(msg)]);
+        let mut labels = Vec::from_iter(labels![Primary(self.span()) => msg]);
 
         match self {
             TypeCheckError::SubtypeCycle {
@@ -340,14 +340,13 @@ impl FrontendError for TypeCheckError {
                 labels.extend(other_cycle_types.iter().enumerate().flat_map(
                     |(curr_cycle_type_index, curr_cycle_type)| {
                         let label = labels![
-                            Secondary(curr_cycle_type.span)
-                                | l
-                                | l.with_message(format!(
+                            Secondary(curr_cycle_type.span) =>
+                                format!(
                                     "({}) `{}` is a subtype of `{}`",
                                     curr_cycle_type_index + 2,
                                     curr_cycle_type,
                                     prev_cycle_type
-                                ))
+                                )
                         ];
                         prev_cycle_type = curr_cycle_type;
                         label
@@ -362,14 +361,13 @@ impl FrontendError for TypeCheckError {
                 labels.extend(other_cycle_callables.iter().enumerate().flat_map(
                     |(curr_cycle_callable_index, curr_cycle_callable)| {
                         let label = labels![
-                            Secondary(curr_cycle_callable.span)
-                                | l
-                                | l.with_message(format!(
+                            Secondary(curr_cycle_callable.span) =>
+                                format!(
                                     "({}) `{}` calls `{}`",
                                     curr_cycle_callable_index + 2,
                                     prev_cycle_callable,
                                     curr_cycle_callable
-                                ))
+                                )
                         ];
                         prev_cycle_callable = curr_cycle_callable;
                         label
@@ -386,12 +384,11 @@ impl FrontendError for TypeCheckError {
             } => {
                 if let Some(expected_ir) = expected_ir {
                     labels.extend(labels![
-                        Secondary(expected_ir.span)
-                            | l
-                            | l.with_message(format!(
+                        Secondary(expected_ir.span) =>
+                            format!(
                                 "`{}` interprets `{}` ops",
                                 callable, expected_ir
-                            ))
+                            )
                     ]);
                 }
             }
@@ -407,12 +404,11 @@ impl FrontendError for TypeCheckError {
             } => {
                 if let Some(expected_ir) = expected_ir {
                     labels.extend(labels![
-                        Secondary(expected_ir.span)
-                            | l
-                            | l.with_message(format!(
+                        Secondary(expected_ir.span) =>
+                            format!(
                                 "`{}` emits `{}` ops",
                                 callable, expected_ir
-                            ))
+                            )
                     ]);
                 }
             }
@@ -425,8 +421,7 @@ impl FrontendError for TypeCheckError {
             } => {
                 labels.extend(labels![
                     Secondary(*target_defined_at)
-                        | l
-                        | l.with_message(format!("function `{}` defined here", target))
+                        => format!("function `{}` defined here", target)
                 ]);
             }
             TypeCheckError::UnsafeCastInSafeContext { .. } => (),
@@ -438,31 +433,26 @@ impl FrontendError for TypeCheckError {
                 ..
             } => {
                 labels.extend(labels![
-                    Secondary(*args_span)
-                        | l
-                        | l.with_message(format!(
+                    Secondary(*args_span) =>
+                        format!(
                             "found {} argument{}",
                             found_arg_count,
                             if *found_arg_count == 1 { "" } else { "s" }
-                        )),
-                    Secondary(*target_defined_at)
-                        | l
-                        | l.with_message(format!("function `{}` defined here", target))
+                        ),
+                    Secondary(*target_defined_at) =>
+                        format!("function `{}` defined here", target)
                 ]);
             }
             TypeCheckError::ArgKindMismatch { param, .. } => {
                 labels.extend(labels![
-                    Secondary(param.span)
-                        | l
-                        | l.with_message(format!("parameter `{}` defined here", param))
+                    Secondary(param.span) =>
+                        format!("parameter `{}` defined here", param)
                 ]);
             }
             TypeCheckError::ArgTypeMismatch { param, .. }
             | TypeCheckError::ArgIrMismatch { param, .. } => {
                 labels.extend(labels![
-                    Secondary(param.span)
-                        | l
-                        | l.with_message(format!("parameter `{}` defined here", param))
+                    Secondary(param.span) => format!("parameter `{}` defined here", param)
                 ]);
             }
             TypeCheckError::BinaryOperatorTypeMismatch {
@@ -473,15 +463,13 @@ impl FrontendError for TypeCheckError {
                 ..
             } => {
                 labels.extend(labels![
-                    Secondary(*lhs_span) | l | l.with_message(format!("type `{}`", lhs_type)),
-                    Secondary(*rhs_span) | l | l.with_message(format!("type `{}`", rhs_type))
+                    Secondary(*lhs_span) => format!("type `{}`", lhs_type),
+                    Secondary(*rhs_span) => format!("type `{}`", rhs_type)
                 ]);
             }
             TypeCheckError::NumericOperatorTypeMismatch { operator_span, .. } => {
                 labels.extend(labels![
-                    Secondary(*operator_span)
-                        | l
-                        | l.with_message("operator is only defined for numeric types")
+                    Secondary(*operator_span) => "operator is only defined for numeric types"
                 ]);
             }
             TypeCheckError::AssignTypeMismatch {
@@ -491,24 +479,18 @@ impl FrontendError for TypeCheckError {
             } => {
                 if let Some(lhs_defined_at) = lhs_defined_at {
                     labels.extend(labels![
-                        Secondary(*lhs_defined_at)
-                            | l
-                            | l.with_message(format!("variable `{}` defined here", lhs))
+                        Secondary(*lhs_defined_at) => format!("variable `{}` defined here", lhs)
                     ]);
                 }
             }
             TypeCheckError::NonStructFieldAccess {
                 parent_span, type_, ..
             } => labels.extend(labels![
-                Secondary(*parent_span)
-                    | l
-                    | l.with_message(format!("expression is of type `{}`", type_))
+                Secondary(*parent_span) => format!("expression is of type `{}`", type_)
             ]),
             TypeCheckError::FieldNotFound { type_, .. } => {
                 labels.extend(labels![
-                    Secondary(type_.span)
-                        | l
-                        | l.with_message(format!("struct `{}` declared here", type_.value))
+                    Secondary(type_.span) => format!("struct `{}` declared here", type_.value)
                 ]);
             }
         }

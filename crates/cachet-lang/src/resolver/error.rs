@@ -91,13 +91,12 @@ impl FrontendError for BadNestingError {
             .with_message(self.to_string())
             .with_labels(
                 labels![
-                    Primary(self.span)
-                        | l
-                        | l.with_message(format!(
+                    Primary(self.span) =>
+                        format!(
                             "{} items can't be nested under {} items",
                             self.kind, self.parent_kind
-                        )),
-                    Secondary(self.parent.span) | l | l.with_message("parent item")
+                        ),
+                    Secondary(self.parent.span) => "parent item"
                 ]
                 .collect(),
             )
@@ -122,12 +121,11 @@ impl FrontendError for OrphanItemError {
             .with_message(self.to_string())
             .with_labels(
                 labels![
-                    Primary(self.span())
-                        | l
-                        | l.with_message(format!(
+                    Primary(self.span()) =>
+                        format!(
                             "{} items must be nested under another item",
                             self.kind
-                        ))
+                        )
                 ]
                 .collect(),
             )
@@ -161,19 +159,17 @@ impl FrontendError for DuplicateDefError {
                 iterate![
                     ..labels![
                         Primary(self.span())
-                            | l
-                            | l.with_message(format!("`{}` redefined here", self.path))
+                            => format!("`{}` redefined here", self.path)
                     ],
                     ..self
                         .first_defined_at
                         .into_iter()
                         .flat_map(|first_defined_at| labels![
-                            Secondary(first_defined_at)
-                                | l
-                                | l.with_message(format!(
+                            Secondary(first_defined_at) =>
+                                format!(
                                     "original definition of `{}` is here",
                                     self.path
-                                ))
+                                )
                         ]),
                 ]
                 .collect(),
@@ -196,10 +192,7 @@ impl FrontendError for UndefinedError {
     fn build_diagnostic(&self) -> Diagnostic<FileId> {
         Diagnostic::error()
             .with_message(self.to_string())
-            .with_labels(
-                labels![Primary(self.span()) | l | l.with_message("not found in this scope")]
-                    .collect(),
-            )
+            .with_labels(labels![Primary(self.span()) => "not found in this scope"].collect())
     }
 }
 
@@ -223,14 +216,10 @@ impl FrontendError for WrongKindError {
             .with_labels(
                 iterate![
                     ..labels![
-                        Primary(self.span())
-                            | l
-                            | l.with_message(format!("expected {}", NameKinds(&self.expected)))
+                        Primary(self.span()) => format!("expected {}", NameKinds(&self.expected))
                     ],
                     ..self.defined_at.into_iter().flat_map(|defined_at| labels![
-                        Secondary(defined_at)
-                            | l
-                            | l.with_message(format!("`{}` defined here", self.path))
+                        Secondary(defined_at) => format!("`{}` defined here", self.path)
                     ]),
                 ]
                 .collect(),
@@ -255,12 +244,8 @@ impl FrontendError for InvalidLabelIrError {
             .with_message(self.to_string())
             .with_labels(
                 labels![
-                    Primary(self.span())
-                        | l
-                        | l.with_message(format!("`{}` isn't an interpreted IR", self.ir)),
-                    Secondary(self.ir_defined_at)
-                        | l
-                        | l.with_message(format!("IR `{}` defined here", self.ir))
+                    Primary(self.span()) => format!("`{}` isn't an interpreted IR", self.ir),
+                    Secondary(self.ir_defined_at) => format!("IR `{}` defined here", self.ir)
                 ]
                 .collect(),
             )
