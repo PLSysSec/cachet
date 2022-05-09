@@ -107,6 +107,10 @@ enum Condition {
     Equal,
     NotEqual,
     Overflow,
+    Zero,
+    NonZero,
+    Signed,
+    NotSigned,
 }
 
 ir MASM {
@@ -127,6 +131,35 @@ ir MASM {
       }
     }
 
+    op BranchTest32(condition: Condition, src1Reg: Reg, src2Reg: Reg, label branch: MASM) {
+      let src1Int32 = MASM::getInt32(src1Reg);
+      let src2Int32 = MASM::getInt32(src2Reg);
+
+      let result = src1Int32 & src2Int32;
+
+      assert condition != Condition::Equal;
+      assert condition != Condition::NotEqual;
+      assert condition != Condition::Overflow;
+
+      if condition == Condition::Zero {
+        if result == 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::NonZero {
+        if result != 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::Signed {
+        if result < 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::NotSigned {
+        if result > 0_i32 {
+          goto branch;
+        }
+      }
+    }
+
     op UnboxInt32(valueReg: ValueReg, int32Reg: Reg) {
       let value = MASM::getValue(valueReg);
       MASM::setInt32(int32Reg, Value::toInt32(value)); 
@@ -134,6 +167,10 @@ ir MASM {
 
     op Mov(srcReg: Reg, dstReg: Reg) {
       MASM::setInt32(dstReg, MASM::getInt32(srcReg));
+    }
+
+    op Jump(label target: MASM) {
+      goto target;
     }
 
     op TagValue(valTy: ValueType, payload: Reg, dest: ValueReg) {
@@ -166,6 +203,58 @@ ir MASM {
             goto branch;
           }
         }
+      }
+
+      MASM::setInt32(dstReg, result);
+    }
+
+    op BranchSub32(condition: Condition, srcReg: Reg, dstReg: Reg, label branch: MASM) {
+      let lhsInt32 = MASM::getInt32(dstReg);
+      let rhsInt32 = MASM::getInt32(srcReg);
+
+      let result = lhsInt32 - rhsInt32;
+
+      assert condition == Condition::Overflow;
+
+      let rhsInt32Neg = -rhsInt32;
+      let minInt32 = 1_i32 << 31_i32; // Do it this way until negative literals are a thing
+
+      if rhsInt32 == minInt32 {
+        if lhsInt32 >= 0_i32 {
+          goto branch;
+        }
+      } else {
+        if lhsInt32 > 0_i32 {
+          if rhsInt32 < 0_i32 {
+            if result < 0_i32 {
+              goto branch;
+            }
+          }
+        }
+      }
+
+      if lhsInt32 < 0_i32 {
+        if rhsInt32 > 0_i32 {
+          if result > 0_i32 {
+            goto branch;
+          }
+        }
+      }
+
+      MASM::setInt32(dstReg, result);
+    }
+
+    op BranchMul32(condition: Condition, srcReg: Reg, dstReg: Reg, label branch: MASM) {
+      let lhsInt32 = MASM::getInt32(dstReg);
+      let rhsInt32 = MASM::getInt32(srcReg);
+
+      let result = lhsInt32 * rhsInt32;
+
+      assert condition == Condition::Overflow;
+
+      let resultWide = (lhsInt32 as Int64) * (rhsInt32 as Int64);
+      if (result as Int64) != resultWide {
+        goto branch;
       }
 
       MASM::setInt32(dstReg, result);
@@ -234,7 +323,45 @@ ir CacheIR emits MASM {
     emit MASM::BranchAdd32(Condition::Overflow, lhsReg, scratchReg, failure);
     emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
 
-    CacheIR::releaseReg(scratchReg); 
+    CacheIR::releaseReg(scratchReg);
+  }
+
+  op Int32SubResult(lhsId: Int32Id, rhsId: Int32Id, label failure: MASM) {
+    let lhsReg = CacheIR::useInt32Reg(lhsId);
+    let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+    let scratchReg = CacheIR::allocateReg();
+    emit MASM::Mov(lhsReg, scratchReg);
+    emit MASM::BranchSub32(Condition::Overflow, rhsReg, scratchReg, failure);
+    emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+    CacheIR::releaseReg(scratchReg);
+  }
+
+  op Int32MulResult(lhsId: Int32Id, rhsId: Int32Id, label failure: MASM) {
+    let lhsReg = CacheIR::useInt32Reg(lhsId);
+    let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+    let scratchReg = CacheIR::allocateReg();
+    let scratch2Reg = CacheIR::allocateReg();
+
+    label maybeNegZero: MASM;
+    label done: MASM;
+
+    emit MASM::Mov(lhsReg, scratchReg);
+    emit MASM::BranchMul32(Condition::Overflow, rhsReg, scratchReg, failure);
+    emit MASM::BranchTest32(Condition::Zero, scratchReg, scratchReg, maybeNegZero);
+    emit MASM::Jump(done);
+
+    bind maybeNegZero;
+    emit MASM::Mov(lhsReg, scratch2Reg);
+    emit MASM::Or32(rhsReg, scratch2Reg);
+    emit MASM::BranchTest32(Condition::Signed, scratch2Reg, scratch2Reg, failure);
+
+    bind done;
+    emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+    CacheIR::releaseReg(scratchReg);
   }
 
   op Int32BitOrResult(lhsId: Int32Id, rhsId: Int32Id) {
@@ -334,6 +461,18 @@ ir CacheStub emits CacheIR {
         emit CacheIR::Int32BitAndResult(lhsInt32Id, rhsInt32Id);
     }
 
+    op Sub(
+        lhsValueId: ValueId,
+        rhsValueId: ValueId,
+        lhsInt32Id: Int32Id,
+        rhsInt32Id: Int32Id,
+        label failure: MASM,
+    ) {
+        emit CacheIR::GuardToInt32(lhsValueId, lhsInt32Id, failure);
+        emit CacheIR::GuardToInt32(rhsValueId, rhsInt32Id, failure);
+        emit CacheIR::Int32SubResult(lhsInt32Id, rhsInt32Id, failure);
+    }
+
     op Add(
         lhsValueId: ValueId,
         rhsValueId: ValueId,
@@ -344,5 +483,17 @@ ir CacheStub emits CacheIR {
         emit CacheIR::GuardToInt32(lhsValueId, lhsInt32Id, failure);
         emit CacheIR::GuardToInt32(rhsValueId, rhsInt32Id, failure);
         emit CacheIR::Int32AddResult(lhsInt32Id, rhsInt32Id, failure);
+    }
+
+    op Mul(
+        lhsValueId: ValueId,
+        rhsValueId: ValueId,
+        lhsInt32Id: Int32Id,
+        rhsInt32Id: Int32Id,
+        label failure: MASM,
+    ) {
+        emit CacheIR::GuardToInt32(lhsValueId, lhsInt32Id, failure);
+        emit CacheIR::GuardToInt32(rhsValueId, rhsInt32Id, failure);
+        emit CacheIR::Int32MulResult(lhsInt32Id, rhsInt32Id, failure);
     }
 }
