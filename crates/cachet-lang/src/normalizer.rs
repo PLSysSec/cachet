@@ -77,6 +77,7 @@ fn normalize_callable_item(
         interprets: callable_item.interprets,
         emits: callable_item.emits,
         body,
+        attrs: callable_item.attrs,
     }
 }
 

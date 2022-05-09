@@ -11,7 +11,7 @@ use crate::ast::{
 use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::type_checker;
 pub use crate::type_checker::{
-    BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FieldIndex,
+    Attr, BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FieldIndex,
     FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, Label, LabelIndex,
     LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex,
     Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
@@ -95,6 +95,16 @@ pub struct CallableItem<B = ()> {
     pub interprets: Option<IrIndex>,
     pub emits: Option<IrIndex>,
     pub body: Option<Body<B>>,
+    pub attrs: Vec<Spanned<Attr>>,
+}
+
+impl<B> CallableItem<B> {
+    pub fn is_prelude(&self) -> bool {
+        self.attrs
+            .iter()
+            .find(|attr| attr.value == Attr::Prelude)
+            .is_some()
+    }
 }
 
 impl<B> Typed for CallableItem<B> {

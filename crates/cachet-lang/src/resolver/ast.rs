@@ -14,6 +14,7 @@ use crate::ast::{
     ArithKind, BitwiseKind, BlockKind, CheckKind, CompareKind, Ident, MaybeSpanned, NegateKind,
     Path, Spanned, VarParamKind,
 };
+pub use crate::built_in::Attr;
 use crate::built_in::{BuiltInType, BuiltInVar};
 pub use crate::parser::{Literal, VariantIndex};
 
@@ -286,6 +287,7 @@ pub struct CallableItem {
     pub param_order: Vec<ParamIndex>,
     pub ret: Option<Spanned<TypeIndex>>,
     pub body: Spanned<Option<Body>>,
+    pub attrs: Vec<Spanned<Attr>>,
 }
 
 impl Typed for CallableItem {

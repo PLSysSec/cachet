@@ -1,14 +1,11 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use std::fmt;
 use std::fs::read_to_string;
 //use std::io::prelude::*;
-use std::iter;
 use std::path::PathBuf;
 
 use anyhow::{Context, Error};
-use cachet_lang::parser::{parse, Files, Parser};
-use codespan_reporting::files::{SimpleFile, SimpleFiles};
+use cachet_lang::parser::{Files, Parser};
 use codespan_reporting::term;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use structopt::clap::AppSettings;

@@ -442,7 +442,7 @@ impl<'a> Compiler<'a> {
     fn compile_callable_item(&mut self, callable_index: normalizer::CallableIndex) {
         let callable_item = &self.env[callable_index];
 
-        if IGNORED_PATHS.contains(&callable_item.path.value) {
+        if IGNORED_PATHS.contains(&callable_item.path.value) || callable_item.is_prelude() {
             return;
         }
 
