@@ -49,6 +49,19 @@ macro_rules! ordered_ident_enum {
             pub fn from_ident(ident: Ident) -> Option<Self> {
                 Self::ident_reverse_map().get(&ident).copied()
             }
+
+
+            pub fn path(self) -> Path {
+                self.ident().into()
+            }
+
+            pub fn from_path(path: Path) -> Option<Self> {
+                if path.has_parent() {
+                    None
+                } else {
+                    Self::from_ident(path.ident())
+                }
+            }
         }
     }
 }
@@ -65,18 +78,6 @@ ordered_ident_enum! {
 }
 
 impl BuiltInType {
-    pub fn path(self) -> Path {
-        self.ident().into()
-    }
-
-    pub fn from_path(path: Path) -> Option<BuiltInType> {
-        if path.has_parent() {
-            None
-        } else {
-            BuiltInType::from_ident(path.ident())
-        }
-    }
-
     pub const fn supertype(self) -> Option<BuiltInType> {
         match self {
             BuiltInType::Bool => Some(BuiltInType::Int32),
@@ -118,22 +119,16 @@ ordered_ident_enum! {
 }
 
 impl BuiltInVar {
-    pub fn path(self) -> Path {
-        self.ident().into()
-    }
-
-    pub fn from_path(path: Path) -> Option<BuiltInVar> {
-        if path.has_parent() {
-            None
-        } else {
-            BuiltInVar::from_ident(path.ident())
-        }
-    }
-
     pub const fn built_in_type(self) -> BuiltInType {
         match self {
             BuiltInVar::Unit => BuiltInType::Unit,
             BuiltInVar::True | BuiltInVar::False => BuiltInType::Bool,
         }
+    }
+}
+
+ordered_ident_enum! {
+    Attr {
+        Prelude = "prelude"
     }
 }

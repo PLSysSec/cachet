@@ -588,6 +588,22 @@ impl<'a> Resolver<'a> {
         })
     }
 
+    fn resolve_attr(&mut self, ast_attr: parser::Attr) -> Option<Attr> {
+        let attr = Attr::from_path(ast_attr.path.value);
+
+        if attr.is_none() {
+            self.errors.push(
+                UndefinedError {
+                    path: ast_attr.path,
+                    expected: NameKind::Attr.into(),
+                }
+                .into(),
+            );
+        }
+
+        attr
+    }
+
     fn resolve_callable_item(
         &mut self,
         callable_item: GlobalItem<parser::CallableItem>,
@@ -612,6 +628,13 @@ impl<'a> Resolver<'a> {
             None => Some(None),
         });
 
+        let attrs = callable_item
+            .item
+            .attrs
+            .into_iter()
+            .filter_map(|attr| map_spanned(attr, |attr| self.resolve_attr(attr.value)))
+            .collect();
+
         let ret = match callable_item.item.ret {
             Some(ret) => map_spanned(ret, |ret| {
                 self.lookup_type_global(ret).found(&mut self.errors)
@@ -628,6 +651,7 @@ impl<'a> Resolver<'a> {
             param_order,
             ret: ret?,
             body: body?,
+            attrs,
         })
     }
 

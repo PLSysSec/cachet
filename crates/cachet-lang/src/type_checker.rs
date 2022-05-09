@@ -280,6 +280,7 @@ impl<'a> TypeChecker<'a> {
             interprets: interprets.map(|interprets| interprets.value),
             emits: emits.map(|emits| emits.value),
             body,
+            attrs: callable_item.attrs.clone(),
         }
     }
 

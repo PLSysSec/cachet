@@ -70,6 +70,7 @@ VarTag: VarTag =
     "mut" => VarTag::Mut;
 
 CallableItem: Item =
+    <attrs:Spanned<Attr>*>
     <tags:CallableTags> <kind:CallableKind> <ident:Spanned<Ident>>
     "(" <params:Comma<Param>> ")" <ret:("->" <Spanned<Path>>)?>
     <body:Spanned<CallableBody>> => {
@@ -79,6 +80,7 @@ CallableItem: Item =
             params,
             ret,
             body,
+            attrs
         };
 
         match kind {
@@ -424,6 +426,9 @@ Comma<Rule>: Vec<Rule> =
         xs.extend(x);
         xs
     };
+
+Attr: Attr =
+    "#" "[" <path:Spanned<Path>> "]" => Attr { path };
 
 match {
     // Skip whitespace.

@@ -260,6 +260,7 @@ pub enum NameKind {
     Fn,
     Op,
     Label,
+    Attr,
 }
 
 impl fmt::Display for NameKind {
@@ -271,6 +272,7 @@ impl fmt::Display for NameKind {
             NameKind::Var => write!(f, "variable"),
             NameKind::Fn => write!(f, "function"),
             NameKind::Label => write!(f, "label"),
+            NameKind::Attr => write!(f, "attrbute"),
         }
     }
 }

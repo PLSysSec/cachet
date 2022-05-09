@@ -14,11 +14,11 @@ use crate::ast::{
 use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::resolver;
 pub use crate::resolver::{
-    CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FieldIndex, FnIndex, GlobalVarIndex,
-    GlobalVarItem, IrIndex, IrItem, Label, LabelIndex, LabelParam, LabelParamIndex, LabelStmt,
-    Literal, LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel, OutVar, ParamIndex, Params,
-    ParentIndex, StructField, StructIndex, StructItem, TypeIndex, Typed, VarIndex, VarParam,
-    VarParamIndex, VariantIndex,
+    Attr, CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FieldIndex, FnIndex,
+    GlobalVarIndex, GlobalVarItem, IrIndex, IrItem, Label, LabelIndex, LabelParam,
+    LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel,
+    OutVar, ParamIndex, Params, ParentIndex, StructField, StructIndex, StructItem, TypeIndex,
+    Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -167,6 +167,7 @@ pub struct CallableItem {
     pub interprets: Option<IrIndex>,
     pub emits: Option<IrIndex>,
     pub body: Option<Body>,
+    pub attrs: Vec<Spanned<Attr>>,
 }
 
 impl Typed for CallableItem {

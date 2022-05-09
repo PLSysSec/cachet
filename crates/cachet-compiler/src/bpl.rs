@@ -1,6 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::{self, Display};
 use std::iter;
 use std::ops::{Deref, DerefMut};
@@ -507,7 +507,8 @@ impl<'a> Compiler<'a> {
 
     fn compile_callable_item(&mut self, callable_index: flattener::CallableIndex) {
         let callable_item = &self.env[callable_index];
-        if BLOCKED_PATHS.get(&callable_item.path.value).is_some() {
+
+        if BLOCKED_PATHS.get(&callable_item.path.value).is_some() || callable_item.is_prelude() {
             return;
         }
 
@@ -1345,7 +1346,6 @@ impl CallableRepr {
     fn for_callable(callable_item: &flattener::CallableItem) -> Self {
         match BLOCKED_PATHS.get(&callable_item.path.value) {
             Some(BlockedType::Proc) => return Self::Proc,
-            Some(BlockedType::Fn) => return Self::Fn,
             _ => (),
         };
 
@@ -2121,7 +2121,6 @@ enum CompiledInvocation {
 
 pub enum BlockedType {
     Proc,
-    Fn,
     Var,
 }
 
@@ -2144,7 +2143,6 @@ lazy_static! {
             (Ident::from("CacheIR").nest("releaseValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("allocateReg".into()), Proc),
             (Ident::from("CacheIR").nest("releaseReg".into()), Proc),
-            (Ident::from("Double").nest("from_i32".into()), Fn),
         ])
     };
 

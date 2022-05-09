@@ -73,6 +73,12 @@ pub struct CallableItem {
     pub params: Vec<Param>,
     pub ret: Option<Spanned<Path>>,
     pub body: Spanned<Option<Block>>,
+    pub attrs: Vec<Spanned<Attr>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Attr {
+    pub path: Spanned<Path>,
 }
 
 #[derive(Clone, Debug, From)]

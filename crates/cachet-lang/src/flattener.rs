@@ -44,6 +44,7 @@ fn flatten_callable_item(callable_item: normalizer::CallableItem) -> CallableIte
         interprets: callable_item.interprets,
         emits: callable_item.emits,
         body,
+        attrs: callable_item.attrs,
     }
 }
 
