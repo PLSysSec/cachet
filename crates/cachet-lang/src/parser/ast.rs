@@ -6,7 +6,7 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, typed_field_index};
 
 use crate::ast::{
-    ArithKind, BitwiseKind, BlockKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned,
+    BlockKind, CheckKind, Ident, NegateKind, Path, Spanned,
     VarParamKind, BinOpKind,
 };
 
@@ -274,12 +274,6 @@ pub enum Expr {
     #[from]
     BinOp(Box<BinOpExpr>),
     #[from]
-    Arith(Box<ArithExpr>),
-    #[from]
-    Bitwise(Box<BitwiseExpr>),
-    #[from]
-    Compare(Box<CompareExpr>),
-    #[from]
     Assign(Box<AssignExpr>),
 }
 
@@ -287,10 +281,7 @@ box_from!(KindedBlock => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(FieldAccessExpr => Expr);
 box_from!(CastExpr => Expr);
-box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
-box_from!(ArithExpr => Expr);
-box_from!(BitwiseExpr => Expr);
 box_from!(BinOpExpr => Expr);
 
 deref_from!(&Literal => Expr);
@@ -335,29 +326,8 @@ pub struct CastExpr {
 }
 
 #[derive(Clone, Debug)]
-pub struct CompareExpr {
-    pub kind: Spanned<CompareKind>,
-    pub lhs: Spanned<Expr>,
-    pub rhs: Spanned<Expr>,
-}
-
-#[derive(Clone, Debug)]
 pub struct AssignExpr {
     pub lhs: Spanned<Path>,
-    pub rhs: Spanned<Expr>,
-}
-
-#[derive(Clone, Debug)]
-pub struct ArithExpr {
-    pub kind: Spanned<ArithKind>,
-    pub lhs: Spanned<Expr>,
-    pub rhs: Spanned<Expr>,
-}
-
-#[derive(Clone, Debug)]
-pub struct BitwiseExpr {
-    pub kind: Spanned<BitwiseKind>,
-    pub lhs: Spanned<Expr>,
     pub rhs: Spanned<Expr>,
 }
 

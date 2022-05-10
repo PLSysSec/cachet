@@ -7,10 +7,10 @@ use enumset::EnumSet;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
-    ArithKind, BitwiseKind, BlockKind, CastKind, CheckKind, CompareKind, NegateKind, Path, Spanned, BinOpKind,
+    BlockKind, CastKind, CheckKind, NegateKind, Path, Spanned, BinOpKind,
 };
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
-use crate::type_checker;
+
 pub use crate::type_checker::{
     BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex,
     FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, HasAttrs, IrIndex, IrItem, Label,
@@ -250,12 +250,6 @@ pub enum Expr<B = ()> {
     #[from]
     Cast(Box<CastExpr<Expr<B>>>),
     #[from]
-    Compare(CompareExpr),
-    #[from]
-    Arith(ArithExpr),
-    #[from]
-    Bitwise(BitwiseExpr),
-    #[from]
     BinOp(BinOpExpr),
 }
 
@@ -269,9 +263,6 @@ impl<B> Typed for Expr<B> {
             Expr::FieldAccess(field_access_expr) => field_access_expr.type_(),
             Expr::Negate(negate_expr) => negate_expr.type_(),
             Expr::Cast(cast_expr) => cast_expr.type_(),
-            Expr::Compare(compare_expr) => compare_expr.type_(),
-            Expr::Arith(arith_expr) => arith_expr.type_(),
-            Expr::Bitwise(bitwise_expr) => bitwise_expr.type_(),
             Expr::BinOp(binop_expr) => binop_expr.type_(),
         }
     }
@@ -298,9 +289,6 @@ impl<B> From<PureExpr> for Expr<B> {
             PureExpr::FieldAccess(field_access_expr) => (*field_access_expr).into(),
             PureExpr::Negate(negate_expr) => (*negate_expr).into(),
             PureExpr::Cast(cast_expr) => (*cast_expr).into(),
-            PureExpr::Compare(compare_expr) => (*compare_expr).into(),
-            PureExpr::Arith(arith_expr) => (*arith_expr).into(),
-            PureExpr::Bitwise(bitwise_expr) => (*bitwise_expr).into(),
             PureExpr::BinOp(binop_expr) => (*binop_expr).into(),
         }
     }
@@ -337,12 +325,6 @@ pub enum PureExpr {
     #[from]
     Cast(Box<CastExpr<PureExpr>>),
     #[from]
-    Compare(Box<CompareExpr>),
-    #[from]
-    Arith(Box<ArithExpr>),
-    #[from]
-    Bitwise(Box<BitwiseExpr>),
-    #[from]
     BinOp(Box<BinOpExpr>),
 }
 
@@ -354,9 +336,6 @@ impl Typed for PureExpr {
             PureExpr::FieldAccess(field_access_expr) => field_access_expr.type_(),
             PureExpr::Negate(negate_expr) => negate_expr.type_(),
             PureExpr::Cast(cast_expr) => cast_expr.type_(),
-            PureExpr::Compare(compare_expr) => compare_expr.type_(),
-            PureExpr::Arith(arith_expr) => arith_expr.type_(),
-            PureExpr::Bitwise(bitwise_expr) => bitwise_expr.type_(),
             PureExpr::BinOp(binop_expr) => binop_expr.type_(),
         }
     }
@@ -365,9 +344,6 @@ impl Typed for PureExpr {
 box_from!(FieldAccessExpr<PureExpr> => PureExpr);
 box_from!(NegateExpr<PureExpr> => PureExpr);
 box_from!(CastExpr<PureExpr> => PureExpr);
-box_from!(CompareExpr => PureExpr);
-box_from!(ArithExpr => PureExpr);
-box_from!(BitwiseExpr => PureExpr);
 box_from!(BinOpExpr => PureExpr);
 
 deref_from!(&Literal => PureExpr);
@@ -383,9 +359,6 @@ impl<B> TryFrom<Expr<B>> for PureExpr {
             Expr::FieldAccess(field_access_expr) => Ok((*field_access_expr).try_into()?),
             Expr::Negate(negate_expr) => Ok((*negate_expr).try_into()?),
             Expr::Cast(cast_expr) => Ok((*cast_expr).try_into()?),
-            Expr::Compare(compare_expr) => Ok(compare_expr.into()),
-            Expr::Arith(arith_expr) => Ok(arith_expr.into()),
-            Expr::Bitwise(bitwise_expr) => Ok(bitwise_expr.into()),
             Expr::BinOp(binop_expr) => Ok(binop_expr.into()),
         }
     }
@@ -563,49 +536,6 @@ impl<B> TryFrom<CastExpr<Expr<B>>> for CastExpr<PureExpr> {
                 type_: cast_expr.type_,
             }),
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct CompareExpr {
-    pub kind: CompareKind,
-    pub lhs: PureExpr,
-    pub rhs: PureExpr,
-}
-
-impl CompareExpr {
-    pub const TYPE: BuiltInType = type_checker::CompareExpr::TYPE;
-}
-
-impl Typed for CompareExpr {
-    fn type_(&self) -> TypeIndex {
-        CompareExpr::TYPE.into()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ArithExpr {
-    pub kind: ArithKind,
-    pub lhs: PureExpr,
-    pub rhs: PureExpr,
-}
-
-impl Typed for ArithExpr {
-    fn type_(&self) -> TypeIndex {
-        self.lhs.type_()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct BitwiseExpr {
-    pub kind: BitwiseKind,
-    pub lhs: PureExpr,
-    pub rhs: PureExpr,
-}
-
-impl Typed for BitwiseExpr {
-    fn type_(&self) -> TypeIndex {
-        self.lhs.type_()
     }
 }
 

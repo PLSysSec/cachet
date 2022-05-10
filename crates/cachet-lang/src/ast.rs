@@ -135,3 +135,11 @@ pub enum BinOpKind {
     #[display(fmt = "!=")]
     Neq,
 }
+
+impl BinOpKind {
+    pub fn is_comparison(&self) -> bool {
+        use BinOpKind::*;
+
+        matches!(self, Lte | Gte | Lt | Gt | Eq | Neq)
+    }
+}

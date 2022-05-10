@@ -378,10 +378,13 @@ PrecExpr: PrecExpr = {
     #[assoc(side = "left")]
     <lhs:Spanned<PrecExpr>> <kind:Spanned<CompareKind>> <rhs:Spanned<PrecExpr>> =>? {
         if !lhs.value.is_grouped {
-            if let Expr::Compare(_) = lhs.value.expr {
-                return Err(RawParseError::User {
-                    error: Spanned::new(kind.span, "comparison operators can't be chained"),
-                });
+            match lhs.value.expr {
+                Expr::BinOp(lhs) if lhs.kind.value.is_comparison() => {
+                    return Err(RawParseError::User {
+                        error: Spanned::new(kind.span, "comparison operators can't be chained"),
+                    });
+                }
+                _ => ()
             }
         }
 

@@ -392,17 +392,8 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Cast(cast_expr) => {
                 self.normalize_used_cast_expr(*cast_expr).into()
             }
-            type_checker::Expr::Compare(compare_expr) => {
-                self.normalize_used_compare_expr(*compare_expr)
-            }
             type_checker::Expr::Assign(_) => {
                 unreachable!("assignment expressions should be `Unit`-typed")
-            }
-            type_checker::Expr::Arith(arith_expr) => {
-                self.normalize_used_arith_expr(*arith_expr).into()
-            }
-            type_checker::Expr::Bitwise(bitwise_expr) => {
-                self.normalize_used_bitwise_expr(*bitwise_expr).into()
             }
             type_checker::Expr::BinOp(binop_expr) => {
                 self.normalize_used_binop_expr(*binop_expr).into()
@@ -425,15 +416,8 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
                 self.normalize_unused_negate_expr(*negate_expr)
             }
             type_checker::Expr::Cast(cast_expr) => self.normalize_unused_cast_expr(*cast_expr),
-            type_checker::Expr::Compare(compare_expr) => {
-                self.normalize_unused_compare_expr(*compare_expr)
-            }
             type_checker::Expr::Assign(assign_expr) => {
                 self.normalize_unused_assign_expr(*assign_expr)
-            }
-            type_checker::Expr::Arith(arith_expr) => self.normalize_unused_arith_expr(*arith_expr),
-            type_checker::Expr::Bitwise(bitwise_expr) => {
-                self.normalize_unused_bitwise_expr(*bitwise_expr)
             }
             type_checker::Expr::BinOp(binop_expr) => {
                 self.normalize_unused_binop_expr(*binop_expr)
@@ -543,94 +527,6 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         self.normalize_unused_expr(cast_expr.expr);
     }
 
-    fn normalize_used_compare_expr(&mut self, compare_expr: type_checker::CompareExpr) -> Expr {
-        let mut stmts = Vec::new();
-        let mut scoped_normalizer = self.recurse(&mut stmts);
-
-        let lhs = scoped_normalizer.normalize_pure_expr(compare_expr.lhs);
-        let rhs = scoped_normalizer.normalize_pure_expr(compare_expr.rhs);
-
-        let value = CompareExpr {
-            kind: compare_expr.kind,
-            lhs,
-            rhs,
-        }
-        .into();
-
-        if stmts.is_empty() {
-            value
-        } else {
-            BlockExpr {
-                kind: None,
-                stmts,
-                value,
-            }
-            .into()
-        }
-    }
-
-    fn normalize_unused_compare_expr(&mut self, compare_expr: type_checker::CompareExpr) {
-        self.normalize_unused_expr(compare_expr.lhs);
-        self.normalize_unused_expr(compare_expr.rhs);
-    }
-
-    fn normalize_used_arith_expr(&mut self, arith_expr: type_checker::ArithExpr) -> Expr {
-        let mut stmts = Vec::new();
-        let mut scoped_normalizer = self.recurse(&mut stmts);
-
-        let lhs = scoped_normalizer.normalize_pure_expr(arith_expr.lhs);
-        let rhs = scoped_normalizer.normalize_pure_expr(arith_expr.rhs);
-
-        let value = ArithExpr {
-            kind: arith_expr.kind,
-            lhs,
-            rhs,
-        }
-        .into();
-
-        if stmts.is_empty() {
-            value
-        } else {
-            BlockExpr {
-                kind: None,
-                stmts,
-                value,
-            }
-            .into()
-        }
-    }
-
-    fn normalize_unused_arith_expr(&mut self, arith_expr: type_checker::ArithExpr) {
-        self.normalize_unused_expr(arith_expr.lhs);
-        self.normalize_unused_expr(arith_expr.rhs);
-    }
-
-    fn normalize_used_bitwise_expr(&mut self, bitwise_expr: type_checker::BitwiseExpr) -> Expr {
-        let mut stmts = Vec::new();
-        let mut scoped_normalizer = self.recurse(&mut stmts);
-
-        let lhs = scoped_normalizer.normalize_pure_expr(bitwise_expr.lhs);
-        let rhs = scoped_normalizer.normalize_pure_expr(bitwise_expr.rhs);
-
-        let value = BitwiseExpr {
-            kind: bitwise_expr.kind,
-            lhs,
-            rhs,
-        }
-        .into();
-
-        if stmts.is_empty() {
-            value
-        } else {
-            BlockExpr {
-                kind: None,
-                stmts,
-                value,
-            }
-            .into()
-        }
-    }
-
     fn normalize_used_binop_expr(&mut self, binop_expr: type_checker::BinOpExpr) -> Expr {
         let mut stmts = Vec::new();
         let mut scoped_normalizer = self.recurse(&mut stmts);
@@ -656,11 +552,6 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             }
             .into()
         }
-    }
-
-    fn normalize_unused_bitwise_expr(&mut self, bitwise_expr: type_checker::BitwiseExpr) {
-        self.normalize_unused_expr(bitwise_expr.lhs);
-        self.normalize_unused_expr(bitwise_expr.rhs);
     }
 
     fn normalize_unused_binop_expr(&mut self, binop_expr: type_checker::BinOpExpr) {

@@ -196,9 +196,6 @@ impl Flattener {
             }
             normalizer::Expr::Negate(negate_expr) => self.flatten_negate_expr(*negate_expr).into(),
             normalizer::Expr::Cast(cast_expr) => self.flatten_cast_expr(*cast_expr).into(),
-            normalizer::Expr::Compare(compare_expr) => compare_expr.into(),
-            normalizer::Expr::Arith(arith_expr) => arith_expr.into(),
-            normalizer::Expr::Bitwise(bitwise_expr) => bitwise_expr.into(),
             normalizer::Expr::BinOp(binop_expr) => binop_expr.into(),
         }
     }

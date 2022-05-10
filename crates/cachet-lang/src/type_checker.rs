@@ -12,7 +12,7 @@ use lazy_static::lazy_static;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
-    BlockKind, CastKind, CompareKind, Ident, MaybeSpanned, NegateKind, Path, Span, Spanned,
+    BlockKind, CastKind, Ident, MaybeSpanned, NegateKind, Path, Span, Spanned,
     VarParamKind,
 };
 use crate::built_in::{BuiltInType, BuiltInVar};
@@ -989,14 +989,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             }
             resolver::Expr::Negate(negate_expr) => self.type_check_negate_expr(negate_expr).into(),
             resolver::Expr::Cast(cast_expr) => self.type_check_cast_expr(cast_expr),
-            resolver::Expr::Compare(compare_expr) => {
-                self.type_check_compare_expr(compare_expr).into()
-            }
             resolver::Expr::Assign(assign_expr) => self.type_check_assign_expr(assign_expr).into(),
-            resolver::Expr::Arith(arith_expr) => self.type_check_arith_expr(arith_expr).into(),
-            resolver::Expr::Bitwise(bitwise_expr) => {
-                self.type_check_bitwise_expr(bitwise_expr).into()
-            }
             resolver::Expr::BinOp(binop_expr) => self.type_check_binop_expr(binop_expr).into(),
         }
     }
@@ -1167,52 +1160,6 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         .into()
     }
 
-    fn type_check_arith_expr(&mut self, arith_expr: &resolver::ArithExpr) -> ArithExpr {
-        let lhs = self.type_check_expr(&arith_expr.lhs.value);
-        let rhs = self.type_check_expr(&arith_expr.rhs.value);
-
-        let lhs_type_index = lhs.type_();
-        let rhs_type_index = rhs.type_();
-
-        if !self.is_same_type(lhs_type_index, rhs_type_index) {
-            self.type_checker
-                .errors
-                .push(TypeCheckError::BinaryOperatorTypeMismatch {
-                    operator_span: arith_expr.kind.span,
-                    lhs_span: arith_expr.lhs.span,
-                    lhs_type: self.get_type_ident(lhs_type_index),
-                    rhs_span: arith_expr.rhs.span,
-                    rhs_type: self.get_type_ident(rhs_type_index),
-                });
-        }
-
-        if !self.is_numeric_type(lhs_type_index) {
-            self.type_checker
-                .errors
-                .push(TypeCheckError::NumericOperatorTypeMismatch {
-                    operand_span: arith_expr.lhs.span,
-                    operand_type: self.get_type_ident(lhs_type_index),
-                    operator_span: arith_expr.kind.span,
-                });
-        }
-
-        if !self.is_numeric_type(rhs_type_index) {
-            self.type_checker
-                .errors
-                .push(TypeCheckError::NumericOperatorTypeMismatch {
-                    operand_span: arith_expr.rhs.span,
-                    operand_type: self.get_type_ident(rhs_type_index),
-                    operator_span: arith_expr.kind.span,
-                });
-        }
-
-        ArithExpr {
-            kind: arith_expr.kind.value,
-            lhs,
-            rhs,
-        }
-    }
-
     fn type_check_binop_expr(&mut self, binop_expr: &resolver::BinOpExpr) -> BinOpExpr {
         use crate::ast::BinOpKind::*;
 
@@ -1248,10 +1195,12 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 });
         }
 
+
+
         // Operand typechecking
         match binop_expr.kind.value {
             // Numeric Ops
-            BitOr | BitAnd | BitXor | BitLsh | Add | Sub | Mul | Div | Lte | Gte | Lt | Gt => {
+            BitOr | BitAnd | BitXor | BitLsh => {
                 if !self.is_integral_type(lhs_type_index) {
                     self.type_checker
                         .errors
@@ -1272,6 +1221,29 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                         });
                 }
             }
+
+            Add | Sub | Mul | Div | Lte | Gte | Lt | Gt  => {
+                if !self.is_numeric_type(lhs_type_index) {
+                    self.type_checker
+                        .errors
+                        .push(TypeCheckError::NumericOperatorTypeMismatch {
+                            operand_span: binop_expr.lhs.span,
+                            operand_type: self.get_type_ident(lhs_type_index),
+                            operator_span: binop_expr.kind.span,
+                        });
+                }
+
+                if !self.is_numeric_type(rhs_type_index) {
+                    self.type_checker
+                        .errors
+                        .push(TypeCheckError::NumericOperatorTypeMismatch {
+                            operand_span: binop_expr.lhs.span,
+                            operand_type: self.get_type_ident(lhs_type_index),
+                            operator_span: binop_expr.kind.span,
+                        });
+                }
+            }
+
             Eq | Neq => (),
         }
 
@@ -1286,114 +1258,6 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             lhs,
             rhs,
             type_,
-        }
-    }
-
-    fn type_check_bitwise_expr(&mut self, bitwise_expr: &resolver::BitwiseExpr) -> BitwiseExpr {
-        let lhs = self.type_check_expr(&bitwise_expr.lhs.value);
-        let rhs = self.type_check_expr(&bitwise_expr.rhs.value);
-
-        let lhs_type_index = lhs.type_();
-        let rhs_type_index = rhs.type_();
-
-        if !self.is_same_type(lhs_type_index, rhs_type_index) {
-            self.type_checker
-                .errors
-                .push(TypeCheckError::BinaryOperatorTypeMismatch {
-                    operator_span: bitwise_expr.kind.span,
-                    lhs_span: bitwise_expr.lhs.span,
-                    lhs_type: self.get_type_ident(lhs_type_index),
-                    rhs_span: bitwise_expr.rhs.span,
-                    rhs_type: self.get_type_ident(rhs_type_index),
-                });
-        }
-
-        if !self.is_integral_type(lhs_type_index) {
-            self.type_checker
-                .errors
-                .push(TypeCheckError::NumericOperatorTypeMismatch {
-                    operand_span: bitwise_expr.lhs.span,
-                    operand_type: self.get_type_ident(lhs_type_index),
-                    operator_span: bitwise_expr.kind.span,
-                });
-        }
-
-        if !self.is_integral_type(rhs_type_index) {
-            self.type_checker
-                .errors
-                .push(TypeCheckError::NumericOperatorTypeMismatch {
-                    operand_span: bitwise_expr.rhs.span,
-                    operand_type: self.get_type_ident(rhs_type_index),
-                    operator_span: bitwise_expr.kind.span,
-                });
-        }
-
-        BitwiseExpr {
-            kind: bitwise_expr.kind.value,
-            lhs,
-            rhs,
-        }
-    }
-
-    fn type_check_compare_expr(&mut self, compare_expr: &resolver::CompareExpr) -> CompareExpr {
-        let lhs = self.type_check_expr(&compare_expr.lhs.value);
-        let rhs = self.type_check_expr(&compare_expr.rhs.value);
-
-        let lhs_type_index = lhs.type_();
-        let rhs_type_index = rhs.type_();
-
-        let (lhs, rhs) = if let Some(rhs_upcast_route) =
-            self.try_match_types(lhs_type_index, rhs_type_index)
-        {
-            (
-                lhs,
-                build_cast_chain(CastKind::Upcast, rhs, rhs_upcast_route.into_iter()),
-            )
-        } else if let Some(lhs_upcast_route) = self.try_match_types(rhs_type_index, lhs_type_index)
-        {
-            (
-                build_cast_chain(CastKind::Upcast, lhs, lhs_upcast_route.into_iter()),
-                rhs,
-            )
-        } else {
-            self.type_checker
-                .errors
-                .push(TypeCheckError::BinaryOperatorTypeMismatch {
-                    operator_span: compare_expr.kind.span,
-                    lhs_span: compare_expr.lhs.span,
-                    lhs_type: self.get_type_ident(lhs_type_index),
-                    rhs_span: compare_expr.rhs.span,
-                    rhs_type: self.get_type_ident(rhs_type_index),
-                });
-            (lhs, rhs)
-        };
-
-        if let CompareKind::Numeric(_) = compare_expr.kind.value {
-            if !self.is_numeric_type(lhs_type_index) {
-                self.type_checker
-                    .errors
-                    .push(TypeCheckError::NumericOperatorTypeMismatch {
-                        operand_span: compare_expr.lhs.span,
-                        operand_type: self.get_type_ident(lhs_type_index),
-                        operator_span: compare_expr.kind.span,
-                    });
-            }
-
-            if !self.is_numeric_type(rhs_type_index) {
-                self.type_checker
-                    .errors
-                    .push(TypeCheckError::NumericOperatorTypeMismatch {
-                        operand_span: compare_expr.rhs.span,
-                        operand_type: self.get_type_ident(rhs_type_index),
-                        operator_span: compare_expr.kind.span,
-                    });
-            }
-        }
-
-        CompareExpr {
-            kind: compare_expr.kind.value,
-            lhs,
-            rhs,
         }
     }
 

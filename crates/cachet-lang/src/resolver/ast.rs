@@ -9,7 +9,7 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_index};
 
 use crate::ast::{
-    ArithKind, BitwiseKind, BlockKind, CheckKind, CompareKind, Ident, MaybeSpanned, NegateKind,
+    BlockKind, CheckKind, Ident, MaybeSpanned, NegateKind,
     Path, Spanned, VarParamKind, BinOpKind,
 };
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
@@ -572,13 +572,7 @@ pub enum Expr {
     #[from]
     Cast(Box<CastExpr>),
     #[from]
-    Compare(Box<CompareExpr>),
-    #[from]
     Assign(Box<AssignExpr>),
-    #[from]
-    Arith(Box<ArithExpr>),
-    #[from]
-    Bitwise(Box<BitwiseExpr>),
     #[from]
     BinOp(Box<BinOpExpr>),
 }
@@ -587,10 +581,7 @@ box_from!(KindedBlock => Expr);
 box_from!(FieldAccessExpr => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
-box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
-box_from!(ArithExpr => Expr);
-box_from!(BitwiseExpr => Expr);
 box_from!(BinOpExpr => Expr);
 
 impl From<Block> for Expr {
@@ -633,23 +624,6 @@ impl Typed for CastExpr {
 }
 
 #[derive(Clone, Debug)]
-pub struct CompareExpr {
-    pub kind: Spanned<CompareKind>,
-    pub lhs: Spanned<Expr>,
-    pub rhs: Spanned<Expr>,
-}
-
-impl CompareExpr {
-    pub const TYPE: BuiltInType = BuiltInType::Bool;
-}
-
-impl Typed for CompareExpr {
-    fn type_(&self) -> TypeIndex {
-        CompareExpr::TYPE.into()
-    }
-}
-
-#[derive(Clone, Debug)]
 pub struct AssignExpr {
     pub lhs: Spanned<VarIndex>,
     pub rhs: Spanned<Expr>,
@@ -663,20 +637,6 @@ impl Typed for AssignExpr {
     fn type_(&self) -> TypeIndex {
         AssignExpr::TYPE.into()
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct ArithExpr {
-    pub kind: Spanned<ArithKind>,
-    pub lhs: Spanned<Expr>,
-    pub rhs: Spanned<Expr>,
-}
-
-#[derive(Clone, Debug)]
-pub struct BitwiseExpr {
-    pub kind: Spanned<BitwiseKind>,
-    pub lhs: Spanned<Expr>,
-    pub rhs: Spanned<Expr>,
 }
 
 #[derive(Clone, Debug)]

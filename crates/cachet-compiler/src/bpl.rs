@@ -1846,13 +1846,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             flattener::Expr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr),
             flattener::Expr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
-            flattener::Expr::Compare(compare_expr) => {
-                self.compile_compare_expr(&compare_expr).into()
-            }
-            flattener::Expr::Arith(arith_expr) => self.compile_arith_expr(&arith_expr).into(),
-            flattener::Expr::Bitwise(bitwise_expr) => {
-                self.compile_bitwise_expr(&bitwise_expr).into()
-            }
             flattener::Expr::BinOp(binop_expr) => {
                 self.compile_binop_expr(&binop_expr).into()
             }
@@ -1868,13 +1861,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             flattener::PureExpr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr),
             flattener::PureExpr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
-            flattener::PureExpr::Compare(compare_expr) => {
-                self.compile_compare_expr(&compare_expr).into()
-            }
-            flattener::PureExpr::Arith(arith_expr) => self.compile_arith_expr(&arith_expr).into(),
-            flattener::PureExpr::Bitwise(bitwise_expr) => {
-                self.compile_bitwise_expr(&bitwise_expr).into()
-            }
             flattener::PureExpr::BinOp(binop_expr) => {
                 self.compile_binop_expr(&binop_expr).into()
             }
@@ -1999,78 +1985,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             .into(),
             arg_exprs: vec![expr],
         }
-    }
-
-    fn compile_compare_expr(&mut self, compare_expr: &flattener::CompareExpr) -> Expr {
-        let lhs = self.compile_pure_expr(&compare_expr.lhs);
-        let rhs = self.compile_pure_expr(&compare_expr.rhs);
-        let type_ident = self.get_type_ident(compare_expr.lhs.type_());
-
-        let selector = match compare_expr.kind {
-            cachet_lang::ast::CompareKind::Eq => {
-                return CompareExpr {
-                    kind: CompareKind::Eq,
-                    lhs,
-                    rhs,
-                }
-                .into();
-            }
-            cachet_lang::ast::CompareKind::Neq => {
-                return CompareExpr {
-                    kind: CompareKind::Neq,
-                    lhs,
-                    rhs,
-                }
-                .into();
-            }
-            cachet_lang::ast::CompareKind::Numeric(kind) => kind.into(),
-        };
-
-        CallExpr {
-            target: TypeMemberFnIdent {
-                type_ident,
-                selector,
-            }
-            .into(),
-            arg_exprs: vec![lhs, rhs],
-        }
-        .into()
-    }
-
-    fn compile_arith_expr(&mut self, arith_expr: &flattener::ArithExpr) -> CallExpr {
-        let lhs = self.compile_pure_expr(&arith_expr.lhs);
-        let rhs = self.compile_pure_expr(&arith_expr.rhs);
-
-        let type_ident = self.get_type_ident(arith_expr.type_()).into();
-        let selector = arith_expr.kind.into();
-
-        CallExpr {
-            target: TypeMemberFnIdent {
-                type_ident,
-                selector,
-            }
-            .into(),
-            arg_exprs: vec![lhs, rhs],
-        }
-        .into()
-    }
-
-    fn compile_bitwise_expr(&mut self, bitwise_expr: &flattener::BitwiseExpr) -> CallExpr {
-        let lhs = self.compile_pure_expr(&bitwise_expr.lhs);
-        let rhs = self.compile_pure_expr(&bitwise_expr.rhs);
-
-        let type_ident = self.get_type_ident(bitwise_expr.type_()).into();
-        let selector = bitwise_expr.kind.into();
-
-        CallExpr {
-            target: TypeMemberFnIdent {
-                type_ident,
-                selector,
-            }
-            .into(),
-            arg_exprs: vec![lhs, rhs],
-        }
-        .into()
     }
 
     fn compile_binop_expr(&mut self, binop_expr: &flattener::BinOpExpr) -> Expr {

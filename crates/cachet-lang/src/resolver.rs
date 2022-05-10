@@ -997,17 +997,8 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 self.resolve_negate_expr(*negate_expr).map(Expr::from)
             }
             parser::Expr::Cast(cast_expr) => self.resolve_cast_expr(*cast_expr).map(Expr::from),
-            parser::Expr::Compare(compare_expr) => {
-                self.resolve_compare_expr(*compare_expr).map(Expr::from)
-            }
             parser::Expr::Assign(assign_expr) => {
                 self.resolve_assign_expr(*assign_expr).map(Expr::from)
-            }
-            parser::Expr::Arith(arith_expr) => {
-                self.resolve_arith_expr(*arith_expr).map(Expr::from)
-            }
-            parser::Expr::Bitwise(bitwise_expr) => {
-                self.resolve_bitwise_expr(*bitwise_expr).map(Expr::from)
             }
             parser::Expr::BinOp(binop_expr) => {
                 self.resolve_binop_expr(*binop_expr).map(Expr::from)
@@ -1057,30 +1048,6 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         })
     }
 
-    fn resolve_arith_expr(&mut self, arith_expr: parser::ArithExpr) -> Option<ArithExpr> {
-        let lhs = map_spanned(arith_expr.lhs, |lhs| self.resolve_expr(lhs.value));
-
-        let rhs = map_spanned(arith_expr.rhs, |rhs| self.resolve_expr(rhs.value));
-
-        Some(ArithExpr {
-            kind: arith_expr.kind,
-            lhs: lhs?,
-            rhs: rhs?,
-        })
-    }
-
-    fn resolve_bitwise_expr(&mut self, bitwise_expr: parser::BitwiseExpr) -> Option<BitwiseExpr> {
-        let lhs = map_spanned(bitwise_expr.lhs, |lhs| self.resolve_expr(lhs.value));
-
-        let rhs = map_spanned(bitwise_expr.rhs, |rhs| self.resolve_expr(rhs.value));
-
-        Some(BitwiseExpr {
-            kind: bitwise_expr.kind,
-            lhs: lhs?,
-            rhs: rhs?,
-        })
-    }
-
     fn resolve_binop_expr(&mut self, bitwise_expr: parser::BinOpExpr) -> Option<BinOpExpr> {
         let lhs = map_spanned(bitwise_expr.lhs, |lhs| self.resolve_expr(lhs.value));
 
@@ -1088,18 +1055,6 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
 
         Some(BinOpExpr {
             kind: bitwise_expr.kind,
-            lhs: lhs?,
-            rhs: rhs?,
-        })
-    }
-
-    fn resolve_compare_expr(&mut self, compare_expr: parser::CompareExpr) -> Option<CompareExpr> {
-        let lhs = map_spanned(compare_expr.lhs, |lhs| self.resolve_expr(lhs.value));
-
-        let rhs = map_spanned(compare_expr.rhs, |rhs| self.resolve_expr(rhs.value));
-
-        Some(CompareExpr {
-            kind: compare_expr.kind,
             lhs: lhs?,
             rhs: rhs?,
         })
