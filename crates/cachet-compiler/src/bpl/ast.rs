@@ -10,9 +10,7 @@ use std::ops::{Deref, DerefMut};
 use derive_more::{Display, From};
 use enum_map::Enum;
 
-use cachet_lang::ast::{
-    ArithKind, BitwiseKind, CastKind, CheckKind, Ident, NegateKind, NumericCompareKind,
-};
+use cachet_lang::ast::{CastKind, CheckKind, Ident, NegateKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 use cachet_util::{
     box_from, deref_from, fmt_join, fmt_join_leading, fmt_join_trailing, typed_index, AffixWriter,
@@ -275,61 +273,16 @@ pub struct TypeMemberFnIdent {
 pub enum TypeMemberFnSelector {
     #[display(fmt = "negate")]
     Negate,
-    #[from(types(ArithKind))]
-    Arith(ArithTypeMemberFnSelector),
-    #[from(types(BitwiseKind))]
-    Bitwise(BitwiseTypeMemberFnSelector),
     #[display(fmt = "{}", _0)]
     #[from]
     BinOp(BinOpTypeMemberFnSelector),
     #[from]
     Cast(CastTypeMemberFnSelector),
-    #[from(types(NumericCompareKind))]
-    Compare(CompareTypeMemberFnSelector),
+    #[display(fmt = "{}", _0)]
     #[from]
     Variant(VariantCtorTypeMemberFnSelector),
     #[from]
     Field(FieldTypeMemberFnSelector),
-}
-
-#[derive(Clone, Copy, Debug, From)]
-pub struct ArithTypeMemberFnSelector {
-    pub kind: ArithKind,
-}
-
-impl Display for ArithTypeMemberFnSelector {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self.kind {
-                ArithKind::Add => "add",
-                ArithKind::Sub => "sub",
-                ArithKind::Mul => "mul",
-                ArithKind::Div => "div",
-            },
-        )
-    }
-}
-
-#[derive(Clone, Copy, Debug, From)]
-pub struct BitwiseTypeMemberFnSelector {
-    pub kind: BitwiseKind,
-}
-
-impl Display for BitwiseTypeMemberFnSelector {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self.kind {
-                BitwiseKind::Or => "bitOr",
-                BitwiseKind::And => "bitAnd",
-                BitwiseKind::Xor => "xor",
-                BitwiseKind::Shl => "shl",
-            },
-        )
-    }
 }
 
 #[derive(Clone, Copy, Debug, From, Display)]
@@ -376,27 +329,6 @@ impl Display for CastTypeMemberFnSelector {
                 CastKind::Upcast => "to",
             },
             self.supertype_ident
-        )?;
-        Ok(())
-    }
-}
-
-#[derive(Clone, Copy, Debug, From)]
-pub struct CompareTypeMemberFnSelector {
-    pub kind: NumericCompareKind,
-}
-
-impl Display for CompareTypeMemberFnSelector {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self.kind {
-                NumericCompareKind::Lte => "lte",
-                NumericCompareKind::Gte => "gte",
-                NumericCompareKind::Lt => "lt",
-                NumericCompareKind::Gt => "gt",
-            },
         )?;
         Ok(())
     }
@@ -1223,6 +1155,18 @@ pub struct ArithExpr {
     pub kind: ArithKind,
     pub lhs: Expr,
     pub rhs: Expr,
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum ArithKind {
+    #[display(fmt = "+")]
+    Add,
+    #[display(fmt = "-")]
+    Sub,
+    #[display(fmt = "*")]
+    Mul,
+    #[display(fmt = "/")]
+    Div,
 }
 
 #[derive(Clone, Debug, Display)]

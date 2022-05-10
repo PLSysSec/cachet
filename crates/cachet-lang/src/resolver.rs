@@ -1048,13 +1048,13 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         })
     }
 
-    fn resolve_binop_expr(&mut self, bitwise_expr: parser::BinOpExpr) -> Option<BinOpExpr> {
-        let lhs = map_spanned(bitwise_expr.lhs, |lhs| self.resolve_expr(lhs.value));
+    fn resolve_binop_expr(&mut self, binop_expr: parser::BinOpExpr) -> Option<BinOpExpr> {
+        let lhs = map_spanned(binop_expr.lhs, |lhs| self.resolve_expr(lhs.value));
 
-        let rhs = map_spanned(bitwise_expr.rhs, |rhs| self.resolve_expr(rhs.value));
+        let rhs = map_spanned(binop_expr.rhs, |rhs| self.resolve_expr(rhs.value));
 
         Some(BinOpExpr {
-            kind: bitwise_expr.kind,
+            kind: binop_expr.kind,
             lhs: lhs?,
             rhs: rhs?,
         })

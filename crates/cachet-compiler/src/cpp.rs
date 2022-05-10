@@ -1068,8 +1068,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Expr::Cast(cast_expr) => {
                 self.compile_cast_expr(&cast_expr).map(Expr::from)
             }
-            normalizer::Expr::BinOp(bitwise_expr) => {
-                self.compile_binop_expr(&bitwise_expr).map(Expr::from)
+            normalizer::Expr::BinOp(binop_expr) => {
+                self.compile_binop_expr(&binop_expr).map(Expr::from)
             }
         }
     }

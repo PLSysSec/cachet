@@ -12,7 +12,7 @@ use lazy_static::lazy_static;
 use typed_index_collections::TiSlice;
 use void::unreachable;
 
-use cachet_lang::ast::{ArithKind, CastKind, CheckKind, Ident, NegateKind, Path, VarParamKind};
+use cachet_lang::ast::{CastKind, CheckKind, Ident, NegateKind, Path, VarParamKind};
 use cachet_lang::built_in::BuiltInVar;
 use cachet_lang::flattener::{self, HasAttrs, Typed};
 use cachet_util::MaybeOwned;

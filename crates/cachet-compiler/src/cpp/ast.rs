@@ -9,9 +9,7 @@ use derive_more::{Display, From};
 use enum_map::Enum;
 use enumset::EnumSetType;
 
-use cachet_lang::ast::{
-    ArithKind, BitwiseKind, CastKind, CompareKind, Ident, NegateKind, NumericCompareKind,
-};
+use cachet_lang::ast::{CastKind, Ident, NegateKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 
 use cachet_util::{box_from, chain_from, deref_from, fmt_join, fmt_join_trailing, AffixWriter};
@@ -332,10 +330,7 @@ pub enum TypeMemberFnIdent {
     #[display(fmt = "Fields")]
     Fields,
     Cast(CastTypeMemberFnIdent),
-    Compare(CompareTypeMemberFnIdent),
     Variant(VariantTypeMemberFnIdent),
-    Arith(ArithTypeMemberFnIdent),
-    Bitwise(BitwiseTypeMemberFnIdent),
     Binop(BinOpTypeMemberFnIdent),
 }
 
@@ -347,10 +342,7 @@ impl TypeMemberFnIdent {
             | TypeMemberFnIdent::Fields => NamespaceKind::Type,
             TypeMemberFnIdent::ToTag(_) => ToTagTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Cast(_) => CastTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
-            TypeMemberFnIdent::Compare(_) => CompareTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Variant(_) => VariantTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
-            TypeMemberFnIdent::Arith(_) => ArithTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
-            TypeMemberFnIdent::Bitwise(_) => BitwiseTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Binop(_) => BinOpTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
         }
     }
@@ -418,30 +410,6 @@ impl Display for CompareTypeMemberFnIdent {
     }
 }
 
-#[derive(Clone, Copy, Debug, From)]
-pub struct ArithTypeMemberFnIdent {
-    pub kind: ArithKind,
-}
-
-impl ArithTypeMemberFnIdent {
-    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
-}
-
-impl Display for ArithTypeMemberFnIdent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self.kind {
-                ArithKind::Add => "Add",
-                ArithKind::Sub => "Sub",
-                ArithKind::Mul => "Mul",
-                ArithKind::Div => "Div",
-            }
-        )
-    }
-}
-
 #[derive(Clone, Copy, Debug, From, Display)]
 pub enum BinOpTypeMemberFnIdent {
     #[display(fmt = "BitOr")]
@@ -476,30 +444,6 @@ pub enum BinOpTypeMemberFnIdent {
 
 impl BinOpTypeMemberFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
-}
-
-#[derive(Clone, Copy, Debug, From)]
-pub struct BitwiseTypeMemberFnIdent {
-    pub kind: BitwiseKind,
-}
-
-impl BitwiseTypeMemberFnIdent {
-    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
-}
-
-impl Display for BitwiseTypeMemberFnIdent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self.kind {
-                BitwiseKind::Or => "BitOr",
-                BitwiseKind::And => "BitAnd",
-                BitwiseKind::Xor => "Xor",
-                BitwiseKind::Shl => "Shl",
-            }
-        )
-    }
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
@@ -1202,6 +1146,27 @@ pub struct CompareExpr {
     pub kind: CompareKind,
     pub lhs: Expr,
     pub rhs: Expr,
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, From, Hash, PartialEq)]
+pub enum CompareKind {
+    #[display(fmt = "==")]
+    Eq,
+    #[display(fmt = "!=")]
+    Neq,
+    Numeric(NumericCompareKind),
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum NumericCompareKind {
+    #[display(fmt = "<=")]
+    Lte,
+    #[display(fmt = ">=")]
+    Gte,
+    #[display(fmt = "<")]
+    Lt,
+    #[display(fmt = ">")]
+    Gt,
 }
 
 #[derive(Clone, Debug, Display)]
