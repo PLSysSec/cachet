@@ -10,7 +10,8 @@ use enum_map::Enum;
 use enumset::EnumSetType;
 
 use cachet_lang::ast::{
-    ArithKind, BitwiseKind, CastKind, CompareKind, Ident, NegateKind, NumericCompareKind,
+    ArithKind, BinOpKind, BitwiseKind, CastKind, CompareKind, Ident, NegateKind,
+    NumericCompareKind,
 };
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 
@@ -336,6 +337,7 @@ pub enum TypeMemberFnIdent {
     Variant(VariantTypeMemberFnIdent),
     Arith(ArithTypeMemberFnIdent),
     Bitwise(BitwiseTypeMemberFnIdent),
+    Binop(BinOpTypeMemberFnIdent),
 }
 
 impl TypeMemberFnIdent {
@@ -350,6 +352,7 @@ impl TypeMemberFnIdent {
             TypeMemberFnIdent::Variant(_) => VariantTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Arith(_) => ArithTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Bitwise(_) => BitwiseTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
+            TypeMemberFnIdent::Binop(_) => BinOpTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
         }
     }
 }
@@ -435,6 +438,40 @@ impl Display for ArithTypeMemberFnIdent {
                 ArithKind::Sub => "Sub",
                 ArithKind::Mul => "Mul",
                 ArithKind::Div => "Div",
+            }
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, From)]
+pub struct BinOpTypeMemberFnIdent {
+    pub kind: BinOpKind,
+}
+
+impl BinOpTypeMemberFnIdent {
+    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
+}
+
+impl Display for BinOpTypeMemberFnIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self.kind {
+                BinOpKind::BitOr => "BitOr",
+                BinOpKind::BitAnd => "BitAnd",
+                BinOpKind::BitXor => "Xor",
+                BinOpKind::BitLsh => "Shl",
+                BinOpKind::Add => "Add",
+                BinOpKind::Sub => "Sub",
+                BinOpKind::Mul => "Mul",
+                BinOpKind::Div => "Div",
+                BinOpKind::Lte => "Lte",
+                BinOpKind::Gte => "Gte",
+                BinOpKind::Lt => "Lt",
+                BinOpKind::Gt => "Gt",
+                BinOpKind::Eq => "Eq",
+                BinOpKind::Neq => "Neq",
             }
         )
     }

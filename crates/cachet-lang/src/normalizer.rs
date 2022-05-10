@@ -404,6 +404,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Bitwise(bitwise_expr) => {
                 self.normalize_used_bitwise_expr(*bitwise_expr).into()
             }
+            type_checker::Expr::BinOp(binop_expr) => {
+                self.normalize_used_binop_expr(*binop_expr).into()
+            }
         }
     }
 
@@ -431,6 +434,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Arith(arith_expr) => self.normalize_unused_arith_expr(*arith_expr),
             type_checker::Expr::Bitwise(bitwise_expr) => {
                 self.normalize_unused_bitwise_expr(*bitwise_expr)
+            }
+            type_checker::Expr::BinOp(binop_expr) => {
+                self.normalize_unused_binop_expr(*binop_expr)
             }
         }
     }
@@ -625,9 +631,41 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         }
     }
 
+    fn normalize_used_binop_expr(&mut self, binop_expr: type_checker::BinOpExpr) -> Expr {
+        let mut stmts = Vec::new();
+        let mut scoped_normalizer = self.recurse(&mut stmts);
+
+        let lhs = scoped_normalizer.normalize_pure_expr(binop_expr.lhs);
+        let rhs = scoped_normalizer.normalize_pure_expr(binop_expr.rhs);
+
+        let value = BinOpExpr {
+            kind: binop_expr.kind,
+            type_: binop_expr.type_,
+            lhs,
+            rhs,
+        }
+        .into();
+
+        if stmts.is_empty() {
+            value
+        } else {
+            BlockExpr {
+                kind: None,
+                stmts,
+                value,
+            }
+            .into()
+        }
+    }
+
     fn normalize_unused_bitwise_expr(&mut self, bitwise_expr: type_checker::BitwiseExpr) {
         self.normalize_unused_expr(bitwise_expr.lhs);
         self.normalize_unused_expr(bitwise_expr.rhs);
+    }
+
+    fn normalize_unused_binop_expr(&mut self, binop_expr: type_checker::BinOpExpr) {
+        self.normalize_unused_expr(binop_expr.lhs);
+        self.normalize_unused_expr(binop_expr.rhs);
     }
 
     fn normalize_unused_assign_expr(&mut self, assign_expr: type_checker::AssignExpr) {

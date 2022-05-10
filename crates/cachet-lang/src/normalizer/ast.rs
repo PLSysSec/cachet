@@ -7,7 +7,7 @@ use enumset::EnumSet;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
-    ArithKind, BitwiseKind, BlockKind, CastKind, CheckKind, CompareKind, NegateKind, Path, Spanned,
+    ArithKind, BitwiseKind, BlockKind, CastKind, CheckKind, CompareKind, NegateKind, Path, Spanned, BinOpKind,
 };
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::type_checker;
@@ -255,6 +255,8 @@ pub enum Expr<B = ()> {
     Arith(ArithExpr),
     #[from]
     Bitwise(BitwiseExpr),
+    #[from]
+    BinOp(BinOpExpr),
 }
 
 impl<B> Typed for Expr<B> {
@@ -270,6 +272,7 @@ impl<B> Typed for Expr<B> {
             Expr::Compare(compare_expr) => compare_expr.type_(),
             Expr::Arith(arith_expr) => arith_expr.type_(),
             Expr::Bitwise(bitwise_expr) => bitwise_expr.type_(),
+            Expr::BinOp(binop_expr) => binop_expr.type_(),
         }
     }
 }
@@ -298,6 +301,7 @@ impl<B> From<PureExpr> for Expr<B> {
             PureExpr::Compare(compare_expr) => (*compare_expr).into(),
             PureExpr::Arith(arith_expr) => (*arith_expr).into(),
             PureExpr::Bitwise(bitwise_expr) => (*bitwise_expr).into(),
+            PureExpr::BinOp(binop_expr) => (*binop_expr).into(),
         }
     }
 }
@@ -338,6 +342,8 @@ pub enum PureExpr {
     Arith(Box<ArithExpr>),
     #[from]
     Bitwise(Box<BitwiseExpr>),
+    #[from]
+    BinOp(Box<BinOpExpr>),
 }
 
 impl Typed for PureExpr {
@@ -351,6 +357,7 @@ impl Typed for PureExpr {
             PureExpr::Compare(compare_expr) => compare_expr.type_(),
             PureExpr::Arith(arith_expr) => arith_expr.type_(),
             PureExpr::Bitwise(bitwise_expr) => bitwise_expr.type_(),
+            PureExpr::BinOp(binop_expr) => binop_expr.type_(),
         }
     }
 }
@@ -361,6 +368,7 @@ box_from!(CastExpr<PureExpr> => PureExpr);
 box_from!(CompareExpr => PureExpr);
 box_from!(ArithExpr => PureExpr);
 box_from!(BitwiseExpr => PureExpr);
+box_from!(BinOpExpr => PureExpr);
 
 deref_from!(&Literal => PureExpr);
 
@@ -378,6 +386,7 @@ impl<B> TryFrom<Expr<B>> for PureExpr {
             Expr::Compare(compare_expr) => Ok(compare_expr.into()),
             Expr::Arith(arith_expr) => Ok(arith_expr.into()),
             Expr::Bitwise(bitwise_expr) => Ok(bitwise_expr.into()),
+            Expr::BinOp(binop_expr) => Ok(binop_expr.into()),
         }
     }
 }
@@ -597,5 +606,19 @@ pub struct BitwiseExpr {
 impl Typed for BitwiseExpr {
     fn type_(&self) -> TypeIndex {
         self.lhs.type_()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BinOpExpr {
+    pub kind: BinOpKind,
+    pub type_: TypeIndex,
+    pub lhs: PureExpr,
+    pub rhs: PureExpr,
+}
+
+impl Typed for BinOpExpr {
+    fn type_(&self) -> TypeIndex {
+        self.type_
     }
 }

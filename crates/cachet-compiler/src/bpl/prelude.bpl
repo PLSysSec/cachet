@@ -44,10 +44,11 @@ function {:bvbuiltin "fp.add RNE"} #Double^add(x: #Double, y: #Double): #Double;
 function {:bvbuiltin "fp.sub RNE"} #Double^sub(x: #Double, y: #Double): #Double;
 function {:bvbuiltin "fp.mul RNE"} #Double^mul(x: #Double, y: #Double): #Double;
 function {:bvbuiltin "fp.div RNE"} #Double^div(x: #Double, y: #Double): #Double;
-function {:bvbuiltin "fp.lt"} #Double^lt(x: #Double, y: #Double): #Bool;
+function {:bvbuiltin "fp.eq"} #Double^eq(x: #Double, y: #Double): #Bool;
 function {:bvbuiltin "fp.leq"} #Double^lte(x: #Double, y: #Double): #Bool;
-function {:bvbuiltin "fp.gt"} #Double^gt(x: #Double, y: #Double): #Bool;
 function {:bvbuiltin "fp.geq"} #Double^gte(x: #Double, y: #Double): #Bool;
+function {:bvbuiltin "fp.lt"} #Double^lt(x: #Double, y: #Double): #Bool;
+function {:bvbuiltin "fp.gt"} #Double^gt(x: #Double, y: #Double): #Bool;
 
 function {:bvbuiltin "bvneg"} #Int64^negate(n: #Int64): #Int64;
 function {:bvbuiltin "bvadd"} #Int64^add(x: #Int64, y: #Int64): #Int64;

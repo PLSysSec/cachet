@@ -100,3 +100,38 @@ pub enum BitwiseKind {
     #[display(fmt = "<<")]
     Shl,
 }
+
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum BinOpKind {
+    #[display(fmt = "|")]
+    BitOr,
+    #[display(fmt = "&")]
+    BitAnd,
+    #[display(fmt = "^")]
+    BitXor,
+    #[display(fmt = "<<")]
+    BitLsh,
+
+
+    #[display(fmt = "+")]
+    Add,
+    #[display(fmt = "-")]
+    Sub,
+    #[display(fmt = "*")]
+    Mul,
+    #[display(fmt = "/")]
+    Div,
+
+    #[display(fmt = "<=")]
+    Lte,
+    #[display(fmt = ">=")]
+    Gte,
+    #[display(fmt = "<")]
+    Lt,
+    #[display(fmt = ">")]
+    Gt,
+    #[display(fmt = "==")]
+    Eq,
+    #[display(fmt = "!=")]
+    Neq,
+}

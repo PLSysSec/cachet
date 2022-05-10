@@ -1077,6 +1077,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Expr::Bitwise(bitwise_expr) => {
                 self.compile_bitwise_expr(&bitwise_expr).map(Expr::from)
             }
+            normalizer::Expr::BinOp(bitwise_expr) => {
+                self.compile_binop_expr(&bitwise_expr).map(Expr::from)
+            }
         }
     }
 
@@ -1103,6 +1106,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             normalizer::PureExpr::Bitwise(bitwise_expr) => {
                 self.compile_bitwise_expr(&bitwise_expr).map(Expr::from)
+            }
+            normalizer::PureExpr::BinOp(binop_expr) => {
+                self.compile_binop_expr(&binop_expr).map(Expr::from)
             }
         }
     }
@@ -1427,6 +1433,37 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 args: vec![lhs, rhs],
             },
             type_: bitwise_expr.type_(),
+            tags: ExprTag::Ref | ExprTag::Val,
+        }
+    }
+
+    fn compile_binop_expr(
+        &self,
+        binop_expr: &normalizer::BinOpExpr,
+    ) -> TaggedExpr<CallExpr> {
+        let lhs_type = binop_expr.lhs.type_();
+        let rhs_type = binop_expr.rhs.type_();
+        debug_assert_eq!(lhs_type, rhs_type);
+
+        let lhs = self.use_expr(
+            self.compile_pure_expr(&binop_expr.lhs),
+            ExprTag::Ref.into(),
+        );
+        let rhs = self.use_expr(
+            self.compile_pure_expr(&binop_expr.rhs),
+            ExprTag::Ref.into(),
+        );
+
+        TaggedExpr {
+            expr: CallExpr {
+                target: TypeMemberFnPath {
+                    parent: self.get_type_ident(lhs_type),
+                    ident: BinOpTypeMemberFnIdent::from(binop_expr.kind).into(),
+                }
+                .into(),
+                args: vec![lhs, rhs],
+            },
+            type_: binop_expr.type_(),
             tags: ExprTag::Ref | ExprTag::Val,
         }
     }

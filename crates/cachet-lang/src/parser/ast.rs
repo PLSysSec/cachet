@@ -7,7 +7,7 @@ use cachet_util::{box_from, deref_from, typed_field_index};
 
 use crate::ast::{
     ArithKind, BitwiseKind, BlockKind, CheckKind, CompareKind, Ident, NegateKind, Path, Spanned,
-    VarParamKind,
+    VarParamKind, BinOpKind,
 };
 
 #[derive(Clone, Debug)]
@@ -272,6 +272,8 @@ pub enum Expr {
     #[from]
     Cast(Box<CastExpr>),
     #[from]
+    BinOp(Box<BinOpExpr>),
+    #[from]
     Arith(Box<ArithExpr>),
     #[from]
     Bitwise(Box<BitwiseExpr>),
@@ -289,6 +291,7 @@ box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 box_from!(ArithExpr => Expr);
 box_from!(BitwiseExpr => Expr);
+box_from!(BinOpExpr => Expr);
 
 deref_from!(&Literal => Expr);
 deref_from!(&Spanned<Path> => Expr);
@@ -354,6 +357,13 @@ pub struct ArithExpr {
 #[derive(Clone, Debug)]
 pub struct BitwiseExpr {
     pub kind: Spanned<BitwiseKind>,
+    pub lhs: Spanned<Expr>,
+    pub rhs: Spanned<Expr>,
+}
+
+#[derive(Clone, Debug)]
+pub struct BinOpExpr {
+    pub kind: Spanned<BinOpKind>,
     pub lhs: Spanned<Expr>,
     pub rhs: Spanned<Expr>,
 }

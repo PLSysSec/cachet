@@ -13,7 +13,7 @@ use typed_index_collections::TiSlice;
 use void::unreachable;
 
 use cachet_lang::ast::{
-    ArithKind, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path, VarParamKind,
+    ArithKind, CastKind, CheckKind, Ident, NegateKind, Path, VarParamKind, BinOpKind,
 };
 use cachet_lang::built_in::BuiltInVar;
 use cachet_lang::flattener::{self, HasAttrs, Typed};
@@ -1853,6 +1853,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Expr::Bitwise(bitwise_expr) => {
                 self.compile_bitwise_expr(&bitwise_expr).into()
             }
+            flattener::Expr::BinOp(binop_expr) => {
+                self.compile_binop_expr(&binop_expr).into()
+            }
         }
     }
 
@@ -1871,6 +1874,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::PureExpr::Arith(arith_expr) => self.compile_arith_expr(&arith_expr).into(),
             flattener::PureExpr::Bitwise(bitwise_expr) => {
                 self.compile_bitwise_expr(&bitwise_expr).into()
+            }
+            flattener::PureExpr::BinOp(binop_expr) => {
+                self.compile_binop_expr(&binop_expr).into()
             }
         }
     }
@@ -2001,15 +2007,23 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let type_ident = self.get_type_ident(compare_expr.lhs.type_());
 
         let selector = match compare_expr.kind {
-            CompareKind::Eq | CompareKind::Neq => {
+            cachet_lang::ast::CompareKind::Eq => {
                 return CompareExpr {
-                    kind: compare_expr.kind,
+                    kind: CompareKind::Eq,
                     lhs,
                     rhs,
                 }
                 .into();
             }
-            CompareKind::Numeric(kind) => kind.into(),
+            cachet_lang::ast::CompareKind::Neq => {
+                return CompareExpr {
+                    kind: CompareKind::Neq,
+                    lhs,
+                    rhs,
+                }
+                .into();
+            }
+            cachet_lang::ast::CompareKind::Numeric(kind) => kind.into(),
         };
 
         CallExpr {
@@ -2047,6 +2061,56 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let type_ident = self.get_type_ident(bitwise_expr.type_()).into();
         let selector = bitwise_expr.kind.into();
+
+        CallExpr {
+            target: TypeMemberFnIdent {
+                type_ident,
+                selector,
+            }
+            .into(),
+            arg_exprs: vec![lhs, rhs],
+        }
+        .into()
+    }
+
+    fn compile_binop_expr(&mut self, binop_expr: &flattener::BinOpExpr) -> Expr {
+        let lhs = self.compile_pure_expr(&binop_expr.lhs);
+        let rhs = self.compile_pure_expr(&binop_expr.rhs);
+
+        // Note that the type prefix for a BinOp is the *operand* type not the output type, so
+        // we inspect the lhs rather than the binop expr
+        let type_ident = self.get_type_ident(binop_expr.lhs.type_()).into();
+
+        let selector = match binop_expr.kind {
+            BinOpKind::BitOr => BinOpTypeMemberFnSelector::BitOr,
+            BinOpKind::BitAnd => BinOpTypeMemberFnSelector::BitAnd,
+            BinOpKind::BitXor => BinOpTypeMemberFnSelector::BitXor,
+            BinOpKind::BitLsh => BinOpTypeMemberFnSelector::BitLsh,
+            BinOpKind::Add => BinOpTypeMemberFnSelector::Add,
+            BinOpKind::Sub => BinOpTypeMemberFnSelector::Sub,
+            BinOpKind::Mul => BinOpTypeMemberFnSelector::Mul,
+            BinOpKind::Div => BinOpTypeMemberFnSelector::Div,
+            BinOpKind::Lte => BinOpTypeMemberFnSelector::Lte,
+            BinOpKind::Gte => BinOpTypeMemberFnSelector::Gte,
+            BinOpKind::Lt => BinOpTypeMemberFnSelector::Lt,
+            BinOpKind::Gt => BinOpTypeMemberFnSelector::Gt,
+            BinOpKind::Eq => {
+                return CompareExpr {
+                    kind: CompareKind::Eq,
+                    lhs,
+                    rhs,
+                }
+                .into();
+            }
+            BinOpKind::Neq => {
+                return CompareExpr {
+                    kind: CompareKind::Neq,
+                    lhs,
+                    rhs,
+                }
+                .into();
+            }
+        }.into();
 
         CallExpr {
             target: TypeMemberFnIdent {

@@ -11,7 +11,7 @@ use derive_more::{Display, From};
 use enum_map::Enum;
 
 use cachet_lang::ast::{
-    ArithKind, BitwiseKind, CastKind, CheckKind, CompareKind, Ident, NegateKind,
+    ArithKind, BitwiseKind, CastKind, CheckKind, Ident, NegateKind,
     NumericCompareKind,
 };
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
@@ -280,6 +280,9 @@ pub enum TypeMemberFnSelector {
     Arith(ArithTypeMemberFnSelector),
     #[from(types(BitwiseKind))]
     Bitwise(BitwiseTypeMemberFnSelector),
+    #[display(fmt = "{}", _0)]
+    #[from]
+    BinOp(BinOpTypeMemberFnSelector),
     #[from]
     Cast(CastTypeMemberFnSelector),
     #[from(types(NumericCompareKind))]
@@ -329,6 +332,23 @@ impl Display for BitwiseTypeMemberFnSelector {
         )
     }
 }
+
+#[derive(Clone, Copy, Debug, From, Display)]
+pub enum BinOpTypeMemberFnSelector {
+    #[display(fmt="bitOr")] BitOr, 
+    #[display(fmt="bitAnd")] BitAnd, 
+    #[display(fmt="xor")] BitXor, 
+    #[display(fmt="shl")] BitLsh, 
+    #[display(fmt="add")] Add, 
+    #[display(fmt="sub")] Sub, 
+    #[display(fmt="mul")] Mul, 
+    #[display(fmt="div")] Div, 
+    #[display(fmt="lte")] Lte, 
+    #[display(fmt="gte")] Gte, 
+    #[display(fmt="lt")] Lt, 
+    #[display(fmt="gt")] Gt, 
+}
+
 
 #[derive(Clone, Copy, Debug)]
 pub struct CastTypeMemberFnSelector {
@@ -1165,6 +1185,14 @@ pub struct CompareExpr {
     pub kind: CompareKind,
     pub lhs: Expr,
     pub rhs: Expr,
+}
+
+#[derive(Clone, Copy, Debug, Display)]
+pub enum CompareKind {
+    #[display(fmt = "==")]
+    Eq,
+    #[display(fmt = "!=")]
+    Neq,
 }
 
 #[derive(Clone, Debug, Display)]

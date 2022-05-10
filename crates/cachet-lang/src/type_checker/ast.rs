@@ -11,7 +11,7 @@ use cachet_util::{box_from, deref_from, deref_index, field_index};
 
 use crate::ast::{
     ArithKind, BitwiseKind, BlockKind, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path,
-    Spanned,
+    Spanned, BinOpKind,
 };
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::resolver;
@@ -453,6 +453,8 @@ pub enum Expr {
     Arith(Box<ArithExpr>),
     #[from]
     Bitwise(Box<BitwiseExpr>),
+    #[from]
+    BinOp(Box<BinOpExpr>)
 }
 
 impl Typed for Expr {
@@ -469,6 +471,7 @@ impl Typed for Expr {
             Expr::Assign(assign_expr) => assign_expr.type_(),
             Expr::Arith(arith_expr) => arith_expr.type_(),
             Expr::Bitwise(bitwise_expr) => bitwise_expr.type_(),
+            Expr::BinOp(binop_expr) => binop_expr.type_(),
         }
     }
 }
@@ -481,6 +484,7 @@ box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 box_from!(ArithExpr => Expr);
 box_from!(BitwiseExpr => Expr);
+box_from!(BinOpExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -619,5 +623,19 @@ pub struct BitwiseExpr {
 impl Typed for BitwiseExpr {
     fn type_(&self) -> TypeIndex {
         self.lhs.type_()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BinOpExpr {
+    pub kind: BinOpKind,
+    pub lhs: Expr,
+    pub rhs: Expr,
+    pub type_: TypeIndex
+}
+
+impl Typed for BinOpExpr {
+    fn type_(&self) -> TypeIndex {
+        self.type_
     }
 }

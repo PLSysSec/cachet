@@ -997,6 +997,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             resolver::Expr::Bitwise(bitwise_expr) => {
                 self.type_check_bitwise_expr(bitwise_expr).into()
             }
+            resolver::Expr::BinOp(binop_expr) => self.type_check_binop_expr(binop_expr).into(),
         }
     }
 
@@ -1209,6 +1210,82 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             kind: arith_expr.kind.value,
             lhs,
             rhs,
+        }
+    }
+
+    fn type_check_binop_expr(&mut self, binop_expr: &resolver::BinOpExpr) -> BinOpExpr {
+        use crate::ast::BinOpKind::*;
+
+        let mut lhs = self.type_check_expr(&binop_expr.lhs.value);
+        let mut rhs = self.type_check_expr(&binop_expr.rhs.value);
+
+        let mut lhs_type_index = lhs.type_();
+        let mut rhs_type_index = rhs.type_();
+
+        // Allow upcasting on numeric comparison operators
+        if let Lte | Gte | Lt | Gt | Eq | Neq = binop_expr.kind.value {
+            if let Some(rhs_upcast_route) = self.try_match_types(lhs_type_index, rhs_type_index) {
+                rhs = build_cast_chain(CastKind::Upcast, rhs, rhs_upcast_route.into_iter());
+                rhs_type_index = lhs_type_index;
+            } else if let Some(lhs_upcast_route) =
+                self.try_match_types(rhs_type_index, lhs_type_index)
+            {
+                lhs = build_cast_chain(CastKind::Upcast, lhs, lhs_upcast_route.into_iter());
+                lhs_type_index = rhs_type_index;
+            }
+        }
+
+        // All binops require matching operand types
+        if lhs_type_index != rhs_type_index {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::BinaryOperatorTypeMismatch {
+                    operator_span: binop_expr.kind.span,
+                    lhs_span: binop_expr.lhs.span,
+                    lhs_type: self.get_type_ident(lhs_type_index),
+                    rhs_span: binop_expr.rhs.span,
+                    rhs_type: self.get_type_ident(rhs_type_index),
+                });
+        }
+
+        // Operand typechecking
+        match binop_expr.kind.value {
+            // Numeric Ops
+            BitOr | BitAnd | BitXor | BitLsh | Add | Sub | Mul | Div | Lte | Gte | Lt | Gt => {
+                if !self.is_integral_type(lhs_type_index) {
+                    self.type_checker
+                        .errors
+                        .push(TypeCheckError::NumericOperatorTypeMismatch {
+                            operand_span: binop_expr.lhs.span,
+                            operand_type: self.get_type_ident(lhs_type_index),
+                            operator_span: binop_expr.kind.span,
+                        });
+                }
+
+                if !self.is_integral_type(rhs_type_index) {
+                    self.type_checker
+                        .errors
+                        .push(TypeCheckError::NumericOperatorTypeMismatch {
+                            operand_span: binop_expr.lhs.span,
+                            operand_type: self.get_type_ident(lhs_type_index),
+                            operator_span: binop_expr.kind.span,
+                        });
+                }
+            }
+            Eq | Neq => (),
+        }
+
+        // Output type
+        let type_ = match binop_expr.kind.value {
+            BitOr | BitAnd | BitXor | BitLsh | Add | Sub | Mul | Div => lhs.type_(),
+            Lte | Gte | Lt | Gt | Eq | Neq => BuiltInType::Bool.into(),
+        };
+
+        BinOpExpr {
+            kind: binop_expr.kind.value,
+            lhs,
+            rhs,
+            type_,
         }
     }
 

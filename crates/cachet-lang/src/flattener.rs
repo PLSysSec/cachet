@@ -199,6 +199,7 @@ impl Flattener {
             normalizer::Expr::Compare(compare_expr) => compare_expr.into(),
             normalizer::Expr::Arith(arith_expr) => arith_expr.into(),
             normalizer::Expr::Bitwise(bitwise_expr) => bitwise_expr.into(),
+            normalizer::Expr::BinOp(binop_expr) => binop_expr.into(),
         }
     }
 
