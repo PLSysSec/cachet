@@ -11,8 +11,7 @@ use derive_more::{Display, From};
 use enum_map::Enum;
 
 use cachet_lang::ast::{
-    ArithKind, BitwiseKind, CastKind, CheckKind, Ident, NegateKind,
-    NumericCompareKind,
+    ArithKind, BitwiseKind, CastKind, CheckKind, Ident, NegateKind, NumericCompareKind,
 };
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 use cachet_util::{
@@ -335,20 +334,31 @@ impl Display for BitwiseTypeMemberFnSelector {
 
 #[derive(Clone, Copy, Debug, From, Display)]
 pub enum BinOpTypeMemberFnSelector {
-    #[display(fmt="bitOr")] BitOr, 
-    #[display(fmt="bitAnd")] BitAnd, 
-    #[display(fmt="xor")] BitXor, 
-    #[display(fmt="shl")] BitLsh, 
-    #[display(fmt="add")] Add, 
-    #[display(fmt="sub")] Sub, 
-    #[display(fmt="mul")] Mul, 
-    #[display(fmt="div")] Div, 
-    #[display(fmt="lte")] Lte, 
-    #[display(fmt="gte")] Gte, 
-    #[display(fmt="lt")] Lt, 
-    #[display(fmt="gt")] Gt, 
+    #[display(fmt = "bitOr")]
+    BitOr,
+    #[display(fmt = "bitAnd")]
+    BitAnd,
+    #[display(fmt = "xor")]
+    BitXor,
+    #[display(fmt = "shl")]
+    BitLsh,
+    #[display(fmt = "add")]
+    Add,
+    #[display(fmt = "sub")]
+    Sub,
+    #[display(fmt = "mul")]
+    Mul,
+    #[display(fmt = "div")]
+    Div,
+    #[display(fmt = "lte")]
+    Lte,
+    #[display(fmt = "gte")]
+    Gte,
+    #[display(fmt = "lt")]
+    Lt,
+    #[display(fmt = "gt")]
+    Gt,
 }
-
 
 #[derive(Clone, Copy, Debug)]
 pub struct CastTypeMemberFnSelector {
@@ -1016,7 +1026,7 @@ pub enum Expr {
     #[from]
     Negate(Box<NegateExpr>),
     #[from]
-    Compare(Box<CompareExpr>),
+    Compare(Box<BinOpExpr>),
     #[from]
     Arith(Box<ArithExpr>),
     #[from]
@@ -1025,7 +1035,7 @@ pub enum Expr {
 
 box_from!(IndexExpr => Expr);
 box_from!(NegateExpr => Expr);
-box_from!(CompareExpr => Expr);
+box_from!(BinOpExpr => Expr);
 box_from!(ArithExpr => Expr);
 box_from!(ForAllExpr => Expr);
 
@@ -1174,25 +1184,32 @@ pub struct NegateExpr {
     pub expr: Expr,
 }
 
-#[derive(Clone, Debug, Display)]
-#[display(
-    fmt = "{} {} {}",
-    "MaybeGrouped(&self.lhs)",
-    kind,
-    "MaybeGrouped(&self.rhs)"
-)]
-pub struct CompareExpr {
-    pub kind: CompareKind,
+#[derive(Clone, Debug)]
+pub struct BinOpExpr {
+    pub kind: BinOpKind,
     pub lhs: Expr,
     pub rhs: Expr,
 }
 
 #[derive(Clone, Copy, Debug, Display)]
-pub enum CompareKind {
+pub enum BinOpKind {
     #[display(fmt = "==")]
     Eq,
     #[display(fmt = "!=")]
     Neq,
+    #[display(fmt = "==")]
+    LogAnd,
+    #[display(fmt = "!=")]
+    LogOr,
+}
+
+impl Display for BinOpExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let lhs = MaybeGrouped(&self.lhs);
+        let rhs = MaybeGrouped(&self.rhs);
+
+        write!(f, "{} {} {}", lhs, self.kind, rhs)
+    }
 }
 
 #[derive(Clone, Debug, Display)]

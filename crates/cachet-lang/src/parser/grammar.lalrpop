@@ -396,6 +396,30 @@ PrecExpr: PrecExpr = {
     },
 
     #[precedence(level = "10")]
+    #[assoc(side = "left")]
+    <lhs:Spanned<PrecExpr>> <op:Spanned<"&&">>
+    <rhs:Spanned<PrecExpr>> =>
+    {
+        Expr::from(BinOpExpr {
+            kind: Spanned::new(op.span, BinOpKind::LogAnd),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr),
+        }).into()
+    },
+
+    #[precedence(level = "11")]
+    #[assoc(side = "left")]
+    <lhs:Spanned<PrecExpr>> <op:Spanned<"||">>
+    <rhs:Spanned<PrecExpr>> =>
+    {
+        Expr::from(BinOpExpr {
+            kind: Spanned::new(op.span, BinOpKind::LogOr),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr),
+        }).into()
+    },
+
+    #[precedence(level = "12")]
     #[assoc(side = "right")]
     <lhs:Spanned<PrecExpr>> "=" <rhs:Spanned<PrecExpr>> =>? {
         match lhs.value.expr {

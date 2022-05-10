@@ -16,7 +16,7 @@ unsafe fn mk_range_raw (
     canHaveFractionalPart_: Bool,
     canBeNegativeZero_: Bool,
     max_exponent_: UInt16,
-);
+) -> Range;
 
 fn mk_range(
     lower_: Int32,
@@ -28,7 +28,7 @@ fn mk_range(
     max_exponent_: UInt16,
 ) -> Range {
     let r = (unsafe {
-        mk_range_raw(lower_, upper_, hasInt32LowerBound_, hasInt32UpperBound_, canBeNegativeZero_, max_exponent_)
+        mk_range_raw(lower_, upper_, hasInt32LowerBound_, hasInt32UpperBound_, canHaveFractionalPart_, canBeNegativeZero_, max_exponent_)
     });
 
     assume r.lower_ == lower_;
@@ -60,13 +60,14 @@ fn test() {
 
 
 fn in_range(r: Range, n: Double) -> Bool {
-    if (r.hasInt32LowerBound_ && n < (r.lower_ as Double)) {
-        return false;
+    let mut ret = true;
+    if (r.hasInt32LowerBound_ && n < Double::from_i32(r.lower_)) {
+        ret = false;
     }
 
-    if (r.hasInt32UpperBound_ && n < (r.upper_ as Double)) {
-        return false;
+    if (r.hasInt32UpperBound_ && Double::from_i32(r.upper_) < n) {
+        ret = false;
     }
 
-    true
+    ret
 }

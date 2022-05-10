@@ -9,10 +9,7 @@ use typed_index_collections::TiVec;
 
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
-use crate::ast::{
-    BlockKind, CastKind, CheckKind, Ident, NegateKind, Path,
-    Spanned, BinOpKind,
-};
+use crate::ast::{BinOpKind, BlockKind, CastKind, CheckKind, Ident, NegateKind, Path, Spanned};
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::resolver;
 pub use crate::resolver::{
@@ -448,7 +445,7 @@ pub enum Expr {
     #[from]
     Assign(Box<AssignExpr>),
     #[from]
-    BinOp(Box<BinOpExpr>)
+    BinOp(Box<BinOpExpr>),
 }
 
 impl Typed for Expr {
@@ -576,7 +573,7 @@ pub struct BinOpExpr {
     pub kind: BinOpKind,
     pub lhs: Expr,
     pub rhs: Expr,
-    pub type_: TypeIndex
+    pub type_: TypeIndex,
 }
 
 impl Typed for BinOpExpr {

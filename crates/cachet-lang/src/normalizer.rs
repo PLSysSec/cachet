@@ -9,7 +9,7 @@ use typed_index_collections::{TiSlice, TiVec};
 
 use crate::type_checker;
 
-use crate::ast::{Ident, Span, Spanned, VarParamKind};
+use crate::ast::{BinOpKind, Ident, NegateKind, Span, Spanned, VarParamKind};
 use crate::built_in::{BuiltInType, BuiltInVar};
 
 pub use crate::normalizer::ast::*;
@@ -383,9 +383,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Invoke(invoke_expr) => {
                 self.normalize_used_invoke_expr(invoke_expr)
             }
-            type_checker::Expr::FieldAccess(field_access_expr) => {
-                self.normalize_used_field_access_expr(*field_access_expr).into()
-            }
+            type_checker::Expr::FieldAccess(field_access_expr) => self
+                .normalize_used_field_access_expr(*field_access_expr)
+                .into(),
             type_checker::Expr::Negate(negate_expr) => {
                 self.normalize_used_negate_expr(*negate_expr).into()
             }
@@ -419,9 +419,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Assign(assign_expr) => {
                 self.normalize_unused_assign_expr(*assign_expr)
             }
-            type_checker::Expr::BinOp(binop_expr) => {
-                self.normalize_unused_binop_expr(*binop_expr)
-            }
+            type_checker::Expr::BinOp(binop_expr) => self.normalize_unused_binop_expr(*binop_expr),
         }
     }
 
@@ -528,35 +526,106 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     }
 
     fn normalize_used_binop_expr(&mut self, binop_expr: type_checker::BinOpExpr) -> Expr {
-        let mut stmts = Vec::new();
-        let mut scoped_normalizer = self.recurse(&mut stmts);
+        let mut lhs_stmts = Vec::new();
+        let mut lhs_normalizer = self.recurse(&mut lhs_stmts);
+        let lhs = lhs_normalizer.normalize_pure_expr(binop_expr.lhs);
 
-        let lhs = scoped_normalizer.normalize_pure_expr(binop_expr.lhs);
-        let rhs = scoped_normalizer.normalize_pure_expr(binop_expr.rhs);
+        let mut rhs_stmts = Vec::new();
+        let mut rhs_normalizer = self.recurse(&mut rhs_stmts);
+        let rhs = rhs_normalizer.normalize_pure_expr(binop_expr.rhs);
 
-        let value = BinOpExpr {
-            kind: binop_expr.kind,
-            type_: binop_expr.type_,
-            lhs,
-            rhs,
-        }
-        .into();
+        match binop_expr.kind {
+            // v = false; if (lhs) { v = rhs }; v
+            BinOpKind::LogAnd => {
+                let result = self.push_tmp_expr(BuiltInVar::False.into());
+                self.stmts.push(
+                    IfStmt {
+                        cond: block_if_necessary(lhs_stmts, lhs.into()),
+                        then: vec![
+                            AssignStmt {
+                                lhs: result.var,
+                                rhs: block_if_necessary(rhs_stmts, rhs.into()),
+                            }
+                            .into(),
+                        ],
+                        else_: None,
+                    }
+                    .into(),
+                );
 
-        if stmts.is_empty() {
-            value
-        } else {
-            BlockExpr {
-                kind: None,
-                stmts,
-                value,
+                return result.into();
             }
-            .into()
+            // v = true; if (!lhs) { v = rhs }; v
+            BinOpKind::LogOr => {
+                let result = self.push_tmp_expr(BuiltInVar::True.into());
+                self.stmts.push(
+                    IfStmt {
+                        cond: NegateExpr {
+                            kind: NegateKind::Logical,
+                            expr: block_if_necessary(lhs_stmts, lhs.into()),
+                        }
+                        .into(),
+                        then: vec![
+                            AssignStmt {
+                                lhs: result.var,
+                                rhs: block_if_necessary(rhs_stmts, rhs.into()),
+                            }
+                            .into(),
+                        ],
+                        else_: None,
+                    }
+                    .into(),
+                );
+                return result.into();
+            }
+
+            _ => {
+                let mut stmts = lhs_stmts;
+                stmts.append(&mut rhs_stmts);
+
+                let value = BinOpExpr {
+                    kind: binop_expr.kind,
+                    type_: binop_expr.type_,
+                    lhs,
+                    rhs,
+                }
+                .into();
+
+                return block_if_necessary(stmts, value);
+            }
         }
     }
 
     fn normalize_unused_binop_expr(&mut self, binop_expr: type_checker::BinOpExpr) {
-        self.normalize_unused_expr(binop_expr.lhs);
-        self.normalize_unused_expr(binop_expr.rhs);
+        let lhs = self.normalize_used_expr(binop_expr.lhs);
+
+        let mut rhs_stmts = Vec::new();
+        let mut scoped_normalizer = self.recurse(&mut rhs_stmts);
+        scoped_normalizer.normalize_unused_expr(binop_expr.rhs);
+
+        let cond = match binop_expr.kind {
+            // if (lhs) { rhs }
+            BinOpKind::LogAnd => lhs.into(),
+            // if (!lhs) { rhs }
+            BinOpKind::LogOr => NegateExpr {
+                kind: NegateKind::Logical,
+                expr: lhs,
+            }
+            .into(),
+            _ => {
+                self.stmts.append(&mut rhs_stmts);
+                return;
+            }
+        };
+
+        self.stmts.push(
+            IfStmt {
+                cond,
+                then: rhs_stmts,
+                else_: None,
+            }
+            .into(),
+        );
     }
 
     fn normalize_unused_assign_expr(&mut self, assign_expr: type_checker::AssignExpr) {
@@ -601,5 +670,18 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             .as_deref_mut()
             .unwrap_or(self.stmts)
             .push(stmt);
+    }
+}
+
+fn block_if_necessary(stmts: Vec<Stmt>, value: Expr) -> Expr {
+    if stmts.is_empty() {
+        value
+    } else {
+        BlockExpr {
+            kind: None,
+            stmts,
+            value,
+        }
+        .into()
     }
 }

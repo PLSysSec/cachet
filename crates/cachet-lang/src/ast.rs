@@ -112,7 +112,6 @@ pub enum BinOpKind {
     #[display(fmt = "<<")]
     BitLsh,
 
-
     #[display(fmt = "+")]
     Add,
     #[display(fmt = "-")]
@@ -134,6 +133,11 @@ pub enum BinOpKind {
     Eq,
     #[display(fmt = "!=")]
     Neq,
+
+    #[display(fmt = "&&")]
+    LogAnd,
+    #[display(fmt = "||")]
+    LogOr,
 }
 
 impl BinOpKind {
@@ -141,5 +145,11 @@ impl BinOpKind {
         use BinOpKind::*;
 
         matches!(self, Lte | Gte | Lt | Gt | Eq | Neq)
+    }
+
+    pub fn is_shortcircuiting(&self) -> bool {
+        use BinOpKind::*;
+
+        matches!(self, LogAnd | LogOr)
     }
 }

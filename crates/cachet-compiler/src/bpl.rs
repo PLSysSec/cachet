@@ -12,9 +12,7 @@ use lazy_static::lazy_static;
 use typed_index_collections::TiSlice;
 use void::unreachable;
 
-use cachet_lang::ast::{
-    ArithKind, CastKind, CheckKind, Ident, NegateKind, Path, VarParamKind, BinOpKind,
-};
+use cachet_lang::ast::{ArithKind, CastKind, CheckKind, Ident, NegateKind, Path, VarParamKind};
 use cachet_lang::built_in::BuiltInVar;
 use cachet_lang::flattener::{self, HasAttrs, Typed};
 use cachet_util::MaybeOwned;
@@ -798,8 +796,8 @@ impl<'a> Compiler<'a> {
                     type_: PreludeTypeIdent::Pc.into(),
                 }]
                 .into(),
-                expr: CompareExpr {
-                    kind: CompareKind::Eq,
+                expr: BinOpExpr {
+                    kind: BinOpKind::Eq,
                     lhs: IndexExpr {
                         base: pc_emit_paths_var_ident.into(),
                         key: VarIdent::Pc.into(),
@@ -943,8 +941,8 @@ impl<'a> Compiler<'a> {
             let assume_emit_path_stmt = CheckStmt {
                 kind: CheckKind::Assume,
                 attr: Some(CheckAttr::Partition),
-                cond: CompareExpr {
-                    kind: CompareKind::Eq,
+                cond: BinOpExpr {
+                    kind: BinOpKind::Eq,
                     lhs: IndexExpr {
                         base: pc_emit_paths_var_ident.into(),
                         key: pc_var_ident.into(),
@@ -1308,8 +1306,8 @@ fn generate_cast_axiom_item(
 
     let cond = ForAllExpr {
         vars: vec![in_var].into(),
-        expr: CompareExpr {
-            kind: CompareKind::Eq,
+        expr: BinOpExpr {
+            kind: BinOpKind::Eq,
             lhs,
             rhs,
         }
@@ -1846,9 +1844,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             flattener::Expr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr),
             flattener::Expr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
-            flattener::Expr::BinOp(binop_expr) => {
-                self.compile_binop_expr(&binop_expr).into()
-            }
+            flattener::Expr::BinOp(binop_expr) => self.compile_binop_expr(&binop_expr).into(),
         }
     }
 
@@ -1861,9 +1857,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             flattener::PureExpr::Negate(negate_expr) => self.compile_negate_expr(&negate_expr),
             flattener::PureExpr::Cast(cast_expr) => self.compile_cast_expr(&cast_expr).into(),
-            flattener::PureExpr::BinOp(binop_expr) => {
-                self.compile_binop_expr(&binop_expr).into()
-            }
+            flattener::PureExpr::BinOp(binop_expr) => self.compile_binop_expr(&binop_expr).into(),
         }
     }
 
@@ -1988,43 +1982,61 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_binop_expr(&mut self, binop_expr: &flattener::BinOpExpr) -> Expr {
+        use cachet_lang::ast::BinOpKind::*;
+
         let lhs = self.compile_pure_expr(&binop_expr.lhs);
         let rhs = self.compile_pure_expr(&binop_expr.rhs);
 
-        // Note that the type prefix for a BinOp is the *operand* type not the output type, so
-        // we inspect the lhs rather than the binop expr
+        // Note that the type prefix for a BinOp is the *operand* type not the output
+        // type, so we inspect the lhs rather than the binop expr
         let type_ident = self.get_type_ident(binop_expr.lhs.type_()).into();
-
         let selector = match binop_expr.kind {
-            BinOpKind::BitOr => BinOpTypeMemberFnSelector::BitOr,
-            BinOpKind::BitAnd => BinOpTypeMemberFnSelector::BitAnd,
-            BinOpKind::BitXor => BinOpTypeMemberFnSelector::BitXor,
-            BinOpKind::BitLsh => BinOpTypeMemberFnSelector::BitLsh,
-            BinOpKind::Add => BinOpTypeMemberFnSelector::Add,
-            BinOpKind::Sub => BinOpTypeMemberFnSelector::Sub,
-            BinOpKind::Mul => BinOpTypeMemberFnSelector::Mul,
-            BinOpKind::Div => BinOpTypeMemberFnSelector::Div,
-            BinOpKind::Lte => BinOpTypeMemberFnSelector::Lte,
-            BinOpKind::Gte => BinOpTypeMemberFnSelector::Gte,
-            BinOpKind::Lt => BinOpTypeMemberFnSelector::Lt,
-            BinOpKind::Gt => BinOpTypeMemberFnSelector::Gt,
-            BinOpKind::Eq => {
-                return CompareExpr {
-                    kind: CompareKind::Eq,
+            BitOr => BinOpTypeMemberFnSelector::BitOr,
+            BitAnd => BinOpTypeMemberFnSelector::BitAnd,
+            BitXor => BinOpTypeMemberFnSelector::BitXor,
+            BitLsh => BinOpTypeMemberFnSelector::BitLsh,
+            Add => BinOpTypeMemberFnSelector::Add,
+            Sub => BinOpTypeMemberFnSelector::Sub,
+            Mul => BinOpTypeMemberFnSelector::Mul,
+            Div => BinOpTypeMemberFnSelector::Div,
+            Lte => BinOpTypeMemberFnSelector::Lte,
+            Gte => BinOpTypeMemberFnSelector::Gte,
+            Lt => BinOpTypeMemberFnSelector::Lt,
+            Gt => BinOpTypeMemberFnSelector::Gt,
+            Eq => {
+                return BinOpExpr {
+                    kind: BinOpKind::Eq,
                     lhs,
                     rhs,
                 }
                 .into();
             }
-            BinOpKind::Neq => {
-                return CompareExpr {
-                    kind: CompareKind::Neq,
+            Neq => {
+                return BinOpExpr {
+                    kind: BinOpKind::Neq,
                     lhs,
                     rhs,
                 }
                 .into();
             }
-        }.into();
+            LogAnd => {
+                return BinOpExpr {
+                    kind: BinOpKind::LogAnd,
+                    lhs,
+                    rhs,
+                }
+                .into();
+            }
+            LogOr => {
+                return BinOpExpr {
+                    kind: BinOpKind::LogOr,
+                    lhs,
+                    rhs,
+                }
+                .into();
+            }
+        }
+        .into();
 
         CallExpr {
             target: TypeMemberFnIdent {

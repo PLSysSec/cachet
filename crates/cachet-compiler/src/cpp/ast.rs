@@ -10,8 +10,7 @@ use enum_map::Enum;
 use enumset::EnumSetType;
 
 use cachet_lang::ast::{
-    ArithKind, BinOpKind, BitwiseKind, CastKind, CompareKind, Ident, NegateKind,
-    NumericCompareKind,
+    ArithKind, BitwiseKind, CastKind, CompareKind, Ident, NegateKind, NumericCompareKind,
 };
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 
@@ -443,38 +442,40 @@ impl Display for ArithTypeMemberFnIdent {
     }
 }
 
-#[derive(Clone, Copy, Debug, From)]
-pub struct BinOpTypeMemberFnIdent {
-    pub kind: BinOpKind,
+#[derive(Clone, Copy, Debug, From, Display)]
+pub enum BinOpTypeMemberFnIdent {
+    #[display(fmt = "BitOr")]
+    BitOr,
+    #[display(fmt = "BitAnd")]
+    BitAnd,
+    #[display(fmt = "BitXor")]
+    BitXor,
+    #[display(fmt = "Shl")]
+    BitLsh,
+    #[display(fmt = "Add")]
+    Add,
+    #[display(fmt = "Sub")]
+    Sub,
+    #[display(fmt = "Mul")]
+    Mul,
+    #[display(fmt = "Div")]
+    Div,
+    #[display(fmt = "Lte")]
+    Lte,
+    #[display(fmt = "Gte")]
+    Gte,
+    #[display(fmt = "Lt")]
+    Lt,
+    #[display(fmt = "Gt")]
+    Gt,
+    #[display(fmt = "Eq")]
+    Eq,
+    #[display(fmt = "Neq")]
+    Neq,
 }
 
 impl BinOpTypeMemberFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
-}
-
-impl Display for BinOpTypeMemberFnIdent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self.kind {
-                BinOpKind::BitOr => "BitOr",
-                BinOpKind::BitAnd => "BitAnd",
-                BinOpKind::BitXor => "Xor",
-                BinOpKind::BitLsh => "Shl",
-                BinOpKind::Add => "Add",
-                BinOpKind::Sub => "Sub",
-                BinOpKind::Mul => "Mul",
-                BinOpKind::Div => "Div",
-                BinOpKind::Lte => "Lte",
-                BinOpKind::Gte => "Gte",
-                BinOpKind::Lt => "Lt",
-                BinOpKind::Gt => "Gt",
-                BinOpKind::Eq => "Eq",
-                BinOpKind::Neq => "Neq",
-            }
-        )
-    }
 }
 
 #[derive(Clone, Copy, Debug, From)]
@@ -989,6 +990,8 @@ pub enum Expr {
     Assign(Box<AssignExpr>),
     #[from]
     Comma(Box<CommaExpr>),
+    #[from]
+    BinOp(Box<BinOpExpr>),
 }
 
 box_from!(TemplateExpr => Expr);
@@ -1000,6 +1003,7 @@ box_from!(NegateExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 box_from!(CommaExpr => Expr);
+box_from!(BinOpExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -1029,7 +1033,7 @@ impl Display for MaybeGrouped<'_> {
             | Expr::Arrow(_)
             | Expr::Call(_)
             | Expr::Comma(_) => false,
-            Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) => true,
+            Expr::BinOp(_) | Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) => true,
             Expr::Cast(cast_expr) => match cast_expr.kind {
                 CastStyle::Functional(_) => false,
                 CastStyle::C => true,
@@ -1109,6 +1113,27 @@ pub struct MemberExpr {
 pub struct ArrowExpr {
     pub parent: Expr,
     pub member: Ident,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(
+    fmt = "{} {} {}",
+    "MaybeGrouped(&self.lhs)",
+    kind,
+    "MaybeGrouped(&self.rhs)"
+)]
+pub struct BinOpExpr {
+    pub kind: BinOpKind,
+    pub lhs: Expr,
+    pub rhs: Expr,
+}
+
+#[derive(Clone, Debug, Display)]
+pub enum BinOpKind {
+    #[display(fmt = "&&")]
+    LogAnd,
+    #[display(fmt = "||")]
+    LogOr,
 }
 
 #[derive(Clone, Debug)]

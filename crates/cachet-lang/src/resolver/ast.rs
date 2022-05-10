@@ -9,8 +9,7 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_index};
 
 use crate::ast::{
-    BlockKind, CheckKind, Ident, MaybeSpanned, NegateKind,
-    Path, Spanned, VarParamKind, BinOpKind,
+    BinOpKind, BlockKind, CheckKind, Ident, MaybeSpanned, NegateKind, Path, Spanned, VarParamKind,
 };
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 pub use crate::parser::{FieldIndex, Literal, VariantIndex};

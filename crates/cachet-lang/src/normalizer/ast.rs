@@ -6,9 +6,7 @@ use derive_more::From;
 use enumset::EnumSet;
 use typed_index_collections::TiVec;
 
-use crate::ast::{
-    BlockKind, CastKind, CheckKind, NegateKind, Path, Spanned, BinOpKind,
-};
+use crate::ast::{BinOpKind, BlockKind, CastKind, CheckKind, NegateKind, Path, Spanned};
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 
 pub use crate::type_checker::{

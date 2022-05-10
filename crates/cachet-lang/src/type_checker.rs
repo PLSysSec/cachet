@@ -12,8 +12,7 @@ use lazy_static::lazy_static;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
-    BlockKind, CastKind, Ident, MaybeSpanned, NegateKind, Path, Span, Spanned,
-    VarParamKind,
+    BlockKind, CastKind, Ident, MaybeSpanned, NegateKind, Path, Span, Spanned, VarParamKind,
 };
 use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::resolver;
@@ -1171,14 +1170,15 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         // Allow upcasting on numeric comparison operators
         if let Lte | Gte | Lt | Gt | Eq | Neq = binop_expr.kind.value {
-            if let Some(rhs_upcast_route) = self.try_match_types(lhs_type_index, rhs_type_index) {
-                rhs = build_cast_chain(CastKind::Upcast, rhs, rhs_upcast_route.into_iter());
+            let mut succ;
+            (succ, rhs) = self.try_build_upcast_chain(rhs, lhs_type_index);
+            if succ {
                 rhs_type_index = lhs_type_index;
-            } else if let Some(lhs_upcast_route) =
-                self.try_match_types(rhs_type_index, lhs_type_index)
-            {
-                lhs = build_cast_chain(CastKind::Upcast, lhs, lhs_upcast_route.into_iter());
-                lhs_type_index = rhs_type_index;
+            } else {
+                (succ, lhs) = self.try_build_upcast_chain(lhs, rhs_type_index);
+                if succ {
+                    lhs_type_index = rhs_type_index;
+                }
             }
         }
 
@@ -1194,8 +1194,6 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     rhs_type: self.get_type_ident(rhs_type_index),
                 });
         }
-
-
 
         // Operand typechecking
         match binop_expr.kind.value {
@@ -1222,7 +1220,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 }
             }
 
-            Add | Sub | Mul | Div | Lte | Gte | Lt | Gt  => {
+            Add | Sub | Mul | Div | Lte | Gte | Lt | Gt => {
                 if !self.is_numeric_type(lhs_type_index) {
                     self.type_checker
                         .errors
@@ -1244,13 +1242,24 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 }
             }
 
+            LogAnd | LogOr => {
+                lhs = self.expect_expr_type(
+                    Spanned::new(binop_expr.lhs.span, lhs),
+                    BuiltInType::Bool.into(),
+                );
+                rhs = self.expect_expr_type(
+                    Spanned::new(binop_expr.rhs.span, rhs),
+                    BuiltInType::Bool.into(),
+                );
+            }
+
             Eq | Neq => (),
         }
 
         // Output type
         let type_ = match binop_expr.kind.value {
             BitOr | BitAnd | BitXor | BitLsh | Add | Sub | Mul | Div => lhs.type_(),
-            Lte | Gte | Lt | Gt | Eq | Neq => BuiltInType::Bool.into(),
+            LogAnd | LogOr | Lte | Gte | Lt | Gt | Eq | Neq => BuiltInType::Bool.into(),
         };
 
         BinOpExpr {
