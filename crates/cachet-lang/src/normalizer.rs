@@ -104,7 +104,7 @@ impl<'a> Normalizer<'a> {
 
     fn normalize_body_block(&mut self, block: type_checker::Block) -> Vec<Stmt> {
         let type_ = block.type_();
-        if type_ == BuiltInType::Unit.into() || type_ == BuiltInType::Never.into() {
+        if type_ == BuiltInType::Unit.into() || block.exits_early {
             let mut stmts = self.normalize_unused_block(block);
             stmts.push(ReturnStmt { value: None }.into());
             return stmts;

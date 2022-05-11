@@ -19,8 +19,32 @@ fn dead_code() {
     return;
 }
 
+fn if_1() -> Int64 {
+    if ({ return 3_i64; false }) {}
+}
+
+fn if_2() -> Bool {
+    if (true) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+fn binop_short_circuit() -> Double {
+    if (({return 3.4; false}) || true) {}
+}
+
+fn binop_reg() -> Double {
+    if (true == ({return 3.4; false})) {}
+}
+
 fn test() {
     unit_return();
     value_return();
     dead_code();
+    if_1();
+    if_2();
+    binop_short_circuit();
+    binop_reg();
 }

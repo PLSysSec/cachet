@@ -233,10 +233,12 @@ impl<'a> TypeChecker<'a> {
             let mut locals = body.locals.clone();
             let mut scoped_type_checker =
                 ScopedTypeChecker::new(self, callable_index, interprets, emits, &mut locals);
-            let block = scoped_type_checker.type_check_block_expecting_type(
-                Spanned::new(callable_item.body.span, &body.block),
-                ret,
-            );
+
+
+            let mut block = scoped_type_checker.type_check_block(&body.block);
+            if !block.exits_early || body.block.value.is_some() {
+                block.value = scoped_type_checker.expect_expr_type(Spanned::new(callable_item.body.span, block.value), ret);
+            }
 
             let locals = Locals {
                 local_vars: locals
@@ -757,25 +759,6 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             is_unsafe: callable_item.is_unsafe,
             args,
         }
-    }
-
-    fn type_check_block_expecting_type(
-        &mut self,
-        resolver_block: Spanned<&resolver::Block>,
-        expected_type_index: TypeIndex,
-    ) -> Block {
-        let block_span = resolver_block.span;
-        let mut block = self.type_check_block(resolver_block.value);
-
-        // Only typecheck the value if an explicit value is given, and we're not looking
-        // for unit
-        if expected_type_index != BuiltInType::Unit.into() && resolver_block.value.value.is_some()
-        {
-            block.value =
-                self.expect_expr_type(Spanned::new(block_span, block.value), expected_type_index);
-        }
-
-        block
     }
 
     fn type_check_block(&mut self, block: &resolver::Block) -> Block {
@@ -1415,12 +1398,9 @@ fn expr_early_exit(expr: &Expr) -> bool {
         Expr::Assign(assign_expr) => expr_early_exit(&assign_expr.rhs),
         Expr::BinOp(binop_expr) => {
             if binop_expr.kind.is_shortcircuiting() {
-                true
-                // expr_early_exit(&binop_expr.lhs)
+                expr_early_exit(&binop_expr.lhs)
             } else {
-                false
-                // expr_early_exit(&binop_expr.lhs) ||
-                // expr_early_exit(&binop_expr.rhs)
+                expr_early_exit(&binop_expr.lhs) || expr_early_exit(&binop_expr.rhs)
             }
         }
 

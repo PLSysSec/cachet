@@ -275,11 +275,7 @@ pub struct Block {
 
 impl Typed for Block {
     fn type_(&self) -> TypeIndex {
-        if self.exits_early {
-            BuiltInType::Never.into()
-        } else {
-            self.value.type_()
-        }
+        self.value.type_()
     }
 }
 
