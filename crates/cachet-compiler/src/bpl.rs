@@ -135,10 +135,10 @@ impl<'a> Compiler<'a> {
             .into(),
         );
 
-        for f in struct_item.fields.values() {
+        for struct_field in struct_item.fields.values() {
             self.items.push(
                 FnItem {
-                    ident: self.get_field_fn_ident(f.into()),
+                    ident: self.get_field_fn_ident(struct_field.into()),
                     param_vars: vec![
                         TypedVar {
                             ident: ParamVarIdent::Instance.into(),
@@ -148,7 +148,7 @@ impl<'a> Compiler<'a> {
                     ]
                     .into(),
                     attr: None,
-                    ret: self.get_type_ident(f.type_).into(),
+                    ret: self.get_type_ident(struct_field.type_).into(),
                     value: None,
                 }
                 .into(),
@@ -1263,14 +1263,13 @@ fn generate_cast_axiom_item(
     supertype_ident: UserTypeIdent,
     subtype_ident: UserTypeIdent,
 ) -> AxiomItem {
-    let type_ = match kind {
-        CastKind::Downcast => subtype_ident,
-        CastKind::Upcast => supertype_ident,
-    };
-
     let in_var = TypedVar {
         ident: ParamVarIdent::In.into(),
-        type_: type_.into(),
+        type_: match kind {
+            CastKind::Downcast => subtype_ident,
+            CastKind::Upcast => supertype_ident,
+        }
+        .into(),
     };
 
     let inner_call_expr = CallExpr {
@@ -1470,7 +1469,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_internal_label_arg(&mut self, label_index: flattener::LabelIndex) -> Expr {
         // As with compiling label parameters and out-parameters, we compile
-        // label arguments anD label out-arguments the same way when generating
+        // label arguments and label out-arguments the same way when generating
         // Boogie.
         match label_index {
             flattener::LabelIndex::Param(label_param_index) => UserParamVarIdent::from(
@@ -1921,12 +1920,12 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         &mut self,
         field_access_expr: &flattener::FieldAccessExpr<E>,
     ) -> CallExpr {
-        let expr = field_access_expr.parent.compile(self);
-        let access_fn_ident = self.get_field_fn_ident(field_access_expr.field);
+        let field_fn_ident = self.get_field_fn_ident(field_access_expr.field);
+        let parent_expr = field_access_expr.parent.compile(self);
 
         CallExpr {
-            target: access_fn_ident,
-            arg_exprs: vec![expr],
+            target: field_fn_ident,
+            arg_exprs: vec![parent_expr],
         }
     }
 

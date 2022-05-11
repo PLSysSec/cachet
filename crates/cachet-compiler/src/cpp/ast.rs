@@ -939,7 +939,7 @@ pub enum Expr {
     #[from]
     Member(Box<MemberExpr>),
     #[from]
-    ArrowMember(Box<ArrowMemberExpr>),
+    Arrow(Box<ArrowExpr>),
     #[from]
     Call(Box<CallExpr>),
     #[from]
@@ -956,13 +956,13 @@ pub enum Expr {
 
 box_from!(TemplateExpr => Expr);
 box_from!(MemberExpr => Expr);
+box_from!(ArrowExpr => Expr);
 box_from!(CallExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CompareExpr => Expr);
 box_from!(AssignExpr => Expr);
 box_from!(CommaExpr => Expr);
-box_from!(ArrowMemberExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -989,7 +989,7 @@ impl Display for MaybeGrouped<'_> {
             | Expr::Fn(_)
             | Expr::Template(_)
             | Expr::Member(_)
-            | Expr::ArrowMember(_)
+            | Expr::Arrow(_)
             | Expr::Call(_)
             | Expr::Comma(_) => false,
             Expr::Negate(_) | Expr::Compare(_) | Expr::Assign(_) => true,
@@ -1035,15 +1035,14 @@ impl FromIterator<Stmt> for BlockExpr {
     }
 }
 
+// TODO(spinda): Wrap these in, e.g., `int32_t(<n>)`. Double-check if any
+// special namespace handling is required (e.g., should that be
+// `::std::int32_t(<n>)`?).
 #[derive(Clone, Copy, Debug, Display)]
 pub enum Literal {
-    #[display(fmt = "{:?}", _0)]
     Int32(i32),
-    #[display(fmt = "{:?}", _0)]
     Int64(i64),
-    #[display(fmt = "{:?}", _0)]
     UInt16(u16),
-    #[display(fmt = "{:?}", _0)]
     Double(f64),
 }
 
@@ -1070,7 +1069,7 @@ pub struct MemberExpr {
 
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "{}->{}", "MaybeGrouped(&self.parent)", member)]
-pub struct ArrowMemberExpr {
+pub struct ArrowExpr {
     pub parent: Expr,
     pub member: Ident,
 }

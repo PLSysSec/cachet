@@ -189,20 +189,20 @@ impl Display for UserGlobalVarIdent {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum ParamVarIdent {
+    #[display(fmt = "emitPath")]
+    EmitPath,
     #[display(fmt = "in")]
     In,
     #[display(fmt = "init")]
     Init,
-    #[display(fmt = "last")]
-    Last,
-    #[display(fmt = "emitPath")]
-    EmitPath,
-    #[display(fmt = "op")]
-    Op,
-    #[display(fmt = "label")]
-    Label,
     #[display(fmt = "instance")]
     Instance,
+    #[display(fmt = "label")]
+    Label,
+    #[display(fmt = "last")]
+    Last,
+    #[display(fmt = "op")]
+    Op,
     User(UserParamVarIdent),
 }
 
@@ -276,21 +276,16 @@ pub struct TypeMemberFnIdent {
 pub enum TypeMemberFnSelector {
     #[display(fmt = "negate")]
     Negate,
-    #[display(fmt = "{}", _0)]
     #[from(types(ArithKind))]
     Arith(ArithTypeMemberFnSelector),
-    #[display(fmt = "{}", _0)]
     #[from(types(BitwiseKind))]
     Bitwise(BitwiseTypeMemberFnSelector),
     #[from]
     Cast(CastTypeMemberFnSelector),
-    #[display(fmt = "{}", _0)]
     #[from(types(NumericCompareKind))]
     Compare(CompareTypeMemberFnSelector),
-    #[display(fmt = "{}", _0)]
     #[from]
     Variant(VariantCtorTypeMemberFnSelector),
-    #[display(fmt = "{}", _0)]
     #[from]
     Field(FieldTypeMemberFnSelector),
 }
@@ -1156,20 +1151,17 @@ pub struct NegateExpr {
     pub expr: Expr,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Display)]
+#[display(
+    fmt = "{} {} {}",
+    "MaybeGrouped(&self.lhs)",
+    kind,
+    "MaybeGrouped(&self.rhs)"
+)]
 pub struct CompareExpr {
     pub kind: CompareKind,
     pub lhs: Expr,
     pub rhs: Expr,
-}
-
-impl Display for CompareExpr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lhs = MaybeGrouped(&self.lhs);
-        let rhs = MaybeGrouped(&self.rhs);
-
-        write!(f, "{} {} {}", lhs, self.kind, rhs)
-    }
 }
 
 #[derive(Clone, Debug, Display)]

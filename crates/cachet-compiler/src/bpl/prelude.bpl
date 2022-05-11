@@ -7,9 +7,7 @@ function {:constructor} NilEmitPath(): EmitPath;
 function {:constructor} ConsEmitPath(init: EmitPath, last: int): EmitPath;
 
 type #Unit;
-
 const #unit: #Unit;
-
 axiom (forall x: #Unit, y: #Unit :: x == y);
 
 type #Bool = bool;
@@ -18,6 +16,9 @@ type #UInt16 = bv16;
 type #Int32 = bv32;
 type #Int64 = bv64;
 type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/issues/29#issuecomment-231239065
+
+// Documentation on the available built-in functions can be found at:
+// https://boogie-docs.readthedocs.io/en/latest/LangRef.html#other-operators
 
 function {:bvbuiltin "(_ sign_extend 32)"} #Int32^to#Int64(n: #Int32): #Int64;
 function {:bvbuiltin "(_ extract 31 0)"} #Int32^from#Int64(n: #Int64): #Int32;
@@ -66,8 +67,9 @@ function {:bvbuiltin "bvand"} #UInt16^bitand(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvxor"} #UInt16^bitxor(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvshl"} #UInt16^lsh(a: #UInt16, y: #UInt16): #UInt16;
 
-// etc; see https://boogie-docs.readthedocs.io/en/latest/LangRef.html#other-operators
-
+// See the heading "Conversion from other sorts":
+// https://smtlib.cs.uiowa.edu/theories-FloatingPoint.shtml
+function {:builtin "(_ to_fp 11 53) RNE"} #Double~from_i32(n: #Int32): #Double;
 
 type #Map k v = [k]v;
 
@@ -92,9 +94,5 @@ function {:inline} #Set~add<a>(set: #Set a, value: a): #Set a {
 function {:inline} #Set~remove<a>(set: #Set a, value: a): #Set a {
   #Map~set(set, value, false)
 }
-
-// Impls for cachet's prelude...
-function {:builtin "(_ to_fp 11 53) RNE"} #Double~from_i32(n: #Int32): #Double;
-
 
 // ... end prelude ...

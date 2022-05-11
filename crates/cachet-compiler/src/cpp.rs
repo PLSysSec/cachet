@@ -1273,19 +1273,19 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_field_access_expr<E: CompileExpr + Typed>(
         &self,
         field_access_expr: &normalizer::FieldAccessExpr<E>,
-    ) -> TaggedExpr<ArrowMemberExpr> {
-        let parent = field_access_expr.parent.compile(self).expr;
+    ) -> TaggedExpr<ArrowExpr> {
+        let parent_expr = field_access_expr.parent.compile(self).expr;
         let parent_type = field_access_expr.parent.type_();
 
         TaggedExpr {
-            expr: ArrowMemberExpr {
+            expr: ArrowExpr {
                 parent: CallExpr {
                     target: TypeMemberFnPath {
                         parent: self.get_type_ident(parent_type),
                         ident: TypeMemberFnIdent::Fields,
                     }
                     .into(),
-                    args: vec![parent],
+                    args: vec![parent_expr],
                 }
                 .into(),
                 member: field_access_expr.field.ident,
