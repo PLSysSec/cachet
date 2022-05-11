@@ -243,7 +243,7 @@ impl<'a> FlowTracer<'a> {
             | flattener::Stmt::Label(_)
             | flattener::Stmt::Check(_)
             | flattener::Stmt::Assign(_)
-            | flattener::Stmt::Ret(_) => (),
+            | flattener::Stmt::Return(_) => (),
             flattener::Stmt::If(if_stmt) => self.trace_if_stmt(if_stmt),
             flattener::Stmt::Goto(goto_stmt) => self.trace_goto_stmt(goto_stmt),
             flattener::Stmt::Bind(bind_stmt) => self.trace_bind_stmt(bind_stmt),

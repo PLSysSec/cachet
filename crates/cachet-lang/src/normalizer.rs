@@ -103,16 +103,17 @@ impl<'a> Normalizer<'a> {
     }
 
     fn normalize_body_block(&mut self, block: type_checker::Block) -> Vec<Stmt> {
-        if block.type_() == BuiltInType::Unit.into() {
+        let type_ = block.type_();
+        if type_ == BuiltInType::Unit.into() || type_ == BuiltInType::Never.into() {
             let mut stmts = self.normalize_unused_block(block);
-            stmts.push(RetStmt { value: None }.into());
+            stmts.push(ReturnStmt { value: None }.into());
             return stmts;
         }
 
         let mut stmts = self.normalize_block_stmts(block.stmts);
         let mut scoped_normalizer = ScopedNormalizer::new(self, &mut stmts);
         let value = scoped_normalizer.normalize_used_expr(block.value);
-        stmts.push(RetStmt { value: Some(value) }.into());
+        stmts.push(ReturnStmt { value: Some(value) }.into());
         stmts
     }
 
@@ -282,6 +283,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Stmt::Bind(bind_stmt) => self.stmts.push(bind_stmt.into()),
             type_checker::Stmt::Emit(emit_stmt) => self.normalize_emit_stmt(emit_stmt),
             type_checker::Stmt::Expr(expr) => self.normalize_unused_expr(expr),
+            type_checker::Stmt::Return(ret_stmt) => self.normalize_return_stmt(ret_stmt),
         }
     }
 
@@ -327,6 +329,12 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             }
             .into(),
         );
+    }
+
+    fn normalize_return_stmt(&mut self, ret_stmt: type_checker::ReturnStmt) {
+        let value = ret_stmt.value.map(|expr| self.normalize_expr(expr));
+
+        self.stmts.push(ReturnStmt { value }.into());
     }
 
     fn normalize_emit_stmt(&mut self, emit_stmt: type_checker::EmitStmt) {

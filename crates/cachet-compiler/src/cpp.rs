@@ -843,7 +843,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Stmt::Block(_, block_stmt) => self.compile_block_stmt(block_stmt),
             normalizer::Stmt::Invoke(invoke_stmt) => self.compile_invoke_stmt(invoke_stmt),
             normalizer::Stmt::Assign(assign_stmt) => self.compile_assign_stmt(assign_stmt),
-            normalizer::Stmt::Ret(ret_stmt) => self.compile_ret_stmt(ret_stmt),
+            normalizer::Stmt::Return(ret_stmt) => self.compile_ret_stmt(ret_stmt),
         }
     }
 
@@ -1040,7 +1040,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         });
     }
 
-    fn compile_ret_stmt(&mut self, ret_stmt: &normalizer::RetStmt) {
+    fn compile_ret_stmt(&mut self, ret_stmt: &normalizer::ReturnStmt) {
         let value = ret_stmt
             .value
             .as_ref()

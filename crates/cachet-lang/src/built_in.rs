@@ -75,7 +75,8 @@ ordered_ident_enum! {
         Int32 = "Int32",
         Int64 = "Int64",
         UInt16 = "UInt16",
-        Double = "Double"
+        Double = "Double",
+        Never = "Never"
     }
 }
 
@@ -84,9 +85,11 @@ impl BuiltInType {
         match self {
             BuiltInType::Bool => Some(BuiltInType::Int32),
             BuiltInType::Int32 => Some(BuiltInType::Int64),
-            BuiltInType::Unit | BuiltInType::Int64 | BuiltInType::UInt16 | BuiltInType::Double => {
-                None
-            }
+            BuiltInType::Never
+            | BuiltInType::Unit
+            | BuiltInType::Int64
+            | BuiltInType::UInt16
+            | BuiltInType::Double => None,
         }
     }
 
@@ -97,7 +100,7 @@ impl BuiltInType {
             | BuiltInType::Int64
             | BuiltInType::UInt16
             | BuiltInType::Double => true,
-            BuiltInType::Unit => false,
+            BuiltInType::Unit | BuiltInType::Never => false,
         }
     }
 
@@ -107,7 +110,7 @@ impl BuiltInType {
                 debug_assert!(self.is_numeric());
                 true
             }
-            BuiltInType::UInt16 | BuiltInType::Unit => false,
+            BuiltInType::UInt16 | BuiltInType::Unit | BuiltInType::Never => false,
         }
     }
 
@@ -117,7 +120,7 @@ impl BuiltInType {
                 debug_assert!(self.is_numeric());
                 true
             }
-            BuiltInType::Unit | BuiltInType::Double => false,
+            BuiltInType::Unit | BuiltInType::Double | BuiltInType::Never => false,
         }
     }
 }

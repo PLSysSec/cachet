@@ -169,7 +169,7 @@ pub enum Stmt<B = ()> {
     #[from]
     Assign(AssignStmt<B>),
     #[from]
-    Ret(RetStmt<B>),
+    Return(ReturnStmt<B>),
 }
 
 impl<B: Default> From<BlockStmt<B>> for Stmt<B> {
@@ -226,7 +226,7 @@ pub struct AssignStmt<B = ()> {
 }
 
 #[derive(Clone, Debug)]
-pub struct RetStmt<B = ()> {
+pub struct ReturnStmt<B = ()> {
     // TODO(spinda): Record when this statement is at an end of control flow
     // for a body. Do the same for goto statements as well.
     pub value: Option<Expr<B>>,

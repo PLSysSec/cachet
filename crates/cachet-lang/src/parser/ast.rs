@@ -211,6 +211,13 @@ pub enum Stmt {
     Emit(Call),
     #[from]
     Expr(Expr),
+    #[from]
+    Return(ReturnStmt),
+}
+
+#[derive(Clone, Debug)]
+pub struct ReturnStmt {
+    pub value: Option<Spanned<Expr>>,
 }
 
 #[derive(Clone, Debug)]

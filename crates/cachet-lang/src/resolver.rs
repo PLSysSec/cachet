@@ -895,6 +895,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 })
                 .map(Stmt::Emit),
             parser::Stmt::Expr(expr) => self.resolve_expr(expr).map(Stmt::from),
+            parser::Stmt::Return(ret_stmt) => self.resolve_return_stmt(ret_stmt).map(Stmt::from),
         }
     }
 
@@ -1004,6 +1005,17 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 self.resolve_assign_expr(*assign_expr).map(Expr::from)
             }
         }
+    }
+
+    fn resolve_return_stmt(&mut self, ret_stmt: parser::ReturnStmt) -> Option<ReturnStmt> {
+        match ret_stmt.value {
+            None => ReturnStmt { value: None },
+            Some(expr) => {
+                let expr = map_spanned(expr, |expr| self.resolve_expr(expr.value))?.into();
+                ReturnStmt { value: expr }
+            }
+        }
+        .into()
     }
 
     fn resolve_var_expr(&mut self, var_path: Spanned<Path>) -> Option<Spanned<VarIndex>> {

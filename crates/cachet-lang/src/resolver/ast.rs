@@ -481,6 +481,19 @@ pub enum Stmt {
     Emit(Call),
     #[from]
     Expr(Expr),
+    #[from]
+    Return(ReturnStmt),
+}
+
+#[derive(Clone, Debug)]
+pub struct ReturnStmt {
+    pub value: Option<Spanned<Expr>>,
+}
+
+impl Typed for ReturnStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
 }
 
 #[derive(Clone, Debug)]

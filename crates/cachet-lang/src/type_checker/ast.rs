@@ -270,11 +270,16 @@ impl Typed for LocalVar {
 pub struct Block {
     pub stmts: Vec<Stmt>,
     pub value: Expr,
+    pub exits_early: bool,
 }
 
 impl Typed for Block {
     fn type_(&self) -> TypeIndex {
-        self.value.type_()
+        if self.exits_early {
+            BuiltInType::Never.into()
+        } else {
+            self.value.type_()
+        }
     }
 }
 
@@ -316,6 +321,8 @@ pub enum Stmt {
     Emit(EmitStmt),
     #[from]
     Expr(Expr),
+    #[from]
+    Return(ReturnStmt),
 }
 
 impl Typed for Stmt {
@@ -332,7 +339,19 @@ impl Typed for Stmt {
             // The final value of an expression statement is ignored, so the
             // statement itself is inherently unit-typed.
             Self::Expr(_) => BuiltInType::Unit.into(),
+            Self::Return(ret_stmt) => ret_stmt.type_(),
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ReturnStmt {
+    pub value: Option<Expr>,
+}
+
+impl Typed for ReturnStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
     }
 }
 
@@ -357,7 +376,7 @@ pub struct IfStmt {
 
 impl Typed for IfStmt {
     fn type_(&self) -> TypeIndex {
-        self.then.type_()
+        BuiltInType::Unit.into()
     }
 }
 

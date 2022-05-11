@@ -23,7 +23,7 @@ pub type IfStmt = normalizer::IfStmt<Void>;
 pub type ElseClause = normalizer::ElseClause<Void>;
 pub type CheckStmt = normalizer::CheckStmt<Void>;
 pub type AssignStmt = normalizer::AssignStmt<Void>;
-pub type RetStmt = normalizer::RetStmt<Void>;
+pub type RetStmt = normalizer::ReturnStmt<Void>;
 
 pub type Expr = normalizer::Expr<Void>;
 pub type FieldAccessExpr<E = Expr> = normalizer::FieldAccessExpr<E>;
