@@ -17,6 +17,7 @@ use cachet_lang::ast::{
 };
 use cachet_lang::built_in::BuiltInVar;
 use cachet_lang::flattener::{self, Typed};
+use cachet_lang::resolver::HasAttrs;
 use cachet_util::MaybeOwned;
 
 use crate::bpl::ast::*;
@@ -489,6 +490,10 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_global_var_item(&mut self, global_var_item: &flattener::GlobalVarItem) {
+        if global_var_item.is_prelude() {
+            return;
+        }
+
         let parent_ident = global_var_item
             .path
             .value

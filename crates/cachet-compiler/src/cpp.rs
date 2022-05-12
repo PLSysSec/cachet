@@ -15,6 +15,7 @@ use typed_index_collections::{TiSlice, TiVec};
 use cachet_lang::ast::{CastKind, Ident, Path, VarParamKind};
 use cachet_lang::built_in::BuiltInType;
 use cachet_lang::normalizer::{self, Typed};
+use cachet_lang::resolver::HasAttrs;
 
 use crate::cpp::ast::*;
 
@@ -407,6 +408,9 @@ impl<'a> Compiler<'a> {
 
     fn compile_global_var_item(&mut self, global_var_index: normalizer::GlobalVarIndex) {
         let global_var_item = &self.env[global_var_index];
+        if global_var_item.is_prelude() {
+            return;
+        }
 
         let global_var_parent_ident = global_var_item.path.value.parent().map(Path::ident);
         let global_var_ident = global_var_item.path.value.ident();

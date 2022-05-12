@@ -67,6 +67,7 @@ pub struct GlobalVarItem {
     pub ident: Spanned<Ident>,
     pub is_mut: bool,
     pub type_: Spanned<Path>,
+    pub attrs: Vec<Spanned<Attr>>,
 }
 
 #[derive(Clone, Debug)]
