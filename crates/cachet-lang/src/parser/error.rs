@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fmt::{self, Display};
 
 use codespan::RawIndex;
-use codespan_reporting::diagnostic::{Diagnostic, Label};
+use codespan_reporting::diagnostic::{Diagnostic, LabelStyle};
 
 use cachet_util::fmt_join_or;
 
@@ -92,11 +92,13 @@ impl FrontendError for ParseError {
     }
 
     fn build_diagnostic(&self) -> Diagnostic<FileId> {
-        let d = Diagnostic::error().with_message(self.to_string());
+        let diagnostic = Diagnostic::error().with_message(self.to_string());
 
         match self.span() {
-            Span::Internal => d,
-            Span::External(file, range) => d.with_labels(vec![Label::primary(file, range)]),
+            Span::Internal => diagnostic,
+            Span::External(external_span) => {
+                diagnostic.with_labels(vec![external_span.label(LabelStyle::Primary)])
+            }
         }
     }
 }

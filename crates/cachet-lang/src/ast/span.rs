@@ -1,37 +1,46 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-pub use codespan::FileId;
+pub use codespan::{FileId, Span as RawSpan};
 use codespan_reporting::diagnostic::{Label, LabelStyle};
-use derive_more::Display;
+use derive_more::{Display, From};
 use std::error;
 use std::fmt::{self, Debug, Display};
-use std::ops::Range;
 
-#[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Ord, PartialOrd)]
+use cachet_util::deref_from;
+
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq, Ord, PartialOrd)]
 pub enum Span {
-    #[display(fmt = "[internal]")]
+    #[display(fmt = "<internal>")]
     Internal,
-    #[display(fmt = "{:?} {}", _0, _1)]
-    External(FileId, codespan::Span),
+    External(ExternalSpan),
 }
 
-impl<T> From<Span> for Range<T>
-where
-    Range<T>: From<codespan::Span> + Default,
-{
-    fn from(span: Span) -> Self {
-        match span {
-            Span::Internal => Default::default(),
-            Span::External(_, csp) => Range::<T>::from(csp),
+impl Span {
+    pub fn new<T>(file_id: FileId, span: T) -> Self
+    where
+        RawSpan: From<T>,
+    {
+        ExternalSpan::new(file_id, span).into()
+    }
+
+    pub fn label(&self, style: LabelStyle) -> Option<Label<FileId>> {
+        match self {
+            Span::Internal => None,
+            Span::External(external_span) => Some(external_span.label(style)),
         }
     }
 }
 
+deref_from!(&ExternalSpan => Span);
+
 macro_rules! labels {
     ($($style:ident ($span:expr) => $string:expr),*) => {
-        std::iter::empty()$(
+        ::std::iter::empty()$(
             .chain(
-                $span.label(codespan_reporting::diagnostic::LabelStyle::$style).map(|l| l.with_message($string)).into_iter()
+                $span
+                    .label(codespan_reporting::diagnostic::LabelStyle::$style)
+                    .map(|label| label.with_message($string))
+                    .into_iter()
             )
         )*
     }
@@ -39,19 +48,26 @@ macro_rules! labels {
 
 pub(crate) use labels;
 
-impl Span {
-    pub fn new<T>(f: FileId, t: T) -> Self
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Ord, PartialOrd)]
+#[display(fmt = "{}", span)]
+pub struct ExternalSpan {
+    pub file_id: FileId,
+    pub span: RawSpan,
+}
+
+impl ExternalSpan {
+    pub fn new<T>(file_id: FileId, span: T) -> Self
     where
-        codespan::Span: From<T>,
+        RawSpan: From<T>,
     {
-        Span::External(f, codespan::Span::from(t))
+        Self {
+            file_id,
+            span: span.into(),
+        }
     }
 
-    pub fn label(&self, kind: LabelStyle) -> Option<Label<FileId>> {
-        match self {
-            Span::Internal => None,
-            Span::External(file_id, csp) => Some(Label::new(kind, *file_id, csp.clone())),
-        }
+    pub fn label(&self, style: LabelStyle) -> Label<FileId> {
+        Label::new(style, self.file_id, self.span)
     }
 }
 
