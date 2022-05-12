@@ -10,6 +10,8 @@ type #Unit;
 const #unit: #Unit;
 axiom (forall x: #Unit, y: #Unit :: x == y);
 
+// TODO(spinda): Check the validity of handling `Bool` like a numeric type in
+// Boogie.
 type #Bool = bool;
 
 type #UInt16 = bv16;

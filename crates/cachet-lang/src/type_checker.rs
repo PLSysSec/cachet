@@ -314,7 +314,7 @@ impl<'a> TypeChecker<'a> {
         let mut curr_type_index = subtype_index;
         loop {
             curr_type_index = match curr_type_index {
-                TypeIndex::BuiltIn(built_in_type) => built_in_type.supertype()?.type_(),
+                TypeIndex::BuiltIn(built_in_type) => built_in_type.supertype()?.into(),
                 TypeIndex::Enum(_) => return None,
                 TypeIndex::Struct(struct_index) => self.env[struct_index].supertype?,
             };
@@ -349,8 +349,8 @@ impl<'a> TypeChecker<'a> {
         lhs == rhs || self.is_unknown_type(lhs) || self.is_unknown_type(rhs)
     }
 
-    // Consider the internal "unknown" type to be numeric, signed, and integral for the purposes of
-    // the type-checking phase.
+    // Consider the internal "unknown" type to be numeric, signed, and integral for
+    // the purposes of the type-checking phase.
 
     fn is_numeric_type(&self, type_index: TypeIndex) -> bool {
         type_index.is_numeric() || self.is_unknown_type(type_index)
@@ -939,7 +939,10 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let callable_item = &self.env[call.target.value];
         let ir_index = match callable_item.parent {
             Some(ParentIndex::Ir(ir_index)) => {
-                if self.emits.is_some_with(|emits| self.is_same_ir(emits.value, ir_index)) {
+                if self
+                    .emits
+                    .is_some_with(|emits| self.is_same_ir(emits.value, ir_index))
+                {
                     Some(ir_index)
                 } else {
                     self.type_checker
