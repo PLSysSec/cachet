@@ -1037,22 +1037,22 @@ pub enum Literal {
     Bool(bool),
     #[display(fmt = "{:?}", _0)]
     Int(usize),
+    #[display(fmt = "{:?}bv16", _0)]
+    Bv16(u16),
     #[display(fmt = "{:?}bv32", _0)]
     Bv32(u32),
     #[display(fmt = "{:?}bv64", _0)]
     Bv64(u64),
-    #[display(fmt = "{:?}bv16", _0)]
-    Bv16(u16),
-    #[display(fmt = "{}", "fmt_double(*_0)")]
+    #[display(fmt = "{}", "fmt_f64(*_0)")]
     Float64(f64),
 }
 
-fn fmt_double(f: f64) -> String {
-    let sig_size = 53;
-    let exp_size = 11;
+fn fmt_f64(f: f64) -> String {
+    const SIGNIFICAND_SIZE: u8 = 53;
+    const EXPONENT_SIZE: u8 = 11;
 
     if f.is_nan() {
-        // Don't forward the NaN code
+        // Don't forward the NaN code.
         format!("0NaN{sig_size}e{exp_size}")
     } else if f == f64::INFINITY {
         format!("0+oo{sig_size}e{exp_size}")
@@ -1061,20 +1061,23 @@ fn fmt_double(f: f64) -> String {
     } else {
         let bits: u64 = f.to_bits();
         let sign = if bits >> 63 == 0 { "" } else { "-" };
+
         let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
         let mut mantissa = if exponent == 0 {
             (bits & 0xfffffffffffff) << 1
         } else {
             (bits & 0xfffffffffffff) | 0x10000000000000
         };
-        // Exponent bias + mantissa shift
-        exponent -= 1023 + 52;
 
-        // If this were a sane floating point impl we would stop here
-        // but while a normal fp representation is m * 2 ^ e,
-        // boogie uses m * 16 ^ e, which means we need to divide e by four.
-        // Except that would leave us with a fractional exponent, which is verboten.
-        // So we split the fractional bit off and get:
+        const EXPONENT_BIAS: i16 = 1023;
+        const MANITISSA_SHIFT: i16 = 52;
+        exponent -= EXPONENT_BIAS + MANTISSA_SHIFT;
+
+        // If Boogie had a sane floating point implementation, we would stop
+        // here. But while a normal floating point representation is m * 2 ^ e,
+        // Boogie uses m * 16 ^ e, which means we need to divide e by four.
+        // Except that would leave us with a fractional exponent, which is
+        // verboten. So we split the fractional bit off and get:
         //
         // m * 16 ^ ((e % 4) / 4) * 16 ^ (e/4)
         // m * 2  ^  (e % 4)      * 16 ^ (e/4)
@@ -1083,10 +1086,11 @@ fn fmt_double(f: f64) -> String {
         //
         // (m << (e % 4)) * 16 ^ (e/4)
         //
-        // This is why we use an i128 for the mantissa, to allow us to freely shift left
-        // (at most 3) But what about when e is negative? We could shift right,
-        // but this could result in data loss. so instead we shift left and
-        // decrement the exponent just enough so that it's evenly divisible by 4.
+        // This is why we use an i128 for the mantissa, to allow us to freely
+        // shift left (at most 3). But what about when e is negative? We could
+        // shift right, but this could result in data loss. Instead, we shift
+        // left and decrement the exponent just enough so that it's evenly
+        // divisible by 4.
 
         let shift = exponent % 4;
 
