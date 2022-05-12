@@ -23,8 +23,7 @@ impl TypeGraph {
     ) -> Self {
         let num_enum_items = enum_items.len();
         let num_struct_items = struct_items.len();
-        let num_built_in_types = BuiltInType::COUNT;
-        let num_types = num_built_in_types + num_enum_items + num_struct_items;
+        let num_types = BuiltInType::COUNT + num_enum_items + num_struct_items;
 
         let mut inner = DiGraph::with_capacity(num_types, 0);
 
@@ -35,9 +34,9 @@ impl TypeGraph {
         let get_built_in_type_node_index =
             |built_in_type: BuiltInType| NodeIndex::new(built_in_type.index());
         let get_enum_node_index =
-            |enum_index: EnumIndex| NodeIndex::new(num_built_in_types + usize::from(enum_index));
+            |enum_index: EnumIndex| NodeIndex::new(BuiltInType::COUNT + usize::from(enum_index));
         let get_struct_node_index = |struct_index: StructIndex| {
-            NodeIndex::new(num_built_in_types + num_enum_items + usize::from(struct_index))
+            NodeIndex::new(BuiltInType::COUNT + num_enum_items + usize::from(struct_index))
         };
         let get_type_node_index = |type_index| match type_index {
             TypeIndex::BuiltIn(built_in_type) => get_built_in_type_node_index(built_in_type),
@@ -105,7 +104,6 @@ impl<'a> TypeSccs<'a> {
         if let Some(built_in) = BuiltInType::from_index(node_index) {
             return built_in.into();
         }
-
         node_index -= BuiltInType::COUNT;
 
         if node_index < self.num_enum_items {

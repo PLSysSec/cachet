@@ -50,7 +50,6 @@ macro_rules! ordered_ident_enum {
                 Self::ident_reverse_map().get(&ident).copied()
             }
 
-
             pub fn path(self) -> Path {
                 self.ident().into()
             }
