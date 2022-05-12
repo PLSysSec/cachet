@@ -49,7 +49,6 @@ StructField: StructField =
         StructField { ident, type_ }
     };
 
-
 IrItem: IrItem =
     "ir" <ident:Spanned<Ident>> <emits:("emits" <Spanned<Path>>)?>
     "{" <items:Spanned<Item>*> "}" =>
@@ -270,7 +269,10 @@ PrecExpr: PrecExpr = {
     <call:Call> => Expr::Invoke(call).into(),
 
     #[precedence(level = "0")]
-    <parent:Spanned<PrecExpr>> "." <field: Spanned<Ident>> => Expr::from(FieldAccessExpr { parent: parent.map(|p| p.expr), field }).into(),
+    <parent:Spanned<PrecExpr>> "." <field: Spanned<Ident>> => Expr::from(FieldAccessExpr {
+        parent: parent.map(|parent| parent.expr),
+        field,
+    }).into(),
 
     #[precedence(level = "1")]
     <kind:Spanned<NegateKind>> <expr:Spanned<PrecExpr>> => {
@@ -294,76 +296,68 @@ PrecExpr: PrecExpr = {
     }.into(),
 
     #[precedence(level = "2")]
-    <expr:Spanned<PrecExpr>> "as" <type_:Spanned<Path>> =>
-        Expr::from(CastExpr { expr: expr.map(|expr| expr.expr), type_ }).into(),
+    <expr:Spanned<PrecExpr>> "as" <type_:Spanned<Path>> => Expr::from(CastExpr {
+        expr: expr.map(|expr| expr.expr),
+        type_,
+    }).into(),
 
     #[precedence(level = "3")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <kind:Spanned<MulArithKind>>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(ArithExpr {
-        kind, 
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <kind:Spanned<MulArithKind>> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(ArithExpr {
+          kind, 
+          lhs: lhs.map(|lhs| lhs.expr),
+          rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "4")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <kind:Spanned<AddArithKind>>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(ArithExpr {
-        kind, 
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <kind:Spanned<AddArithKind>> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(ArithExpr {
+            kind, 
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "5")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <op:Spanned<"<<">>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(BitwiseExpr {
-        kind: Spanned::new(op.span, BitwiseKind::Lsh),
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <op:Spanned<"<<">> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BitwiseExpr {
+            kind: Spanned::new(op.span, BitwiseKind::Lsh),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "6")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <op:Spanned<"&">>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(BitwiseExpr {
-        kind: Spanned::new(op.span, BitwiseKind::And),
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <op:Spanned<"&">> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BitwiseExpr {
+            kind: Spanned::new(op.span, BitwiseKind::And),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "7")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <op:Spanned<"^">>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(BitwiseExpr {
-        kind: Spanned::new(op.span, BitwiseKind::Xor),
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <op:Spanned<"^">> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BitwiseExpr {
+            kind: Spanned::new(op.span, BitwiseKind::Xor),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "8")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <op:Spanned<"|">>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(BitwiseExpr {
-        kind: Spanned::new(op.span, BitwiseKind::Or),
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
-    
-    
+    <lhs:Spanned<PrecExpr>> <op:Spanned<"|">> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BitwiseExpr {
+            kind: Spanned::new(op.span, BitwiseKind::Or),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "9")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <kind:Spanned<CompareKind>>
-    <rhs:Spanned<PrecExpr>> =>?
-    {
+    <lhs:Spanned<PrecExpr>> <kind:Spanned<CompareKind>> <rhs:Spanned<PrecExpr>> =>? {
         if !lhs.value.is_grouped {
             if let Expr::Compare(_) = lhs.value.expr {
                 return Err(ParseError::User {

@@ -56,6 +56,14 @@ impl IndexMut<EnumVariantIndex> for Env {
 
 deref_index!(Env[&EnumVariantIndex] => Spanned<Path>);
 
+impl Index<FieldIndex> for Env {
+    type Output = StructField;
+
+    fn index(&self, index: FieldIndex) -> &Self::Output {
+        &self[index.struct_].fields[&index.ident]
+    }
+}
+
 impl Index<CallableIndex> for Env {
     type Output = CallableItem;
 
@@ -144,14 +152,6 @@ impl From<CallableIndex> for DeclIndex {
 }
 
 deref_from!(&CallableIndex => DeclIndex);
-
-impl Index<FieldIndex> for Env {
-    type Output = StructField;
-
-    fn index(&self, index: FieldIndex) -> &Self::Output {
-        &self[index.struct_].fields[&index.ident]
-    }
-}
 
 #[derive(Clone, Copy, Debug, Default, Error)]
 #[error("item is not part of the declaration order")]

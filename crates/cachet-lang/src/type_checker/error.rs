@@ -131,16 +131,16 @@ pub enum TypeCheckError {
         lhs_defined_at: Option<Span>,
         rhs_span: Span,
     },
-    #[error("attempted to access of field `{field}` of non-struct type `{type_}`")]
+    #[error("can't access field `{field}` of non-struct type `{parent_type}`")]
     NonStructFieldAccess {
         field: Spanned<Ident>,
-        type_: Ident,
         parent_span: Span,
+        parent_type: Ident,
     },
-    #[error("field `{field}` does not exist on type `{type_}`")]
+    #[error("no field `{field}` on type `{parent_type}`")]
     FieldNotFound {
         field: Spanned<Ident>,
-        type_: Spanned<Ident>,
+        parent_type: Spanned<Ident>,
     },
 }
 
@@ -325,7 +325,7 @@ impl FrontendError for TypeCheckError {
                 format!("fields can only be accessed on structs")
             }
             TypeCheckError::FieldNotFound { .. } => {
-                format!("field must be declared on the struct")
+                format!("no such field")
             }
         };
 
@@ -484,13 +484,16 @@ impl FrontendError for TypeCheckError {
                 }
             }
             TypeCheckError::NonStructFieldAccess {
-                parent_span, type_, ..
+                parent_span,
+                parent_type,
+                ..
             } => labels.extend(labels![
-                Secondary(*parent_span) => format!("expression is of type `{}`", type_)
+                Secondary(*parent_span) => format!("expected struct type, found `{}`", parent_type)
             ]),
-            TypeCheckError::FieldNotFound { type_, .. } => {
+            TypeCheckError::FieldNotFound { parent_type, .. } => {
                 labels.extend(labels![
-                    Secondary(type_.span) => format!("struct `{}` declared here", type_.value)
+                    Secondary(parent_type.span) =>
+                        format!("struct `{}` declared here", parent_type.value)
                 ]);
             }
         }

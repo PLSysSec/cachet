@@ -24,10 +24,13 @@ pub use crate::type_checker::ast::*;
 pub use crate::type_checker::error::*;
 use crate::type_checker::graphs::{CallGraph, TypeGraph};
 
+// | Type-Checker Entry Point
+
 pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     // Set up an internal placeholder type used to "turn off" type-checking for
     // variables whose types can't be inferred. This type shouldn't escape the
     // type-checking phase. We do the same for IRs as well.
+
     let unknown_struct_index = env.struct_items.push_and_get_key(StructItem {
         ident: Spanned::new(Span::Internal, *UNKNOWN_IDENT),
         supertype: None,
@@ -77,20 +80,7 @@ lazy_static! {
     static ref UNKNOWN_IDENT: Ident = Ident::from("<Unknown>");
 }
 
-fn build_cast_chain(
-    kind: CastKind,
-    expr: Expr,
-    cast_route: impl Iterator<Item = TypeIndex>,
-) -> Expr {
-    cast_route.fold(expr, |expr, type_index| {
-        CastExpr {
-            kind,
-            expr,
-            type_: type_index,
-        }
-        .into()
-    })
-}
+// | Top-Level Type Checker
 
 struct TypeChecker<'a> {
     errors: Vec<TypeCheckError>,
@@ -115,8 +105,8 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    fn unknown_type(&self) -> TypeIndex {
-        self.unknown_struct.into()
+    const fn unknown_type(&self) -> TypeIndex {
+        TypeIndex::Struct(self.unknown_struct)
     }
 
     fn finish(mut self) -> Result<Vec<DeclIndex>, TypeCheckErrors> {
@@ -126,7 +116,7 @@ impl<'a> TypeChecker<'a> {
         }
 
         let unknown_type_index = self.unknown_type();
-        let decl_order = self
+        let type_decl_order = self
             .flatten_type_graph()
             .into_iter()
             .filter_map(|type_index| {
@@ -135,10 +125,18 @@ impl<'a> TypeChecker<'a> {
                 } else {
                     DeclIndex::try_from(type_index).ok()
                 }
-            })
-            .chain(self.env.global_var_items.keys().map(DeclIndex::from))
-            .chain(self.flatten_call_graph().into_iter().map(DeclIndex::from))
-            .collect();
+            });
+
+        let global_var_decl_order = self.env.global_var_items.keys().map(DeclIndex::from);
+
+        let callable_decl_order = self.flatten_call_graph().into_iter().map(DeclIndex::from);
+
+        let decl_order = iterate![
+            ..type_decl_order,
+            ..global_var_decl_order,
+            ..callable_decl_order,
+        ]
+        .collect();
 
         Ok(decl_order)
     }
@@ -380,12 +378,22 @@ impl<'a> TypeChecker<'a> {
     }
 }
 
-struct ParamSummary {
-    ident: Spanned<Ident>,
-    type_: Option<TypeIndex>,
-    ir: Option<IrIndex>,
-    expected_arg_kind: ArgKind,
+fn build_cast_chain(
+    kind: CastKind,
+    expr: Expr,
+    cast_route: impl Iterator<Item = TypeIndex>,
+) -> Expr {
+    cast_route.fold(expr, |expr, type_index| {
+        CastExpr {
+            kind,
+            expr,
+            type_: type_index,
+        }
+        .into()
+    })
 }
+
+// | Scoped Type Checker
 
 struct ScopedTypeChecker<'a, 'b> {
     type_checker: &'b mut TypeChecker<'a>,
@@ -1007,53 +1015,54 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     ) -> FieldAccessExpr {
         let parent = self.type_check_expr(&field_access.parent.value);
         let parent_type = parent.type_();
-        let struct_idx = match parent_type {
-            TypeIndex::Struct(struct_idx) => struct_idx,
+
+        let struct_index = match parent_type {
+            TypeIndex::Struct(struct_index) => Some(struct_index),
             _ => {
                 self.type_checker
                     .errors
                     .push(TypeCheckError::NonStructFieldAccess {
-                        field: field_access.field.clone(),
-                        type_: self.get_type_ident(parent_type),
+                        field: field_access.field,
                         parent_span: field_access.parent.span,
+                        parent_type: self.get_type_ident(parent_type),
                     });
-                return FieldAccessExpr {
-                    parent,
-                    type_: self.unknown_type(),
-                    field: FieldIndex {
-                        struct_: self.unknown_struct,
-                        ident: field_access.field.value,
-                    },
-                };
+                None
             }
         };
 
-        let struct_item = &self.env[struct_idx];
+        let struct_item = struct_index.map(|struct_index| &self.env[struct_index]);
 
-        match struct_item.fields.get(&field_access.field.value) {
-            None => {
-                self.type_checker
-                    .errors
-                    .push(TypeCheckError::FieldNotFound {
-                        field: field_access.field.clone(),
-                        type_: struct_item.ident,
-                    });
-
-                FieldAccessExpr {
-                    parent,
-                    type_: self.unknown_type(),
-                    field: FieldIndex {
-                        struct_: struct_idx,
-                        ident: field_access.field.value,
-                    },
+        let struct_field = struct_item.and_then(|struct_item| {
+            match struct_item.fields.get(&field_access.field.value) {
+                Some(struct_field) => Some(struct_field),
+                None => {
+                    self.type_checker
+                        .errors
+                        .push(TypeCheckError::FieldNotFound {
+                            field: field_access.field,
+                            parent_type: struct_item.ident,
+                        });
+                    None
                 }
             }
+        });
 
-            Some(struct_field) => FieldAccessExpr {
-                parent,
-                type_: struct_field.type_,
-                field: struct_field.into(),
-            },
+        let struct_index = struct_index.unwrap_or(self.unknown_struct);
+        let (type_, field) = match struct_field {
+            Some(struct_field) => (struct_field.type_, struct_field.into()),
+            None => (
+                self.unknown_type(),
+                FieldIndex {
+                    struct_: struct_index,
+                    ident: field_access.field.value,
+                },
+            ),
+        };
+
+        FieldAccessExpr {
+            parent,
+            type_,
+            field,
         }
     }
 
@@ -1386,4 +1395,11 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             }
         }
     }
+}
+
+struct ParamSummary {
+    ident: Spanned<Ident>,
+    type_: Option<TypeIndex>,
+    ir: Option<IrIndex>,
+    expected_arg_kind: ArgKind,
 }

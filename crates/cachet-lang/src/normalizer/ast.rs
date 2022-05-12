@@ -52,6 +52,8 @@ impl<B> IndexMut<EnumVariantIndex> for Env<B> {
     }
 }
 
+deref_index!(Env<B>[&EnumVariantIndex] => Spanned<Path> | <B>);
+
 impl<B> Index<FieldIndex> for Env<B> {
     type Output = StructField;
 
@@ -59,8 +61,6 @@ impl<B> Index<FieldIndex> for Env<B> {
         &self[index.struct_].fields[&index.ident]
     }
 }
-
-deref_index!(Env<B>[&EnumVariantIndex] => Spanned<Path> | <B>);
 
 impl<B> Index<CallableIndex> for Env<B> {
     type Output = CallableItem<B>;
@@ -298,7 +298,7 @@ impl<B> From<PureExpr> for Expr<B> {
 
 impl<B> From<FieldAccessExpr<PureExpr>> for Expr<B> {
     fn from(field_access_expr: FieldAccessExpr<PureExpr>) -> Self {
-        Expr::FieldAccess(FieldAccessExpr::<Expr<B>>::from(field_access_expr).into())
+        Expr::from(FieldAccessExpr::<Expr<B>>::from(field_access_expr))
     }
 }
 
@@ -495,13 +495,13 @@ impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for FieldAccessExpr<PureExpr> {
 
     fn try_from(field_access_expr: FieldAccessExpr<Expr<B>>) -> Result<Self, Self::Error> {
         match field_access_expr.parent.try_into() {
-            Ok(expr) => Ok(FieldAccessExpr {
-                parent: expr,
+            Ok(parent) => Ok(FieldAccessExpr {
+                parent,
                 field: field_access_expr.field,
                 type_: field_access_expr.type_,
             }),
-            Err(expr) => Err(FieldAccessExpr {
-                parent: expr,
+            Err(parent) => Err(FieldAccessExpr {
+                parent,
                 field: field_access_expr.field,
                 type_: field_access_expr.type_,
             }),

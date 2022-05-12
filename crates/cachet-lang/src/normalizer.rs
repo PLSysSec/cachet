@@ -383,6 +383,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Invoke(invoke_expr) => {
                 self.normalize_used_invoke_expr(invoke_expr)
             }
+            type_checker::Expr::FieldAccess(field_access_expr) => {
+                self.normalize_used_field_access_expr(*field_access_expr).into()
+            }
             type_checker::Expr::Negate(negate_expr) => {
                 self.normalize_used_negate_expr(*negate_expr).into()
             }
@@ -394,9 +397,6 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             }
             type_checker::Expr::Assign(_) => {
                 unreachable!("assignment expressions should be `Unit`-typed")
-            }
-            type_checker::Expr::FieldAccess(access_expr) => {
-                self.normalize_used_field_access_expr(*access_expr).into()
             }
             type_checker::Expr::Arith(arith_expr) => {
                 self.normalize_used_arith_expr(*arith_expr).into()
@@ -415,6 +415,9 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Expr::Invoke(invoke_expr) => {
                 self.normalize_unused_invoke_expr(invoke_expr)
             }
+            type_checker::Expr::FieldAccess(field_access_expr) => {
+                self.normalize_unused_field_access_expr(*field_access_expr)
+            }
             type_checker::Expr::Negate(negate_expr) => {
                 self.normalize_unused_negate_expr(*negate_expr)
             }
@@ -424,9 +427,6 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             }
             type_checker::Expr::Assign(assign_expr) => {
                 self.normalize_unused_assign_expr(*assign_expr)
-            }
-            type_checker::Expr::FieldAccess(access_expr) => {
-                self.normalize_unused_field_access_expr(*access_expr)
             }
             type_checker::Expr::Arith(arith_expr) => self.normalize_unused_arith_expr(*arith_expr),
             type_checker::Expr::Bitwise(bitwise_expr) => {

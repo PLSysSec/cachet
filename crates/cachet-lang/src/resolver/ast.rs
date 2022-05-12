@@ -249,12 +249,20 @@ pub struct FieldIndex {
     pub ident: Ident,
 }
 
-impl Into<FieldIndex> for &StructField {
-    fn into(self) -> FieldIndex {
-        FieldIndex {
-            struct_: self.parent,
-            ident: self.ident.value,
+impl From<&StructField> for FieldIndex {
+    fn from(struct_field: &StructField) -> Self {
+        Self {
+            struct_: struct_field.parent,
+            ident: struct_field.ident.value,
         }
+    }
+}
+
+impl Index<FieldIndex> for Env {
+    type Output = StructField;
+
+    fn index(&self, index: FieldIndex) -> &Self::Output {
+        &self[index.struct_].fields[&index.ident]
     }
 }
 

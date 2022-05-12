@@ -24,6 +24,8 @@ pub use crate::resolver::ast::*;
 pub use crate::resolver::error::*;
 use crate::resolver::registry::{LookupError, LookupResult, Registrable, Registry};
 
+// | Name Resolution Entry Point
+
 pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> {
     let mut item_catalog = ItemCatalog::new();
     item_catalog.catalog_items(items);
@@ -42,7 +44,7 @@ pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> 
 
     let struct_items: Option<_> =
         collect_eager(item_catalog.struct_items.into_iter_enumerated().map(
-            |(struct_idx, struct_item)| resolver.resolve_struct_item(struct_idx, struct_item),
+            |(struct_index, struct_item)| resolver.resolve_struct_item(struct_index, struct_item),
         ));
 
     let ir_items: Option<TiVec<_, _>> = collect_eager(
@@ -51,6 +53,9 @@ pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> 
             .into_iter()
             .map(|ir_item| resolver.resolve_ir_item(ir_item)),
     );
+
+    // We'll need early access to the name-resolved IR items in order to resolve
+    // label IRs.
     resolver.ir_items = ir_items.as_ref().map(|ir_items| ir_items.as_slice());
 
     let global_var_items: Option<_> = collect_eager(
@@ -89,70 +94,22 @@ pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> 
     }
 }
 
-#[derive(Clone, Copy, From)]
-enum ItemIndex {
-    #[from(types(BuiltInType, EnumIndex, StructIndex))]
-    Type(TypeIndex),
-    #[from]
-    Ir(IrIndex),
-    #[from(types(
-        BuiltInVar,
-        EnumVariantIndex,
-        GlobalVarIndex,
-        VarParamIndex,
-        LocalVarIndex
-    ))]
-    Var(VarIndex),
-    #[from]
-    Fn(FnIndex),
-    #[from]
-    Op(OpIndex),
-}
+fn resolve_enum_item(enum_item: parser::EnumItem) -> EnumItem {
+    let variants = enum_item
+        .variants
+        .into_iter()
+        .map(|variant_ident| {
+            variant_ident.map(|variant_ident| enum_item.ident.value.nest(variant_ident))
+        })
+        .collect();
 
-impl Registrable for ItemIndex {
-    fn name_kind(&self) -> NameKind {
-        match self {
-            ItemIndex::Type(_) => NameKind::Type,
-            ItemIndex::Ir(_) => NameKind::Ir,
-            ItemIndex::Var(_) => NameKind::Var,
-            ItemIndex::Fn(_) => NameKind::Fn,
-            ItemIndex::Op(_) => NameKind::Op,
-        }
-    }
-
-    fn shadows(&self) -> bool {
-        false
+    EnumItem {
+        ident: enum_item.ident,
+        variants,
     }
 }
 
-type GlobalRegistry = Registry<Path, ItemIndex>;
-
-#[derive(Clone, Copy, From, Into)]
-struct ImplIndex(usize);
-
-#[derive(Clone, Copy, From)]
-enum UnresolvedParentIndex {
-    Impl(ImplIndex),
-    Ir(IrIndex),
-}
-
-impl UnresolvedParentIndex {
-    fn name_kind(&self) -> NameKind {
-        match self {
-            UnresolvedParentIndex::Impl(_) => NameKind::Type,
-            UnresolvedParentIndex::Ir(_) => NameKind::Ir,
-        }
-    }
-}
-
-deref_from!(&ImplIndex => UnresolvedParentIndex);
-deref_from!(&IrIndex => UnresolvedParentIndex);
-
-struct GlobalItem<T> {
-    parent: Option<(Spanned<Path>, UnresolvedParentIndex)>,
-    path: Spanned<Path>,
-    item: T,
-}
+// | Initial Item Cataloging/Index Assignment Step
 
 struct ItemCatalog {
     errors: Vec<ResolveError>,
@@ -161,9 +118,9 @@ struct ItemCatalog {
     struct_items: TiVec<StructIndex, parser::StructItem>,
     ir_items: TiVec<IrIndex, parser::IrItem>,
     impl_item_parents: TiVec<ImplIndex, Spanned<Path>>,
-    global_var_items: TiVec<GlobalVarIndex, GlobalItem<parser::GlobalVarItem>>,
-    fn_items: TiVec<FnIndex, GlobalItem<parser::CallableItem>>,
-    op_items: TiVec<OpIndex, GlobalItem<parser::CallableItem>>,
+    global_var_items: TiVec<GlobalVarIndex, NestableItem<parser::GlobalVarItem>>,
+    fn_items: TiVec<FnIndex, NestableItem<parser::CallableItem>>,
+    op_items: TiVec<OpIndex, NestableItem<parser::CallableItem>>,
 }
 
 impl ItemCatalog {
@@ -375,7 +332,7 @@ impl ItemCatalog {
         let global_var_path = global_var_item
             .ident
             .map(|global_var_ident| Path::new(parent_path, global_var_ident));
-        let global_var_index = self.global_var_items.push_and_get_key(GlobalItem {
+        let global_var_index = self.global_var_items.push_and_get_key(NestableItem {
             parent,
             path: global_var_path,
             item: global_var_item,
@@ -383,11 +340,11 @@ impl ItemCatalog {
         self.register_global(global_var_path, global_var_index.into());
     }
 
-    fn catalog_callable_item<I: Into<ItemIndex>>(
+    fn catalog_callable_item<I: Into<GlobalIndex>>(
         &mut self,
         parent: Option<(Spanned<Path>, UnresolvedParentIndex)>,
         callable_item: Spanned<parser::CallableItem>,
-        push_callable_item: impl FnOnce(&mut Self, GlobalItem<parser::CallableItem>) -> I,
+        push_callable_item: impl FnOnce(&mut Self, NestableItem<parser::CallableItem>) -> I,
     ) {
         let parent_path = parent.map(|(parent_path, _)| parent_path.value);
         let callable_path = callable_item
@@ -396,7 +353,7 @@ impl ItemCatalog {
             .map(|callable_ident| Path::new(parent_path, callable_ident));
         let callable_index = push_callable_item(
             self,
-            GlobalItem {
+            NestableItem {
                 parent,
                 path: callable_path,
                 item: callable_item.value,
@@ -405,7 +362,7 @@ impl ItemCatalog {
         .into();
         self.register_global(callable_path, callable_index);
 
-        if let ItemIndex::Op(_) = callable_index {
+        if let GlobalIndex::Op(_) = callable_index {
             match parent {
                 Some((parent_path, parent_index)) => match parent_index {
                     UnresolvedParentIndex::Ir(_) => (),
@@ -436,56 +393,14 @@ impl ItemCatalog {
         }
     }
 
-    fn register_global(&mut self, path: Spanned<Path>, item_index: ItemIndex) {
-        if let Err(error) = self.global_registry.register(path.into(), item_index) {
+    fn register_global(&mut self, path: Spanned<Path>, global_index: GlobalIndex) {
+        if let Err(error) = self.global_registry.register(path.into(), global_index) {
             self.errors.push(error.into());
         }
     }
 }
 
-impl Default for ItemCatalog {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-trait LookupResultExt<T> {
-    fn found(self, errors: &mut Vec<ResolveError>) -> Option<T>;
-
-    fn map_found<U>(self, f: impl FnOnce(T) -> U) -> LookupResult<U>;
-}
-
-impl<T> LookupResultExt<T> for LookupResult<T> {
-    fn found(self, errors: &mut Vec<ResolveError>) -> Option<T> {
-        match self {
-            Ok((value, _)) => value,
-            Err(error) => {
-                errors.push(error.into());
-                None
-            }
-        }
-    }
-
-    fn map_found<U>(self, f: impl FnOnce(T) -> U) -> LookupResult<U> {
-        match self {
-            Ok((value, defined_at)) => Ok((value.map(f), defined_at)),
-            Err(error) => Err(error),
-        }
-    }
-}
-
-fn resolve_enum_item(enum_item: parser::EnumItem) -> EnumItem {
-    EnumItem {
-        ident: enum_item.ident,
-        variants: enum_item
-            .variants
-            .into_iter()
-            .map(|variant_ident| {
-                variant_ident.map(|variant_ident| enum_item.ident.value.nest(variant_ident))
-            })
-            .collect(),
-    }
-}
+// | Top-Level Name Resolver
 
 struct Resolver<'a> {
     errors: Vec<ResolveError>,
@@ -519,7 +434,7 @@ impl<'a> Resolver<'a> {
 
     fn resolve_struct_item(
         &mut self,
-        idx: StructIndex,
+        struct_index: StructIndex,
         struct_item: parser::StructItem,
     ) -> Option<StructItem> {
         let supertype = match struct_item.supertype {
@@ -530,20 +445,23 @@ impl<'a> Resolver<'a> {
                 .map(Some),
         };
 
-        let fields: Option<_> = collect_eager(struct_item.fields.into_iter().map(|f| {
-            self.lookup_type_global(f.type_)
-                .found(&mut self.errors)
-                .map(|type_| {
-                    (
-                        f.ident.value,
-                        StructField {
-                            ident: f.ident,
-                            parent: idx,
-                            type_,
-                        },
-                    )
-                })
-        }));
+        // TODO(spinda): Interaction between struct fields and supertypes is at
+        // a weird spot right now. Sort that out down the road.
+        let fields: Option<_> =
+            collect_eager(struct_item.fields.into_iter().map(|struct_field| {
+                let type_ = self
+                    .lookup_type_global(struct_field.type_)
+                    .found(&mut self.errors);
+
+                Some((
+                    struct_field.ident.value,
+                    StructField {
+                        ident: struct_field.ident,
+                        parent: struct_index,
+                        type_: type_?,
+                    },
+                ))
+            }));
 
         Some(StructItem {
             ident: struct_item.ident,
@@ -569,7 +487,7 @@ impl<'a> Resolver<'a> {
 
     fn resolve_global_var_item(
         &mut self,
-        global_var_item: GlobalItem<parser::GlobalVarItem>,
+        global_var_item: NestableItem<parser::GlobalVarItem>,
     ) -> Option<GlobalVarItem> {
         let parent_index = match global_var_item.parent {
             Some((_, parent_index)) => self.resolve_parent_index(parent_index).map(Some),
@@ -606,7 +524,7 @@ impl<'a> Resolver<'a> {
 
     fn resolve_callable_item(
         &mut self,
-        callable_item: GlobalItem<parser::CallableItem>,
+        callable_item: NestableItem<parser::CallableItem>,
     ) -> Option<CallableItem> {
         let parent_index = match callable_item.parent {
             Some((_, parent_index)) => self.resolve_parent_index(parent_index).map(Some),
@@ -666,40 +584,40 @@ impl<'a> Resolver<'a> {
 
     fn lookup_type_global(&mut self, path: Spanned<Path>) -> LookupResult<TypeIndex> {
         self.lookup_global(path, NameKind::Type.into())
-            .map_found(|item_index| match item_index {
-                ItemIndex::Type(type_index) => type_index,
+            .map_found(|global_index| match global_index {
+                GlobalIndex::Type(type_index) => type_index,
                 _ => unreachable!(),
             })
     }
 
     fn lookup_ir_global(&mut self, path: Spanned<Path>) -> LookupResult<IrIndex> {
         self.lookup_global(path, NameKind::Ir.into())
-            .map_found(|item_index| match item_index {
-                ItemIndex::Ir(ir_index) => ir_index,
+            .map_found(|global_index| match global_index {
+                GlobalIndex::Ir(ir_index) => ir_index,
                 _ => unreachable!(),
             })
     }
 
     fn lookup_op_global(&mut self, path: Spanned<Path>) -> LookupResult<OpIndex> {
         self.lookup_global(path, NameKind::Op.into())
-            .map_found(|item_index| match item_index {
-                ItemIndex::Op(op_index) => op_index,
+            .map_found(|global_index| match global_index {
+                GlobalIndex::Op(op_index) => op_index,
                 _ => unreachable!(),
             })
     }
 
     fn lookup_var_global(&mut self, path: Spanned<Path>) -> LookupResult<VarIndex> {
         self.lookup_global(path, NameKind::Var.into())
-            .map_found(|item_index| match item_index {
-                ItemIndex::Var(var_index) => var_index,
+            .map_found(|global_index| match global_index {
+                GlobalIndex::Var(var_index) => var_index,
                 _ => unreachable!(),
             })
     }
 
     fn lookup_fn_global(&mut self, path: Spanned<Path>) -> LookupResult<FnIndex> {
         self.lookup_global(path, NameKind::Fn.into())
-            .map_found(|item_index| match item_index {
-                ItemIndex::Fn(fn_index) => fn_index,
+            .map_found(|global_index| match global_index {
+                GlobalIndex::Fn(fn_index) => fn_index,
                 _ => unreachable!(),
             })
     }
@@ -708,39 +626,14 @@ impl<'a> Resolver<'a> {
         &mut self,
         path: Spanned<Path>,
         expected: EnumSet<NameKind>,
-    ) -> LookupResult<ItemIndex> {
+    ) -> LookupResult<GlobalIndex> {
         self.global_registry
             .lookup(path, expected)
-            .map_found(|item_index| *item_index)
+            .map_found(|global_index| *global_index)
     }
 }
 
-#[derive(Clone, Copy, From)]
-enum ScopedIndex {
-    #[from(types(VarParamIndex, LocalVarIndex))]
-    Var(VarIndex),
-    #[from(types(LabelParamIndex, LocalLabelIndex))]
-    Label(LabelIndex),
-}
-
-impl Registrable for ScopedIndex {
-    fn name_kind(&self) -> NameKind {
-        match self {
-            ScopedIndex::Var(_) => NameKind::Var,
-            ScopedIndex::Label(_) => NameKind::Label,
-        }
-    }
-
-    fn shadows(&self) -> bool {
-        match self {
-            ScopedIndex::Var(VarIndex::Local(_)) => true,
-            ScopedIndex::Label(LabelIndex::Local(_)) => true,
-            _ => false,
-        }
-    }
-}
-
-type ScopedRegistry = Registry<Ident, ScopedIndex>;
+// | Scoped Name Resolver
 
 struct ScopedResolver<'a, 'b> {
     resolver: &'b mut Resolver<'a>,
@@ -1293,8 +1186,8 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         };
 
         self.lookup_global(path, NameKind::Var | NameKind::Label)
-            .map_found(|item_index| match item_index {
-                ItemIndex::Var(var_index) => ScopedIndex::Var(var_index),
+            .map_found(|global_index| match global_index {
+                GlobalIndex::Var(var_index) => ScopedIndex::Var(var_index),
                 _ => unreachable!(),
             })
     }
@@ -1338,6 +1231,129 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             self.scoped_registry
                 .lookup(path.map(|path| path.ident()), expected)
                 .map_found(|scoped_index| *scoped_index)
+        }
+    }
+}
+
+// | Global/Scoped Indexes and Registration
+
+#[derive(Clone, Copy, From)]
+enum GlobalIndex {
+    #[from(types(BuiltInType, EnumIndex, StructIndex))]
+    Type(TypeIndex),
+    #[from]
+    Ir(IrIndex),
+    #[from(types(
+        BuiltInVar,
+        EnumVariantIndex,
+        GlobalVarIndex,
+        VarParamIndex,
+        LocalVarIndex
+    ))]
+    Var(VarIndex),
+    #[from]
+    Fn(FnIndex),
+    #[from]
+    Op(OpIndex),
+}
+
+impl Registrable for GlobalIndex {
+    fn name_kind(&self) -> NameKind {
+        match self {
+            GlobalIndex::Type(_) => NameKind::Type,
+            GlobalIndex::Ir(_) => NameKind::Ir,
+            GlobalIndex::Var(_) => NameKind::Var,
+            GlobalIndex::Fn(_) => NameKind::Fn,
+            GlobalIndex::Op(_) => NameKind::Op,
+        }
+    }
+
+    fn shadows(&self) -> bool {
+        false
+    }
+}
+
+type GlobalRegistry = Registry<Path, GlobalIndex>;
+
+#[derive(Clone, Copy, From)]
+enum ScopedIndex {
+    #[from(types(VarParamIndex, LocalVarIndex))]
+    Var(VarIndex),
+    #[from(types(LabelParamIndex, LocalLabelIndex))]
+    Label(LabelIndex),
+}
+
+impl Registrable for ScopedIndex {
+    fn name_kind(&self) -> NameKind {
+        match self {
+            ScopedIndex::Var(_) => NameKind::Var,
+            ScopedIndex::Label(_) => NameKind::Label,
+        }
+    }
+
+    fn shadows(&self) -> bool {
+        match self {
+            ScopedIndex::Var(VarIndex::Local(_)) => true,
+            ScopedIndex::Label(LabelIndex::Local(_)) => true,
+            _ => false,
+        }
+    }
+}
+
+type ScopedRegistry = Registry<Ident, ScopedIndex>;
+
+// | Nesting Relationship Representation
+
+#[derive(Clone, Copy, From, Into)]
+struct ImplIndex(usize);
+
+#[derive(Clone, Copy, From)]
+enum UnresolvedParentIndex {
+    Impl(ImplIndex),
+    Ir(IrIndex),
+}
+
+impl UnresolvedParentIndex {
+    fn name_kind(&self) -> NameKind {
+        match self {
+            UnresolvedParentIndex::Impl(_) => NameKind::Type,
+            UnresolvedParentIndex::Ir(_) => NameKind::Ir,
+        }
+    }
+}
+
+deref_from!(&ImplIndex => UnresolvedParentIndex);
+deref_from!(&IrIndex => UnresolvedParentIndex);
+
+struct NestableItem<T> {
+    parent: Option<(Spanned<Path>, UnresolvedParentIndex)>,
+    path: Spanned<Path>,
+    item: T,
+}
+
+// | Lookup Result Helper Functions
+
+trait LookupResultExt<T> {
+    fn found(self, errors: &mut Vec<ResolveError>) -> Option<T>;
+
+    fn map_found<U>(self, f: impl FnOnce(T) -> U) -> LookupResult<U>;
+}
+
+impl<T> LookupResultExt<T> for LookupResult<T> {
+    fn found(self, errors: &mut Vec<ResolveError>) -> Option<T> {
+        match self {
+            Ok((value, _)) => value,
+            Err(error) => {
+                errors.push(error.into());
+                None
+            }
+        }
+    }
+
+    fn map_found<U>(self, f: impl FnOnce(T) -> U) -> LookupResult<U> {
+        match self {
+            Ok((value, defined_at)) => Ok((value.map(f), defined_at)),
+            Err(error) => Err(error),
         }
     }
 }
