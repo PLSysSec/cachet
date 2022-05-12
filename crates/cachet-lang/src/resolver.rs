@@ -490,11 +490,19 @@ impl<'a> Resolver<'a> {
             .lookup_type_global(global_var_item.item.type_)
             .found(&mut self.errors);
 
+        let attrs = global_var_item
+            .item
+            .attrs
+            .into_iter()
+            .filter_map(|attr| map_spanned(attr, |attr| self.resolve_attr(attr.value)))
+            .collect();
+
         Some(GlobalVarItem {
             path: global_var_item.path,
             parent: parent_index?,
             is_mut: global_var_item.item.is_mut,
             type_: type_?,
+            attrs,
         })
     }
 

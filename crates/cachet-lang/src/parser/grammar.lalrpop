@@ -61,8 +61,9 @@ ImplItem: ImplItem =
     "impl" <parent:Spanned<Path>> "{" <items:Spanned<Item>*> "}" => ImplItem { parent, items };
 
 GlobalVarItem: GlobalVarItem =
+    <attrs:Spanned<Attr>*>
     "var" <tags:VarTags> <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> ";" =>
-        GlobalVarItem { ident, is_mut: tags.mut_tag.is_some(), type_ };
+        GlobalVarItem { ident, is_mut: tags.mut_tag.is_some(), type_, attrs };
 
 #[inline]
 VarTags: VarTags =

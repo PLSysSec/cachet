@@ -9,6 +9,7 @@ use crate::ast::{
     ArithKind, BitwiseKind, BlockKind, CastKind, CheckKind, CompareKind, NegateKind, Path, Spanned,
 };
 use crate::built_in::{BuiltInType, BuiltInVar};
+use crate::resolver::HasAttrs;
 use crate::type_checker;
 pub use crate::type_checker::{
     Attr, BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, Field,
@@ -106,12 +107,9 @@ pub struct CallableItem<B = ()> {
     pub attrs: Vec<Spanned<Attr>>,
 }
 
-impl<B> CallableItem<B> {
-    pub fn is_prelude(&self) -> bool {
-        self.attrs
-            .iter()
-            .find(|attr| attr.value == Attr::Prelude)
-            .is_some()
+impl<B> HasAttrs for CallableItem<B> {
+    fn attrs(&self) -> &[Spanned<Attr>] {
+        &self.attrs
     }
 }
 

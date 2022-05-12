@@ -33,5 +33,7 @@ int main() {
 
 
     assert (Fn_double_from_i32(ctx, 3) == static_cast<double>(static_cast<int32_t>(3)));
+
+    assert (Fn_is_nan(ctx, std::numeric_limits<double>::quiet_NaN()));
     return 0;
 }

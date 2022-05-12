@@ -40,7 +40,14 @@ function {:bvbuiltin "bvxor"} #Int32^xor(a: #Int32, y: #Int32): #Int32;
 function {:bvbuiltin "bvshl"} #Int32^shl(a: #Int32, y: #Int32): #Int32;
 
 function {:bvbuiltin "fp.neg"} #Double^negate(n: #Double): #Double;
-function {:bvbuiltin "fp.add RTZ"} #Double^add(x: #Double, y: #Double): #Double;
+function {:bvbuiltin "fp.add RNE"} #Double^add(x: #Double, y: #Double): #Double;
+function {:bvbuiltin "fp.sub RNE"} #Double^sub(x: #Double, y: #Double): #Double;
+function {:bvbuiltin "fp.mul RNE"} #Double^mul(x: #Double, y: #Double): #Double;
+function {:bvbuiltin "fp.div RNE"} #Double^div(x: #Double, y: #Double): #Double;
+function {:bvbuiltin "fp.lt"} #Double^lt(x: #Double, y: #Double): #Bool;
+function {:bvbuiltin "fp.leq"} #Double^lte(x: #Double, y: #Double): #Bool;
+function {:bvbuiltin "fp.gt"} #Double^gt(x: #Double, y: #Double): #Bool;
+function {:bvbuiltin "fp.geq"} #Double^gte(x: #Double, y: #Double): #Bool;
 
 function {:bvbuiltin "bvneg"} #Int64^negate(n: #Int64): #Int64;
 function {:bvbuiltin "bvadd"} #Int64^add(x: #Int64, y: #Int64): #Int64;
@@ -69,9 +76,6 @@ function {:bvbuiltin "bvand"} #UInt16^bitAnd(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvxor"} #UInt16^xor(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvshl"} #UInt16^shl(a: #UInt16, y: #UInt16): #UInt16;
 
-// See the heading "Conversion from other sorts":
-// https://smtlib.cs.uiowa.edu/theories-FloatingPoint.shtml
-function {:builtin "(_ to_fp 11 53) RNE"} #Double~from_i32(n: #Int32): #Double;
 
 type #Map k v = [k]v;
 
@@ -96,5 +100,19 @@ function {:inline} #Set~add<a>(set: #Set a, value: a): #Set a {
 function {:inline} #Set~remove<a>(set: #Set a, value: a): #Set a {
   #Map~set(set, value, false)
 }
+
+// Impls for cachet's prelude...
+
+// See the heading "Conversion from other sorts":
+// https://smtlib.cs.uiowa.edu/theories-FloatingPoint.shtml
+function {:builtin "(_ to_fp 11 53) RNE"} #Double~from_i32(n: #Int32): #Double;
+
+const #Double~INFINITY: #Double;
+axiom #Double~INFINITY == 0+oo53e11;
+
+const #Double~NEG_INFINITY: #Double;
+axiom #Double~NEG_INFINITY == 0-oo53e11;
+
+function {:builtin "fp.isNaN"} #Double~is_nan(n: #Double): #Bool;
 
 // ... end prelude ...

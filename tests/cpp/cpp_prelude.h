@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <utility>
 #include <variant>
+#include <cmath>
 
 namespace cachet {
 
@@ -111,6 +112,21 @@ namespace Impl_Double {
   template <typename T>
   inline Type_Double::Val Fn_from_i32(T ctx, Type_Int32::Ref v) {
     return static_cast<Type_Double::Val>(v);
+  }
+
+  template <typename T>
+  inline Type_Double::Val Fn_is_nan(T ctx, Type_Double::Ref v) {
+    return std::isnan(v);
+  }
+
+  template <typename T>
+  inline Type_Double::Val Var_INFINITY(T ctx) {
+    return std::numeric_limits<double>::infinity();
+  }
+
+  template <typename T>
+  inline Type_Double::Val Var_NEG_INFINITY(T ctx) {
+    return std::numeric_limits<double>::infinity();
   }
 }
 

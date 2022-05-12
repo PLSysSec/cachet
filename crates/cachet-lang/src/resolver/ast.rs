@@ -275,11 +275,18 @@ pub struct GlobalVarItem {
     pub parent: Option<ParentIndex>,
     pub is_mut: bool,
     pub type_: TypeIndex,
+    pub attrs: Vec<Spanned<Attr>>,
 }
 
 impl Typed for GlobalVarItem {
     fn type_(&self) -> TypeIndex {
         self.type_
+    }
+}
+
+impl HasAttrs for GlobalVarItem {
+    fn attrs(&self) -> &[Spanned<Attr>] {
+        &self.attrs
     }
 }
 
@@ -653,4 +660,15 @@ pub struct BitwiseExpr {
     pub kind: Spanned<BitwiseKind>,
     pub lhs: Spanned<Expr>,
     pub rhs: Spanned<Expr>,
+}
+
+pub trait HasAttrs {
+    fn attrs(&self) -> &[Spanned<Attr>];
+
+    fn is_prelude(&self) -> bool {
+        self.attrs()
+            .iter()
+            .find(|attr| attr.value == Attr::Prelude)
+            .is_some()
+    }
 }
