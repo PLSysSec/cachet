@@ -401,7 +401,7 @@ impl Display for CompareTypeMemberFnIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "Compare{}",
+            "{}",
             match self.kind {
                 CompareKind::Eq => "Eq",
                 CompareKind::Neq => "Neq",
@@ -457,8 +457,8 @@ impl Display for BitwiseTypeMemberFnIdent {
             match self.kind {
                 BitwiseKind::Or => "BitOr",
                 BitwiseKind::And => "BitAnd",
-                BitwiseKind::Xor => "BitXor",
-                BitwiseKind::Lsh => "Lsh",
+                BitwiseKind::Xor => "Xor",
+                BitwiseKind::Shl => "Shl",
             }
         )
     }

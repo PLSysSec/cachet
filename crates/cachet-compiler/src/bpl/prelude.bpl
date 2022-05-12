@@ -32,10 +32,10 @@ function {:bvbuiltin "bvsle"} #Int32^lte(a: #Int32, y: #Int32): #Bool;
 function {:bvbuiltin "bvsge"} #Int32^gte(a: #Int32, y: #Int32): #Bool;
 function {:bvbuiltin "bvslt"} #Int32^lt(a: #Int32, y: #Int32): #Bool;
 function {:bvbuiltin "bvsgt"} #Int32^gt(a: #Int32, y: #Int32): #Bool;
-function {:bvbuiltin "bvor"} #Int32^bitor(a: #Int32, y: #Int32): #Int32;
-function {:bvbuiltin "bvand"} #Int32^bitand(a: #Int32, y: #Int32): #Int32;
-function {:bvbuiltin "bvxor"} #Int32^bitxor(a: #Int32, y: #Int32): #Int32;
-function {:bvbuiltin "bvshl"} #Int32^lsh(a: #Int32, y: #Int32): #Int32;
+function {:bvbuiltin "bvor"} #Int32^bitOr(a: #Int32, y: #Int32): #Int32;
+function {:bvbuiltin "bvand"} #Int32^bitAnd(a: #Int32, y: #Int32): #Int32;
+function {:bvbuiltin "bvxor"} #Int32^xor(a: #Int32, y: #Int32): #Int32;
+function {:bvbuiltin "bvshl"} #Int32^shl(a: #Int32, y: #Int32): #Int32;
 
 function {:bvbuiltin "fp.neg"} #Double^negate(n: #Double): #Double;
 function {:bvbuiltin "fp.add RTZ"} #Double^add(x: #Double, y: #Double): #Double;
@@ -49,10 +49,10 @@ function {:bvbuiltin "bvsle"} #Int64^lte(a: #Int64, y: #Int64): #Bool;
 function {:bvbuiltin "bvsge"} #Int64^gte(a: #Int64, y: #Int64): #Bool;
 function {:bvbuiltin "bvslt"} #Int64^lt(a: #Int64, y: #Int64): #Bool;
 function {:bvbuiltin "bvsgt"} #Int64^gt(a: #Int64, y: #Int64): #Bool;
-function {:bvbuiltin "bvor"} #Int64^bitor(a: #Int64, y: #Int64): #Int64;
-function {:bvbuiltin "bvand"} #Int64^bitand(a: #Int64, y: #Int64): #Int64;
-function {:bvbuiltin "bvxor"} #Int64^bitxor(a: #Int64, y: #Int64): #Int64;
-function {:bvbuiltin "bvshl"} #Int64^lsh(a: #Int64, y: #Int64): #Int64;
+function {:bvbuiltin "bvor"} #Int64^bitOr(a: #Int64, y: #Int64): #Int64;
+function {:bvbuiltin "bvand"} #Int64^bitAnd(a: #Int64, y: #Int64): #Int64;
+function {:bvbuiltin "bvxor"} #Int64^xor(a: #Int64, y: #Int64): #Int64;
+function {:bvbuiltin "bvshl"} #Int64^shl(a: #Int64, y: #Int64): #Int64;
 
 function {:bvbuiltin "bvadd"} #UInt16^add(x: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvsub"} #UInt16^sub(x: #UInt16, y: #UInt16): #UInt16;
@@ -62,10 +62,10 @@ function {:bvbuiltin "bvsle"} #UInt16^lte(a: #UInt16, y: #UInt16): #Bool;
 function {:bvbuiltin "bvsge"} #UInt16^gte(a: #UInt16, y: #UInt16): #Bool;
 function {:bvbuiltin "bvslt"} #UInt16^lt(a: #UInt16, y: #UInt16): #Bool;
 function {:bvbuiltin "bvsgt"} #UInt16^gt(a: #UInt16, y: #UInt16): #Bool;
-function {:bvbuiltin "bvor"} #UInt16^bitor(a: #UInt16, y: #UInt16): #UInt16;
-function {:bvbuiltin "bvand"} #UInt16^bitand(a: #UInt16, y: #UInt16): #UInt16;
-function {:bvbuiltin "bvxor"} #UInt16^bitxor(a: #UInt16, y: #UInt16): #UInt16;
-function {:bvbuiltin "bvshl"} #UInt16^lsh(a: #UInt16, y: #UInt16): #UInt16;
+function {:bvbuiltin "bvor"} #UInt16^bitOr(a: #UInt16, y: #UInt16): #UInt16;
+function {:bvbuiltin "bvand"} #UInt16^bitAnd(a: #UInt16, y: #UInt16): #UInt16;
+function {:bvbuiltin "bvxor"} #UInt16^xor(a: #UInt16, y: #UInt16): #UInt16;
+function {:bvbuiltin "bvshl"} #UInt16^shl(a: #UInt16, y: #UInt16): #UInt16;
 
 // See the heading "Conversion from other sorts":
 // https://smtlib.cs.uiowa.edu/theories-FloatingPoint.shtml

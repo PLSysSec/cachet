@@ -321,10 +321,10 @@ impl Display for BitwiseTypeMemberFnSelector {
             f,
             "{}",
             match self.kind {
-                BitwiseKind::Or => "bitor",
-                BitwiseKind::And => "bitand",
-                BitwiseKind::Xor => "bitxor",
-                BitwiseKind::Lsh => "lsh",
+                BitwiseKind::Or => "bitOr",
+                BitwiseKind::And => "bitAnd",
+                BitwiseKind::Xor => "xor",
+                BitwiseKind::Shl => "shl",
             },
         )
     }
@@ -1053,11 +1053,11 @@ fn fmt_f64(f: f64) -> String {
 
     if f.is_nan() {
         // Don't forward the NaN code.
-        format!("0NaN{sig_size}e{exp_size}")
+        format!("0NaN{SIGNIFICAND_SIZE}e{EXPONENT_SIZE}")
     } else if f == f64::INFINITY {
-        format!("0+oo{sig_size}e{exp_size}")
+        format!("0+oo{SIGNIFICAND_SIZE}e{EXPONENT_SIZE}")
     } else if f == f64::NEG_INFINITY {
-        format!("0-oo{sig_size}e{exp_size}")
+        format!("0-oo{SIGNIFICAND_SIZE}e{EXPONENT_SIZE}")
     } else {
         let bits: u64 = f.to_bits();
         let sign = if bits >> 63 == 0 { "" } else { "-" };
@@ -1070,7 +1070,7 @@ fn fmt_f64(f: f64) -> String {
         };
 
         const EXPONENT_BIAS: i16 = 1023;
-        const MANITISSA_SHIFT: i16 = 52;
+        const MANTISSA_SHIFT: i16 = 52;
         exponent -= EXPONENT_BIAS + MANTISSA_SHIFT;
 
         // If Boogie had a sane floating point implementation, we would stop

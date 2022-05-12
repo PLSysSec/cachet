@@ -58,11 +58,11 @@ struct PrimitiveType {
     lhs = std::forward<U>(rhs);
   }
 
-  static bool CompareEq(Ref lhs, Ref rhs) {
+  static bool Eq(Ref lhs, Ref rhs) {
     return lhs == rhs;
   }
 
-  static bool CompareNeq(Ref lhs, Ref rhs) {
+  static bool Neq(Ref lhs, Ref rhs) {
     return lhs != rhs;
   }
 };
@@ -74,24 +74,28 @@ struct NumericType : public PrimitiveType<T> {
   using Ref = typename PrimitiveType<T>::Ref;
   using MutRef = typename PrimitiveType<T>::MutRef;
 
-  static bool CompareLte(Ref lhs, Ref rhs) {
+  static bool Lte(Ref lhs, Ref rhs) {
     return lhs <= rhs;
   }
 
-  static bool CompareGte(Ref lhs, Ref rhs) {
+  static bool Gte(Ref lhs, Ref rhs) {
     return lhs >= rhs;
   }
 
-  static bool CompareLt(Ref lhs, Ref rhs) {
+  static bool Lt(Ref lhs, Ref rhs) {
     return lhs < rhs;
   }
 
-  static bool CompareGt(Ref lhs, Ref rhs) {
+  static bool Gt(Ref lhs, Ref rhs) {
     return lhs > rhs;
   }
 
   static Val Add(Ref lhs, Ref rhs) {
     return lhs + rhs;
+  }
+
+  static Val Sub(Ref lhs, Ref rhs) {
+    return lhs - rhs;
   }
 };
 

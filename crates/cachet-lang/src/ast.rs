@@ -98,5 +98,5 @@ pub enum BitwiseKind {
     #[display(fmt = "^")]
     Xor,
     #[display(fmt = "<<")]
-    Lsh,
+    Shl,
 }

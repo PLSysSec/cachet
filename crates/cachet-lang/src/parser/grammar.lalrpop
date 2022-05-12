@@ -326,7 +326,7 @@ PrecExpr: PrecExpr = {
     #[assoc(side = "left")]
     <lhs:Spanned<PrecExpr>> <op:Spanned<"<<">> <rhs:Spanned<PrecExpr>> =>
         Expr::from(BitwiseExpr {
-            kind: Spanned::new(op.span, BitwiseKind::Lsh),
+            kind: Spanned::new(op.span, BitwiseKind::Shl),
             lhs: lhs.map(|lhs| lhs.expr),
             rhs: rhs.map(|rhs| rhs.expr)
         }).into(),
