@@ -443,6 +443,7 @@ impl<'a> Resolver<'a> {
                 .map(Some),
         };
 
+        // TODO(spinda): Raise an error on duplicate field names.
         // TODO(spinda): Interaction between struct fields and supertypes is in
         // a weird spot right now. Sort that out down the road.
         let fields: Option<_> = collect_eager(struct_item.fields.into_iter().map(|field| {

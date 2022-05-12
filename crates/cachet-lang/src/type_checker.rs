@@ -104,10 +104,6 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    const fn unknown_type(&self) -> TypeIndex {
-        TypeIndex::Struct(self.unknown_struct)
-    }
-
     fn finish(mut self) -> Result<Vec<DeclIndex>, TypeCheckErrors> {
         if !self.errors.is_empty() {
             self.errors.sort_by_key(|error| error.span());
@@ -310,12 +306,7 @@ impl<'a> TypeChecker<'a> {
         supertype_index: TypeIndex,
         subtype_index: TypeIndex,
     ) -> Option<Vec<TypeIndex>> {
-        // The internal "unknown" type unifies with everything. No values of
-        // this type will ever actually be produced.
-        if supertype_index == subtype_index
-            || supertype_index == self.unknown_type()
-            || subtype_index == self.unknown_type()
-        {
+        if self.is_same_type(supertype_index, subtype_index) {
             return Some(Vec::new());
         }
 
@@ -327,6 +318,7 @@ impl<'a> TypeChecker<'a> {
                 TypeIndex::Enum(_) => return None,
                 TypeIndex::Struct(struct_index) => self.env[struct_index].supertype?,
             };
+            debug_assert_ne!(curr_type_index, self.unknown_type());
 
             if curr_type_index == subtype_index {
                 // We went all the way 'round a cycle. Though type cycles are
@@ -343,29 +335,33 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    fn is_signed_numeric_type(&self, type_index: TypeIndex) -> bool {
-        // Consider the internal "unknown" type to be numeric for the purposes
-        // of the type-checking phase.
-
-        type_index.is_signed_numeric() || type_index == self.unknown_type()
+    const fn unknown_type(&self) -> TypeIndex {
+        TypeIndex::Struct(self.unknown_struct)
     }
 
+    fn is_unknown_type(&self, type_index: TypeIndex) -> bool {
+        type_index == self.unknown_type()
+    }
+
+    fn is_same_type(&self, lhs: TypeIndex, rhs: TypeIndex) -> bool {
+        // The internal "unknown" type unifies with everything. No values of
+        // this type will ever actually be produced.
+        lhs == rhs || self.is_unknown_type(lhs) || self.is_unknown_type(rhs)
+    }
+
+    // Consider the internal "unknown" type to be numeric, signed, and integral for the purposes of
+    // the type-checking phase.
+
     fn is_numeric_type(&self, type_index: TypeIndex) -> bool {
-        // Consider the internal "unknown" type to be numeric for the purposes
-        // of the type-checking phase.
-        type_index.is_numeric() || type_index == self.unknown_type()
+        type_index.is_numeric() || self.is_unknown_type(type_index)
+    }
+
+    fn is_signed_numeric_type(&self, type_index: TypeIndex) -> bool {
+        type_index.is_signed_numeric() || self.is_unknown_type(type_index)
     }
 
     fn is_integral_type(&self, type_index: TypeIndex) -> bool {
-        // Consider the internal "unknown" type to be integral for the purposes
-        // of the type-checking phase.
-        type_index.is_integral() || type_index == self.unknown_type()
-    }
-
-    fn try_match_irs(&self, found_ir_index: IrIndex, expected_ir_index: IrIndex) -> bool {
-        return found_ir_index == expected_ir_index
-            || found_ir_index == self.unknown_ir
-            || expected_ir_index == self.unknown_ir;
+        type_index.is_integral() || self.is_unknown_type(type_index)
     }
 
     fn get_type_ident(&self, type_index: TypeIndex) -> Ident {
@@ -374,6 +370,12 @@ impl<'a> TypeChecker<'a> {
             TypeIndex::Enum(enum_index) => self.env[enum_index].ident.value,
             TypeIndex::Struct(struct_index) => self.env[struct_index].ident.value,
         }
+    }
+
+    fn is_same_ir(&self, found_ir_index: IrIndex, expected_ir_index: IrIndex) -> bool {
+        return found_ir_index == expected_ir_index
+            || found_ir_index == self.unknown_ir
+            || expected_ir_index == self.unknown_ir;
     }
 }
 
@@ -643,7 +645,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             ..
         }) = param_summary
         {
-            if !self.try_match_irs(arg_ir_index, param_ir_index) {
+            if !self.is_same_ir(arg_ir_index, param_ir_index) {
                 self.type_checker
                     .errors
                     .push(TypeCheckError::ArgIrMismatch {
@@ -815,7 +817,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         if let Some(stmt) = &stmt {
             let stmt_type = stmt.type_();
-            if stmt_type != BuiltInType::Unit.into() {
+            if !self.is_same_type(stmt_type, BuiltInType::Unit.into()) {
                 let stmt_type_ident = self.get_type_ident(stmt_type);
                 self.errors.push(TypeCheckError::TypeMismatch {
                     expected_type: BuiltInVar::Unit.ident(),
@@ -851,6 +853,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let cond =
             self.type_check_expr_expecting_type(if_stmt.cond.as_ref(), BuiltInType::Bool.into());
 
+        // TODO(spinda): Check that all branches have the same type.
+
         let then = self.type_check_block(&if_stmt.then);
 
         let else_ = if_stmt.else_.as_ref().map(|else_| match else_ {
@@ -880,7 +884,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         if !self
             .interprets
-            .is_some_with(|interprets| self.try_match_irs(ir_index, interprets.value))
+            .is_some_with(|interprets| self.is_same_ir(ir_index, interprets.value))
         {
             self.type_checker
                 .errors
@@ -908,7 +912,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         if !self
             .emits
-            .is_some_with(|emits| self.try_match_irs(ir_index, emits.value))
+            .is_some_with(|emits| self.is_same_ir(ir_index, emits.value))
         {
             self.type_checker
                 .errors
@@ -935,7 +939,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let callable_item = &self.env[call.target.value];
         let ir_index = match callable_item.parent {
             Some(ParentIndex::Ir(ir_index)) => {
-                if Some(ir_index) == self.emits.map(|emits| emits.value) {
+                if self.emits.is_some_with(|emits| self.is_same_ir(emits.value, ir_index)) {
                     Some(ir_index)
                 } else {
                     self.type_checker
@@ -1166,7 +1170,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let lhs_type_index = lhs.type_();
         let rhs_type_index = rhs.type_();
 
-        if lhs_type_index != rhs_type_index {
+        if !self.is_same_type(lhs_type_index, rhs_type_index) {
             self.type_checker
                 .errors
                 .push(TypeCheckError::BinaryOperatorTypeMismatch {
@@ -1212,7 +1216,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let lhs_type_index = lhs.type_();
         let rhs_type_index = rhs.type_();
 
-        if lhs_type_index != rhs_type_index {
+        if !self.is_same_type(lhs_type_index, rhs_type_index) {
             self.type_checker
                 .errors
                 .push(TypeCheckError::BinaryOperatorTypeMismatch {
