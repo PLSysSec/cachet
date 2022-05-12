@@ -4,7 +4,6 @@ mod ast;
 mod error;
 mod graphs;
 
-use std::collections::BTreeMap;
 use std::iter;
 use std::ops::{Deref, DerefMut};
 
@@ -34,7 +33,7 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     let unknown_struct_index = env.struct_items.push_and_get_key(StructItem {
         ident: Spanned::new(Span::Internal, *UNKNOWN_IDENT),
         supertype: None,
-        fields: BTreeMap::new(),
+        fields: TiVec::new(),
     });
 
     let unknown_ir_index = env
@@ -1017,7 +1016,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let parent_type = parent.type_();
 
         let struct_index = match parent_type {
-            TypeIndex::Struct(struct_index) => Some(struct_index),
+            TypeIndex::Struct(struct_index) => struct_index,
             _ => {
                 self.type_checker
                     .errors
@@ -1026,15 +1025,28 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                         parent_span: field_access.parent.span,
                         parent_type: self.get_type_ident(parent_type),
                     });
-                None
+                self.unknown_struct
             }
         };
 
-        let struct_item = struct_index.map(|struct_index| &self.env[struct_index]);
+        // This field index is potentially invalid if resolution fails. However,
+        // it shouldn't be used inside the type-checker, and shouldn't escape,
+        // since the failure will raise an error.
+        let mut field_index = FieldIndex::from(0);
+        let mut type_ = self.unknown_type();
 
-        let struct_field = struct_item.and_then(|struct_item| {
-            match struct_item.fields.get(&field_access.field.value) {
-                Some(struct_field) => Some(struct_field),
+        if struct_index != self.unknown_struct {
+            let struct_item = &self.env[struct_index];
+
+            match struct_item
+                .fields
+                .iter_enumerated()
+                .find(|(_, field)| field.ident.value == field_access.field.value)
+            {
+                Some((found_field_index, found_field)) => {
+                    field_index = found_field_index;
+                    type_ = found_field.type_;
+                }
                 None => {
                     self.type_checker
                         .errors
@@ -1042,27 +1054,17 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                             field: field_access.field,
                             parent_type: struct_item.ident,
                         });
-                    None
                 }
             }
-        });
-
-        let struct_index = struct_index.unwrap_or(self.unknown_struct);
-        let (type_, field) = match struct_field {
-            Some(struct_field) => (struct_field.type_, struct_field.into()),
-            None => (
-                self.unknown_type(),
-                FieldIndex {
-                    struct_: struct_index,
-                    ident: field_access.field.value,
-                },
-            ),
-        };
+        }
 
         FieldAccessExpr {
             parent,
             type_,
-            field,
+            field: StructFieldIndex {
+                struct_index,
+                field_index,
+            },
         }
     }
 

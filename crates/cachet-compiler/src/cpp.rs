@@ -1288,7 +1288,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                     args: vec![parent_expr],
                 }
                 .into(),
-                member: field_access_expr.field.ident,
+                member: self.env[field_access_expr.field].ident.value,
             },
             type_: field_access_expr.type_(),
             tags: ExprTag::Val.into(),

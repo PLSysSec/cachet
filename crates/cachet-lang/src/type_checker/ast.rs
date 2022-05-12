@@ -15,10 +15,10 @@ use crate::ast::{
 use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::resolver;
 pub use crate::resolver::{
-    Attr, CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, FieldIndex, FnIndex,
+    Attr, CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex, FnIndex,
     GlobalVarIndex, GlobalVarItem, IrIndex, IrItem, Label, LabelIndex, LabelParam,
     LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel,
-    OutVar, ParamIndex, Params, ParentIndex, StructField, StructIndex, StructItem, TypeIndex,
+    OutVar, ParamIndex, Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex,
     Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 
@@ -56,13 +56,21 @@ impl IndexMut<EnumVariantIndex> for Env {
 
 deref_index!(Env[&EnumVariantIndex] => Spanned<Path>);
 
-impl Index<FieldIndex> for Env {
-    type Output = StructField;
+impl Index<StructFieldIndex> for Env {
+    type Output = Field;
 
-    fn index(&self, index: FieldIndex) -> &Self::Output {
-        &self[index.struct_].fields[&index.ident]
+    fn index(&self, index: StructFieldIndex) -> &Self::Output {
+        &self.struct_items[index.struct_index][index.field_index]
     }
 }
+
+impl IndexMut<StructFieldIndex> for Env {
+    fn index_mut(&mut self, index: StructFieldIndex) -> &mut Self::Output {
+        &mut self.struct_items[index.struct_index][index.field_index]
+    }
+}
+
+deref_index!(Env[&StructFieldIndex] => Field);
 
 impl Index<CallableIndex> for Env {
     type Output = CallableItem;
@@ -513,7 +521,7 @@ impl Typed for InvokeExpr {
 #[derive(Clone, Debug)]
 pub struct FieldAccessExpr {
     pub parent: Expr,
-    pub field: FieldIndex,
+    pub field: StructFieldIndex,
     pub type_: TypeIndex,
 }
 

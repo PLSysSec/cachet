@@ -1,9 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use std::{
-    collections::BTreeMap,
-    ops::{Index, IndexMut},
-};
+use std::ops::{Index, IndexMut};
 
 use derive_more::From;
 use typed_index_collections::TiVec;
@@ -16,7 +13,7 @@ use crate::ast::{
 };
 pub use crate::built_in::Attr;
 use crate::built_in::{BuiltInType, BuiltInVar};
-pub use crate::parser::{Literal, VariantIndex};
+pub use crate::parser::{FieldIndex, Literal, VariantIndex};
 
 #[derive(Clone, Debug)]
 pub struct Env {
@@ -233,37 +230,37 @@ deref_index!(Env[&EnumVariantIndex] => Spanned<Path>);
 pub struct StructItem {
     pub ident: Spanned<Ident>,
     pub supertype: Option<TypeIndex>,
-    pub fields: BTreeMap<Ident, StructField>,
+    pub fields: TiVec<FieldIndex, Field>,
 }
 
-#[derive(Clone, Debug)]
-pub struct StructField {
-    pub ident: Spanned<Ident>,
-    pub parent: StructIndex,
-    pub type_: TypeIndex,
-}
+field_index!(StructItem:fields[FieldIndex] => Field);
 
 #[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
-pub struct FieldIndex {
-    pub struct_: StructIndex,
-    pub ident: Ident,
+pub struct StructFieldIndex {
+    pub struct_index: StructIndex,
+    pub field_index: FieldIndex,
 }
 
-impl From<&StructField> for FieldIndex {
-    fn from(struct_field: &StructField) -> Self {
-        Self {
-            struct_: struct_field.parent,
-            ident: struct_field.ident.value,
-        }
+impl Index<StructFieldIndex> for Env {
+    type Output = Field;
+
+    fn index(&self, index: StructFieldIndex) -> &Self::Output {
+        &self.struct_items[index.struct_index][index.field_index]
     }
 }
 
-impl Index<FieldIndex> for Env {
-    type Output = StructField;
-
-    fn index(&self, index: FieldIndex) -> &Self::Output {
-        &self[index.struct_].fields[&index.ident]
+impl IndexMut<StructFieldIndex> for Env {
+    fn index_mut(&mut self, index: StructFieldIndex) -> &mut Self::Output {
+        &mut self.struct_items[index.struct_index][index.field_index]
     }
+}
+
+deref_index!(Env[&StructFieldIndex] => Field);
+
+#[derive(Clone, Debug)]
+pub struct Field {
+    pub ident: Spanned<Ident>,
+    pub type_: TypeIndex,
 }
 
 #[derive(Clone, Debug)]

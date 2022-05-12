@@ -42,10 +42,12 @@ pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> 
         .map(resolve_enum_item)
         .collect();
 
-    let struct_items: Option<_> =
-        collect_eager(item_catalog.struct_items.into_iter_enumerated().map(
-            |(struct_index, struct_item)| resolver.resolve_struct_item(struct_index, struct_item),
-        ));
+    let struct_items: Option<_> = collect_eager(
+        item_catalog
+            .struct_items
+            .into_iter()
+            .map(|struct_item| resolver.resolve_struct_item(struct_item)),
+    );
 
     let ir_items: Option<TiVec<_, _>> = collect_eager(
         item_catalog
@@ -432,11 +434,7 @@ impl<'a> Resolver<'a> {
         resolver
     }
 
-    fn resolve_struct_item(
-        &mut self,
-        struct_index: StructIndex,
-        struct_item: parser::StructItem,
-    ) -> Option<StructItem> {
+    fn resolve_struct_item(&mut self, struct_item: parser::StructItem) -> Option<StructItem> {
         let supertype = match struct_item.supertype {
             None => Some(None),
             Some(supertype) => self
@@ -445,23 +443,16 @@ impl<'a> Resolver<'a> {
                 .map(Some),
         };
 
-        // TODO(spinda): Interaction between struct fields and supertypes is at
+        // TODO(spinda): Interaction between struct fields and supertypes is in
         // a weird spot right now. Sort that out down the road.
-        let fields: Option<_> =
-            collect_eager(struct_item.fields.into_iter().map(|struct_field| {
-                let type_ = self
-                    .lookup_type_global(struct_field.type_)
-                    .found(&mut self.errors);
+        let fields: Option<_> = collect_eager(struct_item.fields.into_iter().map(|field| {
+            let type_ = self.lookup_type_global(field.type_).found(&mut self.errors);
 
-                Some((
-                    struct_field.ident.value,
-                    StructField {
-                        ident: struct_field.ident,
-                        parent: struct_index,
-                        type_: type_?,
-                    },
-                ))
-            }));
+            Some(Field {
+                ident: field.ident,
+                type_: type_?,
+            })
+        }));
 
         Some(StructItem {
             ident: struct_item.ident,
@@ -583,27 +574,30 @@ impl<'a> Resolver<'a> {
     }
 
     fn lookup_type_global(&mut self, path: Spanned<Path>) -> LookupResult<TypeIndex> {
-        self.lookup_global(path, NameKind::Type.into())
-            .map_found(|global_index| match global_index {
+        self.lookup_global(path, NameKind::Type.into()).map_found(
+            |global_index| match global_index {
                 GlobalIndex::Type(type_index) => type_index,
                 _ => unreachable!(),
-            })
+            },
+        )
     }
 
     fn lookup_ir_global(&mut self, path: Spanned<Path>) -> LookupResult<IrIndex> {
-        self.lookup_global(path, NameKind::Ir.into())
-            .map_found(|global_index| match global_index {
+        self.lookup_global(path, NameKind::Ir.into()).map_found(
+            |global_index| match global_index {
                 GlobalIndex::Ir(ir_index) => ir_index,
                 _ => unreachable!(),
-            })
+            },
+        )
     }
 
     fn lookup_op_global(&mut self, path: Spanned<Path>) -> LookupResult<OpIndex> {
-        self.lookup_global(path, NameKind::Op.into())
-            .map_found(|global_index| match global_index {
+        self.lookup_global(path, NameKind::Op.into()).map_found(
+            |global_index| match global_index {
                 GlobalIndex::Op(op_index) => op_index,
                 _ => unreachable!(),
-            })
+            },
+        )
     }
 
     fn lookup_var_global(&mut self, path: Spanned<Path>) -> LookupResult<VarIndex> {
@@ -615,11 +609,12 @@ impl<'a> Resolver<'a> {
     }
 
     fn lookup_fn_global(&mut self, path: Spanned<Path>) -> LookupResult<FnIndex> {
-        self.lookup_global(path, NameKind::Fn.into())
-            .map_found(|global_index| match global_index {
+        self.lookup_global(path, NameKind::Fn.into()).map_found(
+            |global_index| match global_index {
                 GlobalIndex::Fn(fn_index) => fn_index,
                 _ => unreachable!(),
-            })
+            },
+        )
     }
 
     fn lookup_global(

@@ -11,12 +11,12 @@ use crate::ast::{
 use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::type_checker;
 pub use crate::type_checker::{
-    Attr, BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, FieldIndex,
-    FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, Label, LabelIndex,
-    LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex,
-    Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
-    StructField, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam,
-    VarParamIndex, VariantIndex,
+    Attr, BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, Field,
+    FieldIndex, FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, Label,
+    LabelIndex, LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar,
+    LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex,
+    Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr,
+    VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
@@ -54,13 +54,21 @@ impl<B> IndexMut<EnumVariantIndex> for Env<B> {
 
 deref_index!(Env<B>[&EnumVariantIndex] => Spanned<Path> | <B>);
 
-impl<B> Index<FieldIndex> for Env<B> {
-    type Output = StructField;
+impl Index<StructFieldIndex> for Env {
+    type Output = Field;
 
-    fn index(&self, index: FieldIndex) -> &Self::Output {
-        &self[index.struct_].fields[&index.ident]
+    fn index(&self, index: StructFieldIndex) -> &Self::Output {
+        &self.struct_items[index.struct_index][index.field_index]
     }
 }
+
+impl IndexMut<StructFieldIndex> for Env {
+    fn index_mut(&mut self, index: StructFieldIndex) -> &mut Self::Output {
+        &mut self.struct_items[index.struct_index][index.field_index]
+    }
+}
+
+deref_index!(Env[&StructFieldIndex] => Field);
 
 impl<B> Index<CallableIndex> for Env<B> {
     type Output = CallableItem<B>;
@@ -470,7 +478,7 @@ impl<B> TryFrom<NegateExpr<Expr<B>>> for NegateExpr<PureExpr> {
 #[derive(Clone, Debug)]
 pub struct FieldAccessExpr<E = Expr> {
     pub parent: E,
-    pub field: FieldIndex,
+    pub field: StructFieldIndex,
     pub type_: TypeIndex,
 }
 

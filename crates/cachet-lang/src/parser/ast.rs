@@ -38,11 +38,13 @@ typed_field_index!(EnumItem:variants[pub VariantIndex] => Spanned<Ident>);
 pub struct StructItem {
     pub ident: Spanned<Ident>,
     pub supertype: Option<Spanned<Path>>,
-    pub fields: Vec<StructField>,
+    pub fields: TiVec<FieldIndex, Field>,
 }
 
+typed_field_index!(StructItem:fields[pub FieldIndex] => Field);
+
 #[derive(Clone, Debug)]
-pub struct StructField {
+pub struct Field {
     pub ident: Spanned<Ident>,
     pub type_: Spanned<Path>,
 }

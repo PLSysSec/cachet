@@ -135,10 +135,16 @@ impl<'a> Compiler<'a> {
             .into(),
         );
 
-        for struct_field in struct_item.fields.values() {
+        for field in &struct_item.fields {
+            let ident = TypeMemberFnIdent {
+                type_ident,
+                selector: TypeMemberFnSelector::Field(field.ident.value.into()),
+            }
+            .into();
+
             self.items.push(
                 FnItem {
-                    ident: self.get_field_fn_ident(struct_field.into()),
+                    ident,
                     param_vars: vec![
                         TypedVar {
                             ident: ParamVarIdent::Instance.into(),
@@ -148,7 +154,7 @@ impl<'a> Compiler<'a> {
                     ]
                     .into(),
                     attr: None,
-                    ret: self.get_type_ident(struct_field.type_).into(),
+                    ret: self.get_type_ident(field.type_).into(),
                     value: None,
                 }
                 .into(),
@@ -1216,15 +1222,6 @@ impl<'a> Compiler<'a> {
 
         UserTypeIdent::from(ident)
     }
-
-    fn get_field_fn_ident(&self, field_index: flattener::FieldIndex) -> FnIdent {
-        let struct_ident = self.env[field_index.struct_].ident.value;
-        TypeMemberFnIdent {
-            type_ident: UserTypeIdent::from(struct_ident),
-            selector: TypeMemberFnSelector::Field(field_index.ident.into()),
-        }
-        .into()
-    }
 }
 
 fn generate_cast_fn_item(
@@ -1920,7 +1917,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         &mut self,
         field_access_expr: &flattener::FieldAccessExpr<E>,
     ) -> CallExpr {
-        let field_fn_ident = self.get_field_fn_ident(field_access_expr.field);
+        let struct_item = &self.env[field_access_expr.field.struct_index];
+        let field = &struct_item.fields[field_access_expr.field.field_index];
+        let field_fn_ident = TypeMemberFnIdent {
+            type_ident: UserTypeIdent::from(struct_item.ident.value),
+            selector: TypeMemberFnSelector::Field(field.ident.value.into()),
+        }
+        .into();
+
         let parent_expr = field_access_expr.parent.compile(self);
 
         CallExpr {

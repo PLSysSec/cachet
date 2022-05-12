@@ -7,6 +7,7 @@ use std::str::FromStr;
 
 use codespan::RawIndex;
 use iterate::iterate;
+use typed_index_collections::TiVec;
 
 use crate::ast::*;
 
@@ -32,21 +33,23 @@ Item: Item = {
 };
 
 EnumItem: EnumItem =
-    "enum" <ident:Spanned<Ident>> "{" <variants:Comma<Spanned<Ident>>> "}" =>
-        EnumItem { ident, variants: variants.into() };
+    "enum" <ident:Spanned<Ident>> "{" <variants:EnumVariants> "}" => EnumItem { ident, variants };
+
+EnumVariants: TiVec<VariantIndex, Spanned<Ident>> =
+    <variants:Comma<Spanned<Ident>>> => variants.into();
 
 StructItem: StructItem =
-    "struct" <ident:Spanned<Ident>> <supertype:("<:" <Spanned<Path>>)?> <fields: StructFields> =>
+    "struct" <ident:Spanned<Ident>> <supertype:("<:" <Spanned<Path>>)?> <fields:StructFields> =>
         StructItem { ident, supertype, fields };
 
-StructFields: Vec<StructField> = {
-    ";"  => vec![],
-    "{" <fields:Comma<StructField>> "}" => fields,
+StructFields: TiVec<FieldIndex, Field> = {
+    ";"  => TiVec::new(),
+    "{" <fields:Comma<Field>> "}" => fields.into(),
 };
 
-StructField: StructField =
+Field: Field =
     <ident: Spanned<Ident>> ":" <type_: Spanned<Path>> => {
-        StructField { ident, type_ }
+        Field { ident, type_ }
     };
 
 IrItem: IrItem =
