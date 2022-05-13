@@ -234,10 +234,10 @@ impl<'a> TypeChecker<'a> {
             let mut scoped_type_checker =
                 ScopedTypeChecker::new(self, callable_index, interprets, emits, &mut locals);
 
-
             let mut block = scoped_type_checker.type_check_block(&body.block);
             if !block.exits_early || body.block.value.is_some() {
-                block.value = scoped_type_checker.expect_expr_type(Spanned::new(callable_item.body.span, block.value), ret);
+                block.value = scoped_type_checker
+                    .expect_expr_type(Spanned::new(callable_item.body.span, block.value), ret);
             }
 
             let locals = Locals {
@@ -1396,11 +1396,11 @@ fn expr_early_exit(expr: &Expr) -> bool {
         Expr::Negate(negate_expr) => expr_early_exit(&negate_expr.expr),
         Expr::Cast(case_expr) => expr_early_exit(&case_expr.expr),
         Expr::Assign(assign_expr) => expr_early_exit(&assign_expr.rhs),
-        Expr::BinOp(binop_expr) => {
-            if binop_expr.kind.is_shortcircuiting() {
-                expr_early_exit(&binop_expr.lhs)
+        Expr::BinOper(bin_oper_expr) => {
+            if bin_oper_expr.oper.is_short_circuiting() {
+                expr_early_exit(&bin_oper_expr.lhs)
             } else {
-                expr_early_exit(&binop_expr.lhs) || expr_early_exit(&binop_expr.rhs)
+                expr_early_exit(&bin_oper_expr.lhs) || expr_early_exit(&bin_oper_expr.rhs)
             }
         }
 

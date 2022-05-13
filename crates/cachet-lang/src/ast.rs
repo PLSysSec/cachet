@@ -64,6 +64,15 @@ pub enum BinOper {
     Logical(LogicalBinOper),
 }
 
+impl BinOper {
+    pub const fn is_short_circuiting(&self) -> bool {
+        match self {
+            BinOper::Logical(_) => true,
+            BinOper::Arith(_) | BinOper::Bitwise(_) | BinOper::Compare(_) => false,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum ArithBinOper {
     #[display(fmt = "*")]
