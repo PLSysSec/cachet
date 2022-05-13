@@ -21,6 +21,13 @@ extern {
     type Error = UserParseError;
 }
 
+#[inline]
+Attrs: Vec<Attr> =
+    <attrs:Attr*> => attrs;
+
+Attr: Attr =
+    "#" "[" <path:Spanned<Path>> "]" => Attr { path };
+
 pub Items: Vec<Spanned<Item>> = Spanned<Item>*;
 
 Item: Item = {
@@ -61,9 +68,9 @@ ImplItem: ImplItem =
     "impl" <parent:Spanned<Path>> "{" <items:Spanned<Item>*> "}" => ImplItem { parent, items };
 
 GlobalVarItem: GlobalVarItem =
-    <attrs:Spanned<Attr>*>
+    <attrs:Attrs>
     "var" <tags:VarTags> <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> ";" =>
-        GlobalVarItem { ident, is_mut: tags.mut_tag.is_some(), type_, attrs };
+        GlobalVarItem { ident, attrs, is_mut: tags.mut_tag.is_some(), type_ };
 
 #[inline]
 VarTags: VarTags =
@@ -73,17 +80,17 @@ VarTag: VarTag =
     "mut" => VarTag::Mut;
 
 CallableItem: Item =
-    <attrs:Spanned<Attr>*>
+    <attrs:Attrs>
     <tags:CallableTags> <kind:CallableKind> <ident:Spanned<Ident>>
     "(" <params:Comma<Param>> ")" <ret:("->" <Spanned<Path>>)?>
     <body:Spanned<CallableBody>> => {
         let callable_item = CallableItem {
             ident,
+            attrs,
             is_unsafe: tags.unsafe_tag.is_some(),
             params,
             ret,
             body,
-            attrs
         };
 
         match kind {
@@ -132,7 +139,7 @@ VarParam: VarParam =
             },
             Some(_) => match var_tags.mut_tag {
                 None => VarParamKind::Out,
-                Some(mut_tag_span) => return Err(ParseError::User {
+                Some(mut_tag_span) => return Err(RawParseError::User {
                     error: Spanned::new(
                         mut_tag_span,
                         "`mut` is irrelevant for out-parameters"
@@ -364,7 +371,7 @@ PrecExpr: PrecExpr = {
     <lhs:Spanned<PrecExpr>> <kind:Spanned<CompareKind>> <rhs:Spanned<PrecExpr>> =>? {
         if !lhs.value.is_grouped {
             if let Expr::Compare(_) = lhs.value.expr {
-                return Err(ParseError::User {
+                return Err(RawParseError::User {
                     error: Spanned::new(kind.span, "comparison operators can't be chained"),
                 });
             }
@@ -385,7 +392,7 @@ PrecExpr: PrecExpr = {
                 lhs: lhs,
                 rhs: rhs.map(|rhs| rhs.expr),
             }).into()),
-            _ => Err(ParseError::User {
+            _ => Err(RawParseError::User {
                 error: Spanned::new(lhs.span, "can't assign to this expression"),
             }),
         }
@@ -423,31 +430,39 @@ MulArithKind: ArithKind = {
 // TODO(spinda): Support NaN literals and scientific notation.
 
 Literal: Literal = {
+    <n:UInt16Literal> => Literal::UInt16(n),
     <n:Int32Literal> => Literal::Int32(n),
     <n:Int64Literal> => Literal::Int64(n),
-    <n:UInt16Literal> => Literal::UInt16(n),
     <n:DoubleLiteral> => Literal::Double(n),
 };
 
+UInt16Literal: u16 =
+    <digits:Spanned<r"[0-9]+_u16">> =>?
+        u16::from_str(&digits.value[..digits.value.len() - 4])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in UInt16"),
+            });
+
 Int32Literal: i32 =
-    <digits:Spanned<r"[0-9]+_i32">> =>? i32::from_str(&digits.value[..digits.value.len() - 4]).map_err(|error| ParseError::User {
-        error: Spanned::new(digits.span, "number too large to fit in Int32"),
-    });
+    <digits:Spanned<r"[0-9]+_i32">> =>?
+        i32::from_str(&digits.value[..digits.value.len() - 4])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in Int32"),
+            });
 
 DoubleLiteral : f64 =
-    <digits:Spanned<r"[0-9]+.[0-9]+">> =>? f64::from_str(digits.value).map_err(|error| ParseError::User {
-        error: Spanned::new(digits.span, "number is not a valid double"),
-    });
+    <digits:Spanned<r"[0-9]+.[0-9]+">> =>?
+        f64::from_str(digits.value)
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number is not a valid double"),
+            });
 
 Int64Literal: i64 =
-    <digits:Spanned<r"[0-9]+_i64">> =>? i64::from_str(&digits.value[..digits.value.len() - 4]).map_err(|error| ParseError::User {
-        error: Spanned::new(digits.span, "number too large to fit in Int64"),
-    });
-
-UInt16Literal: u16 =
-    <digits:Spanned<r"[0-9]+_u16">> =>? u16::from_str(&digits.value[..digits.value.len() - 4]).map_err(|error| ParseError::User {
-        error: Spanned::new(digits.span, "number too large to fit in UInt16"),
-    });
+    <digits:Spanned<r"[0-9]+_i64">> =>?
+        i64::from_str(&digits.value[..digits.value.len() - 4])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in Int64"),
+            });
 
 Ident: Ident =
     <name:r"[A-Za-z_][A-Za-z0-9_]*"> => Ident::from(name);
@@ -468,9 +483,6 @@ Comma<Rule>: Vec<Rule> =
         xs.extend(x);
         xs
     };
-
-Attr: Attr =
-    "#" "[" <path:Spanned<Path>> "]" => Attr { path };
 
 match {
     // Skip whitespace.

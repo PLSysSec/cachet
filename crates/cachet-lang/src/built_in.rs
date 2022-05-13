@@ -1,11 +1,14 @@
-use crate::ast::{Ident, Path};
-use lazy_static::lazy_static;
 use std::collections::HashMap;
+
+use enumset::EnumSetType;
+use lazy_static::lazy_static;
+
+use crate::ast::{Ident, Path};
 
 macro_rules! ordered_ident_enum {
     ($t:ident { $($i:ident = $l:literal),+ }) => {
         #[repr(usize)]
-        #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+        #[derive(Debug, EnumSetType, Hash)]
         pub enum $t {
             $($i),+
         }
@@ -135,7 +138,7 @@ impl BuiltInVar {
 }
 
 ordered_ident_enum! {
-    Attr {
+    BuiltInAttr {
         Prelude = "prelude"
     }
 }

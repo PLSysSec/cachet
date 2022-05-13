@@ -6,7 +6,7 @@ use crate::ast::{Span, Spanned};
 
 use crate::parser::ast::{Block, Expr};
 
-pub type ParseError<T> = lalrpop_util::ParseError<usize, T, UserParseError>;
+pub type RawParseError<T> = lalrpop_util::ParseError<usize, T, UserParseError>;
 pub type UserParseError = Spanned<&'static str>;
 
 #[derive(Default)]
@@ -19,14 +19,16 @@ pub enum VarTag {
 }
 
 impl VarTags {
-    pub fn reduce<T>(tags: impl Iterator<Item = Spanned<VarTag>>) -> Result<Self, ParseError<T>> {
+    pub fn reduce<T>(
+        tags: impl Iterator<Item = Spanned<VarTag>>,
+    ) -> Result<Self, RawParseError<T>> {
         let mut accum = VarTags::default();
 
         for tag in tags {
             match tag.value {
                 VarTag::Mut => {
                     if accum.mut_tag.replace(tag.span).is_some() {
-                        return Err(ParseError::User {
+                        return Err(RawParseError::User {
                             error: Spanned {
                                 span: tag.span,
                                 value: "duplicate `mut` tag",
@@ -53,14 +55,14 @@ pub enum ParamTag {
 impl ParamTags {
     pub fn reduce<T>(
         tags: impl Iterator<Item = Spanned<ParamTag>>,
-    ) -> Result<Self, ParseError<T>> {
+    ) -> Result<Self, RawParseError<T>> {
         let mut accum = ParamTags::default();
 
         for tag in tags {
             match tag.value {
                 ParamTag::Out => {
                     if accum.out_tag.replace(tag.span).is_some() {
-                        return Err(ParseError::User {
+                        return Err(RawParseError::User {
                             error: Spanned {
                                 span: tag.span,
                                 value: "duplicate `out` tag",
@@ -87,14 +89,14 @@ pub enum CallableTag {
 impl CallableTags {
     pub fn reduce<T>(
         tags: impl Iterator<Item = Spanned<CallableTag>>,
-    ) -> Result<Self, ParseError<T>> {
+    ) -> Result<Self, RawParseError<T>> {
         let mut accum = CallableTags::default();
 
         for tag in tags {
             match tag.value {
                 CallableTag::Unsafe => {
                     if accum.unsafe_tag.replace(tag.span).is_some() {
-                        return Err(ParseError::User {
+                        return Err(RawParseError::User {
                             error: Spanned {
                                 span: tag.span,
                                 value: "duplicate `unsafe` tag",

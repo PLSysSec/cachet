@@ -3,6 +3,7 @@
 use std::ops::{Index, IndexMut};
 
 use derive_more::From;
+use enumset::EnumSet;
 use thiserror::Error;
 use typed_index_collections::TiVec;
 
@@ -12,11 +13,11 @@ use crate::ast::{
     ArithKind, BitwiseKind, BlockKind, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path,
     Spanned,
 };
-use crate::built_in::{BuiltInType, BuiltInVar};
+use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::resolver;
 pub use crate::resolver::{
-    Attr, CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex, FnIndex,
-    GlobalVarIndex, GlobalVarItem, IrIndex, IrItem, Label, LabelIndex, LabelParam,
+    CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex, FnIndex,
+    GlobalVarIndex, GlobalVarItem, HasAttrs, IrIndex, IrItem, Label, LabelIndex, LabelParam,
     LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel,
     OutVar, ParamIndex, Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex,
     Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
@@ -169,6 +170,7 @@ pub struct NotPartOfDeclOrderError;
 pub struct CallableItem {
     pub path: Spanned<Path>,
     pub parent: Option<ParentIndex>,
+    pub attrs: EnumSet<BuiltInAttr>,
     pub is_unsafe: bool,
     pub params: Params,
     pub param_order: Vec<ParamIndex>,
@@ -176,7 +178,12 @@ pub struct CallableItem {
     pub interprets: Option<IrIndex>,
     pub emits: Option<IrIndex>,
     pub body: Option<Body>,
-    pub attrs: Vec<Spanned<Attr>>,
+}
+
+impl HasAttrs for CallableItem {
+    fn attrs(&self) -> &EnumSet<BuiltInAttr> {
+        &self.attrs
+    }
 }
 
 impl Typed for CallableItem {

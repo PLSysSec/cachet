@@ -5,35 +5,50 @@ use std::fmt::{self, Display};
 
 use codespan::RawIndex;
 use codespan_reporting::diagnostic::{Diagnostic, LabelStyle};
+use phf::phf_map;
 
 use cachet_util::fmt_join_or;
 
 use crate::ast::{FileId, Span};
 use crate::FrontendError;
 
-use crate::parser::helpers;
+use crate::parser::helpers::RawParseError;
 
 #[derive(Clone, Debug)]
 pub struct ParseError {
-    pub file_id: FileId,
-    pub(super) underlying_error: helpers::ParseError<String>,
+    file_id: FileId,
+    error: RawParseError<String>,
 }
 
 impl ParseError {
-    pub fn new<T: ToString>(file_id: FileId, underlying_error: helpers::ParseError<T>) -> Self {
+    pub(super) fn new<T: ToString>(file_id: FileId, error: RawParseError<T>) -> Self {
         Self {
             file_id,
-            underlying_error: underlying_error.map_token(|t| t.to_string()),
+            error: error.map_token(|token| token.to_string()),
         }
     }
+
+    pub fn file_id(&self) -> FileId {
+        self.file_id
+    }
 }
+
+static TOKEN_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
+    "r#\"[A-Za-z_][A-Za-z0-9_]*\"#" => "identiifer",
+    "r#\"[0-9]+_u16\"#" => "UInt16 literal",
+    "r#\"[0-9]+_i32\"#" => "Int32 literal",
+    "r#\"[0-9]+_i64\"#" => "Int64 literal",
+    "r#\"[0-9]+.[0-9]+\"#" => "Double literal",
+};
 
 fn fmt_expected(f: &mut fmt::Formatter, expected: &[String]) -> Result<(), fmt::Error> {
     if !expected.is_empty() {
         write!(f, "; expected ")?;
-        fmt_join_or(f, expected.iter(), |f, item| match item.as_str() {
-            "r#\"[A-Za-z_][A-Za-z0-9_]*\"#" => write!(f, "identifier"),
-            item => write!(f, "{}", item.replace("\"", "`")),
+        fmt_join_or(f, expected.iter(), |f, item| {
+            match TOKEN_NAMES.get(item.as_str()) {
+                Some(token_name) => write!(f, "{}", token_name),
+                None => write!(f, "{}", item.replace("\"", "`")),
+            }
         })?;
     }
     Ok(())
@@ -41,13 +56,13 @@ fn fmt_expected(f: &mut fmt::Formatter, expected: &[String]) -> Result<(), fmt::
 
 impl Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match &self.underlying_error {
-            helpers::ParseError::InvalidToken { .. } => write!(f, "invalid token")?,
-            helpers::ParseError::UnrecognizedEOF { expected, .. } => {
+        match &self.error {
+            RawParseError::InvalidToken { .. } => write!(f, "invalid token")?,
+            RawParseError::UnrecognizedEOF { expected, .. } => {
                 write!(f, "unexpected end of input")?;
                 fmt_expected(f, expected)?;
             }
-            helpers::ParseError::UnrecognizedToken {
+            RawParseError::UnrecognizedToken {
                 token: (_, token, _),
                 expected,
                 ..
@@ -55,13 +70,13 @@ impl Display for ParseError {
                 write!(f, "unexpected token `{}`", token)?;
                 fmt_expected(f, expected)?;
             }
-            helpers::ParseError::ExtraToken {
+            RawParseError::ExtraToken {
                 token: (_, token, _),
                 ..
             } => {
                 write!(f, "extra token `{}`", token)?;
             }
-            helpers::ParseError::User { error } => write!(f, "{}", error.value)?,
+            RawParseError::User { error } => write!(f, "{}", error.value)?,
         }
         Ok(())
     }
@@ -71,23 +86,21 @@ impl Error for ParseError {}
 
 impl FrontendError for ParseError {
     fn span(&self) -> Span {
-        match &self.underlying_error {
-            helpers::ParseError::InvalidToken { location } => {
+        match &self.error {
+            RawParseError::InvalidToken { location } => {
                 Span::new(self.file_id, *location as RawIndex..*location as RawIndex)
             }
-            helpers::ParseError::UnrecognizedEOF { location, .. } => {
+            RawParseError::UnrecognizedEOF { location, .. } => {
                 Span::new(self.file_id, *location as RawIndex..*location as RawIndex)
             }
-            helpers::ParseError::UnrecognizedToken {
+            RawParseError::UnrecognizedToken {
                 token: (start, _, end),
                 ..
             } => Span::new(self.file_id, *start as RawIndex..*end as RawIndex),
-
-            helpers::ParseError::ExtraToken {
+            RawParseError::ExtraToken {
                 token: (start, _, end),
             } => Span::new(self.file_id, *start as RawIndex..*end as RawIndex),
-
-            helpers::ParseError::User { error } => return error.span,
+            RawParseError::User { error } => return error.span,
         }
     }
 

@@ -23,7 +23,7 @@ pub mod type_checker;
 // TODO(spinda): pub mod well_formedness_checker;
 mod util;
 
-pub static PRELUDE: &str = include_str!("prelude.cachet");
+pub const PRELUDE: &'static str = include_str!("prelude.cachet");
 
 pub trait FrontendError: Error {
     fn span(&self) -> Span;

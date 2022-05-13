@@ -16,8 +16,7 @@ use cachet_lang::ast::{
     ArithKind, CastKind, CheckKind, CompareKind, Ident, NegateKind, Path, VarParamKind,
 };
 use cachet_lang::built_in::BuiltInVar;
-use cachet_lang::flattener::{self, Typed};
-use cachet_lang::resolver::HasAttrs;
+use cachet_lang::flattener::{self, HasAttrs, Typed};
 use cachet_util::MaybeOwned;
 
 use crate::bpl::ast::*;
@@ -93,6 +92,10 @@ impl<'a> Compiler<'a> {
     fn compile_enum_item(&mut self, enum_item: &flattener::EnumItem) {
         let type_ident = UserTypeIdent::from(enum_item.ident.value);
 
+        if BLOCKED_PATHS.contains_key(&enum_item.ident.value.into()) {
+            return;
+        }
+
         let type_item = TypeItem {
             ident: type_ident.into(),
             attr: Some(TypeAttr::DataType),
@@ -121,7 +124,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_struct_item(&mut self, struct_item: &flattener::StructItem) {
-        if BLOCKED_PATHS.get(&struct_item.ident.value.into()).is_some() {
+        if BLOCKED_PATHS.contains_key(&struct_item.ident.value.into()) {
             return;
         }
 
@@ -177,7 +180,7 @@ impl<'a> Compiler<'a> {
     fn compile_ir_item(&mut self, ir_item: &flattener::IrItem) {
         // TODO(spinda): Always generate label infrastructure for IRs.
 
-        if ir_item.emits.is_some() {
+        if ir_item.emits.is_some() || BLOCKED_PATHS.contains_key(&ir_item.ident.value.into()) {
             return;
         }
 
@@ -518,8 +521,7 @@ impl<'a> Compiler<'a> {
 
     fn compile_callable_item(&mut self, callable_index: flattener::CallableIndex) {
         let callable_item = &self.env[callable_index];
-
-        if BLOCKED_PATHS.get(&callable_item.path.value).is_some() || callable_item.is_prelude() {
+        if callable_item.is_prelude() || BLOCKED_PATHS.contains_key(&callable_item.path.value) {
             return;
         }
 
@@ -1338,6 +1340,7 @@ fn generate_emit_path_expr(emit_label_ident: &EmitLabelIdent) -> CallExpr {
         })
 }
 
+#[derive(Clone, Copy)]
 enum CallableRepr {
     Fn,
     Proc,
@@ -1345,9 +1348,8 @@ enum CallableRepr {
 
 impl CallableRepr {
     fn for_callable(callable_item: &flattener::CallableItem) -> Self {
-        match BLOCKED_PATHS.get(&callable_item.path.value) {
-            Some(BlockedType::Proc) => return Self::Proc,
-            _ => (),
+        if let Some(callable_repr) = BLOCKED_PATHS.get(&callable_item.path.value) {
+            return *callable_repr;
         };
 
         let has_out_params =
@@ -2151,18 +2153,13 @@ enum CompiledInvocation {
     ProcCall(VarIdent),
 }
 
-pub enum BlockedType {
-    Proc,
-    Var,
-}
-
 lazy_static! {
     // Temporary hack to implement a few functions in Boogie, until we implement
     // support for conditional compilation and polymorphism in Cachet.
-    pub static ref BLOCKED_PATHS: HashMap<Path, BlockedType> = {
-        use BlockedType::*;
+    static ref BLOCKED_PATHS: HashMap<Path, CallableRepr> = {
+        use CallableRepr::*;
         HashMap::from([
-            (Ident::from("ValueReg").into(), Var),
+            (Ident::from("ValueReg").into(), Proc),
             (Ident::from("MASM").nest("getValue".into()), Proc),
             (Ident::from("MASM").nest("setValue".into()), Proc),
             (Ident::from("MASM").nest("getInt32".into()), Proc),

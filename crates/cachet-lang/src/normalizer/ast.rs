@@ -3,17 +3,17 @@
 use std::ops::{Index, IndexMut};
 
 use derive_more::From;
+use enumset::EnumSet;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
     ArithKind, BitwiseKind, BlockKind, CastKind, CheckKind, CompareKind, NegateKind, Path, Spanned,
 };
-use crate::built_in::{BuiltInType, BuiltInVar};
-use crate::resolver::HasAttrs;
+use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::type_checker;
 pub use crate::type_checker::{
-    Attr, BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, Field,
-    FieldIndex, FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, IrIndex, IrItem, Label,
+    BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex,
+    FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, HasAttrs, IrIndex, IrItem, Label,
     LabelIndex, LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar,
     LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex,
     Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr,
@@ -97,6 +97,7 @@ deref_index!(Env<B>[&CallableIndex] => CallableItem<B> | <B>);
 pub struct CallableItem<B = ()> {
     pub path: Spanned<Path>,
     pub parent: Option<ParentIndex>,
+    pub attrs: EnumSet<BuiltInAttr>,
     pub is_unsafe: bool,
     pub params: Params,
     pub param_order: Vec<ParamIndex>,
@@ -104,11 +105,10 @@ pub struct CallableItem<B = ()> {
     pub interprets: Option<IrIndex>,
     pub emits: Option<IrIndex>,
     pub body: Option<Body<B>>,
-    pub attrs: Vec<Spanned<Attr>>,
 }
 
 impl<B> HasAttrs for CallableItem<B> {
-    fn attrs(&self) -> &[Spanned<Attr>] {
+    fn attrs(&self) -> &EnumSet<BuiltInAttr> {
         &self.attrs
     }
 }

@@ -10,6 +10,11 @@ use crate::ast::{
     VarParamKind,
 };
 
+#[derive(Clone, Debug)]
+pub struct Attr {
+    pub path: Spanned<Path>,
+}
+
 #[derive(Clone, Debug, From)]
 pub enum Item {
     #[from]
@@ -65,24 +70,19 @@ pub struct ImplItem {
 #[derive(Clone, Debug)]
 pub struct GlobalVarItem {
     pub ident: Spanned<Ident>,
+    pub attrs: Vec<Attr>,
     pub is_mut: bool,
     pub type_: Spanned<Path>,
-    pub attrs: Vec<Spanned<Attr>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct CallableItem {
     pub ident: Spanned<Ident>,
+    pub attrs: Vec<Attr>,
     pub is_unsafe: bool,
     pub params: Vec<Param>,
     pub ret: Option<Spanned<Path>>,
     pub body: Spanned<Option<Block>>,
-    pub attrs: Vec<Spanned<Attr>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct Attr {
-    pub path: Spanned<Path>,
 }
 
 #[derive(Clone, Debug, From)]

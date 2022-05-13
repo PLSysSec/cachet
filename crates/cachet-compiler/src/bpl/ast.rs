@@ -1061,7 +1061,6 @@ fn fmt_f64(f: f64) -> String {
     } else {
         let bits: u64 = f.to_bits();
         let sign = if bits >> 63 == 0 { "" } else { "-" };
-
         let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
         let mut mantissa = if exponent == 0 {
             (bits & 0xfffffffffffff) << 1

@@ -4,13 +4,13 @@ use void::Void;
 
 use crate::normalizer;
 pub use crate::normalizer::{
-    Arg, ArithExpr, Attr, BindStmt, BitwiseExpr, Call, CallableIndex, CompareExpr, DeclIndex,
-    EmitStmt, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex, FnIndex, GlobalVarIndex,
-    GlobalVarItem, GotoStmt, InvokeExpr, InvokeStmt, IrIndex, IrItem, Label, LabelArg, LabelIndex,
-    LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex,
-    Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
-    PureExpr, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex,
-    VarParam, VarParamIndex, VariantIndex,
+    Arg, ArithExpr, BindStmt, BitwiseExpr, Call, CallableIndex, CompareExpr, DeclIndex, EmitStmt,
+    EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex, FnIndex, GlobalVarIndex,
+    GlobalVarItem, GotoStmt, HasAttrs, InvokeExpr, InvokeStmt, IrIndex, IrItem, Label, LabelArg,
+    LabelIndex, LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar,
+    LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex,
+    Params, ParentIndex, PureExpr, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed,
+    VarExpr, VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 
 pub type Env = normalizer::Env<Void>;

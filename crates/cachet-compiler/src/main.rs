@@ -2,11 +2,12 @@
 
 use std::fs::{read_to_string, File};
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Error};
 use codespan_reporting::term;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+use iterate::iterate;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
@@ -78,20 +79,18 @@ fn main() -> Result<(), Error> {
         .with_context(|| format!("Failed to read {}", opt.input.display()))?;
 
     let mut parser = Parser::new();
-    let prelude = parser.parse("prelude.cachet".into(), cachet_lang::PRELUDE);
-    let main = parser.parse(opt.input.to_string_lossy().to_string(), &src);
+    let prelude = parser.parse("<prelude>", cachet_lang::PRELUDE);
+    let main = parser.parse(&opt.input, &src);
 
     if prelude.is_err() || main.is_err() {
-        let errors = prelude
-            .err()
-            .into_iter()
-            .chain(main.err().into_iter())
-            .collect::<Vec<_>>();
-        report_all(parser.files, errors.iter());
+        let errors: Vec<_> =
+            iterate![..prelude.err().into_iter(), ..main.err().into_iter()].collect();
+        report_all(&parser.files, errors.iter());
 
+        let first_error_file_name = Path::new(parser.files.name(errors[0].file_id()));
         return Err(Error::msg(format!(
             "Failed to parse {}",
-            opt.input.display()
+            first_error_file_name.display()
         )));
     }
 
@@ -103,7 +102,7 @@ fn main() -> Result<(), Error> {
     let env = match resolve(items) {
         Ok(env) => env,
         Err(ResolveErrors(errors)) => {
-            report_all(parser.files, errors.iter());
+            report_all(&parser.files, errors.iter());
             return Err(Error::msg(format!(
                 "Failed to resolve names in {}",
                 opt.input.display()
@@ -117,7 +116,7 @@ fn main() -> Result<(), Error> {
     let env = match type_check(env) {
         Ok(env) => env,
         Err(TypeCheckErrors(errors)) => {
-            report_all(parser.files, errors.iter());
+            report_all(&parser.files, errors.iter());
             return Err(Error::msg(format!(
                 "Failed to type check {}",
                 opt.input.display()
@@ -176,12 +175,12 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn report_all<'a, E: 'a + FrontendError>(files: Files, errors: impl Iterator<Item = &'a E>) {
+fn report_all<'a, E: 'a + FrontendError>(files: &Files, errors: impl Iterator<Item = &'a E>) {
     let writer = StandardStream::stderr(ColorChoice::Auto);
     let config = term::Config::default();
 
     for error in errors {
         let diagnostic = error.build_diagnostic();
-        term::emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
+        term::emit(&mut writer.lock(), &config, files, &diagnostic).unwrap();
     }
 }

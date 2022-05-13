@@ -266,6 +266,7 @@ impl<'a> TypeChecker<'a> {
         CallableItem {
             path: callable_item.path.into(),
             parent: callable_item.parent,
+            attrs: callable_item.attrs,
             is_unsafe: callable_item.is_unsafe,
             params: callable_item.params.clone(),
             param_order: callable_item.param_order.clone(),
@@ -273,7 +274,6 @@ impl<'a> TypeChecker<'a> {
             interprets: interprets.map(|interprets| interprets.value),
             emits: emits.map(|emits| emits.value),
             body,
-            attrs: callable_item.attrs.clone(),
         }
     }
 

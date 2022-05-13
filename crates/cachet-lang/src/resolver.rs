@@ -15,7 +15,7 @@ use typed_index_collections::{TiSlice, TiVec};
 use cachet_util::{collect_eager, deref_from, MaybeOwned};
 
 use crate::ast::{Ident, Path, Spanned};
-use crate::built_in::{BuiltInType, BuiltInVar};
+use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::parser;
 use crate::util::map_spanned;
 use crate::FrontendError;
@@ -434,6 +434,26 @@ impl<'a> Resolver<'a> {
         resolver
     }
 
+    fn resolve_attrs(&mut self, attrs: Vec<parser::Attr>) -> Option<EnumSet<BuiltInAttr>> {
+        collect_eager(attrs.into_iter().map(|attr| self.resolve_attr(attr)))
+    }
+
+    fn resolve_attr(&mut self, attr: parser::Attr) -> Option<BuiltInAttr> {
+        let resolved_attr = BuiltInAttr::from_path(attr.path.value);
+
+        if resolved_attr.is_none() {
+            self.errors.push(
+                UndefinedError {
+                    path: attr.path,
+                    expected: NameKind::Attr.into(),
+                }
+                .into(),
+            );
+        }
+
+        resolved_attr
+    }
+
     fn resolve_struct_item(&mut self, struct_item: parser::StructItem) -> Option<StructItem> {
         let supertype = match struct_item.supertype {
             None => Some(None),
@@ -490,36 +510,15 @@ impl<'a> Resolver<'a> {
             .lookup_type_global(global_var_item.item.type_)
             .found(&mut self.errors);
 
-        let attrs = global_var_item
-            .item
-            .attrs
-            .into_iter()
-            .filter_map(|attr| map_spanned(attr, |attr| self.resolve_attr(attr.value)))
-            .collect();
+        let attrs = self.resolve_attrs(global_var_item.item.attrs);
 
         Some(GlobalVarItem {
             path: global_var_item.path,
             parent: parent_index?,
+            attrs: attrs?,
             is_mut: global_var_item.item.is_mut,
             type_: type_?,
-            attrs,
         })
-    }
-
-    fn resolve_attr(&mut self, ast_attr: parser::Attr) -> Option<Attr> {
-        let attr = Attr::from_path(ast_attr.path.value);
-
-        if attr.is_none() {
-            self.errors.push(
-                UndefinedError {
-                    path: ast_attr.path,
-                    expected: NameKind::Attr.into(),
-                }
-                .into(),
-            );
-        }
-
-        attr
     }
 
     fn resolve_callable_item(
@@ -528,6 +527,16 @@ impl<'a> Resolver<'a> {
     ) -> Option<CallableItem> {
         let parent_index = match callable_item.parent {
             Some((_, parent_index)) => self.resolve_parent_index(parent_index).map(Some),
+            None => Some(None),
+        };
+
+        let attrs = self.resolve_attrs(callable_item.item.attrs);
+
+        let ret = match callable_item.item.ret {
+            Some(ret) => map_spanned(ret, |ret| {
+                self.lookup_type_global(ret).found(&mut self.errors)
+            })
+            .map(Some),
             None => Some(None),
         };
 
@@ -546,30 +555,15 @@ impl<'a> Resolver<'a> {
             None => Some(None),
         });
 
-        let attrs = callable_item
-            .item
-            .attrs
-            .into_iter()
-            .filter_map(|attr| map_spanned(attr, |attr| self.resolve_attr(attr.value)))
-            .collect();
-
-        let ret = match callable_item.item.ret {
-            Some(ret) => map_spanned(ret, |ret| {
-                self.lookup_type_global(ret).found(&mut self.errors)
-            })
-            .map(Some),
-            None => Some(None),
-        };
-
         Some(CallableItem {
             path: callable_item.path.into(),
             parent: parent_index?,
+            attrs: attrs?,
             is_unsafe: callable_item.item.is_unsafe,
             params,
             param_order,
             ret: ret?,
             body: body?,
-            attrs,
         })
     }
 

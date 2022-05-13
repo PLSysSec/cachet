@@ -3,6 +3,7 @@
 use std::ops::{Index, IndexMut};
 
 use derive_more::From;
+use enumset::EnumSet;
 use typed_index_collections::TiVec;
 
 use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_index};
@@ -11,8 +12,7 @@ use crate::ast::{
     ArithKind, BitwiseKind, BlockKind, CheckKind, CompareKind, Ident, MaybeSpanned, NegateKind,
     Path, Spanned, VarParamKind,
 };
-pub use crate::built_in::Attr;
-use crate::built_in::{BuiltInType, BuiltInVar};
+use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 pub use crate::parser::{FieldIndex, Literal, VariantIndex};
 
 #[derive(Clone, Debug)]
@@ -138,6 +138,14 @@ pub enum LabelIndex {
 
 deref_from!(&LabelParamIndex => LabelIndex);
 deref_from!(&LocalLabelIndex => LabelIndex);
+
+pub trait HasAttrs {
+    fn attrs(&self) -> &EnumSet<BuiltInAttr>;
+
+    fn is_prelude(&self) -> bool {
+        self.attrs().contains(BuiltInAttr::Prelude)
+    }
+}
 
 pub trait Typed {
     fn type_(&self) -> TypeIndex;
@@ -273,9 +281,15 @@ pub struct IrItem {
 pub struct GlobalVarItem {
     pub path: Spanned<Path>,
     pub parent: Option<ParentIndex>,
+    pub attrs: EnumSet<BuiltInAttr>,
     pub is_mut: bool,
     pub type_: TypeIndex,
-    pub attrs: Vec<Spanned<Attr>>,
+}
+
+impl HasAttrs for GlobalVarItem {
+    fn attrs(&self) -> &EnumSet<BuiltInAttr> {
+        &self.attrs
+    }
 }
 
 impl Typed for GlobalVarItem {
@@ -284,22 +298,22 @@ impl Typed for GlobalVarItem {
     }
 }
 
-impl HasAttrs for GlobalVarItem {
-    fn attrs(&self) -> &[Spanned<Attr>] {
-        &self.attrs
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct CallableItem {
     pub path: Spanned<Path>,
     pub parent: Option<ParentIndex>,
+    pub attrs: EnumSet<BuiltInAttr>,
     pub is_unsafe: bool,
     pub params: Params,
     pub param_order: Vec<ParamIndex>,
     pub ret: Option<Spanned<TypeIndex>>,
     pub body: Spanned<Option<Body>>,
-    pub attrs: Vec<Spanned<Attr>>,
+}
+
+impl HasAttrs for CallableItem {
+    fn attrs(&self) -> &EnumSet<BuiltInAttr> {
+        &self.attrs
+    }
 }
 
 impl Typed for CallableItem {
@@ -660,15 +674,4 @@ pub struct BitwiseExpr {
     pub kind: Spanned<BitwiseKind>,
     pub lhs: Spanned<Expr>,
     pub rhs: Spanned<Expr>,
-}
-
-pub trait HasAttrs {
-    fn attrs(&self) -> &[Spanned<Attr>];
-
-    fn is_prelude(&self) -> bool {
-        self.attrs()
-            .iter()
-            .find(|attr| attr.value == Attr::Prelude)
-            .is_some()
-    }
 }
