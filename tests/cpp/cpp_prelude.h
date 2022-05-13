@@ -16,7 +16,6 @@ namespace cachet {
 
 namespace prelude {
 
-struct Cachet_Bail {};
 
 template <typename T>
 struct PrimitiveType {
@@ -183,5 +182,7 @@ inline Type_Bool::Ref Var_false(T ctx) {
 };  // namespace prelude
 
 };  // namespace cachet
+
+void Cachet_Assert(bool cond);
 
 #endif /*  cachet_prelude */

@@ -14,10 +14,10 @@ use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::resolver;
 pub use crate::resolver::{
     CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex, FnIndex,
-    GlobalVarIndex, GlobalVarItem, HasAttrs, IrIndex, IrItem, Label, LabelIndex, LabelParam,
-    LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel,
-    OutVar, ParamIndex, Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex,
-    Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
+    GlobalVarIndex, HasAttrs, IrIndex, IrItem, Label, LabelIndex, LabelParam, LabelParamIndex,
+    LabelStmt, Literal, LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel, OutVar, ParamIndex,
+    Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarIndex,
+    VarParam, VarParamIndex, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -162,6 +162,22 @@ deref_from!(&CallableIndex => DeclIndex);
 #[derive(Clone, Copy, Debug, Default, Error)]
 #[error("item is not part of the declaration order")]
 pub struct NotPartOfDeclOrderError;
+
+#[derive(Clone, Debug)]
+pub struct GlobalVarItem {
+    pub path: Spanned<Path>,
+    pub parent: Option<ParentIndex>,
+    pub is_mut: bool,
+    pub type_: TypeIndex,
+    pub value: Option<Spanned<Expr>>,
+    pub attrs: EnumSet<BuiltInAttr>,
+}
+
+impl HasAttrs for GlobalVarItem {
+    fn attrs(&self) -> &EnumSet<BuiltInAttr> {
+        &self.attrs
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct CallableItem {

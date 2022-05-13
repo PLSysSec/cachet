@@ -5,9 +5,7 @@ use typed_index_collections::TiVec;
 
 use cachet_util::{box_from, deref_from, typed_field_index};
 
-use crate::ast::{
-    BinOper, BlockKind, CheckKind, Ident, NegateKind, Path, Spanned, VarParamKind,
-};
+use crate::ast::{BinOper, BlockKind, CheckKind, Ident, NegateKind, Path, Spanned, VarParamKind};
 
 #[derive(Clone, Debug)]
 pub struct Attr {
@@ -72,6 +70,7 @@ pub struct GlobalVarItem {
     pub attrs: Vec<Attr>,
     pub is_mut: bool,
     pub type_: Spanned<Path>,
+    pub value: Option<Spanned<Expr>>,
 }
 
 #[derive(Clone, Debug)]

@@ -5,16 +5,17 @@ use void::Void;
 use crate::normalizer;
 pub use crate::normalizer::{
     Arg, BinOperExpr, BindStmt, Call, CallableIndex, DeclIndex, EmitStmt, EnumIndex, EnumItem,
-    EnumVariantIndex, Field, FieldIndex, FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt,
-    HasAttrs, InvokeExpr, InvokeStmt, IrIndex, IrItem, Label, LabelArg, LabelIndex, LabelParam,
-    LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,
-    NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
-    PureExpr, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex,
-    VarParam, VarParamIndex, VariantIndex,
+    EnumVariantIndex, Field, FieldIndex, FnIndex, GlobalVarIndex, GotoStmt, HasAttrs, InvokeExpr,
+    InvokeStmt, IrIndex, IrItem, Label, LabelArg, LabelIndex, LabelParam, LabelParamIndex,
+    LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals, NotPartOfDeclOrderError,
+    OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex, PureExpr, StructFieldIndex,
+    StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam, VarParamIndex,
+    VariantIndex,
 };
 
 pub type Env = normalizer::Env<Void>;
 pub type CallableItem = normalizer::CallableItem<Void>;
+pub type GlobalVarItem = normalizer::GlobalVarItem<Void>;
 pub type Body = normalizer::Body<Void>;
 
 pub type Stmt = normalizer::Stmt<Void>;

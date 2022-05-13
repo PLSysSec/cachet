@@ -35,19 +35,49 @@ pub fn normalize(env: type_checker::Env) -> Env {
         .map(|op_item| normalize_callable_item(global_var_items, op_item))
         .collect();
 
+    let global_var_items: TiVec<GlobalVarIndex, _> = env
+        .global_var_items
+        .iter()
+        .map(|global_var_item| normalize_global_var_item(global_var_items, global_var_item))
+        .collect();
+
     Env {
         enum_items: env.enum_items,
         struct_items: env.struct_items,
         ir_items: env.ir_items,
-        global_var_items: env.global_var_items,
+        global_var_items,
         fn_items,
         op_items,
         decl_order: env.decl_order,
     }
 }
 
+fn normalize_global_var_item(
+    global_var_items: &TiSlice<GlobalVarIndex, type_checker::GlobalVarItem>,
+    global_var_item: &type_checker::GlobalVarItem,
+) -> GlobalVarItem {
+    let value = global_var_item.value.as_ref().map(|value| {
+        let mut local_vars = TiVec::new();
+        let mut normalizer =
+            Normalizer::new(global_var_items, TiSlice::from_ref(&[]), &mut local_vars);
+
+        value
+            .clone()
+            .map(|value| normalizer.normalize_const_expr(value))
+    });
+
+    GlobalVarItem {
+        path: global_var_item.path,
+        parent: global_var_item.parent,
+        is_mut: global_var_item.is_mut,
+        type_: global_var_item.type_,
+        value,
+        attrs: global_var_item.attrs,
+    }
+}
+
 fn normalize_callable_item(
-    global_var_items: &TiSlice<GlobalVarIndex, GlobalVarItem>,
+    global_var_items: &TiSlice<GlobalVarIndex, type_checker::GlobalVarItem>,
     callable_item: type_checker::CallableItem,
 ) -> CallableItem {
     let ret = if callable_item.ret == BuiltInType::Unit.into() {
@@ -84,14 +114,14 @@ fn normalize_callable_item(
 }
 
 struct Normalizer<'a> {
-    global_var_items: &'a TiSlice<GlobalVarIndex, GlobalVarItem>,
+    global_var_items: &'a TiSlice<GlobalVarIndex, type_checker::GlobalVarItem>,
     var_params: &'a TiSlice<VarParamIndex, VarParam>,
     local_vars: &'a mut TiVec<LocalVarIndex, LocalVar>,
 }
 
 impl<'a> Normalizer<'a> {
     fn new(
-        global_var_items: &'a TiSlice<GlobalVarIndex, GlobalVarItem>,
+        global_var_items: &'a TiSlice<GlobalVarIndex, type_checker::GlobalVarItem>,
         var_params: &'a TiSlice<VarParamIndex, VarParam>,
         local_vars: &'a mut TiVec<LocalVarIndex, LocalVar>,
     ) -> Self {
@@ -100,6 +130,19 @@ impl<'a> Normalizer<'a> {
             var_params,
             local_vars,
         }
+    }
+
+    fn normalize_const_expr(&mut self, expr: type_checker::Expr) -> Expr {
+        let mut stmts = vec![];
+        let mut scoped_normalizer = ScopedNormalizer::new(self, &mut stmts);
+
+        let expr = scoped_normalizer.normalize_expr(expr);
+        debug_assert!(
+            stmts.len() == 0,
+            "const expressions should not require preceding stmts"
+        );
+
+        expr
     }
 
     fn normalize_body_block(&mut self, block: type_checker::Block) -> Vec<Stmt> {

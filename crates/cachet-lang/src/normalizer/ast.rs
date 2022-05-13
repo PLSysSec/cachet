@@ -11,11 +11,11 @@ use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 
 pub use crate::type_checker::{
     BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex,
-    FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, HasAttrs, IrIndex, IrItem, Label,
-    LabelIndex, LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar,
-    LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex,
-    Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr,
-    VarIndex, VarParam, VarParamIndex, VariantIndex,
+    FnIndex, GlobalVarIndex, GotoStmt, HasAttrs, IrIndex, IrItem, Label, LabelIndex, LabelParam,
+    LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,
+    NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
+    StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam,
+    VarParamIndex, VariantIndex,
 };
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
@@ -24,7 +24,7 @@ pub struct Env<B = ()> {
     pub enum_items: TiVec<EnumIndex, EnumItem>,
     pub struct_items: TiVec<StructIndex, StructItem>,
     pub ir_items: TiVec<IrIndex, IrItem>,
-    pub global_var_items: TiVec<GlobalVarIndex, GlobalVarItem>,
+    pub global_var_items: TiVec<GlobalVarIndex, GlobalVarItem<B>>,
     pub fn_items: TiVec<FnIndex, CallableItem<B>>,
     pub op_items: TiVec<OpIndex, CallableItem<B>>,
     pub decl_order: Vec<DeclIndex>,
@@ -33,9 +33,25 @@ pub struct Env<B = ()> {
 field_index!(Env<B>:enum_items[EnumIndex] => EnumItem | <B>);
 field_index!(Env<B>:struct_items[StructIndex] => StructItem | <B>);
 field_index!(Env<B>:ir_items[IrIndex] => IrItem | <B>);
-field_index!(Env<B>:global_var_items[GlobalVarIndex] => GlobalVarItem | <B>);
+field_index!(Env<B>:global_var_items[GlobalVarIndex] => GlobalVarItem<B> | <B>);
 field_index!(Env<B>:fn_items[FnIndex] => CallableItem<B> | <B>);
 field_index!(Env<B>:op_items[OpIndex] => CallableItem<B> | <B>);
+
+#[derive(Clone, Debug)]
+pub struct GlobalVarItem<B = ()> {
+    pub path: Spanned<Path>,
+    pub parent: Option<ParentIndex>,
+    pub is_mut: bool,
+    pub type_: TypeIndex,
+    pub value: Option<Spanned<Expr<B>>>,
+    pub attrs: EnumSet<BuiltInAttr>,
+}
+
+impl<B> HasAttrs for GlobalVarItem<B> {
+    fn attrs(&self) -> &EnumSet<BuiltInAttr> {
+        &self.attrs
+    }
+}
 
 impl<B> Index<EnumVariantIndex> for Env<B> {
     type Output = Spanned<Path>;
@@ -90,6 +106,37 @@ impl<B> IndexMut<CallableIndex> for Env<B> {
 }
 
 deref_index!(Env<B>[&CallableIndex] => CallableItem<B> | <B>);
+
+#[derive(Copy, Clone, Default)]
+pub struct Scope<'b> {
+    pub params: Option<&'b Params>,
+    pub locals: Option<&'b Locals>,
+}
+
+impl<'b> Scope<'b> {
+    pub fn local<I>(&self, index: I) -> &<Locals as Index<I>>::Output
+    where
+        Locals: Index<I>,
+    {
+        &self.locals.unwrap()[index]
+    }
+
+    pub fn param<I>(&self, index: I) -> &<Params as Index<I>>::Output
+    where
+        Params: Index<I>,
+    {
+        &self.params.unwrap()[index]
+    }
+}
+
+impl<'b> From<&'b CallableItem> for Scope<'b> {
+    fn from(callable: &'b CallableItem) -> Self {
+        Self {
+            params: Some(&callable.params),
+            locals: callable.body.as_ref().map(|body| &body.locals)
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct CallableItem<B = ()> {

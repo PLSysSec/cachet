@@ -69,8 +69,11 @@ ImplItem: ImplItem =
 
 GlobalVarItem: GlobalVarItem =
     <attrs:Attrs>
-    "var" <tags:VarTags> <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> ";" =>
-        GlobalVarItem { ident, attrs, is_mut: tags.mut_tag.is_some(), type_ };
+    "var" <tags:VarTags> <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> <value:GlobalVarValue?> ";" =>
+        GlobalVarItem { ident, attrs, is_mut: tags.mut_tag.is_some(), type_, value };
+
+GlobalVarValue: Spanned<Expr> =
+    "=" <expr:Spanned<Expr>> => expr;
 
 #[inline]
 VarTags: VarTags =
