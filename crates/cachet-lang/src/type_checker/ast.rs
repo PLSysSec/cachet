@@ -9,7 +9,7 @@ use typed_index_collections::TiVec;
 
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
-use crate::ast::{BinOpKind, BlockKind, CastKind, CheckKind, Ident, NegateKind, Path, Spanned};
+use crate::ast::{BinOper, BlockKind, CastKind, CheckKind, Ident, NegateKind, Path, Spanned};
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::resolver;
 pub use crate::resolver::{
@@ -443,9 +443,9 @@ pub enum Expr {
     #[from]
     Cast(Box<CastExpr>),
     #[from]
-    Assign(Box<AssignExpr>),
+    BinOper(Box<BinOperExpr>),
     #[from]
-    BinOp(Box<BinOpExpr>),
+    Assign(Box<AssignExpr>),
 }
 
 impl Typed for Expr {
@@ -459,7 +459,7 @@ impl Typed for Expr {
             Expr::Negate(negate_expr) => negate_expr.type_(),
             Expr::Cast(cast_expr) => cast_expr.type_(),
             Expr::Assign(assign_expr) => assign_expr.type_(),
-            Expr::BinOp(binop_expr) => binop_expr.type_(),
+            Expr::BinOper(bin_oper_expr) => bin_oper_expr.type_(),
         }
     }
 }
@@ -468,8 +468,8 @@ box_from!(KindedBlock => Expr);
 box_from!(FieldAccessExpr => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
+box_from!(BinOperExpr => Expr);
 box_from!(AssignExpr => Expr);
-box_from!(BinOpExpr => Expr);
 
 deref_from!(&Literal => Expr);
 
@@ -553,6 +553,20 @@ impl Typed for CastExpr {
 }
 
 #[derive(Clone, Debug)]
+pub struct BinOperExpr {
+    pub oper: BinOper,
+    pub lhs: Expr,
+    pub rhs: Expr,
+    pub type_: TypeIndex,
+}
+
+impl Typed for BinOperExpr {
+    fn type_(&self) -> TypeIndex {
+        self.type_
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct AssignExpr {
     pub lhs: Spanned<VarIndex>,
     pub rhs: Expr,
@@ -565,19 +579,5 @@ impl AssignExpr {
 impl Typed for AssignExpr {
     fn type_(&self) -> TypeIndex {
         AssignExpr::TYPE.into()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct BinOpExpr {
-    pub kind: BinOpKind,
-    pub lhs: Expr,
-    pub rhs: Expr,
-    pub type_: TypeIndex,
-}
-
-impl Typed for BinOpExpr {
-    fn type_(&self) -> TypeIndex {
-        self.type_
     }
 }

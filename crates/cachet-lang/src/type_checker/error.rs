@@ -117,6 +117,8 @@ pub enum TypeCheckError {
         rhs_span: Span,
         rhs_type: Ident,
     },
+    // TODO(spinda): Set up operator type categories: numeric, signed numeric,
+    // integral.
     #[error("mismatched operand type for numeric operator")]
     NumericOperatorTypeMismatch {
         operand_span: Span,

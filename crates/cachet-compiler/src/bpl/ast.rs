@@ -10,7 +10,10 @@ use std::ops::{Deref, DerefMut};
 use derive_more::{Display, From};
 use enum_map::Enum;
 
-use cachet_lang::ast::{CastKind, CheckKind, Ident, NegateKind};
+use cachet_lang::ast::{
+    ArithBinOper, BitwiseBinOper, CastKind, CheckKind, CompareBinOper, Ident, LogicalBinOper,
+    NegateKind, NumericCompareBinOper,
+};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 use cachet_util::{
     box_from, deref_from, fmt_join, fmt_join_leading, fmt_join_trailing, typed_index, AffixWriter,
@@ -273,44 +276,14 @@ pub struct TypeMemberFnIdent {
 pub enum TypeMemberFnSelector {
     #[display(fmt = "negate")]
     Negate,
-    #[display(fmt = "{}", _0)]
-    #[from]
-    BinOp(BinOpTypeMemberFnSelector),
     #[from]
     Cast(CastTypeMemberFnSelector),
-    #[display(fmt = "{}", _0)]
     #[from]
     Variant(VariantCtorTypeMemberFnSelector),
     #[from]
     Field(FieldTypeMemberFnSelector),
-}
-
-#[derive(Clone, Copy, Debug, From, Display)]
-pub enum BinOpTypeMemberFnSelector {
-    #[display(fmt = "bitOr")]
-    BitOr,
-    #[display(fmt = "bitAnd")]
-    BitAnd,
-    #[display(fmt = "xor")]
-    BitXor,
-    #[display(fmt = "shl")]
-    BitLsh,
-    #[display(fmt = "add")]
-    Add,
-    #[display(fmt = "sub")]
-    Sub,
-    #[display(fmt = "mul")]
-    Mul,
-    #[display(fmt = "div")]
-    Div,
-    #[display(fmt = "lte")]
-    Lte,
-    #[display(fmt = "gte")]
-    Gte,
-    #[display(fmt = "lt")]
-    Lt,
-    #[display(fmt = "gt")]
-    Gt,
+    #[from]
+    BinOper(BinOperTypeMemberFnSelector),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -344,6 +317,44 @@ pub struct VariantCtorTypeMemberFnSelector {
 #[display(fmt = "field~{}", field_ident)]
 pub struct FieldTypeMemberFnSelector {
     pub field_ident: Ident,
+}
+
+#[derive(Clone, Copy, Debug, From)]
+pub enum BinOperTypeMemberFnSelector {
+    Arith(ArithBinOper),
+    Bitwise(BitwiseBinOper),
+    NumericCompare(NumericCompareBinOper),
+}
+
+impl Display for BinOperTypeMemberFnSelector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self {
+                BinOperTypeMemberFnSelector::Arith(arith_bin_oper) => match arith_bin_oper {
+                    ArithBinOper::Mul => "mul",
+                    ArithBinOper::Div => "div",
+                    ArithBinOper::Add => "add",
+                    ArithBinOper::Sub => "sub",
+                },
+                BinOperTypeMemberFnSelector::Bitwise(bitwise_bin_oper) => match bitwise_bin_oper {
+                    BitwiseBinOper::Shl => "shl",
+                    BitwiseBinOper::And => "bitAnd",
+                    BitwiseBinOper::Xor => "xor",
+                    BitwiseBinOper::Or => "bitOr",
+                },
+                BinOperTypeMemberFnSelector::NumericCompare(numeric_compare_bin_oper) =>
+                    match numeric_compare_bin_oper {
+                        NumericCompareBinOper::Lt => "lt",
+                        NumericCompareBinOper::Gt => "gt",
+                        NumericCompareBinOper::Lte => "lte",
+                        NumericCompareBinOper::Gte => "gte",
+                    },
+            }
+        )?;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -958,17 +969,14 @@ pub enum Expr {
     #[from]
     Negate(Box<NegateExpr>),
     #[from]
-    Compare(Box<BinOpExpr>),
-    #[from]
-    Arith(Box<ArithExpr>),
+    BinOper(Box<BinOperExpr>),
     #[from]
     ForAll(Box<ForAllExpr>),
 }
 
 box_from!(IndexExpr => Expr);
 box_from!(NegateExpr => Expr);
-box_from!(BinOpExpr => Expr);
-box_from!(ArithExpr => Expr);
+box_from!(BinOperExpr => Expr);
 box_from!(ForAllExpr => Expr);
 
 deref_from!(&Literal => Expr);
@@ -980,7 +988,7 @@ impl Display for MaybeGrouped<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let needs_group = match self.0 {
             Expr::Literal(_) | Expr::Var(_) | Expr::Index(_) | Expr::Call(_) => false,
-            Expr::Negate(_) | Expr::Compare(_) | Expr::Arith(_) | Expr::ForAll(_) => true,
+            Expr::Negate(_) | Expr::BinOper(_) | Expr::ForAll(_) => true,
         };
 
         if needs_group {
@@ -1116,57 +1124,27 @@ pub struct NegateExpr {
     pub expr: Expr,
 }
 
-#[derive(Clone, Debug)]
-pub struct BinOpExpr {
-    pub kind: BinOpKind,
-    pub lhs: Expr,
-    pub rhs: Expr,
-}
-
-#[derive(Clone, Copy, Debug, Display)]
-pub enum BinOpKind {
-    #[display(fmt = "==")]
-    Eq,
-    #[display(fmt = "!=")]
-    Neq,
-    #[display(fmt = "==")]
-    LogAnd,
-    #[display(fmt = "!=")]
-    LogOr,
-}
-
-impl Display for BinOpExpr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lhs = MaybeGrouped(&self.lhs);
-        let rhs = MaybeGrouped(&self.rhs);
-
-        write!(f, "{} {} {}", lhs, self.kind, rhs)
-    }
-}
-
 #[derive(Clone, Debug, Display)]
 #[display(
     fmt = "{} {} {}",
     "MaybeGrouped(&self.lhs)",
-    kind,
+    oper,
     "MaybeGrouped(&self.rhs)"
 )]
-pub struct ArithExpr {
-    pub kind: ArithKind,
+pub struct BinOperExpr {
+    pub oper: BplBinOper,
     pub lhs: Expr,
     pub rhs: Expr,
 }
 
-#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
-pub enum ArithKind {
-    #[display(fmt = "+")]
-    Add,
-    #[display(fmt = "-")]
-    Sub,
-    #[display(fmt = "*")]
-    Mul,
-    #[display(fmt = "/")]
-    Div,
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, From, PartialEq)]
+pub enum BplBinOper {
+    #[from]
+    Arith(ArithBinOper),
+    #[from(types(NumericCompareBinOper))]
+    Compare(CompareBinOper),
+    #[from]
+    Logical(LogicalBinOper),
 }
 
 #[derive(Clone, Debug, Display)]

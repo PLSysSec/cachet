@@ -10,7 +10,7 @@ use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
-use cachet_lang::ast::{CastKind, Ident, Path, VarParamKind};
+use cachet_lang::ast::{BinOper, CastKind, Ident, Path, VarParamKind};
 use cachet_lang::built_in::BuiltInType;
 use cachet_lang::normalizer::{self, HasAttrs, Typed};
 
@@ -1068,8 +1068,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Expr::Cast(cast_expr) => {
                 self.compile_cast_expr(&cast_expr).map(Expr::from)
             }
-            normalizer::Expr::BinOp(binop_expr) => {
-                self.compile_binop_expr(&binop_expr).map(Expr::from)
+            normalizer::Expr::BinOper(bin_oper_expr) => {
+                self.compile_bin_oper_expr(&bin_oper_expr).map(Expr::from)
             }
         }
     }
@@ -1089,8 +1089,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::PureExpr::Cast(cast_expr) => {
                 self.compile_cast_expr(&cast_expr).map(Expr::from)
             }
-            normalizer::PureExpr::BinOp(binop_expr) => {
-                self.compile_binop_expr(&binop_expr).map(Expr::from)
+            normalizer::PureExpr::BinOper(bin_oper_expr) => {
+                self.compile_bin_oper_expr(&bin_oper_expr).map(Expr::from)
             }
         }
     }
@@ -1335,68 +1335,53 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_binop_expr(&self, binop_expr: &normalizer::BinOpExpr) -> TaggedExpr {
-        let lhs_type = binop_expr.lhs.type_();
-        let rhs_type = binop_expr.rhs.type_();
+    fn compile_bin_oper_expr(&self, bin_oper_expr: &normalizer::BinOperExpr) -> TaggedExpr {
+        let lhs = self.use_expr(
+            self.compile_pure_expr(&bin_oper_expr.lhs),
+            ExprTag::Ref.into(),
+        );
+        let rhs = self.use_expr(
+            self.compile_pure_expr(&bin_oper_expr.rhs),
+            ExprTag::Ref.into(),
+        );
+
+        let ident = TypeMemberFnIdent::BinOper(match bin_oper_expr.oper {
+            BinOper::Arith(arith_bin_oper) => arith_bin_oper.into(),
+            BinOper::Bitwise(bitwise_bin_oper) => bitwise_bin_oper.into(),
+            BinOper::Compare(compare_bin_oper) => compare_bin_oper.into(),
+            BinOper::Logical(logical_bin_oper) => {
+                return TaggedExpr {
+                    expr: BinOperExpr {
+                        oper: logical_bin_oper.into(),
+                        lhs,
+                        rhs,
+                    }
+                    .into(),
+                    type_: bin_oper_expr.type_(),
+                    tags: ExprTag::Ref | ExprTag::Val,
+                };
+            }
+        });
+
+        // Note that the type namespace for the helper function comes from the
+        // *operand* type, not the output type, so we take the type of the
+        // left-hand side rather than the operator expression itself.
+        let lhs_type = bin_oper_expr.lhs.type_();
+        let rhs_type = bin_oper_expr.rhs.type_();
         debug_assert_eq!(lhs_type, rhs_type);
-
-        let lhs = self.use_expr(self.compile_pure_expr(&binop_expr.lhs), ExprTag::Ref.into());
-        let rhs = self.use_expr(self.compile_pure_expr(&binop_expr.rhs), ExprTag::Ref.into());
-
-        use cachet_lang::ast::BinOpKind::*;
-        let ident = match binop_expr.kind {
-            BitOr => BinOpTypeMemberFnIdent::BitOr,
-            BitAnd => BinOpTypeMemberFnIdent::BitAnd,
-            BitXor => BinOpTypeMemberFnIdent::BitXor,
-            BitLsh => BinOpTypeMemberFnIdent::BitLsh,
-            Add => BinOpTypeMemberFnIdent::Add,
-            Sub => BinOpTypeMemberFnIdent::Sub,
-            Mul => BinOpTypeMemberFnIdent::Mul,
-            Div => BinOpTypeMemberFnIdent::Div,
-            Lte => BinOpTypeMemberFnIdent::Lte,
-            Gte => BinOpTypeMemberFnIdent::Gte,
-            Lt => BinOpTypeMemberFnIdent::Lt,
-            Gt => BinOpTypeMemberFnIdent::Gt,
-            Eq => BinOpTypeMemberFnIdent::Eq,
-            Neq => BinOpTypeMemberFnIdent::Neq,
-            LogAnd => {
-                return TaggedExpr {
-                    expr: BinOpExpr {
-                        kind: BinOpKind::LogAnd,
-                        lhs,
-                        rhs,
-                    }
-                    .into(),
-                    type_: binop_expr.type_(),
-                    tags: ExprTag::Val.into(),
-                };
-            }
-            LogOr => {
-                return TaggedExpr {
-                    expr: BinOpExpr {
-                        kind: BinOpKind::LogOr,
-                        lhs,
-                        rhs,
-                    }
-                    .into(),
-                    type_: binop_expr.type_(),
-                    tags: ExprTag::Val.into(),
-                };
-            }
+        let target = TypeMemberFnPath {
+            parent: self.get_type_ident(lhs_type),
+            ident,
         }
         .into();
 
         TaggedExpr {
             expr: CallExpr {
-                target: TypeMemberFnPath {
-                    parent: self.get_type_ident(lhs_type),
-                    ident,
-                }
-                .into(),
+                target,
                 args: vec![lhs, rhs],
             }
             .into(),
-            type_: binop_expr.type_(),
+            type_: bin_oper_expr.type_(),
             tags: ExprTag::Ref | ExprTag::Val,
         }
     }

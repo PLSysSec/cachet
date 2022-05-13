@@ -6,7 +6,7 @@ use derive_more::From;
 use enumset::EnumSet;
 use typed_index_collections::TiVec;
 
-use crate::ast::{BinOpKind, BlockKind, CastKind, CheckKind, NegateKind, Path, Spanned};
+use crate::ast::{BinOper, BlockKind, CastKind, CheckKind, NegateKind, Path, Spanned};
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 
 pub use crate::type_checker::{
@@ -248,7 +248,7 @@ pub enum Expr<B = ()> {
     #[from]
     Cast(Box<CastExpr<Expr<B>>>),
     #[from]
-    BinOp(BinOpExpr),
+    BinOper(BinOperExpr),
 }
 
 impl<B> Typed for Expr<B> {
@@ -261,7 +261,7 @@ impl<B> Typed for Expr<B> {
             Expr::FieldAccess(field_access_expr) => field_access_expr.type_(),
             Expr::Negate(negate_expr) => negate_expr.type_(),
             Expr::Cast(cast_expr) => cast_expr.type_(),
-            Expr::BinOp(binop_expr) => binop_expr.type_(),
+            Expr::BinOper(bin_oper_expr) => bin_oper_expr.type_(),
         }
     }
 }
@@ -287,7 +287,7 @@ impl<B> From<PureExpr> for Expr<B> {
             PureExpr::FieldAccess(field_access_expr) => (*field_access_expr).into(),
             PureExpr::Negate(negate_expr) => (*negate_expr).into(),
             PureExpr::Cast(cast_expr) => (*cast_expr).into(),
-            PureExpr::BinOp(binop_expr) => (*binop_expr).into(),
+            PureExpr::BinOper(bin_oper_expr) => (*bin_oper_expr).into(),
         }
     }
 }
@@ -323,7 +323,7 @@ pub enum PureExpr {
     #[from]
     Cast(Box<CastExpr<PureExpr>>),
     #[from]
-    BinOp(Box<BinOpExpr>),
+    BinOper(Box<BinOperExpr>),
 }
 
 impl Typed for PureExpr {
@@ -334,7 +334,7 @@ impl Typed for PureExpr {
             PureExpr::FieldAccess(field_access_expr) => field_access_expr.type_(),
             PureExpr::Negate(negate_expr) => negate_expr.type_(),
             PureExpr::Cast(cast_expr) => cast_expr.type_(),
-            PureExpr::BinOp(binop_expr) => binop_expr.type_(),
+            PureExpr::BinOper(bin_oper_expr) => bin_oper_expr.type_(),
         }
     }
 }
@@ -342,7 +342,7 @@ impl Typed for PureExpr {
 box_from!(FieldAccessExpr<PureExpr> => PureExpr);
 box_from!(NegateExpr<PureExpr> => PureExpr);
 box_from!(CastExpr<PureExpr> => PureExpr);
-box_from!(BinOpExpr => PureExpr);
+box_from!(BinOperExpr => PureExpr);
 
 deref_from!(&Literal => PureExpr);
 
@@ -357,7 +357,7 @@ impl<B> TryFrom<Expr<B>> for PureExpr {
             Expr::FieldAccess(field_access_expr) => Ok((*field_access_expr).try_into()?),
             Expr::Negate(negate_expr) => Ok((*negate_expr).try_into()?),
             Expr::Cast(cast_expr) => Ok((*cast_expr).try_into()?),
-            Expr::BinOp(binop_expr) => Ok(binop_expr.into()),
+            Expr::BinOper(bin_oper_expr) => Ok(bin_oper_expr.into()),
         }
     }
 }
@@ -538,14 +538,14 @@ impl<B> TryFrom<CastExpr<Expr<B>>> for CastExpr<PureExpr> {
 }
 
 #[derive(Clone, Debug)]
-pub struct BinOpExpr {
-    pub kind: BinOpKind,
-    pub type_: TypeIndex,
+pub struct BinOperExpr {
+    pub oper: BinOper,
     pub lhs: PureExpr,
     pub rhs: PureExpr,
+    pub type_: TypeIndex,
 }
 
-impl Typed for BinOpExpr {
+impl Typed for BinOperExpr {
     fn type_(&self) -> TypeIndex {
         self.type_
     }

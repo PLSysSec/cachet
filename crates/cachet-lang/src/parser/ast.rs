@@ -6,7 +6,7 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, typed_field_index};
 
 use crate::ast::{
-    BinOpKind, BlockKind, CheckKind, Ident, NegateKind, Path, Spanned, VarParamKind,
+    BinOper, BlockKind, CheckKind, Ident, NegateKind, Path, Spanned, VarParamKind,
 };
 
 #[derive(Clone, Debug)]
@@ -271,7 +271,7 @@ pub enum Expr {
     #[from]
     Cast(Box<CastExpr>),
     #[from]
-    BinOp(Box<BinOpExpr>),
+    BinOper(Box<BinOperExpr>),
     #[from]
     Assign(Box<AssignExpr>),
 }
@@ -280,8 +280,8 @@ box_from!(KindedBlock => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(FieldAccessExpr => Expr);
 box_from!(CastExpr => Expr);
+box_from!(BinOperExpr => Expr);
 box_from!(AssignExpr => Expr);
-box_from!(BinOpExpr => Expr);
 
 deref_from!(&Literal => Expr);
 deref_from!(&Spanned<Path> => Expr);
@@ -325,14 +325,14 @@ pub struct CastExpr {
 }
 
 #[derive(Clone, Debug)]
-pub struct AssignExpr {
-    pub lhs: Spanned<Path>,
+pub struct BinOperExpr {
+    pub oper: Spanned<BinOper>,
+    pub lhs: Spanned<Expr>,
     pub rhs: Spanned<Expr>,
 }
 
 #[derive(Clone, Debug)]
-pub struct BinOpExpr {
-    pub kind: Spanned<BinOpKind>,
-    pub lhs: Spanned<Expr>,
+pub struct AssignExpr {
+    pub lhs: Spanned<Path>,
     pub rhs: Spanned<Expr>,
 }

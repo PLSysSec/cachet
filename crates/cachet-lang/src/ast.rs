@@ -1,6 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use derive_more::Display;
+use derive_more::{Display, From};
 
 pub use crate::ast::ident::*;
 pub use crate::ast::span::*;
@@ -29,7 +29,7 @@ pub enum BlockKind {
 #[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum NegateKind {
     #[display(fmt = "-")]
-    Arithmetic,
+    Arith,
     #[display(fmt = "!")]
     Logical,
 }
@@ -56,55 +56,63 @@ impl CastKind {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
-pub enum BinOpKind {
-    #[display(fmt = "|")]
-    BitOr,
-    #[display(fmt = "&")]
-    BitAnd,
-    #[display(fmt = "^")]
-    BitXor,
-    #[display(fmt = "<<")]
-    BitLsh,
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, From, PartialEq)]
+pub enum BinOper {
+    Arith(ArithBinOper),
+    Bitwise(BitwiseBinOper),
+    Compare(CompareBinOper),
+    Logical(LogicalBinOper),
+}
 
-    #[display(fmt = "+")]
-    Add,
-    #[display(fmt = "-")]
-    Sub,
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum ArithBinOper {
     #[display(fmt = "*")]
     Mul,
     #[display(fmt = "/")]
     Div,
+    #[display(fmt = "+")]
+    Add,
+    #[display(fmt = "-")]
+    Sub,
+}
 
-    #[display(fmt = "<=")]
-    Lte,
-    #[display(fmt = ">=")]
-    Gte,
-    #[display(fmt = "<")]
-    Lt,
-    #[display(fmt = ">")]
-    Gt,
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum BitwiseBinOper {
+    #[display(fmt = "<<")]
+    Shl,
+    #[display(fmt = "&")]
+    And,
+    #[display(fmt = "^")]
+    Xor,
+    #[display(fmt = "|")]
+    Or,
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, From, Hash, PartialEq)]
+pub enum CompareBinOper {
     #[display(fmt = "==")]
     Eq,
     #[display(fmt = "!=")]
     Neq,
-
-    #[display(fmt = "&&")]
-    LogAnd,
-    #[display(fmt = "||")]
-    LogOr,
+    Numeric(NumericCompareBinOper),
 }
 
-impl BinOpKind {
-    pub fn is_comparison(&self) -> bool {
-        use BinOpKind::*;
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum NumericCompareBinOper {
+    #[display(fmt = "<")]
+    Lt,
+    #[display(fmt = ">")]
+    Gt,
+    #[display(fmt = "<=")]
+    Lte,
+    #[display(fmt = ">=")]
+    Gte,
+}
 
-        matches!(self, Lte | Gte | Lt | Gt | Eq | Neq)
-    }
-
-    pub fn is_shortcircuiting(&self) -> bool {
-        use BinOpKind::*;
-
-        matches!(self, LogAnd | LogOr)
-    }
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum LogicalBinOper {
+    #[display(fmt = "&&")]
+    And,
+    #[display(fmt = "||")]
+    Or,
 }

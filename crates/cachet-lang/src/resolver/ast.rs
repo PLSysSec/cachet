@@ -9,7 +9,7 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_index};
 
 use crate::ast::{
-    BinOpKind, BlockKind, CheckKind, Ident, MaybeSpanned, NegateKind, Path, Spanned, VarParamKind,
+    BinOper, BlockKind, CheckKind, Ident, MaybeSpanned, NegateKind, Path, Spanned, VarParamKind,
 };
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 pub use crate::parser::{FieldIndex, Literal, VariantIndex};
@@ -571,17 +571,17 @@ pub enum Expr {
     #[from]
     Cast(Box<CastExpr>),
     #[from]
-    Assign(Box<AssignExpr>),
+    BinOper(Box<BinOperExpr>),
     #[from]
-    BinOp(Box<BinOpExpr>),
+    Assign(Box<AssignExpr>),
 }
 
 box_from!(KindedBlock => Expr);
 box_from!(FieldAccessExpr => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
+box_from!(BinOperExpr => Expr);
 box_from!(AssignExpr => Expr);
-box_from!(BinOpExpr => Expr);
 
 impl From<Block> for Expr {
     fn from(block: Block) -> Self {
@@ -623,6 +623,13 @@ impl Typed for CastExpr {
 }
 
 #[derive(Clone, Debug)]
+pub struct BinOperExpr {
+    pub oper: Spanned<BinOper>,
+    pub lhs: Spanned<Expr>,
+    pub rhs: Spanned<Expr>,
+}
+
+#[derive(Clone, Debug)]
 pub struct AssignExpr {
     pub lhs: Spanned<VarIndex>,
     pub rhs: Spanned<Expr>,
@@ -636,11 +643,4 @@ impl Typed for AssignExpr {
     fn type_(&self) -> TypeIndex {
         AssignExpr::TYPE.into()
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct BinOpExpr {
-    pub kind: Spanned<BinOpKind>,
-    pub lhs: Spanned<Expr>,
-    pub rhs: Spanned<Expr>,
 }

@@ -291,10 +291,10 @@ PrecExpr: PrecExpr = {
         match (kind.value, expr.value.expr) {
             // If we're applying arithmetic negation to a numeric literal, negate
             // the literal value directly.
-            (NegateKind::Arithmetic, Expr::Literal(Literal::Int32(n))) => {
+            (NegateKind::Arith, Expr::Literal(Literal::Int32(n))) => {
                 Expr::from(Literal::Int32(-n))
             }
-            (NegateKind::Arithmetic, Expr::Literal(Literal::Int64(n))) => {
+            (NegateKind::Arith, Expr::Literal(Literal::Int64(n))) => {
                 Expr::from(Literal::Int64(-n))
             }
             (_, expr) => {
@@ -314,82 +314,73 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "3")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <kind:Spanned<MulArithKind>>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(BinOpExpr {
-        kind, 
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <oper:Spanned<MulArithBinOper>> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BinOperExpr {
+            oper: oper.map(Into::into),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "4")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <kind:Spanned<AddArithKind>>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(BinOpExpr {
-        kind, 
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <oper:Spanned<AddArithBinOper>> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BinOperExpr {
+            oper: oper.map(Into::into),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "5")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <op:Spanned<"<<">>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(BinOpExpr {
-        kind: Spanned::new(op.span, BinOpKind::BitLsh),
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <oper:Spanned<"<<">> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BinOperExpr {
+            oper: Spanned::new(oper.span, BitwiseBinOper::Shl.into()),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "6")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <op:Spanned<"&">>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(BinOpExpr {
-        kind: Spanned::new(op.span, BinOpKind::BitAnd),
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <oper:Spanned<"&">> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BinOperExpr {
+            oper: Spanned::new(oper.span, BitwiseBinOper::And.into()),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "7")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <op:Spanned<"^">>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(BinOpExpr {
-        kind: Spanned::new(op.span, BinOpKind::BitXor),
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <oper:Spanned<"^">> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BinOperExpr {
+            oper: Spanned::new(oper.span, BitwiseBinOper::Xor.into()),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
 
     #[precedence(level = "8")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <op:Spanned<"|">>
-    <rhs:Spanned<PrecExpr>> =>
-      Expr::from(BinOpExpr {
-        kind: Spanned::new(op.span, BinOpKind::BitOr),
-        lhs: lhs.map(|lhs| lhs.expr),
-        rhs: rhs.map(|rhs| rhs.expr)
-      }).into(),
+    <lhs:Spanned<PrecExpr>> <oper:Spanned<"|">> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BinOperExpr {
+            oper: Spanned::new(oper.span, BitwiseBinOper::Or.into()),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
     
-    
-
     #[precedence(level = "9")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <kind:Spanned<CompareKind>> <rhs:Spanned<PrecExpr>> =>? {
+    <lhs:Spanned<PrecExpr>> <oper:Spanned<CompareBinOper>> <rhs:Spanned<PrecExpr>> =>? {
         if !lhs.value.is_grouped {
-            match lhs.value.expr {
-                Expr::BinOp(lhs) if lhs.kind.value.is_comparison() => {
+            if let Expr::BinOper(lhs) = &lhs.value.expr {
+                if let BinOper::Compare(_) = lhs.oper.value {
                     return Err(RawParseError::User {
-                        error: Spanned::new(kind.span, "comparison operators can't be chained"),
+                        error: Spanned::new(oper.span, "comparison operators can't be chained"),
                     });
                 }
-                _ => ()
             }
         }
 
-        Ok(Expr::from(BinOpExpr {
-            kind,
+        Ok(Expr::from(BinOperExpr {
+            oper: oper.map(Into::into),
             lhs: lhs.map(|lhs| lhs.expr),
             rhs: rhs.map(|rhs| rhs.expr),
         }).into())
@@ -397,11 +388,10 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "10")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <op:Spanned<"&&">>
-    <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr>> <oper:Spanned<"&&">> <rhs:Spanned<PrecExpr>> =>
     {
-        Expr::from(BinOpExpr {
-            kind: Spanned::new(op.span, BinOpKind::LogAnd),
+        Expr::from(BinOperExpr {
+            oper: Spanned::new(oper.span, LogicalBinOper::And.into()),
             lhs: lhs.map(|lhs| lhs.expr),
             rhs: rhs.map(|rhs| rhs.expr),
         }).into()
@@ -409,11 +399,10 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "11")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <op:Spanned<"||">>
-    <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr>> <oper:Spanned<"||">> <rhs:Spanned<PrecExpr>> =>
     {
-        Expr::from(BinOpExpr {
-            kind: Spanned::new(op.span, BinOpKind::LogOr),
+        Expr::from(BinOperExpr {
+            oper: Spanned::new(oper.span, LogicalBinOper::Or.into()),
             lhs: lhs.map(|lhs| lhs.expr),
             rhs: rhs.map(|rhs| rhs.expr),
         }).into()
@@ -435,32 +424,32 @@ PrecExpr: PrecExpr = {
 };
 
 NegateKind: NegateKind = {
-    "-" => NegateKind::Arithmetic,
+    "-" => NegateKind::Arith,
     "!" => NegateKind::Logical,
 };
 
-CompareKind: BinOpKind = {
-    "==" => BinOpKind::Eq,
-    "!=" => BinOpKind::Neq,
-    <kind:NumericCompareKind> => kind.into(),
-};
-
-NumericCompareKind: BinOpKind = {
-    "<=" => BinOpKind::Lte,
-    ">=" => BinOpKind::Gte,
-    "<" => BinOpKind::Lt,
-    ">" => BinOpKind::Gt,
-};
-
-AddArithKind: BinOpKind = {
-  "+" => BinOpKind::Add,
-  "-" => BinOpKind::Sub,
+MulArithBinOper: ArithBinOper = {
+  "*" => ArithBinOper::Mul,
+  "/" => ArithBinOper::Div,
 }
 
-MulArithKind: BinOpKind = {
-  "*" => BinOpKind::Mul,
-  "/" => BinOpKind::Div,
+AddArithBinOper: ArithBinOper = {
+  "+" => ArithBinOper::Add,
+  "-" => ArithBinOper::Sub,
 }
+
+CompareBinOper: CompareBinOper = {
+    "==" => CompareBinOper::Eq,
+    "!=" => CompareBinOper::Neq,
+    <oper:NumericCompareBinOper> => oper.into(),
+};
+
+NumericCompareBinOper: NumericCompareBinOper = {
+    "<" => NumericCompareBinOper::Lt,
+    ">" => NumericCompareBinOper::Gt,
+    "<=" => NumericCompareBinOper::Lte,
+    ">=" => NumericCompareBinOper::Gte,
+};
 
 // TODO(spinda): Support NaN literals and scientific notation.
 

@@ -104,6 +104,7 @@ impl BuiltInType {
     pub const fn is_signed_numeric(self) -> bool {
         match self {
             BuiltInType::Bool | BuiltInType::Int32 | BuiltInType::Int64 | BuiltInType::Double => {
+                debug_assert!(self.is_numeric());
                 true
             }
             BuiltInType::UInt16 | BuiltInType::Unit => false,
@@ -113,6 +114,7 @@ impl BuiltInType {
     pub const fn is_integral(self) -> bool {
         match self {
             BuiltInType::Bool | BuiltInType::Int32 | BuiltInType::Int64 | BuiltInType::UInt16 => {
+                debug_assert!(self.is_numeric());
                 true
             }
             BuiltInType::Unit | BuiltInType::Double => false,

@@ -12,7 +12,8 @@ use lazy_static::lazy_static;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
-    BlockKind, CastKind, Ident, MaybeSpanned, NegateKind, Path, Span, Spanned, VarParamKind,
+    BinOper, BlockKind, CastKind, CompareBinOper, Ident, MaybeSpanned, NegateKind, Path, Span,
+    Spanned, VarParamKind,
 };
 use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::resolver;
@@ -44,6 +45,8 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
         .into();
 
     let mut type_checker = TypeChecker::new(&env, unknown_struct_index, unknown_ir_index);
+
+    // TODO(spinda): Forbid subtyping built-in types.
 
     let fn_items = type_checker.type_check_fn_items();
     let op_items = type_checker.type_check_op_items();
@@ -988,8 +991,10 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             }
             resolver::Expr::Negate(negate_expr) => self.type_check_negate_expr(negate_expr).into(),
             resolver::Expr::Cast(cast_expr) => self.type_check_cast_expr(cast_expr),
+            resolver::Expr::BinOper(bin_oper_expr) => {
+                self.type_check_bin_oper_expr(bin_oper_expr).into()
+            }
             resolver::Expr::Assign(assign_expr) => self.type_check_assign_expr(assign_expr).into(),
-            resolver::Expr::BinOp(binop_expr) => self.type_check_binop_expr(binop_expr).into(),
         }
     }
 
@@ -1076,7 +1081,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let expr_type_index = expr.value.type_();
 
         let expr = match negate_expr.kind.value {
-            NegateKind::Arithmetic => {
+            NegateKind::Arith => {
                 if !self.is_signed_numeric_type(expr_type_index) {
                     self.type_checker
                         .errors
@@ -1159,111 +1164,80 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         .into()
     }
 
-    fn type_check_binop_expr(&mut self, binop_expr: &resolver::BinOpExpr) -> BinOpExpr {
-        use crate::ast::BinOpKind::*;
+    fn type_check_bin_oper_expr(&mut self, bin_oper_expr: &resolver::BinOperExpr) -> BinOperExpr {
+        let mut lhs = self.type_check_expr(&bin_oper_expr.lhs.value);
+        let mut rhs = self.type_check_expr(&bin_oper_expr.rhs.value);
 
-        let mut lhs = self.type_check_expr(&binop_expr.lhs.value);
-        let mut rhs = self.type_check_expr(&binop_expr.rhs.value);
+        let lhs_type_index = lhs.type_();
+        let rhs_type_index = rhs.type_();
 
-        let mut lhs_type_index = lhs.type_();
-        let mut rhs_type_index = rhs.type_();
+        // Check that the types of the operands are compatible with the
+        // operator.
+        let (lhs_type_matches, rhs_type_matches) = match bin_oper_expr.oper.value {
+            BinOper::Arith(_) | BinOper::Compare(CompareBinOper::Numeric(_)) => (
+                self.is_numeric_type(lhs_type_index),
+                self.is_numeric_type(rhs_type_index),
+            ),
+            BinOper::Bitwise(_) => (
+                self.is_integral_type(lhs_type_index),
+                self.is_integral_type(rhs_type_index),
+            ),
+            BinOper::Compare(_) => (true, true),
+            BinOper::Logical(_) => (
+                self.is_same_type(lhs_type_index, BuiltInType::Bool.into()),
+                self.is_same_type(rhs_type_index, BuiltInType::Bool.into()),
+            ),
+        };
 
-        // Allow upcasting on numeric comparison operators
-        if let Lte | Gte | Lt | Gt | Eq | Neq = binop_expr.kind.value {
-            let mut succ;
-            (succ, rhs) = self.try_build_upcast_chain(rhs, lhs_type_index);
-            if succ {
-                rhs_type_index = lhs_type_index;
-            } else {
-                (succ, lhs) = self.try_build_upcast_chain(lhs, rhs_type_index);
-                if succ {
-                    lhs_type_index = rhs_type_index;
-                }
-            }
-        }
-
-        // All binops require matching operand types
-        if lhs_type_index != rhs_type_index {
+        if !lhs_type_matches {
             self.type_checker
                 .errors
-                .push(TypeCheckError::BinaryOperatorTypeMismatch {
-                    operator_span: binop_expr.kind.span,
-                    lhs_span: binop_expr.lhs.span,
-                    lhs_type: self.get_type_ident(lhs_type_index),
-                    rhs_span: binop_expr.rhs.span,
-                    rhs_type: self.get_type_ident(rhs_type_index),
+                .push(TypeCheckError::NumericOperatorTypeMismatch {
+                    operand_span: bin_oper_expr.lhs.span,
+                    operand_type: self.get_type_ident(lhs_type_index),
+                    operator_span: bin_oper_expr.oper.span,
                 });
         }
 
-        // Operand typechecking
-        match binop_expr.kind.value {
-            // Numeric Ops
-            BitOr | BitAnd | BitXor | BitLsh => {
-                if !self.is_integral_type(lhs_type_index) {
-                    self.type_checker
-                        .errors
-                        .push(TypeCheckError::NumericOperatorTypeMismatch {
-                            operand_span: binop_expr.lhs.span,
-                            operand_type: self.get_type_ident(lhs_type_index),
-                            operator_span: binop_expr.kind.span,
-                        });
-                }
-
-                if !self.is_integral_type(rhs_type_index) {
-                    self.type_checker
-                        .errors
-                        .push(TypeCheckError::NumericOperatorTypeMismatch {
-                            operand_span: binop_expr.lhs.span,
-                            operand_type: self.get_type_ident(lhs_type_index),
-                            operator_span: binop_expr.kind.span,
-                        });
-                }
-            }
-
-            Add | Sub | Mul | Div | Lte | Gte | Lt | Gt => {
-                if !self.is_numeric_type(lhs_type_index) {
-                    self.type_checker
-                        .errors
-                        .push(TypeCheckError::NumericOperatorTypeMismatch {
-                            operand_span: binop_expr.lhs.span,
-                            operand_type: self.get_type_ident(lhs_type_index),
-                            operator_span: binop_expr.kind.span,
-                        });
-                }
-
-                if !self.is_numeric_type(rhs_type_index) {
-                    self.type_checker
-                        .errors
-                        .push(TypeCheckError::NumericOperatorTypeMismatch {
-                            operand_span: binop_expr.lhs.span,
-                            operand_type: self.get_type_ident(lhs_type_index),
-                            operator_span: binop_expr.kind.span,
-                        });
-                }
-            }
-
-            LogAnd | LogOr => {
-                lhs = self.expect_expr_type(
-                    Spanned::new(binop_expr.lhs.span, lhs),
-                    BuiltInType::Bool.into(),
-                );
-                rhs = self.expect_expr_type(
-                    Spanned::new(binop_expr.rhs.span, rhs),
-                    BuiltInType::Bool.into(),
-                );
-            }
-
-            Eq | Neq => (),
+        if !rhs_type_matches {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::NumericOperatorTypeMismatch {
+                    operand_span: bin_oper_expr.rhs.span,
+                    operand_type: self.get_type_ident(rhs_type_index),
+                    operator_span: bin_oper_expr.oper.span,
+                });
         }
 
-        // Output type
-        let type_ = match binop_expr.kind.value {
-            BitOr | BitAnd | BitXor | BitLsh | Add | Sub | Mul | Div => lhs.type_(),
-            LogAnd | LogOr | Lte | Gte | Lt | Gt | Eq | Neq => BuiltInType::Bool.into(),
+        // Ensure the types of the left- and right-hand operands match,
+        // upcasting as necessary.
+        let mut success;
+        (success, rhs) = self.try_build_upcast_chain(rhs, lhs_type_index);
+        if !success {
+            (success, lhs) = self.try_build_upcast_chain(lhs, rhs_type_index);
+            if !success {
+                self.type_checker
+                    .errors
+                    .push(TypeCheckError::BinaryOperatorTypeMismatch {
+                        operator_span: bin_oper_expr.oper.span,
+                        lhs_span: bin_oper_expr.lhs.span,
+                        lhs_type: self.get_type_ident(lhs_type_index),
+                        rhs_span: bin_oper_expr.rhs.span,
+                        rhs_type: self.get_type_ident(rhs_type_index),
+                    });
+            }
+        }
+
+        // Compute the output type.
+        let type_ = match bin_oper_expr.oper.value {
+            // Make sure to use the operand type post-upcasting. If the types
+            // didn't match, we'll assume the type of the left-hand side.
+            BinOper::Arith(_) | BinOper::Bitwise(_) => lhs.type_(),
+            BinOper::Compare(_) | BinOper::Logical(_) => BuiltInType::Bool.into(),
         };
 
-        BinOpExpr {
-            kind: binop_expr.kind.value,
+        BinOperExpr {
+            oper: bin_oper_expr.oper.value,
             lhs,
             rhs,
             type_,

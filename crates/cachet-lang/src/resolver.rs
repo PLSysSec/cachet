@@ -997,11 +997,11 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 self.resolve_negate_expr(*negate_expr).map(Expr::from)
             }
             parser::Expr::Cast(cast_expr) => self.resolve_cast_expr(*cast_expr).map(Expr::from),
+            parser::Expr::BinOper(bin_oper_expr) => {
+                self.resolve_bin_oper_expr(*bin_oper_expr).map(Expr::from)
+            }
             parser::Expr::Assign(assign_expr) => {
                 self.resolve_assign_expr(*assign_expr).map(Expr::from)
-            }
-            parser::Expr::BinOp(binop_expr) => {
-                self.resolve_binop_expr(*binop_expr).map(Expr::from)
             }
         }
     }
@@ -1048,13 +1048,16 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         })
     }
 
-    fn resolve_binop_expr(&mut self, binop_expr: parser::BinOpExpr) -> Option<BinOpExpr> {
-        let lhs = map_spanned(binop_expr.lhs, |lhs| self.resolve_expr(lhs.value));
+    fn resolve_bin_oper_expr(
+        &mut self,
+        bin_oper_expr: parser::BinOperExpr,
+    ) -> Option<BinOperExpr> {
+        let lhs = map_spanned(bin_oper_expr.lhs, |lhs| self.resolve_expr(lhs.value));
 
-        let rhs = map_spanned(binop_expr.rhs, |rhs| self.resolve_expr(rhs.value));
+        let rhs = map_spanned(bin_oper_expr.rhs, |rhs| self.resolve_expr(rhs.value));
 
-        Some(BinOpExpr {
-            kind: binop_expr.kind,
+        Some(BinOperExpr {
+            oper: bin_oper_expr.oper,
             lhs: lhs?,
             rhs: rhs?,
         })
