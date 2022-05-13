@@ -200,17 +200,20 @@ impl<'a> FlowTracer<'a> {
         }
     }
 
-    fn trace_stmts(&mut self, stmts: &[flattener::Stmt]) {
+    fn trace_stmts(&mut self, stmts: &[flattener::Stmt]) -> MaybeContinue {
         for stmt in stmts {
-            self.trace_stmt(stmt);
+            self.trace_stmt(stmt)?;
         }
+
+        Ok(())
     }
 
-    fn trace_branches<'b>(&mut self, branches: impl Iterator<Item = &'b [flattener::Stmt]>) {
+    fn trace_branches<'b>(&mut self, branches: impl Iterator<Item = &'b [flattener::Stmt]>) -> MaybeContinue {
         // First, back up the predecessor emits and bound labels going into the
         // branches.
         let init_pred_emits = self.pred_emits.clone();
         let init_bound_labels = self.bound_labels.clone();
+        let mut cont = Ok(());
         self.pred_emits.clear();
         self.bound_labels.clear();
 
@@ -227,7 +230,9 @@ impl<'a> FlowTracer<'a> {
                 label_scope: MaybeOwned::Borrowed(&mut self.label_scope),
                 bound_labels: MaybeOwned::Owned(init_bound_labels.clone()),
             };
-            flow_tracer.trace_stmts(branch);
+
+            // cont will only be EarlyReturn if all branches yield early return
+            cont = cont.or(flow_tracer.trace_stmts(branch));
 
             // Accumulate the predecessor emits and bound labels at the end of
             // each branch.
@@ -235,25 +240,29 @@ impl<'a> FlowTracer<'a> {
             self.bound_labels
                 .extend(flow_tracer.bound_labels.into_owned());
         }
+
+        cont
     }
 
-    fn trace_stmt(&mut self, stmt: &flattener::Stmt) {
+    fn trace_stmt(&mut self, stmt: &flattener::Stmt) -> MaybeContinue {
         match stmt {
             flattener::Stmt::Let(_)
             | flattener::Stmt::Label(_)
             | flattener::Stmt::Check(_)
-            | flattener::Stmt::Assign(_)
-            | flattener::Stmt::Return(_) => (),
-            flattener::Stmt::If(if_stmt) => self.trace_if_stmt(if_stmt),
+            | flattener::Stmt::Assign(_) => (),
+            flattener::Stmt::Return(_) => Err(EarlyReturn)?,
+            flattener::Stmt::If(if_stmt) => self.trace_if_stmt(if_stmt)?,
             flattener::Stmt::Goto(goto_stmt) => self.trace_goto_stmt(goto_stmt),
             flattener::Stmt::Bind(bind_stmt) => self.trace_bind_stmt(bind_stmt),
             flattener::Stmt::Emit(emit_stmt) => self.trace_emit_stmt(emit_stmt),
             flattener::Stmt::Block(void, _) => unreachable(*void),
             flattener::Stmt::Invoke(invoke_stmt) => self.trace_invoke_stmt(invoke_stmt),
         }
+
+        Ok(())
     }
 
-    fn trace_if_stmt(&mut self, if_stmt: &flattener::IfStmt) {
+    fn trace_if_stmt(&mut self, if_stmt: &flattener::IfStmt) -> MaybeContinue {
         static EMPTY_BRANCH: Vec<flattener::Stmt> = Vec::new();
         let mut branches = vec![];
         let mut if_option = Some(if_stmt);
@@ -271,7 +280,7 @@ impl<'a> FlowTracer<'a> {
                 }
             }
         }
-        self.trace_branches(branches.into_iter());
+        self.trace_branches(branches.into_iter())
     }
 
     fn trace_goto_stmt(&mut self, goto_stmt: &flattener::GotoStmt) {
@@ -419,3 +428,9 @@ impl<'a> FlowTracer<'a> {
         label_node_index
     }
 }
+
+/// We use MaybeContinue to bubble up early returns while constructing traces.
+/// EarlyReturn is used to signal an unconditional early return, thus all subsequent
+/// code need not be traced. 
+type MaybeContinue = Result<(), EarlyReturn>;
+struct EarlyReturn;
