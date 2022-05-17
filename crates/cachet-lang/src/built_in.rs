@@ -72,9 +72,9 @@ ordered_ident_enum! {
     BuiltInType {
         Unit = "Unit",
         Bool = "Bool",
+        UInt16 = "UInt16",
         Int32 = "Int32",
         Int64 = "Int64",
-        UInt16 = "UInt16",
         Double = "Double"
     }
 }

@@ -3,8 +3,6 @@
 struct Heap;
 var mut heap: Heap;
 
-var zero: Int32;
-
 enum ValueType {
   Double,
   Int32,
@@ -22,83 +20,83 @@ enum ValueType {
 struct Value;
 
 impl Value {
-    fn typeOf(value: Value) -> ValueType;
+    fn typeOf(in value: Value) -> ValueType;
 
     // ...
 
-    fn isInt32(value: Value) -> Bool {
-        Value::typeOf(value) == ValueType::Int32
+    fn isInt32(in value: Value) -> Bool {
+        Value::typeOf(in value) == ValueType::Int32
     }
 
     fn fromInt32(int32: Int32) -> Value {
         let value = (unsafe { Value::fromInt32Unchecked(int32) });
-        assume Value::isInt32(value);
-        assume (unsafe { Value::toInt32Unchecked(value) }) == int32;
+        assume Value::isInt32(in value);
+        assume (unsafe { Value::toInt32Unchecked(in value) }) == int32;
         value
     }
 
-    unsafe fn fromInt32Unchecked(value: Int32) -> Value;
+    unsafe fn fromInt32Unchecked(int32: Int32) -> Value;
 
-    fn toInt32(value: Value) -> Int32 {
-        assert Value::isInt32(value);
-        let int32 = (unsafe { Value::toInt32Unchecked(value) });
+    fn toInt32(in value: Value) -> Int32 {
+        assert Value::isInt32(in value);
+        let int32 = (unsafe { Value::toInt32Unchecked(in value) });
         assume (unsafe { Value::fromInt32Unchecked(int32) }) == value;
         int32
     }
 
-    unsafe fn toInt32Unchecked(value: Value) -> Int32;
+    unsafe fn toInt32Unchecked(in value: Value) -> Int32;
 
-    fn isBool(value: Value) -> Bool {
-        Value::typeOf(value) == ValueType::Bool
+    fn isBool(in value: Value) -> Bool {
+        Value::typeOf(in value) == ValueType::Bool
     }
 
     fn fromBool(bool: Bool) -> Value {
         let value = (unsafe { Value::fromBoolUnchecked(bool) });
-        assume Value::isBool(value);
-        assume (unsafe { Value::toBoolUnchecked(value) }) == bool;
+        assume Value::isBool(in value);
+        assume (unsafe { Value::toBoolUnchecked(in value) }) == bool;
         value
     }
 
-    unsafe fn fromBoolUnchecked(value: Bool) -> Value;
+    unsafe fn fromBoolUnchecked(bool: Bool) -> Value;
 
-    fn toBool(value: Value) -> Bool {
-        assert Value::isBool(value);
-        let bool = (unsafe { Value::toBoolUnchecked(value) });
+    fn toBool(in value: Value) -> Bool {
+        assert Value::isBool(in value);
+        let bool = (unsafe { Value::toBoolUnchecked(in value) });
         assume (unsafe { Value::fromBoolUnchecked(bool) }) == value;
         bool
     }
 
-    unsafe fn toBoolUnchecked(value: Value) -> Bool;
+    unsafe fn toBoolUnchecked(in value: Value) -> Bool;
 
-    fn isNull(value: Value) -> Bool {
-        Value::typeOf(value) == ValueType::Null
+    fn isNull(in value: Value) -> Bool {
+        Value::typeOf(in value) == ValueType::Null
     }
 
-    fn isMagic(value: Value) -> Bool {
-        Value::typeOf(value) == ValueType::Magic
+    fn isMagic(in value: Value) -> Bool {
+        Value::typeOf(in value) == ValueType::Magic
     }
 
-    fn isObject(value: Value) -> Bool {
-        Value::typeOf(value) == ValueType::Object
+    fn isObject(in value: Value) -> Bool {
+        Value::typeOf(in value) == ValueType::Object
     }
 
-    fn fromObject(object: Object) -> Value {
-        let value = (unsafe { Value::fromObjectUnchecked(object) });
-        assume Value::isObject(value);
-        assume (unsafe { Value::toObjectUnchecked(value) }) == object;
+    fn fromObject(in object: Object) -> Value {
+        let value = (unsafe { Value::fromObjectUnchecked(in object) });
+        assume Value::isObject(in value);
+        assume (unsafe { Value::toObjectUnchecked(in value) }) == object;
         value
     }
 
-    unsafe fn fromObjectUnchecked(value: Object) -> Value;
+    unsafe fn fromObjectUnchecked(in object: Object) -> Value;
 
-    fn toObject(value: Value) -> Object {
-        assert Value::isObject(value);
-        let object = (unsafe { Value::toObjectUnchecked(value) });
-        assume (unsafe { Value::fromObjectUnchecked(object) }) == value;
+    fn toObject(in value: Value) -> Object {
+        assert Value::isObject(in value);
+        let object = (unsafe { Value::toObjectUnchecked(in value) });
+        assume (unsafe { Value::fromObjectUnchecked(in object) }) == value;
         object
     }
 
-    unsafe fn toObjectUnchecked(value: Value) -> Object;
+    unsafe fn toObjectUnchecked(in value: Value) -> Object;
 }
 
 struct Object;
@@ -106,11 +104,11 @@ struct Object;
 impl Object {
     // #[reads(heap)]
     // fn protoOf(object: Object) -> Value;
-    fn protoOf(object: Object) -> Value {
-        (unsafe { Object::protoOfUnchecked(heap, object) })
+    fn protoOf(in object: Object) -> Value {
+        (unsafe { Object::protoOfUnchecked(heap, in object) })
     }
 
-    unsafe fn protoOfUnchecked(heap: Heap, object: Object) -> Value;
+    unsafe fn protoOfUnchecked(heap: Heap, in object: Object) -> Value;
 }
 
 struct Reg;
@@ -131,12 +129,13 @@ ir MASM {
     }
 
     op StoreBoolValue(bool: Bool, valueReg: ValueReg) {
-        MASM::setValue(valueReg, Value::fromBool(bool));
+        let value = Value::fromBool(bool);
+        MASM::setValue(valueReg, in value);
     }
 
     op BranchTestObject(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         let value = MASM::getValue(valueReg);
-        let valueIsObject = Value::isObject(value);
+        let valueIsObject = Value::isObject(in value);
 
         if condition == Condition::Equal {
             if valueIsObject {
@@ -153,7 +152,7 @@ ir MASM {
 
     op BranchTestNull(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         let value = MASM::getValue(valueReg);
-        let valueIsNull = Value::isNull(value);
+        let valueIsNull = Value::isNull(in value);
 
         if condition == Condition::Equal {
             if valueIsNull {
@@ -170,7 +169,7 @@ ir MASM {
 
     op BranchTestMagic(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         let value = MASM::getValue(valueReg);
-        let valueIsMagic = Value::isMagic(value);
+        let valueIsMagic = Value::isMagic(in value);
 
         if condition == Condition::Equal {
             if valueIsMagic {
@@ -211,22 +210,24 @@ ir MASM {
 
     op UnboxObject(valueReg: ValueReg, objectReg: Reg) {
         let value = MASM::getValue(valueReg);
-        MASM::setObject(objectReg, Value::toObject(value));
+        let object = Value::toObject(in value);
+        MASM::setObject(objectReg, in object);
     }
 
     op LoadObjectProto(objectReg: Reg, protoReg: ValueReg) {
         let object = MASM::getObject(objectReg);
-        MASM::setValue(protoReg, Object::protoOf(object));
+        let value = Object::protoOf(in object);
+        MASM::setValue(protoReg, in value);
     }
 
     fn getValue(valueReg: ValueReg) -> Value;
-    fn setValue(valueReg: ValueReg, value: Value);
+    fn setValue(valueReg: ValueReg, in value: Value);
 
     fn getBool(reg: Reg) -> Bool;
     fn setBool(reg: Reg, bool: Bool);
 
     fn getObject(reg: Reg) -> Object;
-    fn setObject(reg: Reg, object: Object);
+    fn setObject(reg: Reg, in object: Object);
 }
 
 struct ValueId;

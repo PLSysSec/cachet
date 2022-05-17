@@ -7,10 +7,12 @@ use std::ops::{Deref, DerefMut};
 use lazy_static::lazy_static;
 use typed_index_collections::{TiSlice, TiVec};
 
+use cachet_util::MaybeOwned;
+
 use crate::type_checker;
 
 use crate::ast::{
-    BinOper, BlockKind, Ident, LogicalBinOper, NegateKind, Span, Spanned, VarParamKind,
+    BinOper, Ident, LogicalBinOper, NegateKind, Span, Spanned, VarParamKind, VarRefKind,
 };
 use crate::built_in::{BuiltInType, BuiltInVar};
 
@@ -21,18 +23,16 @@ lazy_static! {
 }
 
 pub fn normalize(env: type_checker::Env) -> Env {
-    let global_var_items = &env.global_var_items;
-
     let fn_items: TiVec<FnIndex, _> = env
         .fn_items
         .into_iter()
-        .map(|fn_item| normalize_callable_item(global_var_items, fn_item))
+        .map(|fn_item| normalize_callable_item(fn_item, &env.global_var_items))
         .collect();
 
     let op_items: TiVec<OpIndex, _> = env
         .op_items
         .into_iter()
-        .map(|op_item| normalize_callable_item(global_var_items, op_item))
+        .map(|op_item| normalize_callable_item(op_item, &env.global_var_items))
         .collect();
 
     Env {
@@ -47,8 +47,8 @@ pub fn normalize(env: type_checker::Env) -> Env {
 }
 
 fn normalize_callable_item(
-    global_var_items: &TiSlice<GlobalVarIndex, GlobalVarItem>,
     callable_item: type_checker::CallableItem,
+    global_var_items: &TiSlice<GlobalVarIndex, GlobalVarItem>,
 ) -> CallableItem {
     let ret = if callable_item.ret == BuiltInType::Unit.into() {
         None
@@ -57,11 +57,11 @@ fn normalize_callable_item(
     };
 
     let body = callable_item.body.map(|mut body| {
-        let mut normalizer = Normalizer::new(
+        let mut normalizer = Normalizer {
             global_var_items,
-            &callable_item.params.var_params,
-            &mut body.locals.local_vars,
-        );
+            var_params: &callable_item.params.var_params,
+            local_vars: &mut body.locals.local_vars,
+        };
         let stmts = normalizer.normalize_body_block(body.block);
         Body {
             locals: body.locals,
@@ -83,6 +83,8 @@ fn normalize_callable_item(
     }
 }
 
+// TODO(spinda): Should `Normalizer` and `ScopedNormalizer` be merged?
+
 struct Normalizer<'a> {
     global_var_items: &'a TiSlice<GlobalVarIndex, GlobalVarItem>,
     var_params: &'a TiSlice<VarParamIndex, VarParam>,
@@ -90,66 +92,41 @@ struct Normalizer<'a> {
 }
 
 impl<'a> Normalizer<'a> {
-    fn new(
-        global_var_items: &'a TiSlice<GlobalVarIndex, GlobalVarItem>,
-        var_params: &'a TiSlice<VarParamIndex, VarParam>,
-        local_vars: &'a mut TiVec<LocalVarIndex, LocalVar>,
-    ) -> Self {
-        Normalizer {
-            global_var_items,
-            var_params,
-            local_vars,
-        }
-    }
-
     fn normalize_body_block(&mut self, block: type_checker::Block) -> Vec<Stmt> {
-        if block.type_() == BuiltInType::Unit.into() {
-            let mut stmts = self.normalize_unused_block(block);
-            stmts.push(RetStmt { value: None }.into());
-            return stmts;
-        }
+        let mut scoped_normalizer = ScopedNormalizer::new(self);
+        scoped_normalizer.normalize_stmts(block.stmts);
 
-        let mut stmts = self.normalize_block_stmts(block.stmts);
-        let mut scoped_normalizer = ScopedNormalizer::new(self, &mut stmts);
-        let value = scoped_normalizer.normalize_used_expr(block.value);
-        stmts.push(RetStmt { value: Some(value) }.into());
-        stmts
+        let value = if block.value.type_() == BuiltInType::Unit.into() {
+            scoped_normalizer.normalize_unused_expr(block.value);
+            None
+        } else {
+            Some(scoped_normalizer.normalize_used_expr(block.value))
+        };
+        scoped_normalizer.stmts.push(RetStmt { value }.into());
+
+        scoped_normalizer.stmts.into_owned()
     }
 
-    fn normalize_unused_block(&mut self, block: type_checker::Block) -> Vec<Stmt> {
-        let mut stmts = self.normalize_block_stmts(block.stmts);
-        let mut scoped_normalizer = ScopedNormalizer::new(self, &mut stmts);
-        scoped_normalizer.normalize_unused_expr(block.value);
-        stmts
-    }
-
-    fn normalize_block_stmts(&mut self, stmts: Vec<type_checker::Stmt>) -> Vec<Stmt> {
-        let mut normalized_stmts = Vec::with_capacity(stmts.len());
-        let mut scoped_normalizer = ScopedNormalizer::new(self, &mut normalized_stmts);
-
-        for stmt in stmts {
-            scoped_normalizer.normalize_stmt(stmt);
-        }
-
-        normalized_stmts
-    }
-
-    fn is_mut_var(&self, var_index: VarIndex) -> bool {
+    fn is_stable_var(&self, var_index: VarIndex) -> bool {
         match var_index {
-            VarIndex::BuiltIn(_) | VarIndex::EnumVariant(_) => false,
-            VarIndex::Global(global_var_index) => self.global_var_items[global_var_index].is_mut,
-            VarIndex::Param(var_param_index) => {
-                self.var_params[var_param_index].kind == VarParamKind::Mut
-            }
-            VarIndex::Local(local_var_index) => self.local_vars[local_var_index].is_mut,
+            VarIndex::BuiltIn(_) | VarIndex::EnumVariant(_) => true,
+            VarIndex::Global(global_var_index) => !self.global_var_items[global_var_index].is_mut,
+            VarIndex::Param(var_param_index) => match self.var_params[var_param_index].kind {
+                VarParamKind::Value { is_mut } => !is_mut,
+                // Any variable reference parameter could point to a mutable
+                // variable, depending on what the caller passes in.
+                VarParamKind::Ref(_) => false,
+            },
+            VarIndex::Local(local_var_index) => !self.local_vars[local_var_index].is_mut,
         }
     }
 }
 
 struct ScopedNormalizer<'a, 'b> {
     normalizer: &'b mut Normalizer<'a>,
-    stmts: &'b mut Vec<Stmt>,
+    stmts: MaybeOwned<'b, Vec<Stmt>>,
     exported_stmts: Option<&'b mut Vec<Stmt>>,
+    next_local_call_index: MaybeOwned<'b, LocalCallIndex>,
 }
 
 impl<'a> Deref for ScopedNormalizer<'a, '_> {
@@ -167,48 +144,51 @@ impl<'a> DerefMut for ScopedNormalizer<'a, '_> {
 }
 
 impl<'a, 'b> ScopedNormalizer<'a, 'b> {
-    fn new(normalizer: &'b mut Normalizer<'a>, stmts: &'b mut Vec<Stmt>) -> Self {
+    fn new(normalizer: &'b mut Normalizer<'a>) -> Self {
         ScopedNormalizer {
             normalizer,
-            stmts,
+            stmts: MaybeOwned::Owned(Vec::new()),
             exported_stmts: None,
+            next_local_call_index: MaybeOwned::Owned(LocalCallIndex::from(0)),
         }
     }
 
-    fn recurse<'c>(&'c mut self, stmts: &'c mut Vec<Stmt>) -> ScopedNormalizer<'a, 'c> {
+    fn recurse<'c>(&'c mut self) -> ScopedNormalizer<'a, 'c> {
         ScopedNormalizer {
             normalizer: self.normalizer,
-            stmts,
+            stmts: MaybeOwned::Owned(Vec::new()),
             exported_stmts: Some(
                 self.exported_stmts
                     .as_deref_mut()
                     .unwrap_or(&mut self.stmts),
             ),
+            next_local_call_index: MaybeOwned::Borrowed(&mut self.next_local_call_index),
         }
     }
 
-    fn nest<'c>(&'c mut self, stmts: &'c mut Vec<Stmt>) -> ScopedNormalizer<'a, 'c> {
+    fn nest_block<'c>(&'c mut self) -> ScopedNormalizer<'a, 'c> {
         ScopedNormalizer {
             normalizer: self.normalizer,
-            stmts,
+            stmts: MaybeOwned::Owned(Vec::new()),
             exported_stmts: None,
+            next_local_call_index: MaybeOwned::Borrowed(&mut self.next_local_call_index),
         }
     }
 
     fn normalize_arg(&mut self, arg: type_checker::Arg) -> Arg {
         match arg {
-            type_checker::Arg::Expr(expr) => self.normalize_pure_expr(expr).into(),
-            type_checker::Arg::OutVar(out_var_arg) => out_var_arg.into(),
+            type_checker::Arg::Expr(expr_arg) => self.normalize_expr_arg(expr_arg),
+            type_checker::Arg::VarRef(var_ref_arg) => var_ref_arg.into(),
             type_checker::Arg::Label(label_arg) => LabelArg {
                 label: label_arg.label.value,
-                is_out: false,
+                is_out_ref: false,
                 ir: label_arg.ir,
             }
             .into(),
-            type_checker::Arg::OutLabel(out_label_arg) => LabelArg {
-                label: match out_label_arg.out_label {
-                    type_checker::OutLabel::Free(label_index) => label_index.value,
-                    type_checker::OutLabel::Fresh(local_label_index) => {
+            type_checker::Arg::LabelOutRef(label_out_ref_arg) => LabelArg {
+                label: match label_out_ref_arg.label_out_ref {
+                    type_checker::LabelOutRef::Free(label_index) => label_index.value,
+                    type_checker::LabelOutRef::Fresh(local_label_index) => {
                         self.export_stmt(
                             LabelStmt {
                                 label: local_label_index,
@@ -218,17 +198,49 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
                         local_label_index.into()
                     }
                 },
-                is_out: true,
-                ir: out_label_arg.ir,
+                is_out_ref: true,
+                ir: label_out_ref_arg.ir,
             }
             .into(),
         }
     }
 
-    fn normalize_call(&mut self, call: type_checker::Call) -> (Vec<Stmt>, Call) {
-        let mut stmts = Vec::new();
-        let mut scoped_normalizer = self.recurse(&mut stmts);
+    fn normalize_expr_arg(&mut self, expr_arg: type_checker::ExprArg) -> Arg {
+        let type_index = expr_arg.expr.type_();
+        let expr = self.normalize_pure_expr(expr_arg.expr);
 
+        match expr_arg.kind {
+            type_checker::ExprArgKind::Value => expr.into(),
+            type_checker::ExprArgKind::InRefTmp => {
+                let var_index = match expr {
+                    // TODO(spinda): Support looking through blocks and casts.
+                    PureExpr::Var(VarExpr { var: var_index, .. })
+                        if self.is_stable_var(var_index) =>
+                    {
+                        var_index
+                    }
+                    expr => self.push_tmp_var(expr.into(), false).var,
+                };
+
+                VarRefArg {
+                    var_ref: FreeVarRef {
+                        var: Spanned::new(Span::Internal, var_index),
+                        kind: VarRefKind::In,
+                    }
+                    .into(),
+                    type_: type_index,
+                    cast_route: Vec::new(),
+                }
+                .into()
+            }
+        }
+    }
+
+    fn normalize_call(&mut self, call: type_checker::Call) -> (Vec<Stmt>, Call) {
+        let local_call_index = *self.next_local_call_index;
+        *self.next_local_call_index = LocalCallIndex::from(usize::from(local_call_index) + 1);
+
+        let mut scoped_normalizer = self.recurse();
         let args = call
             .args
             .into_iter()
@@ -236,11 +248,12 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             .collect();
 
         (
-            stmts,
+            scoped_normalizer.stmts.into_owned(),
             Call {
                 target: call.target,
                 is_unsafe: call.is_unsafe,
                 args,
+                local_call_index,
             },
         )
     }
@@ -252,7 +265,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     ) -> Expr {
         let (stmts, call) = self.normalize_call(call);
         let value = expr_ctor(call);
-        block_if_necessary(None, stmts, value)
+        maybe_wrap_with_block_expr(stmts, value)
     }
 
     fn normalize_unused_call(
@@ -271,6 +284,27 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         });
     }
 
+    fn normalize_used_block(&mut self, block: type_checker::Block) -> (Vec<Stmt>, Expr) {
+        let mut scoped_normalizer = self.nest_block();
+        scoped_normalizer.normalize_stmts(block.stmts);
+        let value = scoped_normalizer.normalize_expr(block.value);
+        (scoped_normalizer.stmts.into_owned(), value)
+    }
+
+    fn normalize_unused_block(&mut self, block: type_checker::Block) -> Vec<Stmt> {
+        let mut scoped_normalizer = self.nest_block();
+        scoped_normalizer.normalize_stmts(block.stmts);
+        scoped_normalizer.normalize_unused_expr(block.value);
+        scoped_normalizer.stmts.into_owned()
+    }
+
+    fn normalize_stmts(&mut self, stmts: Vec<type_checker::Stmt>) {
+        self.stmts.reserve(stmts.len());
+        for stmt in stmts {
+            self.normalize_stmt(stmt);
+        }
+    }
+
     fn normalize_stmt(&mut self, stmt: type_checker::Stmt) {
         match stmt {
             type_checker::Stmt::Block(block) => self.normalize_unused_block_expr(block),
@@ -286,7 +320,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     }
 
     fn normalize_let_stmt(&mut self, let_stmt: type_checker::LetStmt) {
-        let rhs = self.normalize_expr(let_stmt.rhs);
+        let rhs = self.normalize_stmt_expr(let_stmt.rhs);
 
         self.stmts.push(
             LetStmt {
@@ -297,28 +331,28 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         );
     }
 
-    fn normalize_if_stmt_recurse(&mut self, if_stmt: type_checker::IfStmt) -> IfStmt {
-        let cond = self.normalize_expr(if_stmt.cond);
+    fn normalize_if_stmt(&mut self, if_stmt: type_checker::IfStmt) {
+        let if_ = self.normalize_if_stmt_clause(if_stmt);
+        self.stmts.push(if_.into());
+    }
+
+    fn normalize_if_stmt_clause(&mut self, if_stmt: type_checker::IfStmt) -> IfStmt {
+        let cond = self.normalize_stmt_expr(if_stmt.cond);
         let then = self.normalize_unused_block(if_stmt.then);
         let else_ = if_stmt.else_.map(|else_| match else_ {
             type_checker::ElseClause::Else(else_block) => {
                 ast::ElseClause::Else(self.normalize_unused_block(else_block))
             }
             type_checker::ElseClause::ElseIf(else_if) => {
-                ast::ElseClause::ElseIf(Box::new(self.normalize_if_stmt_recurse(*else_if)))
+                ast::ElseClause::ElseIf(Box::new(self.normalize_if_stmt_clause(*else_if)))
             }
         });
 
         IfStmt { cond, then, else_ }
     }
 
-    fn normalize_if_stmt(&mut self, if_stmt: type_checker::IfStmt) {
-        let if_ = self.normalize_if_stmt_recurse(if_stmt);
-        self.stmts.push(if_.into());
-    }
-
     fn normalize_check_stmt(&mut self, check_stmt: type_checker::CheckStmt) {
-        let cond = self.normalize_expr(check_stmt.cond);
+        let cond = self.normalize_stmt_expr(check_stmt.cond);
 
         self.stmts.push(
             CheckStmt {
@@ -339,6 +373,12 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         });
     }
 
+    fn normalize_stmt_expr(&mut self, expr: type_checker::Expr) -> Expr {
+        let mut scoped_normalizer = self.recurse();
+        let expr = scoped_normalizer.normalize_expr(expr);
+        maybe_wrap_with_block_expr(scoped_normalizer.stmts.into_owned(), expr)
+    }
+
     fn normalize_expr(&mut self, expr: type_checker::Expr) -> Expr {
         if expr.type_() == BuiltInType::Unit.into() {
             self.normalize_unused_expr(expr);
@@ -349,18 +389,16 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     }
 
     fn normalize_pure_expr(&mut self, expr: type_checker::Expr) -> PureExpr {
+        // Normalize the expression, then try to reinterpret the resulting
+        // normalized expression as a pure expression.
         match self.normalize_expr(expr).try_into() {
-            Ok(pure_expr) => match pure_expr {
-                // If the variable is mutable, we need to save its value at the
-                // correct point in evaluation.
-                PureExpr::Var(var_expr) if self.is_mut_var(var_expr.var) => {
-                    self.push_tmp_expr(var_expr.into()).into()
-                }
-                pure_expr @ _ => pure_expr,
-            },
+            Ok(pure_expr) => pure_expr,
+            // If the normalized expression is impure, or contains an impure
+            // sub-expression, lift the whole thing out to a temporary variable.
+            // Then we can return a pure reference to that temporary variable.
             Err(expr) => {
                 debug_assert_ne!(expr.type_(), BuiltInType::Unit.into());
-                self.push_tmp_expr(expr).into()
+                self.push_tmp_var(expr, false).into()
             }
         }
     }
@@ -369,7 +407,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         debug_assert_ne!(expr.type_(), BuiltInType::Unit.into());
 
         match expr {
-            type_checker::Expr::Block(block) => self.normalize_used_block_expr(*block),
+            type_checker::Expr::Block(block) => self.normalize_used_block_expr(*block).into(),
             type_checker::Expr::Literal(literal) => literal.into(),
             type_checker::Expr::Var(var_expr) => var_expr.into(),
             type_checker::Expr::Invoke(invoke_expr) => {
@@ -417,21 +455,17 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         }
     }
 
-    fn normalize_used_block_expr(&mut self, kinded_block: type_checker::KindedBlock) -> Expr {
-        let mut stmts = self.normalize_block_stmts(kinded_block.block.stmts);
-
-        let mut scoped_normalizer = self.nest(&mut stmts);
-        let value = scoped_normalizer.normalize_expr(kinded_block.block.value);
-
-        block_if_necessary(kinded_block.kind, stmts, value)
+    fn normalize_used_block_expr(&mut self, kinded_block: type_checker::KindedBlock) -> BlockExpr {
+        let (stmts, value) = self.normalize_used_block(kinded_block.block);
+        BlockExpr {
+            kind: kinded_block.kind,
+            stmts,
+            value,
+        }
     }
 
     fn normalize_unused_block_expr(&mut self, kinded_block: type_checker::KindedBlock) {
-        let mut stmts = self.normalize_block_stmts(kinded_block.block.stmts);
-
-        let mut scoped_normalizer = self.nest(&mut stmts);
-        scoped_normalizer.normalize_unused_expr(kinded_block.block.value);
-
+        let stmts = self.normalize_unused_block(kinded_block.block);
         if !stmts.is_empty() {
             self.stmts.push(
                 BlockStmt {
@@ -511,78 +545,56 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     }
 
     fn normalize_used_bin_oper_expr(&mut self, bin_oper_expr: type_checker::BinOperExpr) -> Expr {
-        let mut lhs_stmts = Vec::new();
-        let mut lhs_normalizer = self.recurse(&mut lhs_stmts);
-        let lhs = lhs_normalizer.normalize_pure_expr(bin_oper_expr.lhs);
-
-        let mut rhs_stmts = Vec::new();
-        let mut rhs_normalizer = self.recurse(&mut rhs_stmts);
-        let rhs = rhs_normalizer.normalize_pure_expr(bin_oper_expr.rhs);
-
         match bin_oper_expr.oper {
-            BinOper::Logical(logical_bin_oper) => match logical_bin_oper {
-                // v = false; if (lhs) { v = rhs }; v
-                LogicalBinOper::And => {
-                    let output_var_expr = self.push_tmp_expr(BuiltInVar::False.into());
+            BinOper::Logical(logical_bin_oper) => {
+                let lhs = self.normalize_stmt_expr(bin_oper_expr.lhs);
+                let rhs = self.normalize_stmt_expr(bin_oper_expr.rhs);
 
-                    self.stmts.push(
-                        IfStmt {
-                            cond: block_if_necessary(None, lhs_stmts, lhs.into()),
-                            then: vec![
-                                AssignStmt {
-                                    lhs: output_var_expr.var,
-                                    rhs: block_if_necessary(None, rhs_stmts, rhs.into()),
-                                }
-                                .into(),
-                            ],
-                            else_: None,
+                let (init_output_expr, cond) = match logical_bin_oper {
+                    // v = false; if (lhs) { v = rhs }; v
+                    LogicalBinOper::And => (BuiltInVar::False.into(), lhs),
+                    // v = true; if (!lhs) { v = rhs }; v
+                    LogicalBinOper::Or => (
+                        BuiltInVar::True.into(),
+                        NegateExpr {
+                            kind: NegateKind::Logical,
+                            expr: lhs,
                         }
                         .into(),
-                    );
+                    ),
+                };
 
-                    output_var_expr.into()
-                }
+                let output_var_expr = self.push_tmp_var(init_output_expr, true);
 
-                // v = true; if (!lhs) { v = rhs }; v
-                LogicalBinOper::Or => {
-                    let output_var_expr = self.push_tmp_expr(BuiltInVar::True.into());
-
-                    self.stmts.push(
-                        IfStmt {
-                            cond: NegateExpr {
-                                kind: NegateKind::Logical,
-                                expr: block_if_necessary(None, lhs_stmts, lhs.into()),
+                self.stmts.push(
+                    IfStmt {
+                        cond,
+                        then: vec![
+                            AssignStmt {
+                                lhs: output_var_expr.var,
+                                rhs,
                             }
                             .into(),
-                            then: vec![
-                                AssignStmt {
-                                    lhs: output_var_expr.var,
-                                    rhs: block_if_necessary(None, rhs_stmts, rhs.into()),
-                                }
-                                .into(),
-                            ],
-                            else_: None,
-                        }
-                        .into(),
-                    );
+                        ],
+                        else_: None,
+                    }
+                    .into(),
+                );
 
-                    output_var_expr.into()
-                }
-            },
+                output_var_expr.into()
+            }
 
             _ => {
-                let mut stmts = lhs_stmts;
-                stmts.append(&mut rhs_stmts);
+                let lhs = self.normalize_pure_expr(bin_oper_expr.lhs);
+                let rhs = self.normalize_pure_expr(bin_oper_expr.rhs);
 
-                let value = BinOperExpr {
+                BinOperExpr {
                     oper: bin_oper_expr.oper,
                     type_: bin_oper_expr.type_,
                     lhs,
                     rhs,
                 }
-                .into();
-
-                block_if_necessary(None, stmts, value)
+                .into()
             }
         }
     }
@@ -590,11 +602,11 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_unused_bin_oper_expr(&mut self, bin_oper_expr: type_checker::BinOperExpr) {
         match bin_oper_expr.oper {
             BinOper::Logical(logical_bin_oper) => {
-                let lhs = self.normalize_used_expr(bin_oper_expr.lhs);
+                let lhs = self.normalize_stmt_expr(bin_oper_expr.lhs);
 
-                let mut rhs_stmts = Vec::new();
-                let mut scoped_normalizer = self.recurse(&mut rhs_stmts);
-                scoped_normalizer.normalize_unused_expr(bin_oper_expr.rhs);
+                let mut rhs_normalizer = self.recurse();
+                rhs_normalizer.normalize_unused_expr(bin_oper_expr.rhs);
+                let rhs_stmts = rhs_normalizer.stmts.into_owned();
 
                 let cond = match logical_bin_oper {
                     // if (lhs) { rhs }
@@ -624,7 +636,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     }
 
     fn normalize_unused_assign_expr(&mut self, assign_expr: type_checker::AssignExpr) {
-        let rhs = self.normalize_expr(assign_expr.rhs);
+        let rhs = self.normalize_stmt_expr(assign_expr.rhs);
 
         self.stmts.push(
             AssignStmt {
@@ -635,12 +647,12 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         );
     }
 
-    fn push_tmp_expr(&mut self, expr: Expr) -> VarExpr {
+    fn push_tmp_var(&mut self, expr: Expr, is_mut: bool) -> VarExpr {
         let tmp_local_var_type_index = expr.type_();
 
         let tmp_local_var = LocalVar {
             ident: Spanned::new(Span::Internal, *TMP_VAR_IDENT),
-            is_mut: false,
+            is_mut,
             type_: tmp_local_var_type_index,
         };
 
@@ -663,15 +675,20 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn export_stmt(&mut self, stmt: Stmt) {
         self.exported_stmts
             .as_deref_mut()
-            .unwrap_or(self.stmts)
+            .unwrap_or(&mut self.stmts)
             .push(stmt);
     }
 }
 
-fn block_if_necessary(kind: Option<BlockKind>, stmts: Vec<Stmt>, value: Expr) -> Expr {
+fn maybe_wrap_with_block_expr(stmts: Vec<Stmt>, value: Expr) -> Expr {
     if stmts.is_empty() {
         value
     } else {
-        BlockExpr { kind, stmts, value }.into()
+        BlockExpr {
+            kind: None,
+            stmts,
+            value,
+        }
+        .into()
     }
 }

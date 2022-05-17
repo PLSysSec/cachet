@@ -4,10 +4,13 @@ use std::error::Error;
 use std::fmt;
 
 use codespan_reporting::diagnostic::Diagnostic;
+use derive_more::From;
 use thiserror::Error;
 
-use crate::ast::{labels, FileId, Ident, Path, Span, Spanned};
+use crate::ast::{labels, FileId, Ident, Path, Span, Spanned, VarRefKind};
 use crate::FrontendError;
+
+use crate::type_checker::ast::{Arg, ExprArgKind, VarRef};
 
 // TODO(spinda): Break up TypeCheckError like ResolveError.
 #[derive(Debug, Error)]
@@ -22,8 +25,8 @@ pub enum TypeCheckError {
         first_cycle_callable: Spanned<Path>,
         other_cycle_callables: Vec<Spanned<Path>>,
     },
-    #[error("op `{op}` can't have out-parameter `{out_param}`")]
-    OpHasOutParam { op: Path, out_param: Spanned<Ident> },
+    #[error("op `{op}` can't have reference parameter `{ref_param}`")]
+    OpHasRefParam { op: Path, ref_param: Spanned<Ident> },
     #[error("op `{op}` can't return a value")]
     OpReturnsValue { op: Path, ret_span: Span },
     #[error("op `{op}` is missing a body")]
@@ -156,7 +159,7 @@ impl FrontendError for TypeCheckError {
                 first_cycle_callable,
                 ..
             } => first_cycle_callable.span,
-            TypeCheckError::OpHasOutParam { out_param, .. } => out_param.span,
+            TypeCheckError::OpHasRefParam { ref_param, .. } => ref_param.span,
             TypeCheckError::OpReturnsValue { ret_span, .. } => *ret_span,
             TypeCheckError::MissingOpBody { body_span, .. } => *body_span,
             TypeCheckError::GotoIrMismatch { label, .. } => label.span,
@@ -212,7 +215,7 @@ impl FrontendError for TypeCheckError {
                     first_cycle_callable
                 )
             }
-            TypeCheckError::OpHasOutParam { .. }
+            TypeCheckError::OpHasRefParam { .. }
             | TypeCheckError::OpReturnsValue { .. }
             | TypeCheckError::MissingOpBody { .. } => {
                 "allowed for functions but not for ops".to_owned()
@@ -376,7 +379,7 @@ impl FrontendError for TypeCheckError {
                     },
                 ));
             }
-            TypeCheckError::OpHasOutParam { .. } => (),
+            TypeCheckError::OpHasRefParam { .. } => (),
             TypeCheckError::OpReturnsValue { .. } => (),
             TypeCheckError::MissingOpBody { .. } => (),
             TypeCheckError::GotoIrMismatch {
@@ -524,21 +527,46 @@ impl Error for TypeCheckErrors {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
 pub enum ArgKind {
     Expr,
-    OutVar,
+    VarRef(VarRefKind),
     Label,
-    OutLabel,
+    LabelOutRef,
+}
+
+impl ArgKind {
+    pub fn kind_of(arg: &Arg) -> Self {
+        match arg {
+            Arg::Expr(expr_arg) => match expr_arg.kind {
+                ExprArgKind::Value => Self::Expr,
+                ExprArgKind::InRefTmp => Self::VarRef(VarRefKind::In),
+            },
+            Arg::VarRef(var_ref_arg) => match &var_ref_arg.var_ref {
+                VarRef::Free(free_var_ref) => free_var_ref.kind,
+                VarRef::FreshOut(_) => VarRefKind::Out,
+            }
+            .into(),
+            Arg::Label(_) => Self::Label,
+            Arg::LabelOutRef(_) => Self::LabelOutRef,
+        }
+    }
 }
 
 impl fmt::Display for ArgKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             ArgKind::Expr => write!(f, "expression"),
-            ArgKind::OutVar => write!(f, "variable out-parameter"),
+            ArgKind::VarRef(var_ref_kind) => write!(
+                f,
+                "variable {}-reference parameter",
+                match var_ref_kind {
+                    VarRefKind::In => "in",
+                    VarRefKind::Out => "out",
+                }
+            ),
             ArgKind::Label => write!(f, "label"),
-            ArgKind::OutLabel => write!(f, "label out-parameter"),
+            ArgKind::LabelOutRef => write!(f, "label out-reference parameter"),
         }
     }
 }

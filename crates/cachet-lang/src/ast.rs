@@ -8,10 +8,15 @@ pub use crate::ast::span::*;
 mod ident;
 mod span;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
 pub enum VarParamKind {
+    Value { is_mut: bool },
+    Ref(VarRefKind),
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum VarRefKind {
     In,
-    Mut,
     Out,
 }
 

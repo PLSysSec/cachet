@@ -42,7 +42,7 @@ typed_field_index!(FlowGraph:label_nodes[pub LabelNodeIndex] => LabelNode);
 
 #[derive(Clone, Debug)]
 pub struct EmitNode {
-    pub label_ident: EmitLabelIdent,
+    pub call_path: CallPath,
     pub succs: HashSet<EmitSucc>,
     pub target: Option<flattener::CallableIndex>,
 }
@@ -112,8 +112,7 @@ struct FlowTracer<'a> {
     env: &'a flattener::Env,
     bottom_ir_index: flattener::IrIndex,
     graph: MaybeOwned<'a, FlowGraph>,
-    curr_emit_label_ident: &'a EmitLabelIdent,
-    next_local_emit_index: MaybeOwned<'a, LocalEmitIndex>,
+    curr_call_path: &'a CallPath,
     pred_emits: MaybeOwned<'a, HashSet<EmitNodeIndex>>,
     label_scope: MaybeOwned<'a, LabelScope>,
     bound_labels: MaybeOwned<'a, HashSet<LabelNodeIndex>>,
@@ -121,16 +120,13 @@ struct FlowTracer<'a> {
 
 impl<'a> FlowTracer<'a> {
     fn new(env: &'a flattener::Env, bottom_ir_index: flattener::IrIndex) -> Self {
-        static ROOT_EMIT_LABEL_IDENT: EmitLabelIdent = EmitLabelIdent {
-            segments: Vec::new(),
-        };
+        static ROOT_CALL_PATH: CallPath = CallPath::new();
 
         FlowTracer {
             env,
             bottom_ir_index,
             graph: MaybeOwned::Owned(FlowGraph::default()),
-            curr_emit_label_ident: &ROOT_EMIT_LABEL_IDENT,
-            next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
+            curr_call_path: &ROOT_CALL_PATH,
             pred_emits: MaybeOwned::Owned(HashSet::new()),
             label_scope: MaybeOwned::Owned(LabelScope::new()),
             bound_labels: MaybeOwned::Owned(HashSet::new()),
@@ -221,8 +217,7 @@ impl<'a> FlowTracer<'a> {
                 env: self.env,
                 bottom_ir_index: self.bottom_ir_index,
                 graph: MaybeOwned::Borrowed(&mut self.graph),
-                curr_emit_label_ident: self.curr_emit_label_ident,
-                next_local_emit_index: MaybeOwned::Borrowed(&mut self.next_local_emit_index),
+                curr_call_path: self.curr_call_path,
                 pred_emits: MaybeOwned::Owned(init_pred_emits.clone()),
                 label_scope: MaybeOwned::Borrowed(&mut self.label_scope),
                 bound_labels: MaybeOwned::Owned(init_bound_labels.clone()),
@@ -288,29 +283,22 @@ impl<'a> FlowTracer<'a> {
         let ir_item = &self.env[emit_stmt.ir];
         let op_item = &self.env[emit_stmt.call.target];
 
-        let new_emit_label_segment = EmitLabelSegment {
-            local_emit_index: self.take_local_emit_index(),
-            ir_ident: ir_item.ident.value.into(),
-            op_selector: UserOpSelector::from(op_item.path.value.ident()).into(),
+        // Extend the call path with the emit we're currently looking at.
+        let new_call_segment = CallSegment {
+            local_call_index: emit_stmt.call.local_call_index,
+            target: op_item.path.value.into(),
         };
-
-        // Extend the emit label identifier with the emit we're currently
-        // looking at.
-        let new_emit_label_ident: EmitLabelIdent = self
-            .curr_emit_label_ident
-            .segments
+        let new_call_path: CallPath = self
+            .curr_call_path
             .iter()
             .copied()
-            .chain(iter::once(new_emit_label_segment))
+            .chain(iter::once(new_call_segment))
             .collect();
 
         // If the op we're emitting is at the interpreter level, create a
         // corresponding emit node and set it as the new predecessor on-deck.
         if ir_item.emits.is_none() {
-            self.insert_and_link_emit_node(
-                new_emit_label_ident.clone(),
-                Some(emit_stmt.call.target),
-            );
+            self.insert_and_link_emit_node(new_call_path.clone(), Some(emit_stmt.call.target));
         }
 
         // Trace inside the emitted op. It's important that we do this *after*
@@ -322,8 +310,7 @@ impl<'a> FlowTracer<'a> {
             env: self.env,
             bottom_ir_index: self.bottom_ir_index,
             graph: MaybeOwned::Borrowed(&mut self.graph),
-            curr_emit_label_ident: &new_emit_label_ident,
-            next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
+            curr_call_path: &new_call_path,
             pred_emits: MaybeOwned::Borrowed(&mut self.pred_emits),
             label_scope: MaybeOwned::Owned(LabelScope::new()),
             bound_labels: MaybeOwned::Borrowed(&mut self.bound_labels),
@@ -338,14 +325,14 @@ impl<'a> FlowTracer<'a> {
     }
 
     fn trace_invoke_stmt(&mut self, invoke_stmt: &flattener::InvokeStmt) {
-        // TODO(spinda): Handle non-external functions with label
-        // out-parameters.
-        debug_assert!(self.env[invoke_stmt.call.target].body.is_none());
-
         let exit_emit_node_index = self.graph.exit_emit_node_index();
         for arg in &invoke_stmt.call.args {
             if let flattener::Arg::Label(label_arg) = arg {
-                if label_arg.is_out && label_arg.ir == self.bottom_ir_index {
+                if label_arg.is_out_ref && label_arg.ir == self.bottom_ir_index {
+                    // TODO(spinda): Handle non-external functions with label
+                    // out-parameters.
+                    debug_assert!(self.env[invoke_stmt.call.target].body.is_none());
+
                     let label_node_index = self.label_scope[&label_arg.label];
                     self.graph
                         .link_label_to_emit(label_node_index, exit_emit_node_index);
@@ -357,7 +344,7 @@ impl<'a> FlowTracer<'a> {
     fn insert_exit_emit_node(&mut self) {
         debug_assert!(self.graph.emit_nodes.is_empty());
         debug_assert!(self.pred_emits.is_empty());
-        self.insert_emit_node(EmitLabelIdent::default(), None);
+        self.insert_emit_node(CallPath::default(), None);
     }
 
     fn link_exit_emit_node(&mut self) {
@@ -366,11 +353,11 @@ impl<'a> FlowTracer<'a> {
 
     fn insert_emit_node(
         &mut self,
-        label_ident: EmitLabelIdent,
+        call_path: CallPath,
         target: Option<flattener::CallableIndex>,
     ) -> EmitNodeIndex {
         self.graph.emit_nodes.push_and_get_key(EmitNode {
-            label_ident,
+            call_path,
             succs: HashSet::new(),
             target,
         })
@@ -378,10 +365,10 @@ impl<'a> FlowTracer<'a> {
 
     fn insert_and_link_emit_node(
         &mut self,
-        label_ident: EmitLabelIdent,
+        call_path: CallPath,
         target: Option<flattener::CallableIndex>,
     ) {
-        let emit_node_index = self.insert_emit_node(label_ident, target);
+        let emit_node_index = self.insert_emit_node(call_path, target);
         self.link_emit_node(emit_node_index);
         self.pred_emits.insert(emit_node_index);
     }
@@ -402,12 +389,6 @@ impl<'a> FlowTracer<'a> {
             self.graph
                 .link_label_to_emit(bound_label_index, emit_node_index);
         }
-    }
-
-    fn take_local_emit_index(&mut self) -> LocalEmitIndex {
-        let local_emit_index = *self.next_local_emit_index;
-        *self.next_local_emit_index = LocalEmitIndex::from(usize::from(local_emit_index) + 1);
-        local_emit_index
     }
 
     fn insert_label_node(&mut self, label_index: flattener::LabelIndex) -> LabelNodeIndex {

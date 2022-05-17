@@ -13,11 +13,11 @@ use crate::ast::{BinOper, BlockKind, CastKind, CheckKind, Ident, NegateKind, Pat
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::resolver;
 pub use crate::resolver::{
-    CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex, FnIndex,
-    GlobalVarIndex, GlobalVarItem, HasAttrs, IrIndex, IrItem, Label, LabelIndex, LabelParam,
-    LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel,
-    OutVar, ParamIndex, Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex,
-    Typed, VarIndex, VarParam, VarParamIndex, VariantIndex,
+    CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex, FnIndex, FreeVarRef,
+    GlobalVarIndex, GlobalVarItem, HasAttrs, IrIndex, IrItem, Label, LabelIndex, LabelOutRef,
+    LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVarIndex, OpIndex,
+    ParamIndex, Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed,
+    VarIndex, VarParam, VarParamIndex, VarRef, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -191,20 +191,42 @@ impl Typed for CallableItem {
 
 #[derive(Clone, Debug, From)]
 pub enum Arg {
-    Expr(Expr),
-    OutVar(OutVarArg),
+    #[from]
+    Expr(ExprArg),
+    #[from]
+    VarRef(VarRefArg),
+    #[from]
     Label(LabelArg),
-    OutLabel(OutLabelArg),
+    #[from]
+    LabelOutRef(LabelOutRefArg),
 }
 
 #[derive(Clone, Debug)]
-pub struct OutVarArg {
-    pub out_var: OutVar,
-    pub type_: TypeIndex,
-    pub upcast_route: Vec<TypeIndex>,
+pub struct ExprArg {
+    pub expr: Expr,
+    pub kind: ExprArgKind,
 }
 
-impl Typed for OutVarArg {
+impl Typed for ExprArg {
+    fn type_(&self) -> TypeIndex {
+        self.expr.type_()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub enum ExprArgKind {
+    Value,
+    InRefTmp,
+}
+
+#[derive(Clone, Debug)]
+pub struct VarRefArg {
+    pub var_ref: VarRef,
+    pub type_: TypeIndex,
+    pub cast_route: Vec<(CastKind, TypeIndex)>,
+}
+
+impl Typed for VarRefArg {
     fn type_(&self) -> TypeIndex {
         self.type_
     }
@@ -217,8 +239,8 @@ pub struct LabelArg {
 }
 
 #[derive(Clone, Debug)]
-pub struct OutLabelArg {
-    pub out_label: OutLabel,
+pub struct LabelOutRefArg {
+    pub label_out_ref: LabelOutRef,
     pub ir: IrIndex,
 }
 

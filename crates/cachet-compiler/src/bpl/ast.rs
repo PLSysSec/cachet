@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use std::borrow::{Borrow, BorrowMut};
-use std::fmt::{self, Display, Write};
+use std::fmt::{self, Debug, Display, Write};
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 
@@ -12,18 +12,49 @@ use enum_map::Enum;
 
 use cachet_lang::ast::{
     ArithBinOper, BitwiseBinOper, CastKind, CheckKind, CompareBinOper, Ident, LogicalBinOper,
-    NegateKind, NumericCompareBinOper,
+    NegateKind, NumericCompareBinOper, Path,
 };
-pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
-use cachet_util::{
-    box_from, deref_from, fmt_join, fmt_join_leading, fmt_join_trailing, typed_index, AffixWriter,
-};
+pub use cachet_lang::normalizer::{LocalCallIndex, LocalLabelIndex, LocalVarIndex};
+use cachet_util::{box_from, fmt_join, fmt_join_leading, fmt_join_trailing, AffixWriter};
 
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "#{}", ident)]
-pub struct IrIdent {
-    pub ident: Ident,
+#[derive(Clone, Copy, Display, Eq, From, PartialEq)]
+#[display(fmt = "${}", _0)]
+pub struct UserIdent(pub Ident);
+
+impl Debug for UserIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        Debug::fmt(&self.0, f)
+    }
 }
+
+#[derive(Clone, Copy, Eq, From, PartialEq)]
+#[from(types(Ident))]
+pub struct PathIdent(pub Path);
+
+impl Debug for PathIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        Debug::fmt(&format!("{}", self), f)
+    }
+}
+
+impl Display for PathIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        for ident in self.0.into_iter() {
+            write!(f, "{}", UserIdent(ident))?;
+        }
+        Ok(())
+    }
+}
+
+impl From<UserIdent> for PathIdent {
+    fn from(UserIdent(ident): UserIdent) -> Self {
+        ident.into()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+#[from(types(Ident, Path, UserIdent))]
+pub struct GlobalVarPathIdent(pub PathIdent);
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Type {
@@ -32,6 +63,7 @@ pub enum Type {
         BitVecTypeIdent,
         FloatTypeIdent,
         PreludeTypeIdent,
+        TypeMemberTypeIdent,
         IrMemberTypeIdent,
         UserTypeIdent
     ))]
@@ -42,19 +74,21 @@ pub enum Type {
 
 box_from!(MapType => Type);
 
-#[derive(Clone, Copy, Debug, Display, From)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
 pub enum TypeIdent {
     #[from(types(BitVecTypeIdent, FloatTypeIdent))]
     Native(NativeTypeIdent),
     #[from]
     Prelude(PreludeTypeIdent),
     #[from]
+    TypeMember(TypeMemberTypeIdent),
+    #[from]
     IrMember(IrMemberTypeIdent),
     #[from]
     User(UserTypeIdent),
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
 pub enum NativeTypeIdent {
     #[display(fmt = "bool")]
     Bool,
@@ -64,46 +98,61 @@ pub enum NativeTypeIdent {
     Float(FloatTypeIdent),
 }
 
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
 pub enum PreludeTypeIdent {
+    #[display(fmt = "CallPath")]
+    CallPath,
     #[display(fmt = "Pc")]
     Pc,
-    #[display(fmt = "EmitPath")]
-    EmitPath,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}^{}", ir_ident, selector)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+#[display(fmt = "{}{}", type_ident, selector)]
+pub struct TypeMemberTypeIdent {
+    pub type_ident: UserTypeIdent,
+    pub selector: TypeMemberTypeSelector,
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+pub enum TypeMemberTypeSelector {
+    #[display(fmt = "^Ref")]
+    Ref,
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+#[display(fmt = "{}{}", ir_ident, selector)]
 pub struct IrMemberTypeIdent {
-    pub ir_ident: IrIdent,
+    pub ir_ident: UserIdent,
     pub selector: IrMemberTypeSelector,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
 pub enum IrMemberTypeSelector {
-    #[display(fmt = "Op")]
+    #[display(fmt = "^Op")]
     Op,
-    #[display(fmt = "Label")]
+    #[display(fmt = "^Label")]
     Label,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
 #[display(fmt = "bv{}", width)]
 pub struct BitVecTypeIdent {
     pub width: u8,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
 #[display(fmt = "float{}e{}", sig_width, exp_width)]
 pub struct FloatTypeIdent {
     pub sig_width: u8,
     pub exp_width: u8,
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "#{}", ident)]
-pub struct UserTypeIdent {
-    pub ident: Ident,
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+pub enum UserTypeIdent {
+    #[display(fmt = "Struct")]
+    Struct,
+    #[from(types(Ident))]
+    Other(UserIdent),
 }
 
 #[derive(Clone, Debug)]
@@ -122,15 +171,21 @@ impl Display for MapType {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+pub enum ConstIdent {
+    GlobalVar(GlobalVarPathIdent),
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
 pub enum VarIdent {
-    #[from(types(IrMemberGlobalVarIdent, UserGlobalVarIdent))]
-    Global(GlobalVarIdent),
+    #[from]
+    TypeMember(TypeMemberVarIdent),
+    #[from]
+    IrMember(IrMemberVarIdent),
     #[from(types(UserParamVarIdent))]
     Param(ParamVarIdent),
     #[display(fmt = "ret")]
     Ret,
-    // TODO(spinda): Move these under LocalVarIdent.
     #[display(fmt = "op")]
     Op,
     #[display(fmt = "pc")]
@@ -143,54 +198,46 @@ pub enum VarIdent {
     Synthetic(SyntheticVarIdent),
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
-pub enum GlobalVarIdent {
-    IrMember(IrMemberGlobalVarIdent),
-    User(UserGlobalVarIdent),
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+#[display(fmt = "{}{}", type_ident, selector)]
+pub struct TypeMemberVarIdent {
+    pub type_ident: UserTypeIdent,
+    pub selector: TypeMemberVarSelector,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}^{}", ir_ident, selector)]
-pub struct IrMemberGlobalVarIdent {
-    pub ir_ident: IrIdent,
-    pub selector: IrMemberGlobalVarSelector,
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+pub enum TypeMemberVarSelector {
+    #[display(fmt = "^refs")]
+    Refs,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-pub enum IrMemberGlobalVarSelector {
-    #[display(fmt = "pc")]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+#[display(fmt = "{}{}", ir_ident, selector)]
+pub struct IrMemberVarIdent {
+    pub ir_ident: UserIdent,
+    pub selector: IrMemberVarSelector,
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+pub enum IrMemberVarSelector {
+    #[display(fmt = "^pc")]
     Pc,
-    #[display(fmt = "ops")]
+    #[display(fmt = "^ops")]
     Ops,
-    #[display(fmt = "pcEmitPaths")]
-    PcEmitPaths,
-    #[display(fmt = "nextLabel")]
+    #[display(fmt = "^pcEmitCallPaths")]
+    PcEmitCallPaths,
+    #[display(fmt = "^nextLabel")]
     NextLabel,
-    #[display(fmt = "labelPcs")]
+    #[display(fmt = "^labelPcs")]
     LabelPcs,
 }
 
-#[derive(Clone, Copy, Debug, From)]
-pub struct UserGlobalVarIdent {
-    pub parent_ident: Option<Ident>,
-    pub var_ident: Ident,
-}
-
-impl Display for UserGlobalVarIdent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "#")?;
-        if let Some(parent_ident) = &self.parent_ident {
-            write!(f, "{}~", parent_ident)?;
-        }
-        write!(f, "{}", self.var_ident)?;
-        Ok(())
-    }
-}
-
-#[derive(Clone, Copy, Debug, Display, From)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
 pub enum ParamVarIdent {
-    #[display(fmt = "emitPath")]
-    EmitPath,
+    #[display(fmt = "callPath")]
+    CallPath,
+    #[display(fmt = "frame")]
+    Frame,
     #[display(fmt = "in")]
     In,
     #[display(fmt = "init")]
@@ -201,81 +248,88 @@ pub enum ParamVarIdent {
     Label,
     #[display(fmt = "last")]
     Last,
+    #[display(fmt = "localCallIndex")]
+    LocalCallIndex,
     #[display(fmt = "op")]
     Op,
     User(UserParamVarIdent),
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "${}", ident)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+#[display(fmt = "{}'p", ident)]
+#[from(types(Ident))]
 pub struct UserParamVarIdent {
-    pub ident: Ident,
+    pub ident: UserIdent,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "${}'v{}", ident, index)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+#[display(fmt = "{}'v{}", ident, index)]
 pub struct LocalVarIdent {
-    pub ident: Ident,
+    pub ident: UserIdent,
     pub index: LocalVarIndex,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "${}'l{}", ident, index)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+#[display(fmt = "{}'l{}", ident, index)]
 pub struct LocalLabelVarIdent {
-    pub ident: Ident,
+    pub ident: UserIdent,
     pub index: LocalLabelIndex,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
 #[display(fmt = "{}'{}", kind, index)]
 pub struct SyntheticVarIdent {
     pub kind: SyntheticVarKind,
     pub index: usize,
 }
 
-#[derive(Clone, Copy, Debug, Display, Enum)]
+#[derive(Clone, Copy, Debug, Display, Enum, Eq, PartialEq)]
 pub enum SyntheticVarKind {
-    #[display(fmt = "out")]
-    Out,
+    #[display(fmt = "ret")]
+    Ret,
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
 pub enum FnIdent {
+    #[display(fmt = "init")]
+    Init,
     Prelude(PreludeFnIdent),
     TypeMember(TypeMemberFnIdent),
     IrMember(IrMemberFnIdent),
     User(UserFnIdent),
-    ExternalUserFnHelper(ExternalUserFnHelperFnIdent),
-    EntryPoint(EntryPointFnIdent),
+    Helper(HelperFnIdent),
     OpCtorField(OpCtorFieldFnIdent),
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
 pub enum PreludeFnIdent {
-    #[display(fmt = "NilEmitPath")]
-    NilEmitPathCtor,
-    #[display(fmt = "ConsEmitPath")]
-    ConsEmitPathCtor,
+    #[display(fmt = "NilCallPath")]
+    NilCallPathCtor,
+    #[display(fmt = "ConsCallPath")]
+    ConsCallPathCtor,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}#{}", param_var_ident, op_ctor_ident)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+#[display(fmt = "{}#{}{}", param_var_ident, ir_ident, op_ctor_selector)]
 pub struct OpCtorFieldFnIdent {
     pub param_var_ident: ParamVarIdent,
-    pub op_ctor_ident: IrMemberFnIdent,
+    pub ir_ident: UserIdent,
+    pub op_ctor_selector: OpCtorIrMemberFnSelector,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}^{}", type_ident, selector)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+#[display(fmt = "{}{}", type_ident, selector)]
 pub struct TypeMemberFnIdent {
     pub type_ident: UserTypeIdent,
     pub selector: TypeMemberFnSelector,
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
 pub enum TypeMemberFnSelector {
-    #[display(fmt = "negate")]
+    #[display(fmt = "^negate")]
     Negate,
+    #[from(types(RefCtorSelector))]
+    RefCtor(RefCtorTypeMemberFnSelector),
     #[from]
     Cast(CastTypeMemberFnSelector),
     #[from]
@@ -286,7 +340,28 @@ pub enum TypeMemberFnSelector {
     BinOper(BinOperTypeMemberFnSelector),
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+#[display(fmt = "^Ref{selector}")]
+pub struct RefCtorTypeMemberFnSelector {
+    pub selector: RefCtorSelector,
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+pub enum RefCtorSelector {
+    #[display(fmt = "^Local")]
+    Local,
+    EnumVariant(EnumVariantRefCtorSelector),
+    GlobalVar(GlobalVarPathIdent),
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+#[display(fmt = "{enum_ident}{variant_selector}")]
+pub struct EnumVariantRefCtorSelector {
+    pub enum_ident: UserTypeIdent,
+    pub variant_selector: VariantCtorTypeMemberFnSelector,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CastTypeMemberFnSelector {
     pub kind: CastKind,
     pub supertype_ident: UserTypeIdent,
@@ -296,7 +371,7 @@ impl Display for CastTypeMemberFnSelector {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "{}{}",
+            "^{}{}",
             match self.kind {
                 CastKind::Downcast => "from",
                 CastKind::Upcast => "to",
@@ -307,19 +382,21 @@ impl Display for CastTypeMemberFnSelector {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "Variant~{}", variant_ident)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+#[display(fmt = "^Variant{}", variant_ident)]
+#[from(types(Ident))]
 pub struct VariantCtorTypeMemberFnSelector {
-    pub variant_ident: Ident,
+    pub variant_ident: UserIdent,
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "field~{}", field_ident)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+#[display(fmt = "^field{}", field_ident)]
+#[from(types(Ident))]
 pub struct FieldTypeMemberFnSelector {
-    pub field_ident: Ident,
+    pub field_ident: UserIdent,
 }
 
-#[derive(Clone, Copy, Debug, From)]
+#[derive(Clone, Copy, Debug, Eq, From, PartialEq)]
 pub enum BinOperTypeMemberFnSelector {
     Arith(ArithBinOper),
     Bitwise(BitwiseBinOper),
@@ -330,7 +407,7 @@ impl Display for BinOperTypeMemberFnSelector {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "{}",
+            "^{}",
             match self {
                 BinOperTypeMemberFnSelector::Arith(arith_bin_oper) => match arith_bin_oper {
                     ArithBinOper::Mul => "mul",
@@ -357,184 +434,185 @@ impl Display for BinOperTypeMemberFnSelector {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}^{}", ir_ident, selector)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
+#[display(fmt = "{}{}", ir_ident, selector)]
 pub struct IrMemberFnIdent {
-    pub ir_ident: IrIdent,
+    pub ir_ident: UserIdent,
     pub selector: IrMemberFnSelector,
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
 pub enum IrMemberFnSelector {
-    #[display(fmt = "step")]
+    #[display(fmt = "^step")]
     Step,
-    #[display(fmt = "emit")]
+    #[display(fmt = "^emit")]
     Emit,
-    #[display(fmt = "label")]
+    #[display(fmt = "^label")]
     Label,
-    #[display(fmt = "bind")]
+    #[display(fmt = "^bind")]
     Bind,
-    #[display(fmt = "bindExit")]
+    #[display(fmt = "^bindExit")]
     BindExit,
-    #[display(fmt = "goto")]
+    #[display(fmt = "^goto")]
     Goto,
-    Op(OpCtorIrMemberFnSelector),
+    OpCtor(OpCtorIrMemberFnSelector),
+    EntryPoint(EntryPointIrMemberFnSelector),
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "Op{}", op_selector)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+#[display(fmt = "^Op{}", op_selector)]
+#[from(types(Ident, UserIdent))]
 pub struct OpCtorIrMemberFnSelector {
     pub op_selector: OpSelector,
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
 pub enum OpSelector {
     #[display(fmt = "^Exit")]
     Exit,
-    User(UserOpSelector),
+    #[from(types(Ident))]
+    User(UserIdent),
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "~{}", op_ident)]
-pub struct UserOpSelector {
-    pub op_ident: Ident,
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+#[display(fmt = "^entryPoint{op_ident}")]
+#[from(types(Ident))]
+pub struct EntryPointIrMemberFnSelector {
+    pub op_ident: UserIdent,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct UserFnIdent {
-    pub parent_ident: Option<Ident>,
-    pub fn_ident: Ident,
-}
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+#[from(types(Ident, Path, UserIdent))]
+pub struct UserFnIdent(pub PathIdent);
 
-impl Display for UserFnIdent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "#")?;
-        if let Some(parent_ident) = &self.parent_ident {
-            write!(f, "{}~", parent_ident)?;
-        }
-        write!(f, "{}", self.fn_ident)?;
-        Ok(())
-    }
-}
-
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "{}^{}", fn_ident, ret_var_ident)]
-pub struct ExternalUserFnHelperFnIdent {
+#[derive(Clone, Copy, Debug, Display, Eq, From, PartialEq)]
+#[display(fmt = "{fn_ident}^{var_ident}")]
+pub struct HelperFnIdent {
     pub fn_ident: UserFnIdent,
-    pub ret_var_ident: VarIdent,
+    pub var_ident: VarIdent,
 }
 
-#[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "EntryPoint{}{}", ir_ident, user_op_selector)]
-pub struct EntryPointFnIdent {
-    pub ir_ident: IrIdent,
-    pub user_op_selector: UserOpSelector,
-}
-
-#[derive(Clone, Debug, Display, From)]
+#[derive(Clone, Debug, Display, Eq, From, PartialEq)]
 pub enum LabelIdent {
     Emit(EmitLabelIdent),
 }
 
-#[derive(Clone, Debug, Default, From)]
+#[derive(Clone, Debug, Default, Eq, From, PartialEq)]
 pub struct EmitLabelIdent {
-    pub segments: Vec<EmitLabelSegment>,
+    pub call_path: CallPath,
 }
 
 impl Display for EmitLabelIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        #[derive(Display)]
+        #[display(fmt = "{}{}", "_0.local_call_index", "_0.target")]
+        struct EmitLabelSegment<'a>(&'a CallSegment);
+
         write!(f, "emit")?;
-        if self.segments.is_empty() {
+        if self.call_path.is_empty() {
             write!(f, "{}", OpSelector::Exit)?;
         } else {
-            fmt_join_leading(f, "'", self.segments.iter())?;
+            fmt_join_leading(f, "'", self.call_path.iter().map(EmitLabelSegment))?;
         }
         Ok(())
     }
 }
 
-impl FromIterator<EmitLabelSegment> for EmitLabelIdent {
+impl FromIterator<CallSegment> for EmitLabelIdent {
     fn from_iter<T>(iter: T) -> Self
     where
-        T: IntoIterator<Item = EmitLabelSegment>,
+        T: IntoIterator<Item = CallSegment>,
     {
-        EmitLabelIdent {
-            segments: iter.into_iter().collect(),
+        CallPath::from_iter(iter).into()
+    }
+}
+
+pub type CallPath = Vec<CallSegment>;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CallSegment {
+    pub local_call_index: LocalCallIndex,
+    pub target: UserFnIdent,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "{}: {}", ident, type_)]
+pub struct TypedVar<I = VarIdent> {
+    pub ident: I,
+    pub type_: Type,
+}
+
+#[derive(Clone, Debug, From)]
+pub struct TypedVars<I = VarIdent> {
+    pub vars: Vec<TypedVar<I>>,
+}
+
+impl<I> AsRef<Vec<TypedVar<I>>> for TypedVars<I> {
+    fn as_ref(&self) -> &Vec<TypedVar<I>> {
+        &*self
+    }
+}
+
+impl<I> AsMut<Vec<TypedVar<I>>> for TypedVars<I> {
+    fn as_mut(&mut self) -> &mut Vec<TypedVar<I>> {
+        &mut *self
+    }
+}
+
+impl<I> Borrow<Vec<TypedVar<I>>> for TypedVars<I> {
+    fn borrow(&self) -> &Vec<TypedVar<I>> {
+        &*self
+    }
+}
+
+impl<I> BorrowMut<Vec<TypedVar<I>>> for TypedVars<I> {
+    fn borrow_mut(&mut self) -> &mut Vec<TypedVar<I>> {
+        &mut *self
+    }
+}
+
+impl<I> Default for TypedVars<I> {
+    fn default() -> Self {
+        TypedVars {
+            vars: Vec::default(),
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}{}{}", local_emit_index, ir_ident, op_selector)]
-pub struct EmitLabelSegment {
-    pub local_emit_index: LocalEmitIndex,
-    pub ir_ident: IrIdent,
-    pub op_selector: OpSelector,
-}
-
-typed_index!(pub LocalEmitIndex);
-
-#[derive(Clone, Debug, Display)]
-#[display(fmt = "{}: {}", ident, type_)]
-pub struct TypedVar {
-    pub ident: VarIdent,
-    pub type_: Type,
-}
-
-#[derive(Clone, Debug, Default, From)]
-pub struct TypedVars {
-    pub vars: Vec<TypedVar>,
-}
-
-impl AsRef<Vec<TypedVar>> for TypedVars {
-    fn as_ref(&self) -> &Vec<TypedVar> {
-        &*self
-    }
-}
-
-impl AsMut<Vec<TypedVar>> for TypedVars {
-    fn as_mut(&mut self) -> &mut Vec<TypedVar> {
-        &mut *self
-    }
-}
-
-impl Borrow<Vec<TypedVar>> for TypedVars {
-    fn borrow(&self) -> &Vec<TypedVar> {
-        &*self
-    }
-}
-
-impl BorrowMut<Vec<TypedVar>> for TypedVars {
-    fn borrow_mut(&mut self) -> &mut Vec<TypedVar> {
-        &mut *self
-    }
-}
-
-impl Deref for TypedVars {
-    type Target = Vec<TypedVar>;
+impl<I> Deref for TypedVars<I> {
+    type Target = Vec<TypedVar<I>>;
 
     fn deref(&self) -> &Self::Target {
         &self.vars
     }
 }
 
-impl DerefMut for TypedVars {
+impl<I> DerefMut for TypedVars<I> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.vars
     }
 }
 
-impl Display for TypedVars {
+impl<I: Display> Display for TypedVars<I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt_join(f, ", ", self.iter())?;
         Ok(())
     }
 }
 
-impl FromIterator<TypedVar> for TypedVars {
+impl<I> Extend<TypedVar<I>> for TypedVars<I> {
+    fn extend<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = TypedVar<I>>,
+    {
+        self.vars.extend(iter);
+    }
+}
+
+impl<I> FromIterator<TypedVar<I>> for TypedVars<I> {
     fn from_iter<T>(iter: T) -> Self
     where
-        T: IntoIterator<Item = TypedVar>,
+        T: IntoIterator<Item = TypedVar<I>>,
     {
         TypedVars {
             vars: iter.into_iter().collect(),
@@ -566,12 +644,30 @@ impl FromIterator<Item> for Code {
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Item {
+    Comment(CommentItem),
     Type(TypeItem),
     Const(ConstItem),
-    GlobalVar(GlobalVarItem),
+    Var(VarItem),
     Axiom(AxiomItem),
     Fn(FnItem),
     Proc(ProcItem),
+}
+
+#[derive(Clone, Debug)]
+pub struct CommentItem {
+    pub text: String,
+}
+
+impl Display for CommentItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(AffixWriter::new(f, "// ", ""), "{}", self.text)
+    }
+}
+
+impl<T: Into<String>> From<T> for CommentItem {
+    fn from(text: T) -> Self {
+        CommentItem { text: text.into() }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -609,12 +705,12 @@ pub enum TypeAttr {
 #[derive(Clone, Debug, Display, From)]
 #[display(fmt = "const {};", var)]
 pub struct ConstItem {
-    pub var: TypedVar,
+    pub var: TypedVar<ConstIdent>,
 }
 
 #[derive(Clone, Debug, Display, From)]
 #[display(fmt = "var {};", var)]
-pub struct GlobalVarItem {
+pub struct VarItem {
     pub var: TypedVar,
 }
 
@@ -648,13 +744,13 @@ impl Display for FnItem {
                 write!(f, ";")?;
             }
             Some(value) => {
-                write!(f, "{{")?;
+                write!(f, " {{\n")?;
 
                 let mut indented = AffixWriter::new(f, "  ", "");
                 write!(indented, "{}", value)?;
                 let f = indented.into_inner();
 
-                write!(f, "}}")?;
+                write!(f, "\n}}")?;
             }
         }
 
@@ -951,10 +1047,11 @@ pub struct AssignStmt {
 pub enum Expr {
     #[from(types(bool))]
     Literal(Literal),
+    #[from(types(GlobalVarPathIdent))]
+    Const(ConstIdent),
     #[from(types(
-        GlobalVarIdent,
-        IrMemberGlobalVarIdent,
-        UserGlobalVarIdent,
+        TypeMemberVarIdent,
+        IrMemberVarIdent,
         ParamVarIdent,
         UserParamVarIdent,
         LocalVarIdent,
@@ -979,15 +1076,14 @@ box_from!(NegateExpr => Expr);
 box_from!(BinOperExpr => Expr);
 box_from!(ForAllExpr => Expr);
 
-deref_from!(&Literal => Expr);
-deref_from!(&bool => Expr);
-
 struct MaybeGrouped<'a>(&'a Expr);
 
 impl Display for MaybeGrouped<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let needs_group = match self.0 {
-            Expr::Literal(_) | Expr::Var(_) | Expr::Index(_) | Expr::Call(_) => false,
+            Expr::Literal(_) | Expr::Const(_) | Expr::Var(_) | Expr::Index(_) | Expr::Call(_) => {
+                false
+            }
             Expr::Negate(_) | Expr::BinOper(_) | Expr::ForAll(_) => true,
         };
 
@@ -1076,8 +1172,6 @@ fn fmt_f64(f: f64) -> String {
         format!("{sign}0x{mantissa:x}.0e{exponent}f53e11")
     }
 }
-
-deref_from!(&bool => Literal);
 
 #[derive(Clone, Debug)]
 pub struct CallExpr {

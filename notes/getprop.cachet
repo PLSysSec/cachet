@@ -20,11 +20,11 @@ enum ValueType {
 struct Value;
 
 impl Value {
-    fn typeOf(value: Value) -> ValueType;
+    fn typeOf(in value: Value) -> ValueType;
 
     // ...
 
-    fn isInt32(value: Value) -> Bool {
+    fn isInt32(in value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Int32
     }
 
@@ -35,18 +35,18 @@ impl Value {
         value
     }
 
-    unsafe fn fromInt32Unchecked(value: Int32) -> Value;
+    unsafe fn fromInt32Unchecked(int32: Int32) -> Value;
 
-    fn toInt32(value: Value) -> Int32 {
+    fn toInt32(in value: Value) -> Int32 {
         assert Value::isInt32(value);
         let int32 = (unsafe { Value::toInt32Unchecked(value) });
         assume (unsafe { Value::fromInt32Unchecked(int32) }) == value;
         int32
     }
 
-    unsafe fn toInt32Unchecked(value: Value) -> Int32;
+    unsafe fn toInt32Unchecked(in value: Value) -> Int32;
 
-    fn isBool(value: Value) -> Bool {
+    fn isBool(in value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Bool
     }
 
@@ -57,42 +57,42 @@ impl Value {
         value
     }
 
-    unsafe fn fromBoolUnchecked(value: Bool) -> Value;
+    unsafe fn fromBoolUnchecked(bool: Bool) -> Value;
 
-    fn toBool(value: Value) -> Bool {
+    fn toBool(in value: Value) -> Bool {
         assert Value::isBool(value);
         let bool = (unsafe { Value::toBoolUnchecked(value) });
         assume (unsafe { Value::fromBoolUnchecked(bool) }) == value;
         bool
     }
 
-    unsafe fn toBoolUnchecked(value: Value) -> Bool;
+    unsafe fn toBoolUnchecked(in value: Value) -> Bool;
 
-    fn isNull(value: Value) -> Bool {
+    fn isNull(in value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Null
     }
 
-    fn isObject(value: Value) -> Bool {
+    fn isObject(in value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Object
     }
 
-    fn fromObject(object: Object) -> Value {
+    fn fromObject(in object: Object) -> Value {
         let value = (unsafe { Value::fromObjectUnchecked(object) });
         assume Value::isObject(value);
         assume (unsafe { Value::toObjectUnchecked(value) }) == object;
         value
     }
 
-    unsafe fn fromObjectUnchecked(value: Object) -> Value;
+    unsafe fn fromObjectUnchecked(in object: Object) -> Value;
 
-    fn toObject(value: Value) -> Object {
+    fn toObject(in value: Value) -> Object {
         assert Value::isObject(value);
         let object = (unsafe { Value::toObjectUnchecked(value) });
         assume (unsafe { Value::fromObjectUnchecked(object) }) == value;
         object
     }
 
-    unsafe fn toObjectUnchecked(value: Value) -> Object;
+    unsafe fn toObjectUnchecked(in value: Value) -> Object;
 }
 
 struct Object;
@@ -100,44 +100,39 @@ struct Object;
 impl Object {
     // #[reads(heap)]
     // fn shapeOf(object: Object) -> Shape;
-    fn shapeOf(object: Object) -> Shape {
+    fn shapeOf(in object: Object) -> Shape {
         (unsafe { Object::shapeOfUnchecked(heap, object) })
     }
 
-    unsafe fn shapeOfUnchecked(heap: Heap, object: Object) -> Shape;
+    unsafe fn shapeOfUnchecked(heap: Heap, in object: Object) -> Shape;
 
-    fn toNativeObject(object: Object) -> NativeObject {
-        let shape = Object::shapeOf(object);
-        let class = Shape::classOf(shape);
-        assert Class::isNativeObject(class);
+    fn toNativeObject(in object: Object) -> NativeObject {
+        assert Class::isNativeObject(Shape::classOf(Object::shapeOf(object)));
         (unsafe { object as NativeObject })
     }
 
-    fn toArgumentsObject(object: Object) -> ArgumentsObject {
-        let shape = Object::shapeOf(object);
-        let class = Shape::classOf(shape);
-        assert Class::isArgumentsObject(class);
+    fn toArgumentsObject(in object: Object) -> ArgumentsObject {
+        assert Class::isArgumentsObject(Shape::classOf(Object::shapeOf(in object)));
         (unsafe { object as ArgumentsObject })
     }
   
-    fn getFixedSlot(object: Object, slot: Int32) -> Value {
-        let nativeObject = Object::toNativeObject(object);
-        NativeObject::getFixedSlot(nativeObject, slot)
+    fn getFixedSlot(in object: Object, slot: Int32) -> Value {
+        NativeObject::getFixedSlot(Object::toNativeObject(object), slot)
     }
 }
 
 struct NativeObject <: Object;
 
 impl NativeObject {
-    fn getFixedSlot(nativeObject: NativeObject, slot: Int32) -> Value {
-        let shape = Object::shapeOf(nativeObject);
-        assert Shape::hasFixedSlot(shape, slot);
-        (unsafe { NativeObject::getFixedSlotUnchecked(heap, nativeObject, slot) })
+    fn getFixedSlot(in nativeObject: NativeObject, slot: Int32) -> Value {
+        assert Shape::hasFixedSlot(Object::shapeOf(nativeObject), slot);
+        (unsafe { NativeObject::getFixedSlotUnchecked(heap, in nativeObject, slot) })
     }
 
     // #[reads(heap)]
     // unsafe fn getFixedSlotUnchecked(nativeObject: NativeObject, slot: Int32) -> Value;
-    unsafe fn getFixedSlotUnchecked(heap: Heap, nativeObject: NativeObject, slot: Int32) -> Value;
+    unsafe fn getFixedSlotUnchecked(heap: Heap, in nativeObject: NativeObject, slot: Int32)
+        -> Value;
 }
 
 struct ArgumentsObject <: NativeObject;
@@ -150,9 +145,9 @@ impl ArgumentsObject {
 struct Shape;
 
 impl Shape {
-    fn classOf(shape: Shape) -> Class;
+    fn classOf(in shape: Shape) -> Class;
 
-    fn hasFixedSlot(shape: Shape, slot: Int32) -> Bool;
+    fn hasFixedSlot(in shape: Shape, slot: Int32) -> Bool;
 }
 
 struct Class;
@@ -285,13 +280,13 @@ ir MASM {
     }
 
     fn getValue(valueReg: ValueReg) -> Value;
-    fn setValue(valueReg: ValueReg, value: Value);
+    fn setValue(valueReg: ValueReg, in value: Value);
 
     fn getInt32(reg: Reg) -> Int32;
     fn setInt32(reg: Reg, int32: Int32);
 
     fn getObject(reg: Reg) -> Object;
-    fn setObject(reg: Reg, object: Object);
+    fn setObject(reg: Reg, in object: Object);
 }
 
 //impl MASM {
@@ -483,7 +478,7 @@ ir CacheStub emits CacheIR {
         assume CacheIR::useValueReg(valueId) == CacheIR::allocateValueReg();
         assume CacheIR::useObjectReg(objectId) == CacheIR::allocateReg();
 
-        let shape = CacheIR::readShapeField(shapeField);
+        let mut shape = CacheIR::readShapeField(shapeField);
 
         assume Class::isNativeObject(Shape::classOf(shape));
 

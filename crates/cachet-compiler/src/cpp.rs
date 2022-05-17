@@ -1,22 +1,27 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::collections::{hash_map, HashMap};
 use std::iter;
+use std::mem;
 use std::ops::Deref;
 
 use derive_more::{Display, From};
 use enum_map::EnumMap;
-use enumset::EnumSet;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
-use cachet_lang::ast::{BinOper, CastKind, Ident, Path, VarParamKind};
-use cachet_lang::built_in::BuiltInType;
+use cachet_util::MaybeOwned;
+
+use cachet_lang::ast::{BinOper, CastKind, CompareBinOper, Ident, Path, VarParamKind, VarRefKind};
+use cachet_lang::built_in::{BuiltInType, BuiltInVar};
 use cachet_lang::normalizer::{self, HasAttrs, Typed};
 
 use crate::cpp::ast::*;
 
 mod ast;
+
+// * C++ Compilation Entry Point
 
 #[derive(Clone, Debug)]
 pub struct CppCompilerOutput {
@@ -51,24 +56,15 @@ pub fn compile(env: &normalizer::Env) -> CppCompilerOutput {
     }
 
     let decls = iterate![
-        CommentItem {
-            text: "External forward declarations.".to_owned(),
-        }
-        .into(),
+        CommentItem::from("External forward declarations.").into(),
         ..compiler.external_decls,
-        CommentItem {
-            text: "Internal forward declarations.".to_owned(),
-        }
-        .into(),
+        CommentItem::from("Internal forward declarations.").into(),
         ..compiler.internal_decls,
     ]
     .collect();
 
     let defs = iterate![
-        CommentItem {
-            text: "Internal definitions.".to_owned(),
-        }
-        .into(),
+        CommentItem::from("Internal definitions.").into(),
         ..compiler.internal_defs,
     ]
     .collect();
@@ -78,6 +74,8 @@ pub fn compile(env: &normalizer::Env) -> CppCompilerOutput {
         defs: CppCode(defs),
     }
 }
+
+// * Organizing C++ Declarations and Definitions
 
 #[derive(Clone, Copy, From)]
 enum ItemBucketIndex {
@@ -305,6 +303,8 @@ impl IntoIterator for IrItemBuckets {
     }
 }
 
+// * Top-Level C++ Compiler
+
 const CONTEXT_PARAM: Param = Param {
     ident: ParamVarIdent::Context,
     type_: Type::Path(TypePath::Helper(HelperTypeIdent::ContextRef)),
@@ -344,7 +344,7 @@ impl<'a> Compiler<'a> {
 
             let ret = TypeMemberTypePath {
                 parent: enum_item.ident.value,
-                ident: ExprTag::Ref.into(),
+                ident: VarRefKind::In.into(),
             }
             .into();
 
@@ -370,36 +370,29 @@ impl<'a> Compiler<'a> {
         if let Some(supertype_index) = struct_item.supertype {
             let supertype_ident = self.get_type_ident(supertype_index);
 
-            self.external_decls.bucket_for_struct(struct_index).extend([
-                generate_cast_fn_decl(
-                    CastKind::Downcast,
-                    supertype_ident,
-                    struct_item.ident.value,
-                    ExprTag::Val,
-                )
-                .into(),
-                generate_cast_fn_decl(
-                    CastKind::Downcast,
-                    supertype_ident,
-                    struct_item.ident.value,
-                    ExprTag::Ref,
-                )
-                .into(),
-                generate_cast_fn_decl(
-                    CastKind::Upcast,
-                    supertype_ident,
-                    struct_item.ident.value,
-                    ExprTag::Val,
-                )
-                .into(),
-                generate_cast_fn_decl(
-                    CastKind::Upcast,
-                    supertype_ident,
-                    struct_item.ident.value,
-                    ExprTag::Ref,
-                )
-                .into(),
-            ]);
+            // TODO(spinda): For now we assume subtyping rules are bivariant, but
+            // types ought to be able to specify their own variances.
+            self.external_decls.bucket_for_struct(struct_index).extend(
+                [
+                    TypeRepr::Value,
+                    VarRefKind::In.into(),
+                    VarRefKind::Out.into(),
+                ]
+                .into_iter()
+                .flat_map(|param_repr| {
+                    [CastKind::Downcast, CastKind::Upcast]
+                        .into_iter()
+                        .map(move |cast_kind| {
+                            generate_cast_fn_decl(
+                                cast_kind,
+                                supertype_ident,
+                                struct_item.ident.value,
+                                param_repr,
+                            )
+                            .into()
+                        })
+                }),
+            );
         }
     }
 
@@ -421,7 +414,7 @@ impl<'a> Compiler<'a> {
 
         let ret = TypeMemberTypePath {
             parent: type_ident,
-            ident: global_var_tag(global_var_item.is_mut).into(),
+            ident: get_global_var_repr(global_var_item.is_mut).into(),
         }
         .into();
 
@@ -464,7 +457,7 @@ impl<'a> Compiler<'a> {
         let ret = match callable_item.ret {
             Some(ret) => TypeMemberTypePath {
                 parent: self.get_type_ident(ret),
-                ident: ExprTag::Val.into(),
+                ident: TypeRepr::Value.into(),
             }
             .into(),
             None => Type::Void,
@@ -541,12 +534,8 @@ impl<'a> Compiler<'a> {
             Some(body) => {
                 let mut fn_def = fn_decl.clone();
                 fn_def.is_fully_qualified = true;
-                fn_def.body = Some(self.compile_body(
-                    callable_item.parent,
-                    &callable_item.params,
-                    &callable_item.param_order,
-                    body,
-                ));
+                fn_def.body =
+                    Some(self.compile_body(callable_item.parent, &callable_item.params, body));
 
                 self.internal_decls
                     .bucket_for(item_bucket_index)
@@ -588,11 +577,7 @@ impl<'a> Compiler<'a> {
 
         let type_ = TypeMemberTypePath {
             parent: self.get_type_ident(var_param.type_),
-            ident: match var_param.kind {
-                VarParamKind::In | VarParamKind::Mut => ExprTag::Ref,
-                VarParamKind::Out => ExprTag::MutRef,
-            }
-            .into(),
+            ident: get_var_param_repr(var_param).into(),
         }
         .into();
 
@@ -604,7 +589,7 @@ impl<'a> Compiler<'a> {
 
         let type_ = IrMemberTypePath {
             parent: self.env[label_param.label.ir].ident.value,
-            ident: if label_param.is_out {
+            ident: if label_param.is_out_ref {
                 IrMemberTypeIdent::LabelMutRef
             } else {
                 IrMemberTypeIdent::LabelRef
@@ -619,11 +604,9 @@ impl<'a> Compiler<'a> {
         &mut self,
         parent_index: Option<normalizer::ParentIndex>,
         params: &normalizer::Params,
-        param_order: &[normalizer::ParamIndex],
         body: &normalizer::Body,
     ) -> Block {
         let mut scoped_compiler = ScopedCompiler::new(self, parent_index, params, &body.locals);
-        scoped_compiler.init_mut_var_params(param_order);
         scoped_compiler.compile_stmts(&body.stmts);
         scoped_compiler.stmts.into()
     }
@@ -641,15 +624,15 @@ fn generate_cast_fn_decl(
     kind: CastKind,
     supertype_ident: Ident,
     subtype_ident: Ident,
-    param_tag: ExprTag,
+    param_repr: TypeRepr,
 ) -> FnItem {
     let subtype_path = TypeMemberTypePath {
         parent: subtype_ident,
-        ident: param_tag.into(),
+        ident: param_repr.into(),
     };
     let supertype_path = TypeMemberTypePath {
         parent: supertype_ident,
-        ident: param_tag.into(),
+        ident: param_repr.into(),
     };
 
     let (source_type_path, target_type_path) = match kind {
@@ -678,6 +661,8 @@ fn generate_cast_fn_decl(
     }
 }
 
+// * Scoped C++ Compiler
+
 // TODO(spinda): Make this hold a `CallableItem` reference instead of broken-out
 // fields.
 struct ScopedCompiler<'a, 'b> {
@@ -685,6 +670,7 @@ struct ScopedCompiler<'a, 'b> {
     parent_index: Option<normalizer::ParentIndex>,
     params: &'b normalizer::Params,
     locals: &'b normalizer::Locals,
+    next_synthetic_var_indexes: MaybeOwned<'b, EnumMap<SyntheticVarKind, usize>>,
     stmts: Vec<Stmt>,
 }
 
@@ -708,75 +694,212 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             parent_index,
             params,
             locals,
+            next_synthetic_var_indexes: MaybeOwned::Owned(EnumMap::default()),
             stmts: Vec::new(),
         }
     }
 
-    fn recurse(&self) -> ScopedCompiler<'a, 'b> {
+    fn recurse<'c>(&'c mut self) -> ScopedCompiler<'a, 'c> {
         ScopedCompiler {
             compiler: self.compiler,
             parent_index: self.parent_index,
             params: self.params,
             locals: self.locals,
+            next_synthetic_var_indexes: MaybeOwned::Borrowed(&mut self.next_synthetic_var_indexes),
             stmts: Vec::new(),
         }
     }
 
-    fn init_mut_var_params(&mut self, param_order: &[normalizer::ParamIndex]) {
-        for param_index in param_order {
-            if let normalizer::ParamIndex::Var(var_param_index) = param_index {
-                let var_param = &self.params[var_param_index];
-
-                if var_param.kind == VarParamKind::Mut {
-                    // Variable parameters are passed in as immutable `Ref`s. To
-                    // let one be mutable within the function body, we store it
-                    // in a local variable up front.
-
-                    let lhs = UserParamVarIdent::from(var_param.ident.value).into();
-
-                    let rhs = TaggedExpr {
-                        expr: Expr::from(lhs),
-                        type_: var_param.type_,
-                        tags: ExprTag::Ref.into(),
-                    };
-
-                    self.init_local_var(lhs, rhs);
-                }
-            }
-        }
+    fn compile_args(
+        &mut self,
+        params: &normalizer::Params,
+        param_order: &[normalizer::ParamIndex],
+        args: &[normalizer::Arg],
+        compiled_args: &mut Vec<Expr>,
+    ) {
+        let mut stable_var_tmp_locals = HashMap::new();
+        compiled_args.extend(
+            param_order
+                .iter()
+                .zip(args.iter())
+                .map(|(param_index, arg)| {
+                    self.compile_arg(params, *param_index, arg, &mut stable_var_tmp_locals)
+                }),
+        );
     }
 
-    fn compile_args<'c>(&'c self, args: &'c [normalizer::Arg]) -> impl 'c + Iterator<Item = Expr> {
-        args.iter().map(|arg| self.compile_arg(arg))
-    }
-
-    fn compile_arg(&self, arg: &normalizer::Arg) -> Expr {
+    fn compile_arg(
+        &mut self,
+        params: &normalizer::Params,
+        param_index: normalizer::ParamIndex,
+        arg: &normalizer::Arg,
+        stable_var_tmp_locals: &mut HashMap<normalizer::VarIndex, SyntheticVarIdent>,
+    ) -> Expr {
         match arg {
-            normalizer::Arg::Expr(pure_expr) => self.compile_expr_arg(pure_expr),
-            normalizer::Arg::OutVar(out_var_arg) => self.compile_out_var_arg(out_var_arg),
+            normalizer::Arg::Expr(pure_expr) => {
+                self.compile_expr_arg(params, param_index, pure_expr, stable_var_tmp_locals)
+            }
+            normalizer::Arg::VarRef(var_ref_arg) => self.compile_var_ref_arg(var_ref_arg),
             normalizer::Arg::Label(label_arg) => self.compile_label_arg(label_arg),
         }
     }
 
-    fn compile_expr_arg(&self, pure_expr: &normalizer::PureExpr) -> Expr {
-        self.use_expr(self.compile_pure_expr(pure_expr), ExprTag::Ref.into())
+    fn compile_expr_arg(
+        &mut self,
+        params: &normalizer::Params,
+        param_index: normalizer::ParamIndex,
+        expr: &normalizer::PureExpr,
+        stable_var_tmp_locals: &mut HashMap<normalizer::VarIndex, SyntheticVarIdent>,
+    ) -> Expr {
+        let var_param_index = match param_index {
+            normalizer::ParamIndex::Var(var_param_index) => var_param_index,
+            normalizer::ParamIndex::Label(_) => {
+                panic!("expression argument passed for label parameter")
+            }
+        };
+        let var_param = &params[var_param_index];
+
+        let tagged_expr = self.compile_expr_arg_impl(var_param, expr, stable_var_tmp_locals);
+        self.use_expr(tagged_expr, get_var_param_repr(var_param))
     }
 
-    fn compile_out_var_arg(&self, out_var_arg: &normalizer::OutVarArg) -> Expr {
-        // TODO(spinda): Handle out-parameter upcasting.
-        // TODO(spinda): If a variable is referenced to fill both an in- and
-        // out-parameter in the same call, we need to set up a separate space
-        // for the out-parameter value to be written while the value is still
-        // being used. This can reuse the machinery for out-parameter upcasting.
+    fn compile_expr_arg_impl(
+        &mut self,
+        var_param: &normalizer::VarParam,
+        expr: &normalizer::PureExpr,
+        stable_var_tmp_locals: &mut HashMap<normalizer::VarIndex, SyntheticVarIdent>,
+    ) -> TaggedExpr<Expr> {
+        match expr {
+            // Ensure casts stay at the argument site, so that multiple casts of
+            // the same variable can potentially share the same synthetic local
+            // (see below).
+            normalizer::PureExpr::Cast(cast_expr) => {
+                let tagged_expr =
+                    self.compile_expr_arg_impl(var_param, &cast_expr.expr, stable_var_tmp_locals);
+                self.compile_cast(cast_expr.kind, tagged_expr, cast_expr.type_, VarRefKind::In)
+                    .map(Into::into)
+            }
+            expr => {
+                let mut tagged_expr = self.compile_pure_expr(expr);
 
-        self.use_expr(
-            match out_var_arg.out_var {
-                normalizer::OutVar::Free(var_index) => self.compile_var_access(var_index.value),
-                // TODO(spinda): Eliminate these in the normalizer.
-                normalizer::OutVar::Fresh(_) => unimplemented!(),
+                let mut needs_synthetic_var = false;
+                let mut synthetic_var_is_stable = false;
+
+                // Variable parameters assigned `Ref` representations may need
+                // special handling.
+                if let TypeRepr::Ref(var_ref_kind) = get_var_param_repr(var_param) {
+                    // If we have a `Value` but we want a `Ref`, we'll need to
+                    // promote to a synthetic `Local` that we can take
+                    // a reference to.
+                    if let TypeRepr::Value = tagged_expr.repr {
+                        needs_synthetic_var = true;
+                    // Value parameters of non-built-in types are emulated with
+                    // reference parameters, with storage for the parameter
+                    // values delegated to the caller. In such cases, we may
+                    // need to generate a synthetic local variable in the caller
+                    // in order to fully provide value parameter semantics.
+                    } else if let VarParamKind::Value { .. } = var_param.kind {
+                        // When the parameter expects a read-only reference, we
+                        // can avoid creating a synthetic local in the caller if
+                        // the argument we have points stably to a value.
+                        // Otherwise, we either need an independent variable to
+                        // be mutated by the callee, or we need to capture
+                        // a snapshot of an unstable argument expression's value
+                        // at the time of the call - both cases which we handle
+                        // with a synthetic local.
+                        if !(var_ref_kind == VarRefKind::In && tagged_expr.is_stable) {
+                            needs_synthetic_var = true;
+                        }
+                    }
+
+                    // If we need to create a synthetic variable, it can be
+                    // considered stable (unchanging) if only read-only
+                    // references point to it.
+                    if needs_synthetic_var {
+                        if let VarRefKind::In = var_ref_kind {
+                            synthetic_var_is_stable = true;
+                        }
+                    }
+                }
+
+                if needs_synthetic_var {
+                    // Stable synthetic variables can be shared between multiple
+                    // read-only references to the same variable in the same
+                    // batch of arguments.
+                    let mut var_tmp_local_entry = None;
+                    if synthetic_var_is_stable {
+                        if let normalizer::PureExpr::Var(var_expr) = expr {
+                            var_tmp_local_entry = Some(stable_var_tmp_locals.entry(var_expr.var));
+                        }
+                    }
+
+                    // Use a cached synthetic variable if we have one available;
+                    // otherwise, generate a fresh one.
+                    let (synthetic_var_ident, is_fresh_synthetic_var) = match &var_tmp_local_entry
+                    {
+                        Some(hash_map::Entry::Occupied(occupied_entry)) => {
+                            (*occupied_entry.get(), false)
+                        }
+                        _ => (
+                            self.take_synthetic_var_ident(
+                                SyntheticVarKind::Arg,
+                                Some(var_param.ident.value),
+                            ),
+                            true,
+                        ),
+                    };
+
+                    // Cache the synthetic variable if we can.
+                    if let Some(hash_map::Entry::Vacant(vacant_entry)) = var_tmp_local_entry {
+                        vacant_entry.insert(synthetic_var_ident);
+                    }
+
+                    let synthetic_var_type = tagged_expr.type_;
+                    let synthetic_var_value = mem::replace(
+                        &mut tagged_expr,
+                        TaggedExpr {
+                            expr: synthetic_var_ident.into(),
+                            type_: synthetic_var_type,
+                            repr: TypeRepr::Local,
+                            // The synthetic variable can be considered stable
+                            // (unchanging) if the sole reference pointing to it
+                            // is read-only.
+                            is_stable: synthetic_var_is_stable,
+                        },
+                    );
+                    if is_fresh_synthetic_var {
+                        self.init_local_var(
+                            synthetic_var_ident.into(),
+                            synthetic_var_type,
+                            synthetic_var_value,
+                        );
+                    }
+                }
+
+                tagged_expr
+            }
+        }
+    }
+
+    fn compile_var_ref_arg(&mut self, var_ref_arg: &normalizer::VarRefArg) -> Expr {
+        let tagged_expr = match &var_ref_arg.var_ref {
+            normalizer::VarRef::Free(free_var_ref) => {
+                self.compile_var_access(free_var_ref.var.value)
+            }
+            // TODO(spinda): Eliminate these in the normalizer.
+            normalizer::VarRef::FreshOut(_) => unimplemented!(),
+        };
+
+        let var_ref_kind = var_ref_arg.var_ref.kind();
+        let tagged_expr = var_ref_arg.cast_route.iter().fold(
+            tagged_expr,
+            |tagged_expr, (cast_kind, target_type_index)| {
+                self.compile_cast(*cast_kind, tagged_expr, *target_type_index, var_ref_kind)
+                    .map(Into::into)
             },
-            ExprTag::MutRef.into(),
-        )
+        );
+
+        self.use_expr(tagged_expr, var_ref_kind.into())
     }
 
     fn compile_label_arg(&self, label_arg: &normalizer::LabelArg) -> Expr {
@@ -787,7 +910,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::LabelIndex::Local(local_label_index) => CallExpr {
                 target: IrMemberFnPath {
                     parent: self.env[label_arg.ir].ident.value,
-                    ident: if label_arg.is_out {
+                    ident: if label_arg.is_out_ref {
                         IrMemberFnIdent::ToLabelMutRef
                     } else {
                         IrMemberFnIdent::ToLabelRef
@@ -813,12 +936,34 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     ) -> Expr {
         self.compile_label_arg(&normalizer::LabelArg {
             label: label_index,
-            is_out,
+            is_out_ref: is_out,
             ir: self.get_label_ir(label_index),
         })
     }
 
-    fn compile_block(&self, stmts: &[normalizer::Stmt]) -> Block {
+    fn compile_invocation(&mut self, invoke_expr: &normalizer::InvokeExpr) -> (Vec<Stmt>, Expr) {
+        // Compiling the arguments may produce temporary variables. Confine them
+        // to a temporary scope.
+        let mut scoped_compiler = self.recurse();
+
+        let fn_item = &scoped_compiler.env[invoke_expr.call.target];
+
+        let parent = fn_item.path.value.parent().map(Path::ident);
+        let ident = FnUserFnIdent::from(fn_item.path.value.ident()).into();
+        let target = UserFnPath { parent, ident }.into();
+
+        let mut args = vec![CONTEXT_ARG];
+        scoped_compiler.compile_args(
+            &fn_item.params,
+            &fn_item.param_order,
+            &invoke_expr.call.args,
+            &mut args,
+        );
+
+        (scoped_compiler.stmts, CallExpr { target, args }.into())
+    }
+
+    fn compile_block(&mut self, stmts: &[normalizer::Stmt]) -> Block {
         let mut scoped_compiler = self.recurse();
         scoped_compiler.compile_stmts(stmts);
         scoped_compiler.stmts.into()
@@ -848,15 +993,17 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_let_stmt(&mut self, let_stmt: &normalizer::LetStmt) {
+        let local_var = &self.locals[let_stmt.lhs];
+
         let lhs = LocalVarIdent {
-            ident: self.locals[let_stmt.lhs].ident.value,
+            ident: local_var.ident.value,
             index: let_stmt.lhs,
         }
         .into();
 
         let rhs = self.compile_expr(&let_stmt.rhs);
 
-        self.init_local_var(lhs, rhs);
+        self.init_local_var(lhs, local_var.type_, rhs);
     }
 
     fn compile_label_stmt(&mut self, label_stmt: &normalizer::LabelStmt) {
@@ -890,23 +1037,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         self.stmts.push(LetStmt { lhs, type_, rhs }.into());
     }
 
-    fn init_local_var(&mut self, lhs: VarIdent, rhs: TaggedExpr) {
-        let type_ = TypeMemberTypePath {
-            parent: self.get_type_ident(rhs.type_),
-            ident: ExprTag::Local.into(),
-        }
-        .into();
-
-        let rhs = Some(self.use_expr(rhs, ExprTag::Local.into()));
-
-        self.stmts.push(LetStmt { lhs, type_, rhs }.into());
+    fn compile_if_stmt(&mut self, if_stmt: &normalizer::IfStmt) {
+        let if_ = self.compile_if_stmt_recurse(if_stmt);
+        self.stmts.push(if_.into());
     }
 
     fn compile_if_stmt_recurse(&mut self, if_stmt: &normalizer::IfStmt) -> IfStmt {
-        let cond = self.use_expr(
-            self.compile_expr(&if_stmt.cond),
-            ExprTag::Ref | ExprTag::Val,
-        );
+        let tagged_cond = self.compile_expr(&if_stmt.cond);
+        let cond = self.use_expr(tagged_cond, TypeRepr::Value);
 
         let then = self.compile_block(&if_stmt.then);
 
@@ -922,16 +1060,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         IfStmt { cond, then, else_ }.into()
     }
 
-    fn compile_if_stmt(&mut self, if_stmt: &normalizer::IfStmt) {
-        let if_ = self.compile_if_stmt_recurse(if_stmt);
-        self.stmts.push(if_.into());
-    }
-
     fn compile_check_stmt(&mut self, check_stmt: &normalizer::CheckStmt) {
-        let cond = self.use_expr(
-            self.compile_expr(&check_stmt.cond),
-            ExprTag::Ref | ExprTag::Val,
-        );
+        let tagged_cond = self.compile_expr(&check_stmt.cond);
+        let cond = self.use_expr(tagged_cond, TypeRepr::Value);
 
         self.stmts.push(
             Expr::from(CallExpr {
@@ -971,7 +1102,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let args = vec![
             CONTEXT_ARG,
-            self.ops_arg(),
+            self.generate_ops_arg(),
             self.compile_internal_label_arg(bind_stmt.label, true),
         ];
 
@@ -982,21 +1113,38 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_emit_stmt(&mut self, emit_stmt: &normalizer::EmitStmt) {
-        let ir_ident = self.env[emit_stmt.ir].ident.value;
-        let op_ident = self.env[emit_stmt.call.target].path.value.ident();
+        let mut scoped_compiler = self.recurse();
+
+        let ir_item = &scoped_compiler.env[emit_stmt.ir];
+        let op_item = &scoped_compiler.env[emit_stmt.call.target];
+
+        let ir_ident = ir_item.ident.value;
+        let op_ident = op_item.path.value.ident();
+
         let target = IrMemberFnPath {
             parent: ir_ident,
             ident: EmitIrMemberFnIdent::from(op_ident).into(),
         }
         .into();
 
-        let args = iter::once(CONTEXT_ARG)
-            .chain(iter::once(self.ops_arg()))
-            .chain(self.compile_args(&emit_stmt.call.args))
-            .collect();
+        let mut args = vec![CONTEXT_ARG, scoped_compiler.generate_ops_arg()];
+        scoped_compiler.compile_args(
+            &op_item.params,
+            &op_item.param_order,
+            &emit_stmt.call.args,
+            &mut args,
+        );
 
-        self.stmts
-            .push(Expr::from(CallExpr { target, args }).into());
+        // Compiling the arguments may produce temporary variables. If so,
+        // confine them to a block wrapped around the call.
+        let call_stmt = Expr::from(CallExpr { target, args }).into();
+        let mut stmts = scoped_compiler.stmts;
+        self.stmts.push(if stmts.is_empty() {
+            call_stmt
+        } else {
+            stmts.push(call_stmt);
+            stmts.into()
+        });
     }
 
     fn compile_block_stmt(&mut self, block_stmt: &normalizer::BlockStmt) {
@@ -1006,59 +1154,64 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_invoke_stmt(&mut self, invoke_stmt: &normalizer::InvokeStmt) {
-        self.stmts
-            .push(Expr::from(self.compile_invoke_expr(invoke_stmt).expr).into());
-    }
-
-    fn compile_assign_stmt(&mut self, assign_stmt: &normalizer::AssignStmt) {
-        let lhs = self.use_expr(
-            self.compile_var_access(assign_stmt.lhs),
-            ExprTag::MutRef.into(),
-        );
-
-        let rhs = self.use_expr(
-            self.compile_expr(&assign_stmt.rhs),
-            ExprTag::MutRef | ExprTag::Ref | ExprTag::Local | ExprTag::Val,
-        );
-
-        self.stmts.push(match assign_stmt.lhs {
-            normalizer::VarIndex::Param(var_param_index)
-                if self.params[var_param_index].kind == VarParamKind::Out =>
-            {
-                Expr::from(CallExpr {
-                    target: TypeMemberFnPath {
-                        parent: self.get_type_ident(assign_stmt.rhs.type_()),
-                        ident: TypeMemberFnIdent::SetMutRef,
-                    }
-                    .into(),
-                    args: vec![lhs, rhs],
-                })
-                .into()
-            }
-            // TODO(spinda): Review this.
-            _ => Expr::from(AssignExpr { lhs, rhs }).into(),
+        let (mut stmts, expr) = self.compile_invocation(invoke_stmt);
+        self.stmts.push(if stmts.is_empty() {
+            expr.into()
+        } else {
+            stmts.push(expr.into());
+            stmts.into()
         });
     }
 
+    fn compile_assign_stmt(&mut self, assign_stmt: &normalizer::AssignStmt) {
+        let lhs = self.compile_var_access(assign_stmt.lhs);
+        debug_assert!(
+            match lhs.repr {
+                TypeRepr::Local | TypeRepr::Ref(VarRefKind::Out) => true,
+                TypeRepr::Value | TypeRepr::Ref(VarRefKind::In) => false,
+            },
+            "left-hand side of an assignment must be assignable"
+        );
+
+        let rhs = self.compile_expr(&assign_stmt.rhs);
+        debug_assert!(
+            match rhs.repr {
+                TypeRepr::Value | TypeRepr::Local | TypeRepr::Ref(VarRefKind::In) => true,
+                TypeRepr::Ref(VarRefKind::Out) => false,
+            },
+            "right-hand side of an assignment must be readable"
+        );
+
+        debug_assert_eq!(lhs.type_, rhs.type_);
+
+        self.stmts.push(
+            Expr::from(CallExpr {
+                target: TypeMemberFnPath {
+                    parent: self.get_type_ident(lhs.type_),
+                    ident: TypeMemberFnIdent::Assign,
+                }
+                .into(),
+                args: vec![lhs.expr, rhs.expr],
+            })
+            .into(),
+        );
+    }
+
     fn compile_ret_stmt(&mut self, ret_stmt: &normalizer::RetStmt) {
-        let value = ret_stmt
-            .value
-            .as_ref()
-            .map(|value| self.use_expr(self.compile_expr(value), ExprTag::Val.into()));
+        let value = ret_stmt.value.as_ref().map(|value| {
+            let tagged_expr = self.compile_expr(value);
+            self.use_expr(tagged_expr, TypeRepr::Value)
+        });
 
         self.stmts.push(RetStmt { value }.into());
     }
 
-    fn compile_expr(&self, expr: &normalizer::Expr) -> TaggedExpr {
+    fn compile_expr(&mut self, expr: &normalizer::Expr) -> TaggedExpr {
         match expr {
-            normalizer::Expr::Block(_, block_expr) => {
-                self.compile_block_expr(&block_expr).map(Expr::from)
-            }
+            normalizer::Expr::Block(_, block_expr) => self.compile_block_expr(&block_expr),
             normalizer::Expr::Literal(literal) => self.compile_literal(literal).map(Expr::from),
             normalizer::Expr::Var(var_expr) => self.compile_var_expr(var_expr),
-            normalizer::Expr::Invoke(invoke_expr) => {
-                self.compile_invoke_expr(invoke_expr).map(Expr::from)
-            }
+            normalizer::Expr::Invoke(invoke_expr) => self.compile_invoke_expr(invoke_expr),
             normalizer::Expr::FieldAccess(field_access_expr) => self
                 .compile_field_access_expr(&field_access_expr)
                 .map(Expr::from),
@@ -1074,8 +1227,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_pure_expr(&self, pure_expr: &normalizer::PureExpr) -> TaggedExpr {
+    fn compile_pure_expr(&mut self, pure_expr: &normalizer::PureExpr) -> TaggedExpr {
         match pure_expr {
+            normalizer::PureExpr::Block(_, block_expr) => {
+                self.compile_pure_expr(&block_expr.value)
+            }
             normalizer::PureExpr::Literal(literal) => {
                 self.compile_literal(literal).map(Expr::from)
             }
@@ -1095,74 +1251,56 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn use_expr(&self, expr: TaggedExpr, tags: EnumSet<ExprTag>) -> Expr {
-        // TODO(spinda): Auto-expand tags for built-in types.
-        if expr.tags.is_disjoint(tags) {
-            if let Some(preferred_tag) = tags.iter().nth(0) {
-                // TODO(spinda): Check tag conversion validity.
-                return CallExpr {
-                    target: TypeMemberFnPath {
-                        parent: self.get_type_ident(expr.type_),
-                        ident: ToTagTypeMemberFnIdent::from(preferred_tag).into(),
-                    }
-                    .into(),
-                    args: iterate![
-                        ..if preferred_tag == ExprTag::Local {
-                            Some(CONTEXT_ARG)
-                        } else {
-                            None
-                        },
-                        expr.expr,
-                    ]
-                    .collect(),
-                }
-                .into();
-            }
-        }
-
-        expr.expr
-    }
-
-    fn compile_block_expr(&self, block_expr: &normalizer::BlockExpr) -> TaggedExpr<BlockExpr> {
+    fn compile_block_expr(&mut self, block_expr: &normalizer::BlockExpr) -> TaggedExpr<Expr> {
         let mut block = self.compile_block(&block_expr.stmts);
-        block.stmts.push(
-            self.use_expr(self.compile_expr(&block_expr.value), ExprTag::Val.into())
-                .into(),
-        );
+
+        let tagged_value = self.compile_expr(&block_expr.value);
+        if block.stmts.is_empty() {
+            return tagged_value;
+        }
+        block
+            .stmts
+            .push(self.use_expr(tagged_value, TypeRepr::Value).into());
+
         TaggedExpr {
             expr: block.into(),
             type_: block_expr.type_(),
-            tags: ExprTag::Val.into(),
+            repr: TypeRepr::Value,
+            is_stable: true,
         }
     }
 
     fn compile_literal(&self, literal: &normalizer::Literal) -> TaggedExpr<Literal> {
-        match literal {
-            normalizer::Literal::Int32(n) => TaggedExpr {
-                expr: Literal::Int32(*n),
-                type_: BuiltInType::Int32.into(),
-                tags: ExprTag::Val.into(),
+        TaggedExpr {
+            expr: match literal {
+                normalizer::Literal::Int32(n) => Literal::Int32(*n),
+                normalizer::Literal::Int64(n) => Literal::Int64(*n),
+                normalizer::Literal::UInt16(n) => Literal::UInt16(*n),
+                normalizer::Literal::Double(n) => Literal::Double(*n),
             },
-            normalizer::Literal::Int64(n) => TaggedExpr {
-                expr: Literal::Int64(*n),
-                type_: BuiltInType::Int64.into(),
-                tags: ExprTag::Val.into(),
-            },
-            normalizer::Literal::UInt16(n) => TaggedExpr {
-                expr: Literal::UInt16(*n),
-                type_: BuiltInType::UInt16.into(),
-                tags: ExprTag::Val.into(),
-            },
-            normalizer::Literal::Double(n) => TaggedExpr {
-                expr: Literal::Double(*n),
-                type_: BuiltInType::Double.into(),
-                tags: ExprTag::Val.into(),
-            },
+            type_: literal.type_(),
+            repr: TypeRepr::Value,
+            is_stable: true,
         }
     }
 
     fn compile_var_expr(&self, var_expr: &normalizer::VarExpr) -> TaggedExpr {
-        self.compile_var_access(var_expr.var)
+        self.compile_var_read(var_expr.var)
+    }
+
+    fn compile_var_read(&self, var_index: normalizer::VarIndex) -> TaggedExpr {
+        // Inline `true` and `false` constants.
+        match var_index {
+            normalizer::VarIndex::BuiltIn(
+                built_in_var @ (BuiltInVar::True | BuiltInVar::False),
+            ) => TaggedExpr {
+                expr: (built_in_var == BuiltInVar::True).into(),
+                type_: built_in_var.type_(),
+                repr: TypeRepr::Value,
+                is_stable: true,
+            },
+            var_index => self.compile_var_access(var_index),
+        }
     }
 
     fn compile_var_access(&self, var_index: normalizer::VarIndex) -> TaggedExpr {
@@ -1175,7 +1313,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 }
                 .into(),
                 type_: built_in_var.type_(),
-                tags: ExprTag::Ref.into(),
+                repr: VarRefKind::In.into(),
+                is_stable: true,
             },
             normalizer::VarIndex::EnumVariant(enum_variant_index) => {
                 let enum_item = &self.env[enum_variant_index.enum_index];
@@ -1193,7 +1332,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                     }
                     .into(),
                     type_: enum_variant_index.enum_index.into(),
-                    tags: ExprTag::Ref.into(),
+                    repr: VarRefKind::In.into(),
+                    is_stable: true,
                 }
             }
             normalizer::VarIndex::Global(global_var_index) => {
@@ -1210,7 +1350,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                     }
                     .into(),
                     type_: global_var_item.type_,
-                    tags: global_var_tag(global_var_item.is_mut).into(),
+                    repr: get_global_var_repr(global_var_item.is_mut).into(),
+                    is_stable: !global_var_item.is_mut,
                 }
             }
             normalizer::VarIndex::Param(var_param_index) => {
@@ -1219,7 +1360,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 TaggedExpr {
                     expr: UserParamVarIdent::from(var_param.ident.value).into(),
                     type_: var_param.type_,
-                    tags: var_param_tag(var_param.kind).into(),
+                    repr: get_var_param_repr(var_param),
+                    is_stable: match var_param.kind {
+                        VarParamKind::Value { is_mut } => !is_mut,
+                        VarParamKind::Ref(_) => false,
+                    },
                 }
             }
             normalizer::VarIndex::Local(local_var_index) => {
@@ -1232,34 +1377,30 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                     }
                     .into(),
                     type_: local_var.type_,
-                    tags: ExprTag::Local.into(),
+                    repr: TypeRepr::Local.into(),
+                    is_stable: !local_var.is_mut,
                 }
             }
         }
     }
 
-    fn compile_invoke_expr(&self, invoke_expr: &normalizer::InvokeExpr) -> TaggedExpr<CallExpr> {
-        let callable_item = &self.env[invoke_expr.call.target];
-
-        let callable_parent_ident = callable_item.path.value.parent().map(Path::ident);
-        let callable_ident = callable_item.path.value.ident();
-        let target = UserFnPath {
-            parent: callable_parent_ident,
-            ident: FnUserFnIdent::from(callable_ident).into(),
-        }
-        .into();
-
-        let args = iterate![CONTEXT_ARG, ..self.compile_args(&invoke_expr.call.args)].collect();
-
+    fn compile_invoke_expr(&mut self, invoke_expr: &normalizer::InvokeExpr) -> TaggedExpr<Expr> {
+        let (mut stmts, expr) = self.compile_invocation(invoke_expr);
         TaggedExpr {
-            expr: CallExpr { target, args },
+            expr: if stmts.is_empty() {
+                expr.into()
+            } else {
+                stmts.push(expr.into());
+                stmts.into()
+            },
             type_: invoke_expr.type_(),
-            tags: ExprTag::Val.into(),
+            repr: TypeRepr::Value,
+            is_stable: true,
         }
     }
 
     fn compile_field_access_expr<E: CompileExpr + Typed>(
-        &self,
+        &mut self,
         field_access_expr: &normalizer::FieldAccessExpr<E>,
     ) -> TaggedExpr<ArrowExpr> {
         let parent_expr = field_access_expr.parent.compile(self).expr;
@@ -1279,37 +1420,58 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 member: self.env[field_access_expr.field].ident.value,
             },
             type_: field_access_expr.type_(),
-            tags: ExprTag::Val.into(),
+            repr: TypeRepr::Value,
+            is_stable: true,
         }
     }
 
     fn compile_negate_expr<E: CompileExpr + Typed>(
-        &self,
+        &mut self,
         negate_expr: &normalizer::NegateExpr<E>,
     ) -> TaggedExpr<NegateExpr> {
-        let expr = self.use_expr(negate_expr.expr.compile(self), ExprTag::Ref | ExprTag::Val);
+        debug_assert!(match negate_expr.expr.type_() {
+            normalizer::TypeIndex::BuiltIn(_) => true,
+            _ => false,
+        });
 
-        // TODO(spinda): Replace this with a helper function call.
+        let tagged_expr = negate_expr.expr.compile(self);
+        let expr = self.use_expr(tagged_expr, TypeRepr::Value);
+
         TaggedExpr {
             expr: NegateExpr {
                 kind: negate_expr.kind,
                 expr,
             },
             type_: negate_expr.type_(),
-            tags: ExprTag::Ref | ExprTag::Val,
+            repr: TypeRepr::Value,
+            is_stable: true,
         }
     }
 
     fn compile_cast_expr<E: CompileExpr + Typed>(
-        &self,
+        &mut self,
         cast_expr: &normalizer::CastExpr<E>,
     ) -> TaggedExpr<CallExpr> {
-        let expr = self.use_expr(cast_expr.expr.compile(self), ExprTag::Ref.into());
+        let tagged_expr = cast_expr.expr.compile(self);
+        self.compile_cast(cast_expr.kind, tagged_expr, cast_expr.type_, VarRefKind::In)
+    }
 
-        let source_type_index = cast_expr.expr.type_();
-        let target_type_index = cast_expr.type_;
+    fn compile_cast(
+        &mut self,
+        kind: CastKind,
+        tagged_expr: TaggedExpr,
+        target_type_index: normalizer::TypeIndex,
+        target_var_ref_kind: VarRefKind,
+    ) -> TaggedExpr<CallExpr> {
+        let source_type_index = tagged_expr.type_;
+        let is_stable = tagged_expr.is_stable;
+        let repr = match tagged_expr.repr {
+            TypeRepr::Value => TypeRepr::Value,
+            TypeRepr::Local | TypeRepr::Ref(_) => target_var_ref_kind.into(),
+        };
+        let expr = self.use_expr(tagged_expr, repr);
 
-        let (supertype_index, subtype_index) = match cast_expr.kind {
+        let (supertype_index, subtype_index) = match kind {
             CastKind::Downcast => (source_type_index, target_type_index),
             CastKind::Upcast => (target_type_index, source_type_index),
         };
@@ -1322,7 +1484,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 target: TypeMemberFnPath {
                     parent: subtype_ident,
                     ident: CastTypeMemberFnIdent {
-                        kind: cast_expr.kind,
+                        kind,
                         supertype: supertype_ident,
                     }
                     .into(),
@@ -1330,63 +1492,122 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 .into(),
                 args: vec![expr],
             },
-            type_: cast_expr.type_(),
-            tags: ExprTag::Ref.into(),
+            type_: target_type_index,
+            repr,
+            is_stable,
         }
     }
 
-    fn compile_bin_oper_expr(&self, bin_oper_expr: &normalizer::BinOperExpr) -> TaggedExpr {
-        let lhs = self.use_expr(
-            self.compile_pure_expr(&bin_oper_expr.lhs),
-            ExprTag::Ref.into(),
-        );
-        let rhs = self.use_expr(
-            self.compile_pure_expr(&bin_oper_expr.rhs),
-            ExprTag::Ref.into(),
-        );
+    fn compile_bin_oper_expr(&mut self, bin_oper_expr: &normalizer::BinOperExpr) -> TaggedExpr {
+        let lhs = self.compile_bin_oper_operand_expr(bin_oper_expr.oper, &bin_oper_expr.lhs);
+        let rhs = self.compile_bin_oper_operand_expr(bin_oper_expr.oper, &bin_oper_expr.rhs);
 
-        let ident = TypeMemberFnIdent::BinOper(match bin_oper_expr.oper {
-            BinOper::Arith(arith_bin_oper) => arith_bin_oper.into(),
-            BinOper::Bitwise(bitwise_bin_oper) => bitwise_bin_oper.into(),
-            BinOper::Compare(compare_bin_oper) => compare_bin_oper.into(),
-            BinOper::Logical(logical_bin_oper) => {
-                return TaggedExpr {
-                    expr: BinOperExpr {
-                        oper: logical_bin_oper.into(),
-                        lhs,
-                        rhs,
-                    }
-                    .into(),
-                    type_: bin_oper_expr.type_(),
-                    tags: ExprTag::Ref | ExprTag::Val,
-                };
-            }
-        });
-
-        // Note that the type namespace for the helper function comes from the
-        // *operand* type, not the output type, so we take the type of the
-        // left-hand side rather than the operator expression itself.
         let lhs_type = bin_oper_expr.lhs.type_();
         let rhs_type = bin_oper_expr.rhs.type_();
         debug_assert_eq!(lhs_type, rhs_type);
-        let target = TypeMemberFnPath {
-            parent: self.get_type_ident(lhs_type),
-            ident,
-        }
-        .into();
 
-        TaggedExpr {
-            expr: CallExpr {
-                target,
+        let expr = if let normalizer::TypeIndex::BuiltIn(_) = lhs_type {
+            // For built-in types, we can directly use C++ operators.
+            BinOperExpr {
+                oper: bin_oper_expr.oper,
+                lhs,
+                rhs,
+            }
+            .into()
+        } else {
+            // Otherwise, we should call out to a helper function.
+            CallExpr {
+                target: TypeMemberFnPath {
+                    parent: self.get_type_ident(lhs_type),
+                    ident: match bin_oper_expr.oper {
+                        BinOper::Compare(CompareBinOper::Eq) => CompareTypeMemberFnIdent::Eq,
+                        BinOper::Compare(CompareBinOper::Neq) => CompareTypeMemberFnIdent::Neq,
+                        _ => panic!("binary operator only valid for built-in types"),
+                    }
+                    .into(),
+                }
+                .into(),
                 args: vec![lhs, rhs],
             }
-            .into(),
+            .into()
+        };
+
+        TaggedExpr {
+            expr,
             type_: bin_oper_expr.type_(),
-            tags: ExprTag::Ref | ExprTag::Val,
+            repr: TypeRepr::Value,
+            is_stable: true,
         }
     }
 
-    fn ops_arg(&self) -> Expr {
+    fn compile_bin_oper_operand_expr(
+        &mut self,
+        bin_oper: BinOper,
+        expr: &normalizer::PureExpr,
+    ) -> Expr {
+        let tagged_expr = self.compile_pure_expr(expr);
+        match bin_oper {
+            // Equality comparison operators can take either `Value` or `Ref`
+            // operands.
+            BinOper::Compare(CompareBinOper::Eq | CompareBinOper::Neq) => match tagged_expr.repr {
+                TypeRepr::Value | TypeRepr::Ref(_) => tagged_expr.expr,
+                TypeRepr::Local => self.use_expr(tagged_expr, TypeRepr::Ref(VarRefKind::In)),
+            },
+            // Other comparison operators (which operate over built-in types)
+            // take `Value` operands.
+            _ => self.use_expr(tagged_expr, TypeRepr::Value),
+        }
+    }
+
+    fn use_expr(&self, tagged_expr: TaggedExpr, desired_repr: TypeRepr) -> Expr {
+        if tagged_expr.repr == desired_repr {
+            return tagged_expr.expr;
+        }
+
+        debug_assert!(
+            tagged_expr.repr.can_convert_to(desired_repr),
+            "can't convert from {} to {}",
+            tagged_expr.repr,
+            desired_repr
+        );
+
+        if let normalizer::TypeIndex::BuiltIn(_) = tagged_expr.type_ {
+            // Built-in types are known to need no explicit tag conversions.
+            return tagged_expr.expr;
+        }
+
+        CallExpr {
+            target: TypeMemberFnPath {
+                parent: self.get_type_ident(tagged_expr.type_),
+                ident: ToReprTypeMemberFnIdent::from(desired_repr).into(),
+            }
+            .into(),
+            args: iterate![
+                ..if desired_repr == TypeRepr::Local {
+                    Some(CONTEXT_ARG)
+                } else {
+                    None
+                },
+                tagged_expr.expr,
+            ]
+            .collect(),
+        }
+        .into()
+    }
+
+    fn init_local_var(&mut self, lhs: VarIdent, lhs_type: normalizer::TypeIndex, rhs: TaggedExpr) {
+        let type_ = TypeMemberTypePath {
+            parent: self.get_type_ident(lhs_type),
+            ident: TypeRepr::Local.into(),
+        }
+        .into();
+
+        let rhs = Some(self.use_expr(rhs, TypeRepr::Local));
+
+        self.stmts.push(LetStmt { lhs, type_, rhs }.into());
+    }
+
+    fn generate_ops_arg(&self) -> Expr {
         match self.parent_index {
             Some(normalizer::ParentIndex::Ir(ir_index)) => CallExpr {
                 target: IrMemberFnPath {
@@ -1409,32 +1630,48 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::LabelIndex::Local(local_label_index) => self.locals[local_label_index].ir,
         }
     }
-}
 
-fn global_var_tag(is_mut: bool) -> ExprTag {
-    if is_mut {
-        ExprTag::MutRef
-    } else {
-        ExprTag::Ref
+    fn take_synthetic_var_ident(
+        &mut self,
+        kind: SyntheticVarKind,
+        ident: Option<Ident>,
+    ) -> SyntheticVarIdent {
+        let index = &mut self.next_synthetic_var_indexes[kind];
+        let ident = SyntheticVarIdent {
+            kind,
+            ident,
+            index: *index,
+        };
+        *index += 1;
+        ident
     }
 }
 
-fn var_param_tag(kind: VarParamKind) -> ExprTag {
-    match kind {
-        VarParamKind::In => ExprTag::Ref,
-        // Mutable variable parameters are stored in local variables at the
-        // beginning of a function body.
-        VarParamKind::Mut => ExprTag::Local,
-        VarParamKind::Out => ExprTag::MutRef,
+trait CompileExpr {
+    fn compile<'a, 'b>(&self, scoped_compiler: &mut ScopedCompiler<'a, 'b>) -> TaggedExpr;
+}
+
+impl CompileExpr for normalizer::Expr {
+    fn compile<'a, 'b>(&self, scoped_compiler: &mut ScopedCompiler<'a, 'b>) -> TaggedExpr {
+        scoped_compiler.compile_expr(self)
     }
 }
+
+impl CompileExpr for normalizer::PureExpr {
+    fn compile<'a, 'b>(&self, scoped_compiler: &mut ScopedCompiler<'a, 'b>) -> TaggedExpr {
+        scoped_compiler.compile_pure_expr(self)
+    }
+}
+
+// * Tagged C++ Expressions
 
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "{}", expr)]
 struct TaggedExpr<T = Expr> {
     expr: T,
     type_: normalizer::TypeIndex,
-    tags: EnumSet<ExprTag>,
+    repr: TypeRepr,
+    is_stable: bool,
 }
 
 impl<T> TaggedExpr<T> {
@@ -1442,23 +1679,34 @@ impl<T> TaggedExpr<T> {
         TaggedExpr {
             expr: f(self.expr),
             type_: self.type_,
-            tags: self.tags,
+            repr: self.repr,
+            is_stable: self.is_stable,
         }
     }
 }
 
-trait CompileExpr {
-    fn compile<'a, 'b>(&self, scoped_compiler: &ScopedCompiler<'a, 'b>) -> TaggedExpr;
+fn get_global_var_repr(is_mut: bool) -> TypeRepr {
+    TypeRepr::Ref(if is_mut {
+        // TODO(spinda): This should really be `VarRefKind::Mut`, but that's not
+        // a thing quite yet.
+        VarRefKind::Out
+    } else {
+        VarRefKind::In
+    })
 }
 
-impl CompileExpr for normalizer::Expr {
-    fn compile<'a, 'b>(&self, scoped_compiler: &ScopedCompiler<'a, 'b>) -> TaggedExpr {
-        scoped_compiler.compile_expr(self)
-    }
-}
-
-impl CompileExpr for normalizer::PureExpr {
-    fn compile<'a, 'b>(&self, scoped_compiler: &ScopedCompiler<'a, 'b>) -> TaggedExpr {
-        scoped_compiler.compile_pure_expr(self)
+fn get_var_param_repr(var_param: &normalizer::VarParam) -> TypeRepr {
+    match var_param.kind {
+        VarParamKind::Value { is_mut } => match var_param.type_ {
+            normalizer::TypeIndex::BuiltIn(_) => TypeRepr::Value,
+            normalizer::TypeIndex::Enum(_) | normalizer::TypeIndex::Struct(_) => if is_mut {
+                // TODO(spinda): Should be `VarRefKind::Mut`.
+                VarRefKind::Out
+            } else {
+                VarRefKind::In
+            }
+            .into(),
+        },
+        VarParamKind::Ref(var_ref_kind) => var_ref_kind.into(),
     }
 }

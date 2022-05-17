@@ -11,13 +11,13 @@ use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 
 pub use crate::type_checker::{
     BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex,
-    FnIndex, GlobalVarIndex, GlobalVarItem, GotoStmt, HasAttrs, IrIndex, IrItem, Label,
-    LabelIndex, LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar,
-    LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex,
-    Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr,
-    VarIndex, VarParam, VarParamIndex, VariantIndex,
+    FnIndex, FreeVarRef, GlobalVarIndex, GlobalVarItem, GotoStmt, HasAttrs, IrIndex, IrItem,
+    Label, LabelIndex, LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar,
+    LocalVarIndex, Locals, NotPartOfDeclOrderError, OpIndex, ParamIndex, Params, ParentIndex,
+    StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam,
+    VarParamIndex, VarRef, VarRefArg, VariantIndex,
 };
-use cachet_util::{box_from, deref_from, deref_index, field_index};
+use cachet_util::{box_from, deref_from, deref_index, field_index, typed_index};
 
 #[derive(Clone, Debug)]
 pub struct Env<B = ()> {
@@ -118,25 +118,28 @@ impl<B> Typed for CallableItem<B> {
 }
 
 #[derive(Clone, Debug, From)]
-pub enum Arg {
-    Expr(PureExpr),
-    OutVar(OutVarArg),
+pub enum Arg<B = ()> {
+    Expr(PureExpr<B>),
+    VarRef(VarRefArg),
     Label(LabelArg),
 }
 
 #[derive(Clone, Debug)]
 pub struct LabelArg {
     pub label: LabelIndex,
-    pub is_out: bool,
+    pub is_out_ref: bool,
     pub ir: IrIndex,
 }
 
 #[derive(Clone, Debug)]
-pub struct Call {
+pub struct Call<B = ()> {
     pub target: CallableIndex,
     pub is_unsafe: bool,
-    pub args: Vec<Arg>,
+    pub args: Vec<Arg<B>>,
+    pub local_call_index: LocalCallIndex,
 }
+
+typed_index!(pub LocalCallIndex);
 
 #[derive(Clone, Debug)]
 pub struct Body<B = ()> {
@@ -162,10 +165,10 @@ pub enum Stmt<B = ()> {
     #[from]
     Bind(BindStmt),
     #[from]
-    Emit(EmitStmt),
+    Emit(EmitStmt<B>),
     Block(B, BlockStmt<B>),
     #[from]
-    Invoke(InvokeStmt),
+    Invoke(InvokeStmt<B>),
     #[from]
     Assign(AssignStmt<B>),
     #[from]
@@ -174,7 +177,7 @@ pub enum Stmt<B = ()> {
 
 impl<B: Default> From<BlockStmt<B>> for Stmt<B> {
     fn from(block_stmt: BlockStmt<B>) -> Self {
-        Stmt::Block(B::default(), block_stmt)
+        Self::Block(B::default(), block_stmt)
     }
 }
 
@@ -206,8 +209,8 @@ pub struct CheckStmt<B = ()> {
 }
 
 #[derive(Clone, Debug)]
-pub struct EmitStmt {
-    pub call: Call,
+pub struct EmitStmt<B = ()> {
+    pub call: Call<B>,
     pub ir: IrIndex,
 }
 
@@ -217,7 +220,7 @@ pub struct BlockStmt<B = ()> {
     pub stmts: Vec<Stmt<B>>,
 }
 
-pub type InvokeStmt = InvokeExpr;
+pub type InvokeStmt<B = ()> = InvokeExpr<B>;
 
 #[derive(Clone, Debug)]
 pub struct AssignStmt<B = ()> {
@@ -240,7 +243,7 @@ pub enum Expr<B = ()> {
     #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
     #[from]
-    Invoke(InvokeExpr),
+    Invoke(InvokeExpr<B>),
     #[from]
     FieldAccess(Box<FieldAccessExpr<Expr<B>>>),
     #[from]
@@ -248,7 +251,7 @@ pub enum Expr<B = ()> {
     #[from]
     Cast(Box<CastExpr<Expr<B>>>),
     #[from]
-    BinOper(BinOperExpr),
+    BinOper(BinOperExpr<B>),
 }
 
 impl<B> Typed for Expr<B> {
@@ -267,8 +270,8 @@ impl<B> Typed for Expr<B> {
 }
 
 impl<B: Default> From<Box<BlockExpr<B>>> for Expr<B> {
-    fn from(block_expr: Box<BlockExpr<B>>) -> Expr<B> {
-        Expr::Block(B::default(), block_expr)
+    fn from(block_expr: Box<BlockExpr<B>>) -> Self {
+        Self::Block(B::default(), block_expr)
     }
 }
 
@@ -279,9 +282,12 @@ box_from!(CastExpr<Expr<B>> => Expr<B> | <B>);
 
 deref_from!(&Literal => Expr);
 
-impl<B> From<PureExpr> for Expr<B> {
-    fn from(pure_expr: PureExpr) -> Self {
+impl<B> From<PureExpr<B>> for Expr<B> {
+    fn from(pure_expr: PureExpr<B>) -> Self {
         match pure_expr {
+            PureExpr::Block(reachable, block_expr) => {
+                Expr::Block(reachable, Box::new((*block_expr).into()))
+            }
             PureExpr::Var(var_expr) => var_expr.into(),
             PureExpr::Literal(literal) => literal.into(),
             PureExpr::FieldAccess(field_access_expr) => (*field_access_expr).into(),
@@ -292,43 +298,45 @@ impl<B> From<PureExpr> for Expr<B> {
     }
 }
 
-impl<B> From<FieldAccessExpr<PureExpr>> for Expr<B> {
-    fn from(field_access_expr: FieldAccessExpr<PureExpr>) -> Self {
+impl<B> From<FieldAccessExpr<PureExpr<B>>> for Expr<B> {
+    fn from(field_access_expr: FieldAccessExpr<PureExpr<B>>) -> Self {
         Expr::from(FieldAccessExpr::<Expr<B>>::from(field_access_expr))
     }
 }
 
-impl<B> From<NegateExpr<PureExpr>> for Expr<B> {
-    fn from(negate_expr: NegateExpr<PureExpr>) -> Self {
+impl<B> From<NegateExpr<PureExpr<B>>> for Expr<B> {
+    fn from(negate_expr: NegateExpr<PureExpr<B>>) -> Self {
         Expr::from(NegateExpr::<Expr<B>>::from(negate_expr))
     }
 }
 
-impl<B> From<CastExpr<PureExpr>> for Expr<B> {
-    fn from(cast_expr: CastExpr<PureExpr>) -> Self {
+impl<B> From<CastExpr<PureExpr<B>>> for Expr<B> {
+    fn from(cast_expr: CastExpr<PureExpr<B>>) -> Self {
         Expr::from(CastExpr::<Expr<B>>::from(cast_expr))
     }
 }
 
 #[derive(Clone, Debug, From)]
-pub enum PureExpr {
+pub enum PureExpr<B = ()> {
+    Block(B, Box<PureBlockExpr<B>>),
     #[from]
     Literal(Literal),
     #[from(types(BuiltInVar, "&BuiltInVar"))]
     Var(VarExpr),
     #[from]
-    FieldAccess(Box<FieldAccessExpr<PureExpr>>),
+    FieldAccess(Box<FieldAccessExpr<PureExpr<B>>>),
     #[from]
-    Negate(Box<NegateExpr<PureExpr>>),
+    Negate(Box<NegateExpr<PureExpr<B>>>),
     #[from]
-    Cast(Box<CastExpr<PureExpr>>),
+    Cast(Box<CastExpr<PureExpr<B>>>),
     #[from]
-    BinOper(Box<BinOperExpr>),
+    BinOper(Box<BinOperExpr<B>>),
 }
 
-impl Typed for PureExpr {
+impl<B> Typed for PureExpr<B> {
     fn type_(&self) -> TypeIndex {
         match self {
+            PureExpr::Block(_, block_expr) => block_expr.type_(),
             PureExpr::Literal(literal) => literal.type_(),
             PureExpr::Var(var_expr) => var_expr.type_(),
             PureExpr::FieldAccess(field_access_expr) => field_access_expr.type_(),
@@ -339,21 +347,35 @@ impl Typed for PureExpr {
     }
 }
 
-box_from!(FieldAccessExpr<PureExpr> => PureExpr);
-box_from!(NegateExpr<PureExpr> => PureExpr);
-box_from!(CastExpr<PureExpr> => PureExpr);
-box_from!(BinOperExpr => PureExpr);
+impl<B: Default> From<Box<PureBlockExpr<B>>> for PureExpr<B> {
+    fn from(block_expr: Box<PureBlockExpr<B>>) -> Self {
+        Self::Block(B::default(), block_expr)
+    }
+}
 
-deref_from!(&Literal => PureExpr);
+box_from!(PureBlockExpr<B> => PureExpr<B> | <B> where B: Default);
+box_from!(FieldAccessExpr<PureExpr<B>> => PureExpr<B> | <B>);
+box_from!(NegateExpr<PureExpr<B>> => PureExpr<B> | <B>);
+box_from!(CastExpr<PureExpr<B>> => PureExpr<B> | <B>);
+box_from!(BinOperExpr<B> => PureExpr<B> | <B>);
 
-impl<B> TryFrom<Expr<B>> for PureExpr {
+deref_from!(&Literal => PureExpr<B> | <B>);
+
+impl<B> TryFrom<Expr<B>> for PureExpr<B> {
     type Error = Expr<B>;
 
     fn try_from(expr: Expr<B>) -> Result<Self, Self::Error> {
         match expr {
-            expr @ (Expr::Block(_, _) | Expr::Invoke(_)) => Err(expr),
+            Expr::Block(reachable, block_expr) => {
+                let block_expr = match (*block_expr).try_into() {
+                    Ok(block_expr) => block_expr,
+                    Err(block_expr) => return Err(Expr::Block(reachable, Box::new(block_expr))),
+                };
+                Ok(PureExpr::Block(reachable, Box::new(block_expr)))
+            }
             Expr::Literal(literal) => Ok(literal.into()),
             Expr::Var(var_expr) => Ok(var_expr.into()),
+            expr @ Expr::Invoke(_) => Err(expr),
             Expr::FieldAccess(field_access_expr) => Ok((*field_access_expr).try_into()?),
             Expr::Negate(negate_expr) => Ok((*negate_expr).try_into()?),
             Expr::Cast(cast_expr) => Ok((*cast_expr).try_into()?),
@@ -362,31 +384,33 @@ impl<B> TryFrom<Expr<B>> for PureExpr {
     }
 }
 
-impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for PureExpr {
+impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for PureExpr<B> {
     type Error = FieldAccessExpr<Expr<B>>;
 
     fn try_from(field_access_expr: FieldAccessExpr<Expr<B>>) -> Result<Self, Self::Error> {
-        Ok(PureExpr::from(FieldAccessExpr::<PureExpr>::try_from(
+        Ok(PureExpr::from(FieldAccessExpr::<PureExpr<B>>::try_from(
             field_access_expr,
         )?))
     }
 }
 
-impl<B> TryFrom<NegateExpr<Expr<B>>> for PureExpr {
+impl<B> TryFrom<NegateExpr<Expr<B>>> for PureExpr<B> {
     type Error = NegateExpr<Expr<B>>;
 
     fn try_from(negate_expr: NegateExpr<Expr<B>>) -> Result<Self, Self::Error> {
-        Ok(PureExpr::from(NegateExpr::<PureExpr>::try_from(
+        Ok(PureExpr::from(NegateExpr::<PureExpr<B>>::try_from(
             negate_expr,
         )?))
     }
 }
 
-impl<B> TryFrom<CastExpr<Expr<B>>> for PureExpr {
+impl<B> TryFrom<CastExpr<Expr<B>>> for PureExpr<B> {
     type Error = CastExpr<Expr<B>>;
 
     fn try_from(cast_expr: CastExpr<Expr<B>>) -> Result<Self, Self::Error> {
-        Ok(PureExpr::from(CastExpr::<PureExpr>::try_from(cast_expr)?))
+        Ok(PureExpr::from(CastExpr::<PureExpr<B>>::try_from(
+            cast_expr,
+        )?))
     }
 }
 
@@ -403,53 +427,56 @@ impl<B> Typed for BlockExpr<B> {
     }
 }
 
+impl<B> From<PureBlockExpr<B>> for BlockExpr<B> {
+    fn from(block_expr: PureBlockExpr<B>) -> Self {
+        Self {
+            kind: block_expr.kind,
+            stmts: Vec::new(),
+            value: block_expr.value.into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
-pub struct InvokeExpr {
-    pub call: Call,
+pub struct PureBlockExpr<B = ()> {
+    pub kind: Option<BlockKind>,
+    pub value: PureExpr<B>,
+}
+
+impl<B> Typed for PureBlockExpr<B> {
+    fn type_(&self) -> TypeIndex {
+        self.value.type_()
+    }
+}
+
+impl<B> TryFrom<BlockExpr<B>> for PureBlockExpr<B> {
+    type Error = BlockExpr<B>;
+
+    fn try_from(block_expr: BlockExpr<B>) -> Result<Self, Self::Error> {
+        if !block_expr.stmts.is_empty() {
+            return Err(block_expr);
+        }
+
+        Ok(Self {
+            kind: block_expr.kind,
+            value: block_expr.value.try_into().map_err(|value| BlockExpr {
+                kind: block_expr.kind,
+                stmts: block_expr.stmts,
+                value,
+            })?,
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct InvokeExpr<B = ()> {
+    pub call: Call<B>,
     pub ret: TypeIndex,
 }
 
-impl Typed for InvokeExpr {
+impl<B> Typed for InvokeExpr<B> {
     fn type_(&self) -> TypeIndex {
         self.ret
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct NegateExpr<E = Expr> {
-    pub kind: NegateKind,
-    pub expr: E,
-}
-
-impl<E: Typed> Typed for NegateExpr<E> {
-    fn type_(&self) -> TypeIndex {
-        self.expr.type_()
-    }
-}
-
-impl<B> From<NegateExpr<PureExpr>> for NegateExpr<Expr<B>> {
-    fn from(negate_expr: NegateExpr<PureExpr>) -> Self {
-        NegateExpr {
-            kind: negate_expr.kind,
-            expr: negate_expr.expr.into(),
-        }
-    }
-}
-
-impl<B> TryFrom<NegateExpr<Expr<B>>> for NegateExpr<PureExpr> {
-    type Error = NegateExpr<Expr<B>>;
-
-    fn try_from(negate_expr: NegateExpr<Expr<B>>) -> Result<Self, Self::Error> {
-        match negate_expr.expr.try_into() {
-            Ok(expr) => Ok(NegateExpr {
-                kind: negate_expr.kind,
-                expr,
-            }),
-            Err(expr) => Err(NegateExpr {
-                kind: negate_expr.kind,
-                expr,
-            }),
-        }
     }
 }
 
@@ -466,8 +493,8 @@ impl<E> Typed for FieldAccessExpr<E> {
     }
 }
 
-impl<B> From<FieldAccessExpr<PureExpr>> for FieldAccessExpr<Expr<B>> {
-    fn from(field_access_expr: FieldAccessExpr<PureExpr>) -> Self {
+impl<B> From<FieldAccessExpr<PureExpr<B>>> for FieldAccessExpr<Expr<B>> {
+    fn from(field_access_expr: FieldAccessExpr<PureExpr<B>>) -> Self {
         FieldAccessExpr {
             parent: field_access_expr.parent.into(),
             field: field_access_expr.field,
@@ -476,7 +503,7 @@ impl<B> From<FieldAccessExpr<PureExpr>> for FieldAccessExpr<Expr<B>> {
     }
 }
 
-impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for FieldAccessExpr<PureExpr> {
+impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for FieldAccessExpr<PureExpr<B>> {
     type Error = FieldAccessExpr<Expr<B>>;
 
     fn try_from(field_access_expr: FieldAccessExpr<Expr<B>>) -> Result<Self, Self::Error> {
@@ -496,6 +523,44 @@ impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for FieldAccessExpr<PureExpr> {
 }
 
 #[derive(Clone, Debug)]
+pub struct NegateExpr<E = Expr> {
+    pub kind: NegateKind,
+    pub expr: E,
+}
+
+impl<E: Typed> Typed for NegateExpr<E> {
+    fn type_(&self) -> TypeIndex {
+        self.expr.type_()
+    }
+}
+
+impl<B> From<NegateExpr<PureExpr<B>>> for NegateExpr<Expr<B>> {
+    fn from(negate_expr: NegateExpr<PureExpr<B>>) -> Self {
+        NegateExpr {
+            kind: negate_expr.kind,
+            expr: negate_expr.expr.into(),
+        }
+    }
+}
+
+impl<B> TryFrom<NegateExpr<Expr<B>>> for NegateExpr<PureExpr<B>> {
+    type Error = NegateExpr<Expr<B>>;
+
+    fn try_from(negate_expr: NegateExpr<Expr<B>>) -> Result<Self, Self::Error> {
+        match negate_expr.expr.try_into() {
+            Ok(expr) => Ok(NegateExpr {
+                kind: negate_expr.kind,
+                expr,
+            }),
+            Err(expr) => Err(NegateExpr {
+                kind: negate_expr.kind,
+                expr,
+            }),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct CastExpr<E = Expr> {
     pub kind: CastKind,
     pub expr: E,
@@ -508,8 +573,8 @@ impl<E> Typed for CastExpr<E> {
     }
 }
 
-impl<B> From<CastExpr<PureExpr>> for CastExpr<Expr<B>> {
-    fn from(cast_expr: CastExpr<PureExpr>) -> Self {
+impl<B> From<CastExpr<PureExpr<B>>> for CastExpr<Expr<B>> {
+    fn from(cast_expr: CastExpr<PureExpr<B>>) -> Self {
         CastExpr {
             kind: cast_expr.kind,
             expr: cast_expr.expr.into(),
@@ -518,7 +583,7 @@ impl<B> From<CastExpr<PureExpr>> for CastExpr<Expr<B>> {
     }
 }
 
-impl<B> TryFrom<CastExpr<Expr<B>>> for CastExpr<PureExpr> {
+impl<B> TryFrom<CastExpr<Expr<B>>> for CastExpr<PureExpr<B>> {
     type Error = CastExpr<Expr<B>>;
 
     fn try_from(cast_expr: CastExpr<Expr<B>>) -> Result<Self, Self::Error> {
@@ -538,14 +603,14 @@ impl<B> TryFrom<CastExpr<Expr<B>>> for CastExpr<PureExpr> {
 }
 
 #[derive(Clone, Debug)]
-pub struct BinOperExpr {
+pub struct BinOperExpr<B = ()> {
     pub oper: BinOper,
-    pub lhs: PureExpr,
-    pub rhs: PureExpr,
+    pub lhs: PureExpr<B>,
+    pub rhs: PureExpr<B>,
     pub type_: TypeIndex,
 }
 
-impl Typed for BinOperExpr {
+impl<B> Typed for BinOperExpr<B> {
     fn type_(&self) -> TypeIndex {
         self.type_
     }

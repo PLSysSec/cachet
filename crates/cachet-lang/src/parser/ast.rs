@@ -102,14 +102,14 @@ pub struct VarParam {
 #[derive(Clone, Debug)]
 pub struct LabelParam {
     pub label: Label,
-    pub is_out: bool,
+    pub is_out_ref: bool,
 }
 
 impl From<Label> for LabelParam {
     fn from(label: Label) -> Self {
         Self {
             label,
-            is_out: false,
+            is_out_ref: false,
         }
     }
 }
@@ -124,22 +124,23 @@ pub struct Label {
 pub enum Arg {
     #[from]
     Expr(Expr),
-    /// Arguments that look like `bar` in `foo(bar)` could be either a variable
-    /// expression argument or a label argument. The same is true of arguments
-    /// that look like `out bar)` in `foo(out bar)`. They will have to be
-    /// disambiguated during name resolution.
+    /// Arguments that look like `bar` in `foo(bar)` could be either a free
+    /// variable or free label argument. The same is true of arguments that look
+    /// like `out bar` in `foo(out bar)`. They will have to be disambiguated
+    /// during name resolution.
     #[from]
     FreeVarOrLabel(FreeVarOrLabelArg),
+    FreeVarInRef(Spanned<Path>),
     #[from]
-    OutFreshVar(LocalVar),
+    FreshVarOutRef(LocalVar),
     #[from]
-    OutFreshLabel(LocalLabel),
+    FreshLabelOutRef(LocalLabel),
 }
 
 #[derive(Clone, Debug)]
 pub struct FreeVarOrLabelArg {
     pub path: Spanned<Path>,
-    pub is_out: bool,
+    pub is_out_ref: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -300,9 +301,9 @@ impl From<Spanned<&Path>> for Expr {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Literal {
+    UInt16(u16),
     Int32(i32),
     Int64(i64),
-    UInt16(u16),
     Double(f64),
 }
 

@@ -126,33 +126,43 @@ Param: Param = {
 ParamTags: ParamTags =
     <tags:Spanned<ParamTag>*> =>? ParamTags::reduce(tags.into_iter());
 
-ParamTag: ParamTag =
-    "out" => ParamTag::Out;
+ParamTag: ParamTag = {
+    "in" => ParamTag::In,
+    "out" => ParamTag::Out,
+    <var_tag:VarTag> => var_tag.into(),
+};
 
 VarParam: VarParam =
-    <param_tags:ParamTags> <var_tags:VarTags> <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> =>?
+    <tags:ParamTags> <ident:Spanned<Ident>> ":" <type_:Spanned<Path>> =>?
     {
-        let kind = match param_tags.out_tag {
-            None => match var_tags.mut_tag {
-                None => VarParamKind::In,
-                Some(_) => VarParamKind::Mut,
-            },
-            Some(_) => match var_tags.mut_tag {
-                None => VarParamKind::Out,
-                Some(mut_tag_span) => return Err(RawParseError::User {
-                    error: Spanned::new(
-                        mut_tag_span,
-                        "`mut` is irrelevant for out-parameters"
-                    ),
-                }),
-            },
+        let kind = if tags.in_tag.is_some() {
+            VarRefKind::In.into()
+        } else if tags.out_tag.is_some() {
+            VarRefKind::Out.into()
+        } else {
+            VarParamKind::Value { is_mut: tags.var_tags.mut_tag.is_some() }
         };
 
         Ok(VarParam { ident, kind, type_ })
     };
 
 LabelParam: LabelParam =
-    <tags:ParamTags> <label:Label> => LabelParam { label, is_out: tags.out_tag.is_some() };
+    <tags:ParamTags> <label:Label> =>?
+    {
+        if let Some(span) = tags.in_tag {
+            return Err(RawParseError::User {
+                error: Spanned::new(span, "label parameters can't be in-references"),
+            });
+        }
+
+        if let Some(span) = tags.var_tags.mut_tag {
+            return Err(RawParseError::User {
+                error: Spanned::new(span, "label parameters can't be mutable"),
+            });
+        }
+
+        Ok(LabelParam { label, is_out_ref: tags.out_tag.is_some() })
+    };
 
 Label: Label =
     "label" <ident:Spanned<Ident>> ":" <ir:Spanned<Path>> => Label { ident, ir };
@@ -161,12 +171,13 @@ Arg: Arg = {
     <expr:PrecExpr> => {
         match expr.expr {
             Expr::Var(path) if !expr.is_grouped => {
-                FreeVarOrLabelArg { path, is_out: false }.into()
+                FreeVarOrLabelArg { path, is_out_ref: false }.into()
             }
             expr => expr.into(),
         }
     },
-    "out" <path:Spanned<Path>> => FreeVarOrLabelArg { path, is_out: true }.into(),
+    "out" <path:Spanned<Path>> => FreeVarOrLabelArg { path, is_out_ref: true }.into(),
+    "in" <path:Spanned<Path>> => Arg::FreeVarInRef(path),
     "out" <local_var:LocalVar> => local_var.into(),
     "out" <local_label:LocalLabel> => local_label.into(),
 };

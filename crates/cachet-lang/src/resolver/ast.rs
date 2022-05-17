@@ -10,6 +10,7 @@ use cachet_util::{box_from, deref_from, deref_index, field_index, typed_field_in
 
 use crate::ast::{
     BinOper, BlockKind, CheckKind, Ident, MaybeSpanned, NegateKind, Path, Spanned, VarParamKind,
+    VarRefKind,
 };
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 pub use crate::parser::{FieldIndex, Literal, VariantIndex};
@@ -358,14 +359,14 @@ impl Typed for VarParam {
 #[derive(Clone, Debug)]
 pub struct LabelParam {
     pub label: Label,
-    pub is_out: bool,
+    pub is_out_ref: bool,
 }
 
 impl From<Label> for LabelParam {
     fn from(label: Label) -> Self {
         Self {
             label,
-            is_out: false,
+            is_out_ref: false,
         }
     }
 }
@@ -378,22 +379,47 @@ pub struct Label {
 
 #[derive(Clone, Debug, From)]
 pub enum Arg {
+    /// Arguments that look like `bar` in `foo(bar)` are free variables passed
+    /// either as expression or in-reference arguments, depending on the
+    /// corresponding parameter. They will have to be disambiguated during type
+    /// checking.
+    FreeVar(VarIndex),
+    #[from]
     Expr(Expr),
-    OutVar(OutVar),
+    #[from(types(FreeVarRef))]
+    VarRef(VarRef),
+    #[from]
     Label(LabelIndex),
-    OutLabel(OutLabel),
+    #[from]
+    LabelOutRef(LabelOutRef),
 }
 
 deref_from!(&LabelIndex => Arg);
 
-#[derive(Clone, Copy, Debug)]
-pub enum OutVar {
-    Free(Spanned<VarIndex>),
-    Fresh(LocalVarIndex),
+#[derive(Clone, Debug, From)]
+pub enum VarRef {
+    #[from]
+    Free(FreeVarRef),
+    FreshOut(LocalVarIndex),
+}
+
+impl VarRef {
+    pub const fn kind(&self) -> VarRefKind {
+        match self {
+            VarRef::Free(free_var_ref) => free_var_ref.kind,
+            VarRef::FreshOut(_) => VarRefKind::Out,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FreeVarRef {
+    pub var: Spanned<VarIndex>,
+    pub kind: VarRefKind,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum OutLabel {
+pub enum LabelOutRef {
     Free(Spanned<LabelIndex>),
     Fresh(LocalLabelIndex),
 }

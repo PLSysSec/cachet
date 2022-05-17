@@ -7,15 +7,11 @@ use std::iter::FromIterator;
 
 use derive_more::{Display, From};
 use enum_map::Enum;
-use enumset::EnumSetType;
 
-use cachet_lang::ast::{
-    ArithBinOper, BinOper, BitwiseBinOper, CastKind, CompareBinOper, Ident, NegateKind,
-    NumericCompareBinOper,
-};
+use cachet_lang::ast::{BinOper, CastKind, Ident, NegateKind, VarRefKind};
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 
-use cachet_util::{box_from, chain_from, deref_from, fmt_join, fmt_join_trailing, AffixWriter};
+use cachet_util::{box_from, chain_from, fmt_join, fmt_join_trailing, AffixWriter};
 
 #[derive(Clone, Copy, Debug, Display)]
 #[display(fmt = "{}_{}", kind, ident)]
@@ -126,11 +122,57 @@ impl TypeMemberTypePath {
 
 #[derive(Clone, Copy, Debug, Display, Eq, From, Hash, PartialEq)]
 pub enum TypeMemberTypeIdent {
-    ExprTag(ExprTag),
+    #[from(types(VarRefKind))]
+    Repr(TypeRepr),
 }
 
 impl TypeMemberTypeIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
+}
+
+#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
+pub enum TypeRepr {
+    Value,
+    Local,
+    Ref(VarRefKind),
+}
+
+impl Display for TypeRepr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self {
+                TypeRepr::Value => "Value",
+                TypeRepr::Local => "Local",
+                TypeRepr::Ref(var_ref_kind) => match var_ref_kind {
+                    VarRefKind::In => "InRef",
+                    VarRefKind::Out => "OutRef",
+                },
+            }
+        )
+    }
+}
+
+impl TypeRepr {
+    pub fn can_convert_to(self, repr: TypeRepr) -> bool {
+        match self {
+            TypeRepr::Value => match repr {
+                TypeRepr::Value | TypeRepr::Local => true,
+                // Can't take a reference to a value.
+                TypeRepr::Ref(_) => false,
+            },
+            TypeRepr::Local => match repr {
+                TypeRepr::Value | TypeRepr::Local | TypeRepr::Ref(_) => true,
+            },
+            TypeRepr::Ref(_source_var_ref_kind) => match repr {
+                TypeRepr::Value | TypeRepr::Local => true,
+                // TODO(spinda): Temporary, until `VarRefKind::Mut` is in.
+                TypeRepr::Ref(_target_var_ref_kind) => true,
+                /* source_var_ref_kind == target_var_ref_kind, */
+            },
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -208,6 +250,8 @@ pub enum VarIdent {
     Local(LocalVarIdent),
     #[from]
     LocalLabel(LocalLabelVarIdent),
+    #[from]
+    Synthetic(SyntheticVarIdent),
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
@@ -239,6 +283,30 @@ pub struct LocalVarIdent {
 pub struct LocalLabelVarIdent {
     pub ident: Ident,
     pub index: LocalLabelIndex,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SyntheticVarIdent {
+    pub kind: SyntheticVarKind,
+    pub ident: Option<Ident>,
+    pub index: usize,
+}
+
+impl Display for SyntheticVarIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}_", self.kind)?;
+        if let Some(ident) = self.ident {
+            write!(f, "{}_", ident)?;
+        }
+        write!(f, "{}", self.index)?;
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Display, Enum, Eq, PartialEq)]
+pub enum SyntheticVarKind {
+    #[display(fmt = "arg")]
+    Arg,
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
@@ -327,37 +395,37 @@ impl TypeMemberFnPath {
 pub enum TypeMemberFnIdent {
     #[display(fmt = "EmptyLocal")]
     EmptyLocal,
-    ToTag(ToTagTypeMemberFnIdent),
-    #[display(fmt = "SetMutRef")]
-    SetMutRef,
+    #[display(fmt = "Assign")]
+    Assign,
     #[display(fmt = "Fields")]
     Fields,
+    ToRepr(ToReprTypeMemberFnIdent),
     Cast(CastTypeMemberFnIdent),
+    Compare(CompareTypeMemberFnIdent),
     Variant(VariantTypeMemberFnIdent),
-    BinOper(BinOperTypeMemberFnIdent),
 }
 
 impl TypeMemberFnIdent {
     pub const fn parent_namespace_kind(self) -> NamespaceKind {
         match self {
             TypeMemberFnIdent::EmptyLocal
-            | TypeMemberFnIdent::SetMutRef
+            | TypeMemberFnIdent::Assign
             | TypeMemberFnIdent::Fields => NamespaceKind::Type,
-            TypeMemberFnIdent::ToTag(_) => ToTagTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
+            TypeMemberFnIdent::ToRepr(_) => ToReprTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Cast(_) => CastTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
+            TypeMemberFnIdent::Compare(_) => CompareTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Variant(_) => VariantTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
-            TypeMemberFnIdent::BinOper(_) => BinOperTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
-#[display(fmt = "To{}", tag)]
-pub struct ToTagTypeMemberFnIdent {
-    pub tag: ExprTag,
+#[display(fmt = "To{}", repr)]
+pub struct ToReprTypeMemberFnIdent {
+    pub repr: TypeRepr,
 }
 
-impl ToTagTypeMemberFnIdent {
+impl ToReprTypeMemberFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
 }
 
@@ -385,53 +453,16 @@ impl Display for CastTypeMemberFnIdent {
     }
 }
 
-#[derive(Clone, Copy, Debug, From)]
-pub enum BinOperTypeMemberFnIdent {
-    #[from]
-    Arith(ArithBinOper),
-    #[from]
-    Bitwise(BitwiseBinOper),
-    #[from(types(NumericCompareBinOper))]
-    Compare(CompareBinOper),
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum CompareTypeMemberFnIdent {
+    #[display(fmt = "Eq")]
+    Eq,
+    #[display(fmt = "Neq")]
+    Neq,
 }
 
-impl BinOperTypeMemberFnIdent {
+impl CompareTypeMemberFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
-}
-
-impl Display for BinOperTypeMemberFnIdent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                BinOperTypeMemberFnIdent::Arith(arith_bin_oper) => match arith_bin_oper {
-                    ArithBinOper::Mul => "Mul",
-                    ArithBinOper::Div => "Div",
-                    ArithBinOper::Add => "Add",
-                    ArithBinOper::Sub => "Sub",
-                },
-                BinOperTypeMemberFnIdent::Bitwise(bitwise_bin_oper) => match bitwise_bin_oper {
-                    BitwiseBinOper::Shl => "Shl",
-                    BitwiseBinOper::And => "BitAnd",
-                    BitwiseBinOper::Xor => "Xor",
-                    BitwiseBinOper::Or => "BitOr",
-                },
-                BinOperTypeMemberFnIdent::Compare(compare_bin_oper) => match compare_bin_oper {
-                    CompareBinOper::Eq => "Eq",
-                    CompareBinOper::Neq => "Neq",
-                    CompareBinOper::Numeric(numeric_compare_bin_oper) =>
-                        match numeric_compare_bin_oper {
-                            NumericCompareBinOper::Lt => "Lt",
-                            NumericCompareBinOper::Gt => "Gt",
-                            NumericCompareBinOper::Lte => "Lte",
-                            NumericCompareBinOper::Gte => "Gte",
-                        },
-                },
-            }
-        )?;
-        Ok(())
-    }
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
@@ -623,12 +654,12 @@ pub struct IrMemberFlagIdent {
 
 #[derive(Clone, Copy, Debug, Display, Enum)]
 pub enum IrMemberFlagSelector {
-    #[display(fmt = "EMIT")]
-    Emit,
-    #[display(fmt = "INTERPRETER")]
-    Interpreter,
     #[display(fmt = "COMPILER")]
     Compiler,
+    #[display(fmt = "INTERPRETER")]
+    Interpreter,
+    #[display(fmt = "EMIT")]
+    Emit,
 }
 
 #[derive(Clone, Debug, Default, From)]
@@ -686,6 +717,12 @@ pub struct CommentItem {
 impl Display for CommentItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(AffixWriter::new(f, "// ", ""), "{}", self.text)
+    }
+}
+
+impl<T: Into<String>> From<T> for CommentItem {
+    fn from(text: T) -> Self {
+        CommentItem { text: text.into() }
     }
 }
 
@@ -892,9 +929,15 @@ pub struct ExprStmt {
 pub enum Expr {
     #[from(types(Block, "Vec<Stmt>"))]
     Block(BlockExpr),
-    #[from]
+    #[from(types(bool))]
     Literal(Literal),
-    #[from(types(ParamVarIdent, UserParamVarIdent, LocalVarIdent, LocalLabelVarIdent,))]
+    #[from(types(
+        ParamVarIdent,
+        UserParamVarIdent,
+        LocalVarIdent,
+        LocalLabelVarIdent,
+        SyntheticVarIdent
+    ))]
     Var(VarIdent),
     #[from(types(
         HelperFnIdent,
@@ -933,8 +976,6 @@ box_from!(NegateExpr => Expr);
 box_from!(CommaExpr => Expr);
 box_from!(BinOperExpr => Expr);
 box_from!(AssignExpr => Expr);
-
-deref_from!(&Literal => Expr);
 
 impl FromIterator<Stmt> for Expr {
     fn from_iter<T>(iter: T) -> Self
@@ -977,18 +1018,6 @@ impl Display for MaybeGrouped<'_> {
     }
 }
 
-#[derive(Debug, Display, EnumSetType, Hash, Ord, PartialOrd)]
-pub enum ExprTag {
-    #[display(fmt = "MutRef")]
-    MutRef,
-    #[display(fmt = "Ref")]
-    Ref,
-    #[display(fmt = "Local")]
-    Local,
-    #[display(fmt = "Val")]
-    Val,
-}
-
 #[derive(Clone, Debug, Default, Display, From)]
 #[display(fmt = "({})", block)]
 #[from(types("Vec<Stmt>"))]
@@ -1008,11 +1037,13 @@ impl FromIterator<Stmt> for BlockExpr {
 // TODO(spinda): Wrap these in, e.g., `int32_t(<n>)`. Double-check if any
 // special namespace handling is required (e.g., should that be
 // `::std::int32_t(<n>)`?).
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, Debug, Display, From)]
 pub enum Literal {
+    #[from]
+    Bool(bool),
+    UInt16(u16),
     Int32(i32),
     Int64(i64),
-    UInt16(u16),
     Double(f64),
 }
 

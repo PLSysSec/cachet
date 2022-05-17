@@ -13,7 +13,7 @@ use typed_index_collections::TiVec;
 
 use crate::ast::{
     BinOper, BlockKind, CastKind, CompareBinOper, Ident, MaybeSpanned, NegateKind, Path, Span,
-    Spanned, VarParamKind,
+    Spanned, VarParamKind, VarRefKind,
 };
 use crate::built_in::{BuiltInType, BuiltInVar};
 use crate::resolver;
@@ -23,7 +23,7 @@ pub use crate::type_checker::ast::*;
 pub use crate::type_checker::error::*;
 use crate::type_checker::graphs::{CallGraph, TypeGraph};
 
-// | Type-Checker Entry Point
+// * Type-Checker Entry Point
 
 pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     // Set up an internal placeholder type used to "turn off" type-checking for
@@ -81,7 +81,7 @@ lazy_static! {
     static ref UNKNOWN_IDENT: Ident = Ident::from("<Unknown>");
 }
 
-// | Top-Level Type Checker
+// * Top-Level Type Checker
 
 struct TypeChecker<'a> {
     errors: Vec<TypeCheckError>,
@@ -396,7 +396,7 @@ fn build_cast_chain(
     })
 }
 
-// | Scoped Type Checker
+// * Scoped Type Checker
 
 struct ScopedTypeChecker<'a, 'b> {
     type_checker: &'b mut TypeChecker<'a>,
@@ -470,8 +470,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     type_: Some(var_param.type_),
                     ir: None,
                     expected_arg_kind: match var_param.kind {
-                        VarParamKind::In | VarParamKind::Mut => ArgKind::Expr,
-                        VarParamKind::Out => ArgKind::OutVar,
+                        VarParamKind::Value { .. } => ArgKind::Expr,
+                        VarParamKind::Ref(var_ref_kind) => var_ref_kind.into(),
                     },
                 }
             }
@@ -481,8 +481,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     ident: label_param.label.ident,
                     type_: None,
                     ir: Some(label_param.label.ir),
-                    expected_arg_kind: if label_param.is_out {
-                        ArgKind::OutLabel
+                    expected_arg_kind: if label_param.is_out_ref {
+                        ArgKind::LabelOutRef
                     } else {
                         ArgKind::Label
                     },
@@ -491,43 +491,40 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         });
 
         let arg_span = arg.span;
-        let (found_arg_kind, arg) = match &arg.value {
-            resolver::Arg::Expr(expr) => (
-                ArgKind::Expr,
-                self.type_check_expr_arg(
+        let arg = match &arg.value {
+            resolver::Arg::FreeVar(free_var) => self.type_check_free_var_arg(
+                callable_item.path.value,
+                param_summary.as_ref(),
+                Spanned::new(arg_span, *free_var),
+            ),
+            resolver::Arg::Expr(expr) => self
+                .type_check_expr_arg(
                     callable_item.path.value,
                     param_summary.as_ref(),
                     Spanned::new(arg_span, expr),
                 )
                 .into(),
-            ),
-            resolver::Arg::OutVar(out_var) => (
-                ArgKind::OutVar,
-                self.type_check_out_var_arg(
+            resolver::Arg::VarRef(var_ref) => self
+                .type_check_var_ref_arg(
                     callable_item.path.value,
                     param_summary.as_ref(),
-                    Spanned::new(arg_span, *out_var),
+                    Spanned::new(arg_span, var_ref),
                 )
                 .into(),
-            ),
-            resolver::Arg::Label(label_index) => (
-                ArgKind::Label,
-                self.type_check_label_arg(
+            resolver::Arg::Label(label_index) => self
+                .type_check_label_arg(
                     callable_item.path.value,
                     param_summary.as_ref(),
                     Spanned::new(arg_span, *label_index),
                 )
                 .into(),
-            ),
-            resolver::Arg::OutLabel(out_label) => (
-                ArgKind::OutLabel,
-                self.type_check_out_label_arg(
+            resolver::Arg::LabelOutRef(label_out_ref) => self
+                .type_check_label_out_ref_arg(
                     callable_item.path.value,
                     param_summary.as_ref(),
-                    Spanned::new(arg_span, *out_label),
+                    Spanned::new(arg_span, *label_out_ref),
                 )
                 .into(),
-            ),
         };
 
         if let Some(ParamSummary {
@@ -536,6 +533,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             ..
         }) = param_summary
         {
+            let found_arg_kind = ArgKind::kind_of(&arg);
             if expected_arg_kind != found_arg_kind {
                 self.errors.push(TypeCheckError::ArgKindMismatch {
                     expected_arg_kind,
@@ -550,18 +548,50 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         arg
     }
 
+    fn type_check_free_var_arg(
+        &mut self,
+        target: Path,
+        param_summary: Option<&ParamSummary>,
+        arg: Spanned<VarIndex>,
+    ) -> Arg {
+        match param_summary {
+            Some(&ParamSummary {
+                expected_arg_kind: ArgKind::VarRef(VarRefKind::In),
+                ..
+            }) => {
+                let var_ref = resolver::FreeVarRef {
+                    var: arg,
+                    kind: VarRefKind::In,
+                }
+                .into();
+                self.type_check_var_ref_arg(
+                    target,
+                    param_summary,
+                    Spanned::new(arg.span, &var_ref),
+                )
+                .into()
+            }
+            _ => {
+                let expr = arg.into();
+                self.type_check_expr_arg(target, param_summary, Spanned::new(arg.span, &expr))
+                    .into()
+            }
+        }
+    }
+
     fn type_check_expr_arg(
         &mut self,
         target: Path,
         param_summary: Option<&ParamSummary>,
         arg: Spanned<&resolver::Expr>,
-    ) -> Expr {
+    ) -> ExprArg {
         let expr = self.type_check_expr(arg.value);
 
-        let expr = match param_summary {
+        match param_summary {
             Some(&ParamSummary {
                 ident: param_ident,
                 type_: Some(param_type_index),
+                expected_arg_kind,
                 ..
             }) => {
                 let (success, expr) = self.try_build_upcast_chain(expr, param_type_index);
@@ -576,20 +606,30 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                             param: param_ident,
                         });
                 }
-                expr
-            }
-            _ => expr,
-        };
 
-        expr
+                ExprArg {
+                    expr,
+                    kind: match expected_arg_kind {
+                        // Expressions can be passed into in-reference
+                        // parameters as temporaries.
+                        ArgKind::VarRef(VarRefKind::In) => ExprArgKind::InRefTmp,
+                        _ => ExprArgKind::Value,
+                    },
+                }
+            }
+            _ => ExprArg {
+                expr,
+                kind: ExprArgKind::Value,
+            },
+        }
     }
 
-    fn type_check_out_var_arg(
+    fn type_check_var_ref_arg(
         &mut self,
         target: Path,
         param_summary: Option<&ParamSummary>,
-        arg: Spanned<OutVar>,
-    ) -> OutVarArg {
+        arg: Spanned<&VarRef>,
+    ) -> VarRefArg {
         // Assign the internal "unknown" type if we don't have a parameter type
         // to cross-reference against. It will unify with whatever the argument
         // has for its type. An error should be reported elsewhere if this
@@ -600,18 +640,27 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             .unwrap_or(self.unknown_type());
 
         let arg_type_index = match arg.value {
-            OutVar::Free(var_index) => self.get_var_type(var_index),
+            resolver::VarRef::Free(free_var_ref) => self.get_var_type(free_var_ref.var),
             // If this is an `out let foo`-style argument with no type
             // ascription, infer the type from the parameter.
-            OutVar::Fresh(local_var_index) => *self.locals[local_var_index]
+            resolver::VarRef::FreshOut(local_var_index) => *self.locals[local_var_index]
                 .type_
                 .get_or_insert(param_type_index),
         };
 
-        // Upcasting may be needed to convert from the type the out-parameter
-        // yields to the type of the variable being written.
-        let upcast_route = match self.try_match_types(arg_type_index, param_type_index) {
-            Some(upcast_route) => upcast_route,
+        // TODO(spinda): There ought to be some syntax for *explicitly* casting
+        // references, and for performing unsafe reference casts.
+
+        // Casting may be needed to convert from the type of the variable
+        // argument to the type of the reference parameter.
+        let (cast_kind, supertype_index, subtype_index) = match arg.value.kind() {
+            // In-references are covariant.
+            VarRefKind::In => (CastKind::Upcast, param_type_index, arg_type_index),
+            // Out-references are contravariant.
+            VarRefKind::Out => (CastKind::Downcast, arg_type_index, param_type_index),
+        };
+        let cast_route = match self.try_match_types(supertype_index, subtype_index) {
+            Some(cast_route) => cast_route,
             None => {
                 self.type_checker
                     .errors
@@ -626,10 +675,13 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             }
         };
 
-        OutVarArg {
-            out_var: arg.value,
+        VarRefArg {
+            var_ref: arg.value.clone(),
             type_: param_type_index,
-            upcast_route,
+            cast_route: cast_route
+                .into_iter()
+                .map(|target_type_index| (cast_kind, target_type_index))
+                .collect(),
         }
     }
 
@@ -666,22 +718,23 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         }
     }
 
-    fn type_check_out_label_arg(
+    fn type_check_label_out_ref_arg(
         &mut self,
         target: Path,
         param_summary: Option<&ParamSummary>,
-        arg: Spanned<OutLabel>,
-    ) -> OutLabelArg {
+        arg: Spanned<LabelOutRef>,
+    ) -> LabelOutRefArg {
         let arg_label_index = match arg.value {
-            OutLabel::Free(label_index) => label_index.value,
-            OutLabel::Fresh(local_label_index) => {
+            LabelOutRef::Free(label_index) => label_index.value,
+            LabelOutRef::Fresh(local_label_index) => {
                 // Infer the label IR from the parameter if one isn't specified
                 // explicitly.
                 let unknown_ir_index = self.unknown_ir;
                 let local_label_ir = &mut self.locals[local_label_index].ir;
                 if local_label_ir.is_none() {
-                    // As with variable out-parameters, we assign the internal "unknown" IR
-                    // if we don't have a corresponding parameter IR.
+                    // As with variable reference parameters, we assign the
+                    // internal "unknown" IR if we don't have a corresponding
+                    // parameter IR.
                     let param_ir_index = param_summary
                         .and_then(|param_summary| param_summary.ir)
                         .unwrap_or(unknown_ir_index);
@@ -700,8 +753,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             )
             .ir;
 
-        OutLabelArg {
-            out_label: arg.value,
+        LabelOutRefArg {
+            label_out_ref: arg.value,
             ir: arg_ir_index,
         }
     }

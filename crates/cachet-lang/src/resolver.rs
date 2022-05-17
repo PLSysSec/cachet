@@ -14,7 +14,7 @@ use typed_index_collections::{TiSlice, TiVec};
 
 use cachet_util::{collect_eager, deref_from, MaybeOwned};
 
-use crate::ast::{Ident, Path, Spanned};
+use crate::ast::{Ident, Path, Spanned, VarRefKind};
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::parser;
 use crate::util::map_spanned;
@@ -24,7 +24,7 @@ pub use crate::resolver::ast::*;
 pub use crate::resolver::error::*;
 use crate::resolver::registry::{LookupError, LookupResult, Registrable, Registry};
 
-// | Name Resolution Entry Point
+// * Name Resolution Entry Point
 
 pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> {
     let mut item_catalog = ItemCatalog::new();
@@ -111,7 +111,7 @@ fn resolve_enum_item(enum_item: parser::EnumItem) -> EnumItem {
     }
 }
 
-// | Initial Item Cataloging/Index Assignment Step
+// * Initial Item Cataloging/Index Assignment Step
 
 struct ItemCatalog {
     errors: Vec<ResolveError>,
@@ -402,7 +402,7 @@ impl ItemCatalog {
     }
 }
 
-// | Top-Level Name Resolver
+// * Top-Level Name Resolver
 
 struct Resolver<'a> {
     errors: Vec<ResolveError>,
@@ -631,7 +631,7 @@ impl<'a> Resolver<'a> {
     }
 }
 
-// | Scoped Name Resolver
+// * Scoped Name Resolver
 
 struct ScopedResolver<'a, 'b> {
     resolver: &'b mut Resolver<'a>,
@@ -716,7 +716,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
 
         LabelParam {
             label,
-            is_out: label_param.is_out,
+            is_out_ref: label_param.is_out_ref,
         }
     }
 
@@ -765,33 +765,47 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 .found(&mut self.errors)
                 .map(|scoped_index| match scoped_index {
                     ScopedIndex::Var(var_index) => {
-                        if free_arg.is_out {
-                            OutVar::Free(Spanned::new(free_arg.path.span, var_index)).into()
+                        if free_arg.is_out_ref {
+                            FreeVarRef {
+                                var: Spanned::new(free_arg.path.span, var_index),
+                                kind: VarRefKind::Out,
+                            }
+                            .into()
                         } else {
-                            Expr::from(Spanned::new(free_arg.path.span, var_index)).into()
+                            Arg::FreeVar(var_index)
                         }
                     }
                     ScopedIndex::Label(label_index) => {
-                        if free_arg.is_out {
-                            OutLabel::Free(Spanned::new(free_arg.path.span, label_index)).into()
+                        if free_arg.is_out_ref {
+                            LabelOutRef::Free(Spanned::new(free_arg.path.span, label_index)).into()
                         } else {
                             label_index.into()
                         }
                     }
                 }),
-            parser::Arg::OutFreshVar(local_var) => {
+            parser::Arg::FreeVarInRef(var_path) => self
+                .lookup_var_scoped(var_path)
+                .found(&mut self.errors)
+                .map(|var_index| {
+                    FreeVarRef {
+                        var: Spanned::new(var_path.span, var_index),
+                        kind: VarRefKind::In,
+                    }
+                    .into()
+                }),
+            parser::Arg::FreshVarOutRef(local_var) => {
                 let local_var = self.resolve_local_var(local_var);
                 let local_var_ident = local_var.ident;
                 let local_var_index = self.locals.local_vars.push_and_get_key(local_var);
                 deferred_local_registrations.push((local_var_ident, local_var_index.into()));
-                Some(OutVar::Fresh(local_var_index).into())
+                Some(VarRef::FreshOut(local_var_index).into())
             }
-            parser::Arg::OutFreshLabel(local_label) => {
+            parser::Arg::FreshLabelOutRef(local_label) => {
                 let local_label = self.resolve_local_label(local_label);
                 let label_ident = local_label.ident;
                 let local_label_index = self.locals.local_labels.push_and_get_key(local_label);
                 deferred_local_registrations.push((label_ident, local_label_index.into()));
-                Some(OutLabel::Fresh(local_label_index).into())
+                Some(LabelOutRef::Fresh(local_label_index).into())
             }
         }
     }
@@ -1206,7 +1220,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     }
 }
 
-// | Global/Scoped Indexes and Registration
+// * Global/Scoped Indexes and Registration
 
 #[derive(Clone, Copy, From)]
 enum GlobalIndex {
@@ -1273,7 +1287,7 @@ impl Registrable for ScopedIndex {
 
 type ScopedRegistry = Registry<Ident, ScopedIndex>;
 
-// | Nesting Relationship Representation
+// * Nesting Relationship Representation
 
 #[derive(Clone, Copy, From, Into)]
 struct ImplIndex(usize);
@@ -1302,7 +1316,7 @@ struct NestableItem<T> {
     item: T,
 }
 
-// | Lookup Result Helper Functions
+// * Lookup Result Helper Functions
 
 trait LookupResultExt<T> {
     fn found(self, errors: &mut Vec<ResolveError>) -> Option<T>;

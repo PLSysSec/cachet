@@ -11,7 +11,7 @@ syn keyword cachetFnItem fn op nextgroup=cachetFnIdent skipwhite skipempty
 syn keyword cachetUnsafe unsafe
 syn keyword cachetImpure impure
 syn keyword cachetCheck assert assume
-syn keyword cachetKeyword var let out label bind
+syn keyword cachetKeyword var let in out label bind
 syn keyword cachetStorage mut
 syn keyword cachetConditional if else
 syn keyword cachetControlFlow goto

@@ -8,4 +8,4 @@ repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && cd .. && p
 bpl_file="${repo_dir}/out/${sample_name}.bpl"
 corral_exe="${repo_dir}/vendor/corral/source/Corral/bin/Release/net5.0/corral"
 
-"${corral_exe}" "${bpl_file}" /trackAllVars /recursionBound:4
+"${corral_exe}" "${bpl_file}" /trackAllVars /recursionBound:4 "${@}"
