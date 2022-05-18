@@ -1560,7 +1560,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Stmt::Block(void, _) => unreachable(*void),
             flattener::Stmt::Invoke(invoke_stmt) => self.compile_invoke_stmt(invoke_stmt),
             flattener::Stmt::Assign(assign_stmt) => self.compile_assign_stmt(assign_stmt),
-            flattener::Stmt::Return(ret_stmt) => self.compile_ret_stmt(ret_stmt),
+            flattener::Stmt::Ret(ret_stmt) => self.compile_ret_stmt(ret_stmt),
         }
     }
 

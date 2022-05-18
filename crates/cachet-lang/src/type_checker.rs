@@ -23,7 +23,7 @@ pub use crate::type_checker::ast::*;
 pub use crate::type_checker::error::*;
 use crate::type_checker::graphs::{CallGraph, TypeGraph};
 
-// | Type-Checker Entry Point
+// * Type-Checker Entry Point
 
 pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
     // Set up an internal placeholder type used to "turn off" type-checking for
@@ -81,7 +81,7 @@ lazy_static! {
     static ref UNKNOWN_IDENT: Ident = Ident::from("<Unknown>");
 }
 
-// | Top-Level Type Checker
+// * Top-Level Type Checker
 
 struct TypeChecker<'a> {
     errors: Vec<TypeCheckError>,
@@ -234,8 +234,14 @@ impl<'a> TypeChecker<'a> {
             let mut scoped_type_checker =
                 ScopedTypeChecker::new(self, callable_index, interprets, emits, &mut locals);
 
+            let body_block_has_explicit_value = body.block.value.is_some();
             let mut block = scoped_type_checker.type_check_block(&body.block);
-            if !block.exits_early || body.block.value.is_some() {
+            // If the callable's body block doesn't exit early, we need to check
+            // that the type of its value matches the return type of the
+            // callable, possibly inserting casts. Even if the callable body
+            // *does* exit early, we still do this check if the user explicitly
+            // wrote out a value for the body block.
+            if !block.exits_early || body_block_has_explicit_value {
                 block.value = scoped_type_checker
                     .expect_expr_type(Spanned::new(callable_item.body.span, block.value), ret);
             }
@@ -398,7 +404,7 @@ fn build_cast_chain(
     })
 }
 
-// | Scoped Type Checker
+// * Scoped Type Checker
 
 struct ScopedTypeChecker<'a, 'b> {
     type_checker: &'b mut TypeChecker<'a>,
@@ -774,7 +780,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             Some(value) => self.type_check_expr(value),
         };
 
-        let exits_early = stmt_early_exit(&stmts);
+        let exits_early = stmts.iter().any(does_stmt_exit_early) || does_expr_exit_early(&value);
 
         Block {
             stmts,
@@ -811,8 +817,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             resolver::Stmt::Goto(goto_stmt) => Some(self.type_check_goto_stmt(goto_stmt).into()),
             resolver::Stmt::Bind(bind_stmt) => Some(self.type_check_bind_stmt(bind_stmt).into()),
             resolver::Stmt::Emit(call) => self.type_check_emit_stmt(call).map(Into::into),
+            resolver::Stmt::Ret(ret_stmt) => Some(self.type_check_ret_stmt(ret_stmt).into()),
             resolver::Stmt::Expr(expr) => Some(self.type_check_expr(expr).into()),
-            resolver::Stmt::Return(ret_stmt) => Some(self.type_check_return_stmt(ret_stmt).into()),
         };
 
         if let Some(stmt) = &stmt {
@@ -879,12 +885,21 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         }
     }
 
-    fn type_check_return_stmt(&mut self, ret_stmt: &resolver::ReturnStmt) -> ReturnStmt {
-        let expr = ret_stmt.value.as_ref().map(|expr| {
-            self.type_check_expr_expecting_type(expr.as_ref(), self.callable_item.type_())
-        });
+    fn type_check_ret_stmt(&mut self, ret_stmt: &resolver::RetStmt) -> RetStmt {
+        // Treat `return;` as `return unit;`. We do a little finagling here to
+        // ensure the span for the value expression always points to a sensible
+        // location.
+        let default_ret_value =
+            Spanned::new(ret_stmt.value.span, VarIndex::from(BuiltInVar::Unit)).into();
+        let value = self.type_check_expr_expecting_type(
+            ret_stmt
+                .value
+                .as_ref()
+                .map(|value| value.as_ref().unwrap_or(&default_ret_value)),
+            self.callable_item.type_(),
+        );
 
-        ReturnStmt { value: expr }
+        RetStmt { value }
     }
 
     fn type_check_goto_stmt(&mut self, goto_stmt: &resolver::GotoStmt) -> GotoStmt {
@@ -1343,67 +1358,44 @@ struct ParamSummary {
     expected_arg_kind: ArgKind,
 }
 
-fn stmt_early_exit(stmts: &[Stmt]) -> bool {
-    for stmt in stmts {
-        match stmt {
-            Stmt::Block(kinded_block) => {
-                if kinded_block.block.exits_early {
-                    return true;
-                }
-            }
-            Stmt::Let(LetStmt { rhs: expr, .. }) | Stmt::Expr(expr) => {
-                if expr_early_exit(expr) {
-                    return true;
-                }
-            }
-            Stmt::If(if_stmt) => {
-                if if_stmt_early_exit(if_stmt) {
-                    return true;
-                }
-            }
-            Stmt::Return(_) => return true,
+fn does_stmt_exit_early(stmt: &Stmt) -> bool {
+    match stmt {
+        Stmt::Block(kinded_block) => kinded_block.block.exits_early,
+        Stmt::Let(LetStmt { rhs: expr, .. }) | Stmt::Expr(expr) => does_expr_exit_early(expr),
+        Stmt::If(if_stmt) => does_if_stmt_exit_early(if_stmt),
+        Stmt::Ret(_) => true,
+        Stmt::Label(_) | Stmt::Check(_) | Stmt::Goto(_) | Stmt::Bind(_) | Stmt::Emit(_) => false,
+    }
+}
 
-            // Don't allow check to count for early returns. This just seems like a bad idea
-            Stmt::Check(_) | Stmt::Goto(_) | Stmt::Bind(_) | Stmt::Label(_) | Stmt::Emit(_) => (),
+fn does_if_stmt_exit_early(if_stmt: &IfStmt) -> bool {
+    if does_expr_exit_early(&if_stmt.cond) {
+        return true;
+    }
+
+    if_stmt.then.exits_early
+        && match &if_stmt.else_ {
+            Some(ElseClause::ElseIf(else_if)) => does_if_stmt_exit_early(else_if),
+            Some(ElseClause::Else(else_block)) => else_block.exits_early,
+            None => false,
         }
-    }
-
-    false
 }
 
-fn if_stmt_early_exit(if_stmt: &IfStmt) -> bool {
-    if expr_early_exit(&if_stmt.cond) {
-        return true;
-    }
-
-    let else_early = match &if_stmt.else_ {
-        Some(ElseClause::Else(block)) => stmt_early_exit(&block.stmts),
-        Some(ElseClause::ElseIf(it)) => if_stmt_early_exit(it),
-        None => false,
-    };
-
-    if stmt_early_exit(&if_stmt.then.stmts) && else_early {
-        return true;
-    }
-
-    false
-}
-
-fn expr_early_exit(expr: &Expr) -> bool {
+fn does_expr_exit_early(expr: &Expr) -> bool {
     match expr {
-        Expr::Block(kinded_block) => stmt_early_exit(&kinded_block.block.stmts),
-        Expr::FieldAccess(fae) => expr_early_exit(&fae.parent),
-        Expr::Negate(negate_expr) => expr_early_exit(&negate_expr.expr),
-        Expr::Cast(case_expr) => expr_early_exit(&case_expr.expr),
-        Expr::Assign(assign_expr) => expr_early_exit(&assign_expr.rhs),
+        Expr::Block(kinded_block) => kinded_block.block.exits_early,
+        Expr::Literal(_) | Expr::Var(_) | Expr::Invoke(_) => false,
+        Expr::FieldAccess(field_access_expr) => does_expr_exit_early(&field_access_expr.parent),
+        Expr::Negate(negate_expr) => does_expr_exit_early(&negate_expr.expr),
+        Expr::Cast(cast_expr) => does_expr_exit_early(&cast_expr.expr),
         Expr::BinOper(bin_oper_expr) => {
             if bin_oper_expr.oper.is_short_circuiting() {
-                expr_early_exit(&bin_oper_expr.lhs)
+                does_expr_exit_early(&bin_oper_expr.lhs)
             } else {
-                expr_early_exit(&bin_oper_expr.lhs) || expr_early_exit(&bin_oper_expr.rhs)
+                does_expr_exit_early(&bin_oper_expr.lhs)
+                    || does_expr_exit_early(&bin_oper_expr.rhs)
             }
         }
-
-        Expr::Literal(_) | Expr::Var(_) | Expr::Invoke(_) => false,
+        Expr::Assign(assign_expr) => does_expr_exit_early(&assign_expr.rhs),
     }
 }

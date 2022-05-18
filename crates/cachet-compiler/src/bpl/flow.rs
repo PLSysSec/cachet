@@ -2,6 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::iter;
+use std::ops::ControlFlow::{self, Break, Continue};
 
 use derive_more::From;
 use typed_index_collections::{TiSlice, TiVec};
@@ -108,15 +109,37 @@ pub fn trace_entry_point(
     flow_graph
 }
 
+#[derive(Clone, Default)]
+struct FlowState {
+    pred_emits: HashSet<EmitNodeIndex>,
+    bound_labels: HashSet<LabelNodeIndex>,
+}
+
+impl FlowState {
+    fn is_empty(&self) -> bool {
+        self.pred_emits.is_empty() && self.bound_labels.is_empty()
+    }
+
+    fn clear(&mut self) {
+        self.pred_emits.clear();
+        self.bound_labels.clear();
+    }
+
+    fn append(&mut self, other: &mut FlowState) {
+        self.pred_emits.extend(other.pred_emits.drain());
+        self.bound_labels.extend(other.bound_labels.drain());
+    }
+}
+
 struct FlowTracer<'a> {
     env: &'a flattener::Env,
     bottom_ir_index: flattener::IrIndex,
     graph: MaybeOwned<'a, FlowGraph>,
     curr_emit_label_ident: &'a EmitLabelIdent,
     next_local_emit_index: MaybeOwned<'a, LocalEmitIndex>,
-    pred_emits: MaybeOwned<'a, HashSet<EmitNodeIndex>>,
     label_scope: MaybeOwned<'a, LabelScope>,
-    bound_labels: MaybeOwned<'a, HashSet<LabelNodeIndex>>,
+    curr_state: MaybeOwned<'a, FlowState>,
+    exit_state: MaybeOwned<'a, FlowState>,
 }
 
 impl<'a> FlowTracer<'a> {
@@ -131,9 +154,9 @@ impl<'a> FlowTracer<'a> {
             graph: MaybeOwned::Owned(FlowGraph::default()),
             curr_emit_label_ident: &ROOT_EMIT_LABEL_IDENT,
             next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
-            pred_emits: MaybeOwned::Owned(HashSet::new()),
             label_scope: MaybeOwned::Owned(LabelScope::new()),
-            bound_labels: MaybeOwned::Owned(HashSet::new()),
+            curr_state: MaybeOwned::Owned(FlowState::default()),
+            exit_state: MaybeOwned::Owned(FlowState::default()),
         }
     }
 
@@ -189,7 +212,16 @@ impl<'a> FlowTracer<'a> {
 
     fn trace_body(&mut self, body: &flattener::Body) {
         self.trace_local_labels(&body.locals.local_labels);
-        self.trace_stmts(&body.stmts);
+        assert_eq!(
+            self.trace_stmts(&body.stmts),
+            Break(()),
+            "tracing a body block should always terminate at a return statement"
+        );
+        assert!(
+            self.curr_state.is_empty(),
+            "tracing a body block should always end with an empty current working state"
+        );
+        self.curr_state.append(&mut self.exit_state);
     }
 
     fn trace_local_labels(&mut self, local_labels: &TiSlice<LocalLabelIndex, flattener::Label>) {
@@ -200,57 +232,73 @@ impl<'a> FlowTracer<'a> {
         }
     }
 
-    fn trace_stmts(&mut self, stmts: &[flattener::Stmt]) -> MaybeContinue {
-        for stmt in stmts {
-            self.trace_stmt(stmt)?;
-        }
-
-        Ok(())
+    fn trace_stmts(&mut self, stmts: &[flattener::Stmt]) -> ControlFlow<()> {
+        stmts.iter().try_for_each(|stmt| self.trace_stmt(stmt))
     }
 
-    fn trace_branches<'b>(&mut self, branches: impl Iterator<Item = &'b [flattener::Stmt]>) -> MaybeContinue {
-        // First, back up the predecessor emits and bound labels going into the
-        // branches.
-        let init_pred_emits = self.pred_emits.clone();
-        let init_bound_labels = self.bound_labels.clone();
-        let mut cont = Ok(());
-        self.pred_emits.clear();
-        self.bound_labels.clear();
+    fn trace_branches<'b>(
+        &mut self,
+        branches: impl Iterator<Item = &'b [flattener::Stmt]>,
+    ) -> ControlFlow<()> {
+        // First, back up the state going into the branches.
+        let init_state = self.curr_state.clone();
+        self.curr_state.clear();
 
-        for branch in branches {
-            // Trace each branch from the starting predecessor emits and bound
-            // labels.
-            let mut flow_tracer = FlowTracer {
-                env: self.env,
-                bottom_ir_index: self.bottom_ir_index,
-                graph: MaybeOwned::Borrowed(&mut self.graph),
-                curr_emit_label_ident: self.curr_emit_label_ident,
-                next_local_emit_index: MaybeOwned::Borrowed(&mut self.next_local_emit_index),
-                pred_emits: MaybeOwned::Owned(init_pred_emits.clone()),
-                label_scope: MaybeOwned::Borrowed(&mut self.label_scope),
-                bound_labels: MaybeOwned::Owned(init_bound_labels.clone()),
-            };
+        branches
+            .fold(None, |accum_outcome, branch| {
+                // Trace each branch from the starting predecessor emits and bound
+                // labels.
+                let mut branch_flow_tracer = FlowTracer {
+                    env: self.env,
+                    bottom_ir_index: self.bottom_ir_index,
+                    graph: MaybeOwned::Borrowed(&mut self.graph),
+                    curr_emit_label_ident: self.curr_emit_label_ident,
+                    next_local_emit_index: MaybeOwned::Borrowed(&mut self.next_local_emit_index),
+                    label_scope: MaybeOwned::Borrowed(&mut self.label_scope),
+                    // Each branch starts with a fresh copy of the backed-up
+                    // state at the branch point.
+                    curr_state: MaybeOwned::Owned(init_state.clone()),
+                    // State at return points should be accumulated into our
+                    // overall exit state accumulator across all branches.
+                    exit_state: MaybeOwned::Borrowed(&mut self.exit_state),
+                };
+                let branch_outcome = branch_flow_tracer.trace_stmts(branch);
 
-            // cont will only be EarlyReturn if all branches yield early return
-            cont = cont.or(flow_tracer.trace_stmts(branch));
+                // Accumulate the state at the end of each branch into the
+                // current working state. Note that if the branch hit an early
+                // return, this state will be empty.
+                self.curr_state.append(&mut branch_flow_tracer.curr_state);
 
-            // Accumulate the predecessor emits and bound labels at the end of
-            // each branch.
-            self.pred_emits.extend(flow_tracer.pred_emits.into_owned());
-            self.bound_labels
-                .extend(flow_tracer.bound_labels.into_owned());
-        }
-
-        cont
+                // If all branches hit an early return, then we short-circuit
+                // after tracing all of them. We continue tracing past the
+                // branches if even one branch completes normally.
+                match (accum_outcome, branch_outcome) {
+                    (Some(Continue(())), _) | (_, Continue(())) => Some(Continue(())),
+                    (_, Break(())) => Some(Break(())),
+                }
+            })
+            // We also continue tracing if there were no branches.
+            .unwrap_or_else(|| Continue(()))
     }
 
-    fn trace_stmt(&mut self, stmt: &flattener::Stmt) -> MaybeContinue {
+    fn trace_stmt(&mut self, stmt: &flattener::Stmt) -> ControlFlow<()> {
         match stmt {
             flattener::Stmt::Let(_)
             | flattener::Stmt::Label(_)
             | flattener::Stmt::Check(_)
             | flattener::Stmt::Assign(_) => (),
-            flattener::Stmt::Return(_) => Err(EarlyReturn)?,
+            flattener::Stmt::Ret(_) => {
+                // We encountered a return statement. The current working state at this point
+                // is the state upon exiting the containing callable (or at
+                // least one potential state, in the case of branches). Drain
+                // the current state into the exit state accumulator, clearing
+                // the current state in the process.
+                self.exit_state.append(&mut self.curr_state);
+
+                // Short-circuit flow-tracing of this callable: since we hit an
+                // return statement, nothing else along this path will run.
+                return Break(());
+            }
             flattener::Stmt::If(if_stmt) => self.trace_if_stmt(if_stmt)?,
             flattener::Stmt::Goto(goto_stmt) => self.trace_goto_stmt(goto_stmt),
             flattener::Stmt::Bind(bind_stmt) => self.trace_bind_stmt(bind_stmt),
@@ -259,10 +307,10 @@ impl<'a> FlowTracer<'a> {
             flattener::Stmt::Invoke(invoke_stmt) => self.trace_invoke_stmt(invoke_stmt),
         }
 
-        Ok(())
+        Continue(())
     }
 
-    fn trace_if_stmt(&mut self, if_stmt: &flattener::IfStmt) -> MaybeContinue {
+    fn trace_if_stmt(&mut self, if_stmt: &flattener::IfStmt) -> ControlFlow<()> {
         static EMPTY_BRANCH: Vec<flattener::Stmt> = Vec::new();
         let mut branches = vec![];
         let mut if_option = Some(if_stmt);
@@ -290,7 +338,7 @@ impl<'a> FlowTracer<'a> {
 
     fn trace_bind_stmt(&mut self, bind_stmt: &flattener::BindStmt) {
         let label_node_index = self.label_scope[&bind_stmt.label];
-        self.bound_labels.insert(label_node_index);
+        self.curr_state.bound_labels.insert(label_node_index);
     }
 
     fn trace_emit_stmt(&mut self, emit_stmt: &flattener::EmitStmt) {
@@ -327,23 +375,30 @@ impl<'a> FlowTracer<'a> {
         // statements inside the op link their labels as successors of the new
         // emit node.
 
-        let mut flow_tracer = FlowTracer {
+        let mut op_flow_tracer = FlowTracer {
             env: self.env,
             bottom_ir_index: self.bottom_ir_index,
             graph: MaybeOwned::Borrowed(&mut self.graph),
             curr_emit_label_ident: &new_emit_label_ident,
             next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
-            pred_emits: MaybeOwned::Borrowed(&mut self.pred_emits),
             label_scope: MaybeOwned::Owned(LabelScope::new()),
-            bound_labels: MaybeOwned::Borrowed(&mut self.bound_labels),
+            // Tracing inside the emitted op starts from our current working
+            // state and mutates it directly. After tracing the emitted op, our
+            // current working state will be the state on control flow exiting
+            // the op.
+            curr_state: MaybeOwned::Borrowed(&mut self.curr_state),
+            // On the other hand, the exit state accumulator starts with
+            // a blank slate, since it should reflect the state when control
+            // flow exits the emitted op, not the containing callable.
+            exit_state: MaybeOwned::Owned(FlowState::default()),
         };
-        flow_tracer.init_label_params_with_args(
+        op_flow_tracer.init_label_params_with_args(
             &op_item.params,
             &op_item.param_order,
             &emit_stmt.call.args,
             &self.label_scope,
         );
-        flow_tracer.trace_op_item(op_item);
+        op_flow_tracer.trace_op_item(op_item);
     }
 
     fn trace_invoke_stmt(&mut self, invoke_stmt: &flattener::InvokeStmt) {
@@ -365,7 +420,7 @@ impl<'a> FlowTracer<'a> {
 
     fn insert_exit_emit_node(&mut self) {
         debug_assert!(self.graph.emit_nodes.is_empty());
-        debug_assert!(self.pred_emits.is_empty());
+        debug_assert!(self.curr_state.pred_emits.is_empty());
         self.insert_emit_node(EmitLabelIdent::default(), None);
     }
 
@@ -392,7 +447,7 @@ impl<'a> FlowTracer<'a> {
     ) {
         let emit_node_index = self.insert_emit_node(label_ident, target);
         self.link_emit_node(emit_node_index);
-        self.pred_emits.insert(emit_node_index);
+        self.curr_state.pred_emits.insert(emit_node_index);
     }
 
     fn link_emit_node(&mut self, emit_node_index: EmitNodeIndex) {
@@ -401,13 +456,13 @@ impl<'a> FlowTracer<'a> {
     }
 
     fn link_pred_emits_to_succ(&mut self, succ: EmitSucc) {
-        for pred_emit in self.pred_emits.drain() {
+        for pred_emit in self.curr_state.pred_emits.drain() {
             self.graph[pred_emit].succs.insert(succ);
         }
     }
 
     fn link_bound_labels_to_emit(&mut self, emit_node_index: EmitNodeIndex) {
-        for bound_label_index in self.bound_labels.drain() {
+        for bound_label_index in self.curr_state.bound_labels.drain() {
             self.graph
                 .link_label_to_emit(bound_label_index, emit_node_index);
         }
@@ -428,9 +483,3 @@ impl<'a> FlowTracer<'a> {
         label_node_index
     }
 }
-
-/// We use MaybeContinue to bubble up early returns while constructing traces.
-/// EarlyReturn is used to signal an unconditional early return, thus all subsequent
-/// code need not be traced. 
-type MaybeContinue = Result<(), EarlyReturn>;
-struct EarlyReturn;

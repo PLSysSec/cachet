@@ -64,14 +64,6 @@ impl TypeGraph {
             }
         }
 
-        // let never_idx = get_built_in_type_node_index(BuiltInType::Never);
-        // // Never is a subtype of all types!
-        // for other_idx in inner.node_indices() {
-        //     if other_idx != never_idx {
-        //         inner.add_edge(other_idx, never_idx, ());
-        //     }
-        // }
-
         TypeGraph {
             inner,
             num_enum_items,

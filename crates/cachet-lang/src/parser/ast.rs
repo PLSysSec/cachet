@@ -210,14 +210,9 @@ pub enum Stmt {
     Bind(BindStmt),
     Emit(Call),
     #[from]
-    Expr(Expr),
+    Ret(RetStmt),
     #[from]
-    Return(ReturnStmt),
-}
-
-#[derive(Clone, Debug)]
-pub struct ReturnStmt {
-    pub value: Option<Spanned<Expr>>,
+    Expr(Expr),
 }
 
 #[derive(Clone, Debug)]
@@ -260,6 +255,11 @@ pub struct GotoStmt {
 #[derive(Clone, Debug)]
 pub struct BindStmt {
     pub label: Spanned<Path>,
+}
+
+#[derive(Clone, Debug)]
+pub struct RetStmt {
+    pub value: Spanned<Option<Expr>>,
 }
 
 #[derive(Clone, Debug, From)]

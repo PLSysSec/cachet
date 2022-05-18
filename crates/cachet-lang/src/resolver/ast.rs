@@ -480,20 +480,9 @@ pub enum Stmt {
     Bind(BindStmt),
     Emit(Call),
     #[from]
-    Expr(Expr),
+    Ret(RetStmt),
     #[from]
-    Return(ReturnStmt),
-}
-
-#[derive(Clone, Debug)]
-pub struct ReturnStmt {
-    pub value: Option<Spanned<Expr>>,
-}
-
-impl Typed for ReturnStmt {
-    fn type_(&self) -> TypeIndex {
-        BuiltInType::Unit.into()
-    }
+    Expr(Expr),
 }
 
 #[derive(Clone, Debug)]
@@ -563,6 +552,17 @@ pub struct BindStmt {
 }
 
 impl Typed for BindStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RetStmt {
+    pub value: Spanned<Option<Expr>>,
+}
+
+impl Typed for RetStmt {
     fn type_(&self) -> TypeIndex {
         BuiltInType::Unit.into()
     }

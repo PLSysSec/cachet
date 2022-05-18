@@ -222,8 +222,8 @@ Stmt: Stmt = {
     <goto_stmt:GotoStmt> ";" => goto_stmt.into(),
     <bind_stmt:BindStmt> ";" => bind_stmt.into(),
     <emit_stmt:EmitStmt> ";" => emit_stmt,
+    <ret_stmt:RetStmt> ";" => ret_stmt.into(),
     <expr:Expr> ";" => expr.into(),
-    <ret_stmt:ReturnStmt> ";" => ret_stmt.into(),
 };
 
 LetStmt: LetStmt =
@@ -258,8 +258,8 @@ BindStmt: BindStmt =
 EmitStmt: Stmt =
     "emit" <call:Call> => Stmt::Emit(call);
 
-ReturnStmt: ReturnStmt =
-    "return" <value:Spanned<Expr>?> => ReturnStmt { value };
+RetStmt: RetStmt =
+    "return" <value:Spanned<Expr?>> => RetStmt { value };
 
 Expr: Expr = {
     <expr:PrecExpr> => expr.expr,

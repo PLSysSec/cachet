@@ -16,7 +16,7 @@ use crate::ast::Spanned;
 pub use crate::parser::ast::*;
 pub use crate::parser::error::*;
 
-// | Parsing Entry Point
+// * Parsing Entry Point
 
 pub fn parse<'a>(file_id: FileId, src: &str) -> Result<Vec<Spanned<Item>>, ParseError> {
     PARSER
@@ -28,7 +28,7 @@ lazy_static! {
     static ref PARSER: grammar::ItemsParser = grammar::ItemsParser::new();
 }
 
-// | Multi-File Parsing
+// * Multi-File Parsing
 
 pub type Files = codespan::Files<String>;
 

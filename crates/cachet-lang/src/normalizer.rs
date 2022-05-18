@@ -103,17 +103,29 @@ impl<'a> Normalizer<'a> {
     }
 
     fn normalize_body_block(&mut self, block: type_checker::Block) -> Vec<Stmt> {
-        let type_ = block.type_();
-        if type_ == BuiltInType::Unit.into() || block.exits_early {
+        // If the body block always exits early, any value expression at the end
+        // of the block will be unused. We should also treat the value
+        // expression as unused if it's unit-typed, since unit-return-types get
+        // erased past the normalization stage.
+        if block.exits_early || block.type_() == BuiltInType::Unit.into() {
+            let block_exits_early = block.exits_early;
             let mut stmts = self.normalize_unused_block(block);
-            stmts.push(ReturnStmt { value: None }.into());
+            // Passes downstream of the normalizer should be able to rely on the
+            // property that callables only return at explicit return
+            // statements. If the body block doesn't always exit early, we
+            // should demarcate the return point at the end of the block with an
+            // explicit early return (expressionless, because if this is true
+            // here then we know the block is unit-typed).
+            if !block_exits_early {
+                stmts.push(RetStmt { value: None }.into());
+            }
             return stmts;
         }
 
         let mut stmts = self.normalize_block_stmts(block.stmts);
         let mut scoped_normalizer = ScopedNormalizer::new(self, &mut stmts);
         let value = scoped_normalizer.normalize_used_expr(block.value);
-        stmts.push(ReturnStmt { value: Some(value) }.into());
+        stmts.push(RetStmt { value: Some(value) }.into());
         stmts
     }
 
@@ -283,7 +295,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Stmt::Bind(bind_stmt) => self.stmts.push(bind_stmt.into()),
             type_checker::Stmt::Emit(emit_stmt) => self.normalize_emit_stmt(emit_stmt),
             type_checker::Stmt::Expr(expr) => self.normalize_unused_expr(expr),
-            type_checker::Stmt::Return(ret_stmt) => self.normalize_return_stmt(ret_stmt),
+            type_checker::Stmt::Ret(ret_stmt) => self.normalize_ret_stmt(ret_stmt),
         }
     }
 
@@ -331,10 +343,18 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         );
     }
 
-    fn normalize_return_stmt(&mut self, ret_stmt: type_checker::ReturnStmt) {
-        let value = ret_stmt.value.map(|expr| self.normalize_expr(expr));
+    fn normalize_ret_stmt(&mut self, ret_stmt: type_checker::RetStmt) {
+        let value = if ret_stmt.value.type_() == BuiltInType::Unit.into() {
+            // Unit return types are erased by normalization, so we should treat the
+            // return value expression as unused and emit an expressionless
+            // return statement.
+            self.normalize_unused_expr(ret_stmt.value);
+            None
+        } else {
+            Some(self.normalize_used_expr(ret_stmt.value))
+        };
 
-        self.stmts.push(ReturnStmt { value }.into());
+        self.stmts.push(RetStmt { value }.into());
     }
 
     fn normalize_emit_stmt(&mut self, emit_stmt: type_checker::EmitStmt) {

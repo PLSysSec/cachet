@@ -24,7 +24,7 @@ pub use crate::resolver::ast::*;
 pub use crate::resolver::error::*;
 use crate::resolver::registry::{LookupError, LookupResult, Registrable, Registry};
 
-// | Name Resolution Entry Point
+// * Name Resolution Entry Point
 
 pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> {
     let mut item_catalog = ItemCatalog::new();
@@ -111,7 +111,7 @@ fn resolve_enum_item(enum_item: parser::EnumItem) -> EnumItem {
     }
 }
 
-// | Initial Item Cataloging/Index Assignment Step
+// * Initial Item Cataloging/Index Assignment Step
 
 struct ItemCatalog {
     errors: Vec<ResolveError>,
@@ -402,7 +402,7 @@ impl ItemCatalog {
     }
 }
 
-// | Top-Level Name Resolver
+// * Top-Level Name Resolver
 
 struct Resolver<'a> {
     errors: Vec<ResolveError>,
@@ -631,7 +631,7 @@ impl<'a> Resolver<'a> {
     }
 }
 
-// | Scoped Name Resolver
+// * Scoped Name Resolver
 
 struct ScopedResolver<'a, 'b> {
     resolver: &'b mut Resolver<'a>,
@@ -894,8 +894,8 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                         .map_found(Into::into)
                 })
                 .map(Stmt::Emit),
+            parser::Stmt::Ret(ret_stmt) => self.resolve_ret_stmt(ret_stmt).map(Stmt::from),
             parser::Stmt::Expr(expr) => self.resolve_expr(expr).map(Stmt::from),
-            parser::Stmt::Return(ret_stmt) => self.resolve_return_stmt(ret_stmt).map(Stmt::from),
         }
     }
 
@@ -979,6 +979,15 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         })
     }
 
+    fn resolve_ret_stmt(&mut self, ret_stmt: parser::RetStmt) -> Option<RetStmt> {
+        let value = map_spanned(ret_stmt.value, |value| match value.value {
+            Some(value) => self.resolve_expr(value).map(Some),
+            None => Some(None),
+        });
+
+        Some(RetStmt { value: value? })
+    }
+
     fn resolve_expr(&mut self, expr: parser::Expr) -> Option<Expr> {
         match expr {
             parser::Expr::Block(block) => self.resolve_kinded_block(*block).map(Expr::from),
@@ -1005,17 +1014,6 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 self.resolve_assign_expr(*assign_expr).map(Expr::from)
             }
         }
-    }
-
-    fn resolve_return_stmt(&mut self, ret_stmt: parser::ReturnStmt) -> Option<ReturnStmt> {
-        match ret_stmt.value {
-            None => ReturnStmt { value: None },
-            Some(expr) => {
-                let expr = map_spanned(expr, |expr| self.resolve_expr(expr.value))?.into();
-                ReturnStmt { value: expr }
-            }
-        }
-        .into()
     }
 
     fn resolve_var_expr(&mut self, var_path: Spanned<Path>) -> Option<Spanned<VarIndex>> {
@@ -1218,7 +1216,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     }
 }
 
-// | Global/Scoped Indexes and Registration
+// * Global/Scoped Indexes and Registration
 
 #[derive(Clone, Copy, From)]
 enum GlobalIndex {
@@ -1285,7 +1283,7 @@ impl Registrable for ScopedIndex {
 
 type ScopedRegistry = Registry<Ident, ScopedIndex>;
 
-// | Nesting Relationship Representation
+// * Nesting Relationship Representation
 
 #[derive(Clone, Copy, From, Into)]
 struct ImplIndex(usize);
@@ -1314,7 +1312,7 @@ struct NestableItem<T> {
     item: T,
 }
 
-// | Lookup Result Helper Functions
+// * Lookup Result Helper Functions
 
 trait LookupResultExt<T> {
     fn found(self, errors: &mut Vec<ResolveError>) -> Option<T>;

@@ -316,9 +316,9 @@ pub enum Stmt {
     #[from]
     Emit(EmitStmt),
     #[from]
-    Expr(Expr),
+    Ret(RetStmt),
     #[from]
-    Return(ReturnStmt),
+    Expr(Expr),
 }
 
 impl Typed for Stmt {
@@ -332,22 +332,11 @@ impl Typed for Stmt {
             Self::Goto(goto_stmt) => goto_stmt.type_(),
             Self::Bind(bind_stmt) => bind_stmt.type_(),
             Self::Emit(emit_stmt) => emit_stmt.type_(),
+            Self::Ret(ret_stmt) => ret_stmt.type_(),
             // The final value of an expression statement is ignored, so the
             // statement itself is inherently unit-typed.
             Self::Expr(_) => BuiltInType::Unit.into(),
-            Self::Return(ret_stmt) => ret_stmt.type_(),
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ReturnStmt {
-    pub value: Option<Expr>,
-}
-
-impl Typed for ReturnStmt {
-    fn type_(&self) -> TypeIndex {
-        BuiltInType::Unit.into()
     }
 }
 
@@ -436,6 +425,17 @@ pub struct EmitStmt {
 }
 
 impl Typed for EmitStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RetStmt {
+    pub value: Expr,
+}
+
+impl Typed for RetStmt {
     fn type_(&self) -> TypeIndex {
         BuiltInType::Unit.into()
     }

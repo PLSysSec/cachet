@@ -72,9 +72,9 @@ ordered_ident_enum! {
     BuiltInType {
         Unit = "Unit",
         Bool = "Bool",
+        UInt16 = "UInt16",
         Int32 = "Int32",
         Int64 = "Int64",
-        UInt16 = "UInt16",
         Double = "Double"
     }
 }
@@ -85,8 +85,8 @@ impl BuiltInType {
             BuiltInType::Bool => Some(BuiltInType::Int32),
             BuiltInType::Int32 => Some(BuiltInType::Int64),
             BuiltInType::Unit
-            | BuiltInType::Int64
             | BuiltInType::UInt16
+            | BuiltInType::Int64
             | BuiltInType::Double => None,
         }
     }
@@ -94,9 +94,9 @@ impl BuiltInType {
     pub const fn is_numeric(self) -> bool {
         match self {
             BuiltInType::Bool
+            | BuiltInType::UInt16
             | BuiltInType::Int32
             | BuiltInType::Int64
-            | BuiltInType::UInt16
             | BuiltInType::Double => true,
             BuiltInType::Unit => false,
         }
@@ -114,7 +114,7 @@ impl BuiltInType {
 
     pub const fn is_integral(self) -> bool {
         match self {
-            BuiltInType::Bool | BuiltInType::Int32 | BuiltInType::Int64 | BuiltInType::UInt16 => {
+            BuiltInType::Bool | BuiltInType::UInt16 | BuiltInType::Int32 | BuiltInType::Int64 => {
                 debug_assert!(self.is_numeric());
                 true
             }

@@ -23,7 +23,12 @@ fn if_1() -> Int64 {
     if ({ return 3_i64; false }) {}
 }
 
-fn if_2() -> Bool {
+fn if_2() -> Int64 {
+    if ({ return 3_i64; false }) {}
+    4_i64
+}
+
+fn if_3() -> Bool {
     if (true) {
         return true;
     } else {
@@ -41,10 +46,11 @@ fn binop_reg() -> Double {
 
 fn test() {
     unit_return();
-    value_return();
+    assert value_return();
     dead_code();
-    if_1();
-    if_2();
-    binop_short_circuit();
-    binop_reg();
+    assert if_1() == 3_i64;
+    assert if_2() == 3_i64;
+    assert if_3();
+    assert binop_short_circuit() == 3.4;
+    assert binop_reg() == 3.4;
 }

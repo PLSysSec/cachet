@@ -111,7 +111,7 @@ impl Flattener {
             normalizer::Stmt::Assign(assign_stmt) => {
                 self.flatten_assign_stmt(assign_stmt);
             }
-            normalizer::Stmt::Return(ret_stmt) => {
+            normalizer::Stmt::Ret(ret_stmt) => {
                 self.flatten_ret_stmt(ret_stmt);
             }
         }
@@ -179,7 +179,7 @@ impl Flattener {
         );
     }
 
-    fn flatten_ret_stmt(&mut self, ret_stmt: normalizer::ReturnStmt) {
+    fn flatten_ret_stmt(&mut self, ret_stmt: normalizer::RetStmt) {
         let value = ret_stmt.value.map(|value| self.flatten_expr(value));
 
         self.stmts.push(RetStmt { value }.into());
