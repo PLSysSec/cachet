@@ -100,13 +100,37 @@ struct NumericType : public PrimitiveType<T> {
   }
 };
 
+template <typename T>
+struct IntegralType : public NumericType<T> {
+  using Val = typename NumericType<T>::Val;
+  using Local = typename NumericType<T>::Local;
+  using Ref = typename NumericType<T>::Ref;
+  using MutRef = typename NumericType<T>::MutRef;
+
+  static Val Shl(Ref lhs, Ref rhs) {
+    return lhs << rhs;
+  }
+
+  static Val BitAnd(Ref lhs, Ref rhs) {
+    return lhs & rhs;
+  }
+
+  static Val BitOr(Ref lhs, Ref rhs) {
+    return lhs | rhs;
+  }
+
+  static Val Xor(Ref lhs, Ref rhs) {
+    return lhs ^ rhs;
+  }
+};
+
 
 using Type_Unit = PrimitiveType<std::monostate>;
 using Type_Bool = NumericType<bool>;
-using Type_Int32 = NumericType<int32_t>;
+using Type_Int32 = IntegralType<int32_t>;
 using Type_Double = NumericType<double>;
-using Type_Int64 = NumericType<int64_t>;
-using Type_UInt16 = NumericType<uint16_t>;
+using Type_Int64 = IntegralType<int64_t>;
+using Type_UInt16 = IntegralType<uint16_t>;
 
 namespace Impl_Double {
   template <typename T>

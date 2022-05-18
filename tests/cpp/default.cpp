@@ -1,11 +1,9 @@
-#include <cstdlib>
 #include <variant>
+#include <cassert>
+
+#define Cachet_Assert assert
 
 using Cachet_ContextRef = std::monostate;
-
-inline void Cachet_Assert(bool failed) {
-    exit(!failed);
-}
 
 
 #include <cpp_prelude.h>

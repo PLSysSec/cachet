@@ -1,21 +1,24 @@
+#include <cassert>
+#define Cachet_Assert assert
 #include <cpp_prelude.h>
 #include <stdio.h>
-
 using namespace cachet::prelude;
-
 using Cachet_ContextRef = std::monostate;
 
-struct Foo {
-    int32_t x;
-};
+static int x = 0;
 
-using Type_Foo = PrimitiveType<Foo*>;
+inline Type_Int32::MutRef Var_x(Cachet_ContextRef cx) {
+    return x;
+}
 
 #include <test.h>
 #include <test.inc>
 
+
+
 int main() {
     std::monostate ctx;
-    Foo bar { 15 };
-    return Fn_get_x(ctx, &bar) == 15 ? 0 : 1;
+    Fn_test(ctx);
+
+    return 0;
 }
