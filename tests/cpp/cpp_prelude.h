@@ -130,15 +130,28 @@ namespace Impl_Double {
   }
 }
 
+namespace Impl_Int32 {
+  inline Type_Int64::Val To_Int64(Type_Int32::Ref v) {
+    return static_cast<Type_Int64::Val>(v);
+  }
+
+  inline Type_Int32::Val From_Int64(Type_Int64::Ref v) {
+    return static_cast<Type_Int32::Val>(v);
+  }
+
+}
+
 inline Type_Unit::Ref Var_unit() {
   return std::monostate();
 }
 
-inline Type_Bool::Ref Var_true() {
+template <typename T>
+inline Type_Bool::Ref Var_true(T ctx) {
   return true;
 }
 
-inline Type_Bool::Ref Const_false() {
+template <typename T>
+inline Type_Bool::Ref Var_false(T ctx) {
   return false;
 }
 

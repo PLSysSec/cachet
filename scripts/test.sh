@@ -16,6 +16,8 @@ TMP_H="$INCLUDE_DIR/test.h"
 TMP_OUT="$INCLUDE_DIR/test"
 TMP_BPL="$INCLUDE_DIR/test.bpl"
 
+DEFAULT_CPP_TEST="$repo_dir/tests/cpp/default.cpp"
+
 CARGO_FLAGS="--manifest-path "$repo_dir/Cargo.toml" --quiet --bin cachet-compiler"
 
 FILTER=$1
@@ -43,6 +45,9 @@ function cpp_test() {
     fi
 
     cpp_file="${cachet_file%.cachet}.cpp"
+    if [[ ! -f $cpp_file ]]; then
+        cpp_file="$DEFAULT_CPP_TEST"
+    fi
 
     clang++ -std=c++17 -I $INCLUDE_DIR -I $repo_dir/tests/cpp $cpp_file -o $TMP_OUT 2>&1
     if [[ $? -ne 0 ]]; then
@@ -56,6 +61,10 @@ function cpp_test() {
     fi
 
     return 0
+}
+
+function dual_test() {
+    cpp_test "$1" && verifier_test "$1"
 }
 
 function verifier_test() {
@@ -116,6 +125,7 @@ for f in $(ls -d $repo_dir/tests/**/*.cachet); do
 
     ERROR=$(case $test_name in
         ("cpp/"*) cpp_test "$f" ;;
+        ("dual/"*) dual_test "$f" ;;
         ("verifier/pass"*) verifier_test "$f" 0;;
         ("verifier/fail"*) verifier_test "$f"; should_fail ;;
         ("frontend/pass"*) build "$f";;
