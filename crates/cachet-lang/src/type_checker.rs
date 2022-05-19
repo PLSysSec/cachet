@@ -15,7 +15,7 @@ use crate::ast::{
     BinOper, BlockKind, CastKind, CompareBinOper, Ident, MaybeSpanned, NegateKind, Path, Span,
     Spanned, VarParamKind,
 };
-use crate::built_in::{BuiltInType, BuiltInVar};
+use crate::built_in::{BuiltInType, BuiltInVar, IdentEnum};
 use crate::resolver;
 use crate::FrontendError;
 
@@ -1289,7 +1289,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     TypeIndex::BuiltIn(BuiltInType::Bool) => CastExpr {
                         kind: CastKind::Upcast,
                         expr: expr.value,
-                        type_: BuiltInType::Int32.into(),
+                        type_: BuiltInType::INT32.into(),
                     }
                     .into(),
                     _ => expr.value,

@@ -9,13 +9,14 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use derive_more::{From, Into};
+use enum_iterator::IntoEnumIterator;
 use enumset::EnumSet;
 use typed_index_collections::{TiSlice, TiVec};
 
 use cachet_util::{collect_eager, deref_from, MaybeOwned};
 
 use crate::ast::{Ident, Path, Spanned};
-use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
+use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar, IdentEnum};
 use crate::parser;
 use crate::util::map_spanned;
 use crate::FrontendError;
@@ -128,9 +129,9 @@ struct ItemCatalog {
 impl ItemCatalog {
     fn new() -> Self {
         let mut global_registry =
-            GlobalRegistry::with_capacity(BuiltInType::COUNT + BuiltInVar::COUNT);
+            GlobalRegistry::with_capacity(BuiltInType::ITEM_COUNT + BuiltInVar::ITEM_COUNT);
 
-        for built_in_type in BuiltInType::ALL {
+        for built_in_type in BuiltInType::into_enum_iter() {
             global_registry
                 .register(
                     Path::from(built_in_type.ident().to_owned()).into(),
@@ -139,7 +140,7 @@ impl ItemCatalog {
                 .expect("built-in types shouldn't shadow other built-ins");
         }
 
-        for built_in_var in BuiltInVar::ALL {
+        for built_in_var in BuiltInVar::into_enum_iter() {
             global_registry
                 .register(
                     Path::from(built_in_var.ident().to_owned()).into(),

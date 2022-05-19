@@ -1,17 +1,19 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::collections::HashMap;
 use std::iter;
 use std::ops::{Deref, Index};
 
 use derive_more::{Display, From};
 use enum_map::EnumMap;
 use enumset::EnumSet;
+use enum_iterator::IntoEnumIterator;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
 use cachet_lang::ast::{BinOper, CastKind, Ident, Path, VarParamKind};
-use cachet_lang::built_in::BuiltInType;
+use cachet_lang::built_in::{BuiltInType, IdentEnum};
 use cachet_lang::normalizer::{self, HasAttrs, Typed};
 
 use crate::cpp::ast::*;
@@ -123,7 +125,7 @@ impl From<normalizer::IrIndex> for IrItemBucketIndex {
 
 #[derive(Clone)]
 struct ItemBuckets {
-    built_in_type_namespace_items: [NamespaceItem; BuiltInType::COUNT],
+    built_in_type_namespace_items: HashMap<BuiltInType, NamespaceItem>,
     enum_namespace_items: TiVec<normalizer::EnumIndex, NamespaceItem>,
     struct_namespace_items: TiVec<normalizer::StructIndex, NamespaceItem>,
     ir_item_buckets: TiVec<normalizer::IrIndex, IrItemBuckets>,
@@ -145,8 +147,9 @@ impl ItemBuckets {
         };
 
         ItemBuckets {
-            built_in_type_namespace_items: BuiltInType::ALL
-                .map(|built_in_type| init_namespace_item(built_in_type.ident())),
+            built_in_type_namespace_items: BuiltInType::into_enum_iter()
+                .map(|built_in_type| (built_in_type, init_namespace_item(built_in_type.ident())))
+                .collect(),
             enum_namespace_items: enum_items
                 .iter()
                 .map(|enum_item| init_namespace_item(enum_item.ident.value))
@@ -182,7 +185,7 @@ impl ItemBuckets {
     }
 
     fn bucket_for_built_in_type(&mut self, built_in_type: BuiltInType) -> &mut Vec<Item> {
-        &mut self.built_in_type_namespace_items[built_in_type.index()].items
+        &mut self.built_in_type_namespace_items.get_mut(&built_in_type).unwrap().items
     }
 
     fn bucket_for_enum(&mut self, enum_index: normalizer::EnumIndex) -> &mut Vec<Item> {
@@ -214,7 +217,7 @@ impl IntoIterator for ItemBuckets {
 
         iterate![
             ..iterate![
-                ..built_in_type_namespace_items,
+                ..built_in_type_namespace_items.into_iter().map(|(_,items)| items),
                 ..enum_namespace_items,
                 ..struct_namespace_items,
             ]
@@ -1216,22 +1219,22 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         match literal {
             normalizer::Literal::Int32(n) => TaggedExpr {
                 expr: Literal::Int32(*n),
-                type_: BuiltInType::Int32.into(),
+                type_: BuiltInType::INT32.into(),
                 tags: ExprTag::Val.into(),
             },
             normalizer::Literal::Int64(n) => TaggedExpr {
                 expr: Literal::Int64(*n),
-                type_: BuiltInType::Int64.into(),
+                type_: BuiltInType::INT64.into(),
                 tags: ExprTag::Val.into(),
             },
             normalizer::Literal::UInt16(n) => TaggedExpr {
                 expr: Literal::UInt16(*n),
-                type_: BuiltInType::UInt16.into(),
+                type_: BuiltInType::UINT16.into(),
                 tags: ExprTag::Val.into(),
             },
             normalizer::Literal::UInt64(n) => TaggedExpr {
                 expr: Literal::UInt64(*n),
-                type_: BuiltInType::UInt64.into(),
+                type_: BuiltInType::UINT64.into(),
                 tags: ExprTag::Val.into(),
             },
             normalizer::Literal::Double(n) => TaggedExpr {

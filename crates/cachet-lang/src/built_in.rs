@@ -1,26 +1,21 @@
 use std::collections::HashMap;
+use std::fmt::Display;
+use std::hash::Hash;
 
+use enum_iterator::IntoEnumIterator;
 use enumset::EnumSetType;
 use lazy_static::lazy_static;
+use derive_more::Display;
 
 use crate::ast::{Ident, Path};
 
-macro_rules! ordered_ident_enum {
-    ($t:ident { $($i:ident = $l:literal),+ }) => {
-        #[repr(usize)]
-        #[derive(Debug, EnumSetType, Hash)]
-        pub enum $t {
-            $($i),+
-        }
-
-        impl $t {
-            pub const ALL: [Self;  [$(Self::$i),*].len()] = [$(Self::$i),*];
-            pub const COUNT: usize = Self::ALL.len();
-
-            fn idents() -> &'static [Ident] {
+macro_rules! impl_ordered_ident_enum {
+    ($t:ident) => {
+        impl IdentEnum for $t {
+            fn idents() -> &'static HashMap<$t, Ident> {
                 lazy_static! {
-                    static ref IDENTS: [Ident; $t::COUNT] = {
-                        [$($l.into()),*]
+                    static ref IDENTS: HashMap<$t, Ident> = {
+                        $t::into_enum_iter().map(|t| (t, Ident::from_display(t))).collect()
                     };
                 }
 
@@ -30,76 +25,110 @@ macro_rules! ordered_ident_enum {
             fn ident_reverse_map() -> &'static HashMap<Ident, $t> {
                 lazy_static! {
                     static ref IDENTS: HashMap<Ident, $t> = {
-                        $t::idents().iter().copied().zip($t::ALL.iter().copied()).collect()
+                        $t::idents().iter().map(|(t, i)| (*i, *t)).collect()
                     };
                 }
 
                 return &*IDENTS;
             }
-
-            pub fn index(self) -> usize {
-                self as usize
-            }
-
-            pub fn from_index(idx: usize) -> Option<BuiltInType> {
-                (idx < Self::COUNT).then(|| unsafe { std::mem::transmute(idx) })
-            }
-
-            pub fn ident(self) -> Ident {
-                Self::idents()[self as usize]
-            }
-
-            pub fn from_ident(ident: Ident) -> Option<Self> {
-                Self::ident_reverse_map().get(&ident).copied()
-            }
-
-            pub fn path(self) -> Path {
-                self.ident().into()
-            }
-
-            pub fn from_path(path: Path) -> Option<Self> {
-                if path.has_parent() {
-                    None
-                } else {
-                    Self::from_ident(path.ident())
-                }
-            }
         }
     }
 }
 
-ordered_ident_enum! {
-    BuiltInType {
-        Unit = "Unit",
-        Bool = "Bool",
-        UInt16 = "UInt16",
-        UInt64 = "UInt64",
-        Int32 = "Int32",
-        Int64 = "Int64",
-        Double = "Double"
+
+pub trait IdentEnum: 'static + Sized + Copy + Hash + Eq + IntoEnumIterator {
+    const COUNT: usize = Self::ITEM_COUNT;
+    fn idents() -> &'static HashMap<Self, Ident>;
+    fn ident_reverse_map() -> &'static HashMap<Ident, Self>;
+
+    fn ident(&self) -> Ident {
+        Self::idents()[self]
+    }
+
+    fn from_ident(ident: Ident) -> Option<Self> {
+        Self::ident_reverse_map().get(&ident).copied()
+    }
+
+    fn path(self) -> Path {
+        self.ident().into()
+    }
+
+    fn from_path(path: Path) -> Option<Self> {
+        if path.has_parent() {
+            None
+        } else {
+            Self::from_ident(path.ident())
+        }
     }
 }
+
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug,Hash, IntoEnumIterator, PartialEq, Eq)]
+pub enum Width {
+    W16 = 16,
+    W32 = 32,
+    W64 = 64,
+}
+
+#[derive(Clone, Copy, Debug,Hash, IntoEnumIterator, PartialEq, Eq)]
+pub enum Signedness {
+    Signed,
+    Unsigned
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, IntoEnumIterator, Hash)]
+pub enum BuiltInType {
+    Unit,
+    Bool,
+    Integral(Signedness, Width),
+    Double
+}
+
+impl BuiltInType {
+    pub const INT32: Self = BuiltInType::Integral(Signedness::Signed, Width::W32);
+    pub const INT64: Self = BuiltInType::Integral(Signedness::Signed, Width::W64);
+    pub const INT16: Self = BuiltInType::Integral(Signedness::Signed, Width::W16);
+
+    pub const UINT32: Self = BuiltInType::Integral(Signedness::Unsigned, Width::W32);
+    pub const UINT64: Self = BuiltInType::Integral(Signedness::Unsigned, Width::W64);
+    pub const UINT16: Self = BuiltInType::Integral(Signedness::Unsigned, Width::W16);
+}
+
+impl Display for BuiltInType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            Self::Unit => "Unit",
+            Self::Bool => "Bool",
+            &Self::INT16 => "Int16",
+            &Self::INT32 => "Int32",
+            &Self::INT64 => "Int64",
+            &Self::UINT64 => "UInt64",
+            &Self::UINT32 => "UInt32",
+            &Self::UINT16 => "UInt16",
+            Self::Double => "Double",
+        })
+    }
+}
+
+impl_ordered_ident_enum!(BuiltInType);
+
 
 impl BuiltInType {
     pub const fn supertype(self) -> Option<BuiltInType> {
         match self {
-            BuiltInType::Bool => Some(BuiltInType::Int32),
-            BuiltInType::Int32 => Some(BuiltInType::Int64),
+            BuiltInType::Bool => Some(BuiltInType::INT32),
+            BuiltInType::INT32 => Some(BuiltInType::INT64),
             BuiltInType::Unit
-            | BuiltInType::UInt16
-            | BuiltInType::UInt64
-            | BuiltInType::Int64
             | BuiltInType::Double => None,
+            _ => None,
         }
     }
 
     pub const fn is_numeric(self) -> bool {
         match self {
             BuiltInType::Bool
-            | BuiltInType::UInt16
-            | BuiltInType::UInt64
-            | BuiltInType::Int32
-            | BuiltInType::Int64
+            | BuiltInType::Integral(..)
             | BuiltInType::Double => true,
             BuiltInType::Unit => false,
         }
@@ -107,17 +136,17 @@ impl BuiltInType {
 
     pub const fn is_signed_numeric(self) -> bool {
         match self {
-            BuiltInType::Bool | BuiltInType::Int32 | BuiltInType::Int64 | BuiltInType::Double => {
+            BuiltInType::Bool | BuiltInType::Integral(Signedness::Signed, _) | BuiltInType::Double => {
                 debug_assert!(self.is_numeric());
                 true
             }
-            BuiltInType::UInt16 | BuiltInType::UInt64 | BuiltInType::Unit => false,
+            BuiltInType::Unit | BuiltInType::Integral(Signedness::Unsigned, _) => false,
         }
     }
 
     pub const fn is_integral(self) -> bool {
         match self {
-            BuiltInType::Bool | BuiltInType::UInt16 | BuiltInType::UInt64 | BuiltInType::Int32 | BuiltInType::Int64 => {
+            BuiltInType::Bool | BuiltInType::Integral(..) => {
                 debug_assert!(self.is_numeric());
                 true
             }
@@ -126,13 +155,18 @@ impl BuiltInType {
     }
 }
 
-ordered_ident_enum! {
-    BuiltInVar {
-        Unit = "unit",
-        True = "true",
-        False = "false"
-    }
+
+#[derive(Clone, Copy, Display, Debug,Hash, IntoEnumIterator, PartialEq, Eq)]
+pub enum BuiltInVar {
+    #[display(fmt="unit")]
+    Unit,
+    #[display(fmt="true")]
+    True,
+    #[display(fmt="false")]
+    False
 }
+
+impl_ordered_ident_enum!(BuiltInVar);
 
 impl BuiltInVar {
     pub const fn built_in_type(self) -> BuiltInType {
@@ -143,8 +177,10 @@ impl BuiltInVar {
     }
 }
 
-ordered_ident_enum! {
-    BuiltInAttr {
-        Prelude = "prelude"
-    }
+#[derive(Display, EnumSetType, Debug,Hash, IntoEnumIterator)]
+pub enum BuiltInAttr {
+    #[display(fmt="prelude")]
+    Prelude
 }
+
+impl_ordered_ident_enum!(BuiltInAttr);

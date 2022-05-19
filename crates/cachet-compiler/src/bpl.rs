@@ -16,7 +16,7 @@ use cachet_lang::ast::{
     ArithBinOper, BinOper, CastKind, CheckKind, CompareBinOper, Ident, NegateKind, Path,
     VarParamKind,
 };
-use cachet_lang::built_in::BuiltInVar;
+use cachet_lang::built_in::{BuiltInVar, IdentEnum};
 use cachet_lang::flattener::{self, HasAttrs, Typed};
 use cachet_util::MaybeOwned;
 
