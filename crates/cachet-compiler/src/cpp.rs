@@ -375,30 +375,26 @@ impl<'a> Compiler<'a> {
 
             self.external_decls.bucket_for_struct(struct_index).extend([
                 generate_cast_fn_decl(
-                    CastKind::Downcast,
                     supertype_ident,
                     struct_item.ident.value,
                     ExprTag::Val,
                 )
                 .into(),
                 generate_cast_fn_decl(
-                    CastKind::Downcast,
                     supertype_ident,
                     struct_item.ident.value,
                     ExprTag::Ref,
                 )
                 .into(),
                 generate_cast_fn_decl(
-                    CastKind::Upcast,
-                    supertype_ident,
                     struct_item.ident.value,
+                    supertype_ident,
                     ExprTag::Val,
                 )
                 .into(),
                 generate_cast_fn_decl(
-                    CastKind::Upcast,
-                    supertype_ident,
                     struct_item.ident.value,
+                    supertype_ident,
                     ExprTag::Ref,
                 )
                 .into(),
@@ -681,31 +677,24 @@ impl<'a> Compiler<'a> {
 }
 
 fn generate_cast_fn_decl(
-    kind: CastKind,
-    supertype_ident: Ident,
-    subtype_ident: Ident,
+    source_type_ident: Ident,
+    target_type_ident: Ident,
     param_tag: ExprTag,
 ) -> FnItem {
-    let subtype_path = TypeMemberTypePath {
-        parent: subtype_ident,
+    let source_type_path = TypeMemberTypePath {
+        parent: source_type_ident,
         ident: param_tag.into(),
     };
-    let supertype_path = TypeMemberTypePath {
-        parent: supertype_ident,
+    let target_type_path = TypeMemberTypePath {
+        parent: target_type_ident,
         ident: param_tag.into(),
-    };
-
-    let (source_type_path, target_type_path) = match kind {
-        CastKind::Downcast => (supertype_path, subtype_path),
-        CastKind::Upcast => (subtype_path, supertype_path),
     };
 
     FnItem {
         path: TypeMemberFnPath {
-            parent: subtype_ident,
+            parent: target_type_ident,
             ident: CastTypeMemberFnIdent {
-                kind,
-                supertype: supertype_ident,
+                source_type_ident
             }
             .into(),
         }
@@ -1397,21 +1386,15 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let source_type_index = cast_expr.expr.type_();
         let target_type_index = cast_expr.type_;
 
-        let (supertype_index, subtype_index) = match cast_expr.kind {
-            CastKind::Downcast => (source_type_index, target_type_index),
-            CastKind::Upcast => (target_type_index, source_type_index),
-        };
-
-        let supertype_ident = self.get_type_ident(supertype_index);
-        let subtype_ident = self.get_type_ident(subtype_index);
+        let source_type_ident = self.get_type_ident(source_type_index);
+        let target_type_ident = self.get_type_ident(target_type_index);
 
         TaggedExpr {
             expr: CallExpr {
                 target: TypeMemberFnPath {
-                    parent: subtype_ident,
+                    parent: target_type_ident,
                     ident: CastTypeMemberFnIdent {
-                        kind: cast_expr.kind,
-                        supertype: supertype_ident,
+                        source_type_ident,
                     }
                     .into(),
                 }

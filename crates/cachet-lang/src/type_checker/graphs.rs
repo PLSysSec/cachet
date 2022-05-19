@@ -7,7 +7,7 @@ use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use typed_index_collections::TiSlice;
 
-use crate::ast::{Span, Spanned};
+use crate::ast::{Span, Spanned, CastKind};
 use crate::built_in::{BuiltInType, IdentEnum};
 
 use crate::type_checker::ast::{
@@ -39,13 +39,16 @@ impl TypeGraph {
             TypeIndex::Struct(struct_index) => struct_indices[&struct_index],
         };
 
-        for built_in_type in BuiltInType::into_enum_iter() {
-            if let Some(supertype) = built_in_type.supertype() {
-                inner.add_edge(
-                    built_in_indices[&supertype],
-                    built_in_indices[&built_in_type],
-                    (),
-                );
+        for a in BuiltInType::into_enum_iter() {
+            for b in BuiltInType::into_enum_iter() {
+                if a == b { continue; }
+                if a.casts_to(b) == CastKind::Safe {
+                    inner.add_edge(
+                        built_in_indices[&b],
+                        built_in_indices[&a],
+                        (),
+                    );
+                }
             }
         }
 

@@ -155,14 +155,15 @@ namespace Impl_Double {
 }
 
 namespace Impl_Int32 {
-  inline Type_Int64::Val To_Int64(Type_Int32::Ref v) {
-    return static_cast<Type_Int64::Val>(v);
-  }
-
   inline Type_Int32::Val From_Int64(Type_Int64::Ref v) {
     return static_cast<Type_Int32::Val>(v);
   }
+}
 
+namespace Impl_Int64 {
+  inline Type_Int64::Val From_Int32(Type_Int32::Ref v) {
+    return static_cast<Type_Int64::Val>(v);
+  }
 }
 
 inline Type_Unit::Ref Var_unit() {

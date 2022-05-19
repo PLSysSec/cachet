@@ -371,7 +371,7 @@ impl<'a> TypeChecker<'a> {
 
     fn expect_expr_type(&mut self, expr: Spanned<Expr>, type_index: TypeIndex) -> Expr {
         let expr_span = expr.span;
-        let (success, expr) = self.try_build_upcast_chain(expr.value, type_index);
+        let (success, expr) = self.try_build_safe_cast_chain(expr.value, type_index);
         if !success {
             self.errors.push(TypeCheckError::TypeMismatch {
                 expected_type: self.get_type_ident(type_index),
@@ -382,14 +382,14 @@ impl<'a> TypeChecker<'a> {
         expr
     }
 
-    fn try_build_upcast_chain(&self, expr: Expr, type_: TypeIndex) -> (bool, Expr) {
+    fn try_build_safe_cast_chain(&self, expr: Expr, type_: TypeIndex) -> (bool, Expr) {
         let upcast_route = match self.try_match_types(type_, expr.type_()) {
             Some(upcast_route) => upcast_route,
             None => return (false, expr),
         };
         (
             true,
-            build_cast_chain(CastKind::Upcast, expr, upcast_route.into_iter()),
+            build_cast_chain(CastKind::Safe, expr, upcast_route.into_iter()),
         )
     }
 
@@ -402,11 +402,16 @@ impl<'a> TypeChecker<'a> {
             return Some(Vec::new());
         }
 
+        match (supertype_index, subtype_index) {
+            (TypeIndex::BuiltIn(supertype), TypeIndex::BuiltIn(subtype)) if subtype.casts_to(supertype) == CastKind::Safe => return Some(vec![supertype_index]),
+            _ => ()
+        };
+
         let mut upcast_route = Vec::new();
         let mut curr_type_index = subtype_index;
         loop {
             curr_type_index = match curr_type_index {
-                TypeIndex::BuiltIn(built_in_type) => built_in_type.supertype()?.into(),
+                TypeIndex::BuiltIn(built_in_type) => return None,
                 TypeIndex::Enum(_) => return None,
                 TypeIndex::Struct(struct_index) => self.env[struct_index].supertype?,
             };
@@ -722,7 +727,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 type_: Some(param_type_index),
                 ..
             }) => {
-                let (success, expr) = self.try_build_upcast_chain(expr, param_type_index);
+                let (success, expr) = self.try_build_safe_cast_chain(expr, param_type_index);
                 if !success {
                     self.type_checker
                         .errors
@@ -1287,7 +1292,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
                 match expr_type_index {
                     TypeIndex::BuiltIn(BuiltInType::Bool) => CastExpr {
-                        kind: CastKind::Upcast,
+                        kind: CastKind::Safe,
                         expr: expr.value,
                         type_: BuiltInType::INT32.into(),
                     }
@@ -1308,7 +1313,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let expr = self.type_check_expr(&cast_expr.expr.value);
 
         let target_type_index = cast_expr.type_;
-        let (upcast_success, expr) = self.try_build_upcast_chain(expr, target_type_index.value);
+        let (upcast_success, expr) = self.try_build_safe_cast_chain(expr, target_type_index.value);
         if upcast_success {
             return expr;
         }
@@ -1332,7 +1337,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             }
 
             return build_cast_chain(
-                CastKind::Downcast,
+                CastKind::Unsafe,
                 expr,
                 iterate![
                     ..downcast_route.into_iter().rev().skip(1),
@@ -1350,7 +1355,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         // Emit an incorrectly-typed cast expression so that anything depending
         // on its type for inference lines up correctly.
         CastExpr {
-            kind: CastKind::Upcast,
+            kind: CastKind::Safe,
             expr,
             type_: target_type_index.value,
         }
@@ -1405,9 +1410,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         // Ensure the types of the left- and right-hand operands match,
         // upcasting as necessary.
         let mut success;
-        (success, rhs) = self.try_build_upcast_chain(rhs, lhs_type_index);
+        (success, rhs) = self.try_build_safe_cast_chain(rhs, lhs_type_index);
         if !success {
-            (success, lhs) = self.try_build_upcast_chain(lhs, rhs_type_index);
+            (success, lhs) = self.try_build_safe_cast_chain(lhs, rhs_type_index);
             if !success {
                 self.type_checker
                     .errors
@@ -1441,7 +1446,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let lhs_type_index = self.get_var_type(assign_expr.lhs);
 
         let rhs = self.type_check_expr(&assign_expr.rhs.value);
-        let (success, rhs) = self.try_build_upcast_chain(rhs, lhs_type_index);
+        let (success, rhs) = self.try_build_safe_cast_chain(rhs, lhs_type_index);
         if !success {
             let lhs_path = self.get_var_path(assign_expr.lhs.value);
             self.type_checker

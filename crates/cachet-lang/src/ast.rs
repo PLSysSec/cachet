@@ -36,24 +36,8 @@ pub enum NegateKind {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CastKind {
-    Downcast,
-    Upcast,
-}
-
-impl CastKind {
-    pub const fn is_unsafe(self) -> bool {
-        match self {
-            CastKind::Downcast => true,
-            CastKind::Upcast => false,
-        }
-    }
-
-    pub const fn reverse(self) -> Self {
-        match self {
-            CastKind::Downcast => CastKind::Upcast,
-            CastKind::Upcast => CastKind::Downcast,
-        }
-    }
+    Safe,
+    Unsafe,
 }
 
 #[derive(Clone, Copy, Debug, Display, Eq, Hash, From, PartialEq)]

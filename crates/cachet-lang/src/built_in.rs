@@ -7,7 +7,7 @@ use enumset::EnumSetType;
 use lazy_static::lazy_static;
 use derive_more::Display;
 
-use crate::ast::{Ident, Path};
+use crate::ast::{Ident, Path, CastKind};
 
 macro_rules! impl_ordered_ident_enum {
     ($t:ident) => {
@@ -115,13 +115,12 @@ impl_ordered_ident_enum!(BuiltInType);
 
 
 impl BuiltInType {
-    pub const fn supertype(self) -> Option<BuiltInType> {
-        match self {
-            BuiltInType::Bool => Some(BuiltInType::INT32),
-            BuiltInType::INT32 => Some(BuiltInType::INT64),
-            BuiltInType::Unit
-            | BuiltInType::Double => None,
-            _ => None,
+    pub const fn casts_to(self, other: Self) -> CastKind {
+        use BuiltInType::*;
+        match (self, other) {
+            (Bool, Self::INT32)
+            | (Self::INT32, Self::INT64) => CastKind::Safe,
+            _ => CastKind::Unsafe
         }
     }
 

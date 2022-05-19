@@ -23,7 +23,7 @@ type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/i
 // Documentation on the available built-in functions can be found at:
 // https://boogie-docs.readthedocs.io/en/latest/LangRef.html#other-operators
 
-function {:bvbuiltin "(_ sign_extend 32)"} #Int32^to#Int64(n: #Int32): #Int64;
+function {:bvbuiltin "(_ sign_extend 32)"} #Int64^from#Int32(n: #Int32): #Int64;
 function {:bvbuiltin "(_ extract 31 0)"} #Int32^from#Int64(n: #Int64): #Int32;
 
 function {:bvbuiltin "bvneg"} #Int32^negate(n: #Int32): #Int32;

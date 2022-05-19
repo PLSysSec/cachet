@@ -288,20 +288,15 @@ pub enum TypeMemberFnSelector {
 
 #[derive(Clone, Copy, Debug)]
 pub struct CastTypeMemberFnSelector {
-    pub kind: CastKind,
-    pub supertype_ident: UserTypeIdent,
+    pub from: UserTypeIdent,
 }
 
 impl Display for CastTypeMemberFnSelector {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "{}{}",
-            match self.kind {
-                CastKind::Downcast => "from",
-                CastKind::Upcast => "to",
-            },
-            self.supertype_ident
+            "from{}",
+            self.from
         )?;
         Ok(())
     }

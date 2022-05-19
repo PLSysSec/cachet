@@ -170,10 +170,10 @@ impl<'a> Compiler<'a> {
             let supertype_ident = self.get_type_ident(supertype_index);
 
             self.items.extend([
-                generate_cast_fn_item(CastKind::Downcast, supertype_ident, type_ident).into(),
-                generate_cast_fn_item(CastKind::Upcast, supertype_ident, type_ident).into(),
-                generate_cast_axiom_item(CastKind::Downcast, supertype_ident, type_ident).into(),
-                generate_cast_axiom_item(CastKind::Upcast, supertype_ident, type_ident).into(),
+                generate_cast_fn_item(supertype_ident, type_ident).into(),
+                generate_cast_fn_item(type_ident, supertype_ident).into(),
+                generate_cast_axiom_item(supertype_ident, type_ident).into(),
+                generate_cast_axiom_item(type_ident, supertype_ident).into(),
             ]);
         }
     }
@@ -1267,21 +1267,14 @@ impl<'a> Compiler<'a> {
 }
 
 fn generate_cast_fn_item(
-    kind: CastKind,
-    supertype_ident: UserTypeIdent,
-    subtype_ident: UserTypeIdent,
+    source_type_ident: UserTypeIdent,
+    target_type_ident: UserTypeIdent,
 ) -> FnItem {
-    let (source_type_ident, target_type_ident) = match kind {
-        CastKind::Downcast => (supertype_ident, subtype_ident),
-        CastKind::Upcast => (subtype_ident, supertype_ident),
-    };
-
     FnItem {
         ident: TypeMemberFnIdent {
-            type_ident: subtype_ident,
+            type_ident: target_type_ident,
             selector: CastTypeMemberFnSelector {
-                kind,
-                supertype_ident,
+                from: source_type_ident,
             }
             .into(),
         }
@@ -1298,25 +1291,19 @@ fn generate_cast_fn_item(
 }
 
 fn generate_cast_axiom_item(
-    kind: CastKind,
     supertype_ident: UserTypeIdent,
     subtype_ident: UserTypeIdent,
 ) -> AxiomItem {
     let in_var = TypedVar {
         ident: ParamVarIdent::In.into(),
-        type_: match kind {
-            CastKind::Downcast => subtype_ident,
-            CastKind::Upcast => supertype_ident,
-        }
-        .into(),
+        type_: subtype_ident.into(),
     };
 
     let inner_call_expr = CallExpr {
         target: TypeMemberFnIdent {
-            type_ident: subtype_ident,
+            type_ident: supertype_ident,
             selector: CastTypeMemberFnSelector {
-                kind: kind.reverse(),
-                supertype_ident,
+                from: subtype_ident,
             }
             .into(),
         }
@@ -1329,8 +1316,7 @@ fn generate_cast_axiom_item(
         target: TypeMemberFnIdent {
             type_ident: subtype_ident,
             selector: CastTypeMemberFnSelector {
-                kind,
-                supertype_ident,
+                from: supertype_ident,
             }
             .into(),
         }
@@ -2054,20 +2040,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let source_type_index = cast_expr.expr.type_();
         let target_type_index = cast_expr.type_;
 
-        let (supertype_index, subtype_index) = match cast_expr.kind {
-            CastKind::Downcast => (source_type_index, target_type_index),
-            CastKind::Upcast => (target_type_index, source_type_index),
-        };
-
-        let supertype_ident = self.get_type_ident(supertype_index);
-        let subtype_ident = self.get_type_ident(subtype_index);
+        let source_ident = self.get_type_ident(source_type_index);
+        let target_ident = self.get_type_ident(target_type_index);
 
         CallExpr {
             target: TypeMemberFnIdent {
-                type_ident: subtype_ident,
+                type_ident: target_ident,
                 selector: CastTypeMemberFnSelector {
-                    kind: cast_expr.kind,
-                    supertype_ident,
+                    from: source_ident,
                 }
                 .into(),
             }
