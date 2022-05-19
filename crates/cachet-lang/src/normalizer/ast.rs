@@ -107,36 +107,6 @@ impl<B> IndexMut<CallableIndex> for Env<B> {
 
 deref_index!(Env<B>[&CallableIndex] => CallableItem<B> | <B>);
 
-#[derive(Copy, Clone, Default)]
-pub struct Scope<'b> {
-    pub params: Option<&'b Params>,
-    pub locals: Option<&'b Locals>,
-}
-
-impl<'b> Scope<'b> {
-    pub fn local<I>(&self, index: I) -> &<Locals as Index<I>>::Output
-    where
-        Locals: Index<I>,
-    {
-        &self.locals.unwrap()[index]
-    }
-
-    pub fn param<I>(&self, index: I) -> &<Params as Index<I>>::Output
-    where
-        Params: Index<I>,
-    {
-        &self.params.unwrap()[index]
-    }
-}
-
-impl<'b> From<&'b CallableItem> for Scope<'b> {
-    fn from(callable: &'b CallableItem) -> Self {
-        Self {
-            params: Some(&callable.params),
-            locals: callable.body.as_ref().map(|body| &body.locals)
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct CallableItem<B = ()> {

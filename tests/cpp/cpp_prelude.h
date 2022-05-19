@@ -183,6 +183,4 @@ inline Type_Bool::Ref Var_false(T ctx) {
 
 };  // namespace cachet
 
-void Cachet_Assert(bool cond);
-
 #endif /*  cachet_prelude */

@@ -1,7 +1,7 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
 use std::iter;
-use std::ops::{Deref};
+use std::ops::{Deref, Index};
 
 use derive_more::{Display, From};
 use enum_map::EnumMap;
@@ -429,7 +429,7 @@ impl<'a> Compiler<'a> {
 
         match &global_var_item.value {
             Some(value) => {
-                let scoped_compiler = ScopedCompiler::new(self, None, normalizer::Scope::default());
+                let scoped_compiler = ScopedCompiler::new(self, None, Scope::Empty);
                 let value_expr = scoped_compiler.use_expr(
                     scoped_compiler.compile_expr(&value.value),
                     ExprTag::Val.into(),
@@ -719,13 +719,50 @@ fn generate_cast_fn_decl(
 }
 
 
+#[derive(Copy, Clone)]
+enum Scope<'b> {
+    Empty,
+    Body {
+        params: &'b normalizer::Params,
+        locals: &'b normalizer::Locals,
+    }
+}
 
-// TODO(spinda): Make this hold a `CallableItem` reference instead of broken-out
-// fields.
+impl<'b> Scope<'b> {
+    pub fn local<I>(&self, index: I) -> &<normalizer::Locals as Index<I>>::Output
+    where
+        normalizer::Locals: Index<I>,
+    {
+        match self {
+            Scope::Empty => panic!("Attempted access a local var within an empty scope"),
+            Scope::Body {locals, ..} => &locals[index]
+        }
+    }
+
+    pub fn param<I>(&self, index: I) -> &<normalizer::Params as Index<I>>::Output
+    where
+        normalizer::Params: Index<I>,
+    {
+        match self {
+            Scope::Empty => panic!("Attempted access a param var within an empty scope"),
+            Scope::Body {params, ..} => &params[index]
+        }
+    }
+}
+
+impl<'b> From<&'b normalizer::CallableItem> for Scope<'b> {
+    fn from(callable: &'b normalizer::CallableItem) -> Self {
+        match &callable.body {
+            Some(body) => Scope::Body { params: &callable.params, locals: &body.locals },
+            None => Self::Empty,
+        }
+    }
+}
+
 struct ScopedCompiler<'a, 'b> {
     compiler: &'b Compiler<'a>,
     parent_index: Option<normalizer::ParentIndex>,
-    scope: normalizer::Scope<'b>,
+    scope: Scope<'b>,
     stmts: Vec<Stmt>,
 }
 
@@ -741,7 +778,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn new(
         compiler: &'b Compiler<'a>,
         parent_index: Option<normalizer::ParentIndex>,
-        scope: normalizer::Scope<'b>,
+        scope: Scope<'b>,
     ) -> Self {
         ScopedCompiler {
             compiler,
