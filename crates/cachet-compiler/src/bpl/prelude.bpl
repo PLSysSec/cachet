@@ -17,6 +17,7 @@ type #Bool = bool;
 type #UInt16 = bv16;
 type #Int32 = bv32;
 type #Int64 = bv64;
+type #UInt64 = bv64;
 type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/issues/29#issuecomment-231239065
 
 // Documentation on the available built-in functions can be found at:
@@ -76,6 +77,19 @@ function {:bvbuiltin "bvor"} #UInt16^bitOr(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvand"} #UInt16^bitAnd(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvxor"} #UInt16^xor(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvshl"} #UInt16^shl(a: #UInt16, y: #UInt16): #UInt16;
+
+function {:bvbuiltin "bvadd"} #UInt64^add(x: #UInt64, y: #UInt64): #UInt64;
+function {:bvbuiltin "bvsub"} #UInt64^sub(x: #UInt64, y: #UInt64): #UInt64;
+function {:bvbuiltin "bvmul"} #UInt64^mul(x: #UInt64, y: #UInt64): #UInt64;
+function {:bvbuiltin "bvudiv"} #UInt64^div(x: #UInt64, y: #UInt64): #UInt64;
+function {:bvbuiltin "bvsle"} #UInt64^lte(a: #UInt64, y: #UInt64): #Bool;
+function {:bvbuiltin "bvsge"} #UInt64^gte(a: #UInt64, y: #UInt64): #Bool;
+function {:bvbuiltin "bvslt"} #UInt64^lt(a: #UInt64, y: #UInt64): #Bool;
+function {:bvbuiltin "bvsgt"} #UInt64^gt(a: #UInt64, y: #UInt64): #Bool;
+function {:bvbuiltin "bvor"} #UInt64^bitOr(a: #UInt64, y: #UInt64): #UInt64;
+function {:bvbuiltin "bvand"} #UInt64^bitAnd(a: #UInt64, y: #UInt64): #UInt64;
+function {:bvbuiltin "bvxor"} #UInt64^xor(a: #UInt64, y: #UInt64): #UInt64;
+function {:bvbuiltin "bvshl"} #UInt64^shl(a: #UInt64, y: #UInt64): #UInt64;
 
 
 type #Map k v = [k]v;
