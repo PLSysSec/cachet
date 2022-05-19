@@ -459,6 +459,7 @@ NumericCompareBinOper: NumericCompareBinOper = {
 
 Literal: Literal = {
     <n:UInt16Literal> => Literal::UInt16(n),
+    <n:UInt64Literal> => Literal::UInt64(n),
     <n:Int32Literal> => Literal::Int32(n),
     <n:Int64Literal> => Literal::Int64(n),
     <n:DoubleLiteral> => Literal::Double(n),
@@ -467,6 +468,13 @@ Literal: Literal = {
 UInt16Literal: u16 =
     <digits:Spanned<r"[0-9]+_u16">> =>?
         u16::from_str(&digits.value[..digits.value.len() - 4])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in UInt16"),
+            });
+
+UInt64Literal: u64 =
+    <digits:Spanned<r"[0-9]+_u64">> =>?
+        u64::from_str(&digits.value[..digits.value.len() - 4])
             .map_err(|error| RawParseError::User {
                 error: Spanned::new(digits.span, "number too large to fit in UInt16"),
             });

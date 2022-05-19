@@ -1013,6 +1013,7 @@ pub enum Literal {
     Int32(i32),
     Int64(i64),
     UInt16(u16),
+    UInt64(u64),
     Double(f64),
 }
 

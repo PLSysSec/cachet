@@ -131,6 +131,7 @@ using Type_Int32 = IntegralType<int32_t>;
 using Type_Double = NumericType<double>;
 using Type_Int64 = IntegralType<int64_t>;
 using Type_UInt16 = IntegralType<uint16_t>;
+using Type_UInt64 = IntegralType<uint64_t>;
 
 namespace Impl_Double {
   template <typename T>
