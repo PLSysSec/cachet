@@ -28,24 +28,24 @@ pub enum TypeCheckError {
     OpReturnsValue { op: Path, ret_span: Span },
     #[error("op `{op}` is missing a body")]
     MissingOpBody { op: Path, body_span: Span },
-    #[error("can't jump to label `{label}` inside `{callable}")]
+    #[error("can't jump to label `{label}`")]
     GotoIrMismatch {
         label: Spanned<Ident>,
-        callable: Path,
+        callable: Option<Path>,
         expected_ir: Option<Spanned<Ident>>,
         found_ir: Ident,
     },
-    #[error("can't bind label `{label}` inside `{callable}")]
+    #[error("can't bind label `{label}`")]
     BindIrMismatch {
         label: Spanned<Ident>,
-        callable: Path,
+        callable: Option<Path>,
         expected_ir: Option<Spanned<Ident>>,
         found_ir: Ident,
     },
-    #[error("can't emit op `{op}` inside `{callable}`")]
+    #[error("can't emit op `{op}`")]
     EmitIrMismatch {
         op: Spanned<Path>,
-        callable: Path,
+        callable: Option<Path>,
         expected_ir: Option<Spanned<Ident>>,
         found_ir: Ident,
     },
@@ -144,6 +144,14 @@ pub enum TypeCheckError {
         field: Spanned<Ident>,
         parent_type: Spanned<Ident>,
     },
+    // todo: support this and remove the error
+    #[error("attempted to set default value for mutable var")]
+    MutGlobalVarWithValue { var: Spanned<Path> },
+    // todo: support this and remove the error
+    #[error("return statement found outside function")]
+    ReturnOutsideCallable { span: Span },
+    #[error("global var value is not constant")]
+    NonConstGlobalVarItem { expr: Span },
 }
 
 impl FrontendError for TypeCheckError {
@@ -177,6 +185,9 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::AssignTypeMismatch { rhs_span, .. } => *rhs_span,
             TypeCheckError::NonStructFieldAccess { field, .. } => field.span,
             TypeCheckError::FieldNotFound { field, .. } => field.span,
+            TypeCheckError::MutGlobalVarWithValue { var, .. } => var.span,
+            TypeCheckError::ReturnOutsideCallable { span, .. } => *span,
+            TypeCheckError::NonConstGlobalVarItem { expr, .. } => *expr,
         }
     }
 
@@ -229,10 +240,16 @@ impl FrontendError for TypeCheckError {
                         expected_ir, found_ir
                     )
                 }
-                None => format!(
-                    "unexpected jump to `{}` label inside non-interpreter `{}`",
-                    found_ir, callable
-                ),
+                None => match callable {
+                    Some(path) => format!(
+                        "unexpected jump to `{}` label inside non-interpreter `{}`",
+                        found_ir, path
+                    ),
+                    None => format!(
+                        "unexpected jump to `{}` label inside non-interpreter",
+                        found_ir
+                    ),
+                },
             },
             TypeCheckError::BindIrMismatch {
                 callable,
@@ -246,10 +263,13 @@ impl FrontendError for TypeCheckError {
                         expected_ir, found_ir
                     )
                 }
-                None => format!(
-                    "unexpected bind of `{}` label inside non-emitter `{}`",
-                    found_ir, callable
-                ),
+                None => match callable {
+                    Some(path) => format!(
+                        "unexpected bind of `{}` label inside non-emitter `{}`",
+                        found_ir, path
+                    ),
+                    None => format!("unexpected bind of `{}` label inside non-emitter", found_ir),
+                },
             },
             TypeCheckError::EmitIrMismatch {
                 callable,
@@ -260,10 +280,13 @@ impl FrontendError for TypeCheckError {
                 Some(expected_ir) => {
                     format!("expected `{}` op, found `{}` op", expected_ir, found_ir)
                 }
-                None => format!(
-                    "unexpected emit of `{}` op inside non-emitter `{}`",
-                    found_ir, callable
-                ),
+                None => match callable {
+                    Some(path) => format!(
+                        "unexpected emit of `{}` label inside non-emitter `{}`",
+                        found_ir, path
+                    ),
+                    None => format!("unexpected emit of `{}` label inside non-emitter", found_ir),
+                },
             },
             TypeCheckError::TypeMismatch {
                 expected_type,
@@ -329,6 +352,15 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::FieldNotFound { .. } => {
                 format!("no such field")
             }
+            TypeCheckError::MutGlobalVarWithValue { .. } => {
+                format!("only immutable variables may have default values")
+            }
+            TypeCheckError::ReturnOutsideCallable { .. } => {
+                format!("return statements may only occur inside fn's or op's")
+            }
+            TypeCheckError::NonConstGlobalVarItem { .. } => {
+                format!("expression is not constant")
+            }
         };
 
         let mut labels = Vec::from_iter(labels![Primary(self.span()) => msg]);
@@ -378,13 +410,15 @@ impl FrontendError for TypeCheckError {
             }
             TypeCheckError::OpHasOutParam { .. } => (),
             TypeCheckError::OpReturnsValue { .. } => (),
+            TypeCheckError::ReturnOutsideCallable { .. } => (),
             TypeCheckError::MissingOpBody { .. } => (),
+            TypeCheckError::MutGlobalVarWithValue { .. } => (),
             TypeCheckError::GotoIrMismatch {
                 callable,
                 expected_ir,
                 ..
             } => {
-                if let Some(expected_ir) = expected_ir {
+                if let (Some(expected_ir), Some(callable)) = (expected_ir, callable) {
                     labels.extend(labels![
                         Secondary(expected_ir.span) =>
                             format!(
@@ -404,7 +438,7 @@ impl FrontendError for TypeCheckError {
                 expected_ir,
                 ..
             } => {
-                if let Some(expected_ir) = expected_ir {
+                if let (Some(expected_ir), Some(callable)) = (expected_ir, callable) {
                     labels.extend(labels![
                         Secondary(expected_ir.span) =>
                             format!(
@@ -498,6 +532,7 @@ impl FrontendError for TypeCheckError {
                         format!("struct `{}` declared here", parent_type.value)
                 ]);
             }
+            TypeCheckError::NonConstGlobalVarItem { .. } => (),
         }
 
         Diagnostic::error()

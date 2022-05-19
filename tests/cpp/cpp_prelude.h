@@ -16,7 +16,6 @@ namespace cachet {
 
 namespace prelude {
 
-struct Cachet_Bail {};
 
 template <typename T>
 struct PrimitiveType {

@@ -19,16 +19,48 @@ pub fn flatten(env: normalizer::Env) -> Env {
         .into_iter()
         .map(|op_item| flatten_callable_item(op_item))
         .collect();
+    let global_var_items: TiVec<GlobalVarIndex, _> = env
+        .global_var_items
+        .into_iter()
+        .map(|op_item| flatten_global_var_item(op_item))
+        .collect();
 
     Env {
         enum_items: env.enum_items,
         struct_items: env.struct_items,
         ir_items: env.ir_items,
-        global_var_items: env.global_var_items,
+        global_var_items,
         fn_items,
         op_items,
         decl_order: env.decl_order,
     }
+}
+
+fn flatten_global_var_item(global_var_item: normalizer::GlobalVarItem) -> GlobalVarItem {
+    let value = global_var_item
+        .value
+        .map(|value| value.map(flatten_const_expr));
+
+    GlobalVarItem {
+        path: global_var_item.path,
+        parent: global_var_item.parent,
+        is_mut: global_var_item.is_mut,
+        type_: global_var_item.type_,
+        value,
+        attrs: global_var_item.attrs,
+    }
+}
+
+fn flatten_const_expr(expr: normalizer::Expr) -> Expr {
+    let mut flattener = Flattener::new();
+    let expr = flattener.flatten_expr(expr);
+
+    debug_assert!(
+        flattener.stmts.len() == 0,
+        "const exprs shouldn't yield stmts during flattening"
+    );
+
+    expr
 }
 
 fn flatten_callable_item(callable_item: normalizer::CallableItem) -> CallableItem {

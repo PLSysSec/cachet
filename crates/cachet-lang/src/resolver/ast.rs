@@ -284,6 +284,7 @@ pub struct GlobalVarItem {
     pub attrs: EnumSet<BuiltInAttr>,
     pub is_mut: bool,
     pub type_: TypeIndex,
+    pub value: Option<Spanned<Expr>>,
 }
 
 impl HasAttrs for GlobalVarItem {

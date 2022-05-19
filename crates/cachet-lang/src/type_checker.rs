@@ -5,7 +5,7 @@ mod error;
 mod graphs;
 
 use std::iter;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 use iterate::iterate;
 use lazy_static::lazy_static;
@@ -21,7 +21,7 @@ use crate::FrontendError;
 
 pub use crate::type_checker::ast::*;
 pub use crate::type_checker::error::*;
-use crate::type_checker::graphs::{CallGraph, TypeGraph};
+use crate::type_checker::graphs::{CallGraph, TypeGraph, VarGraph};
 
 // * Type-Checker Entry Point
 
@@ -50,6 +50,7 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
 
     let fn_items = type_checker.type_check_fn_items();
     let op_items = type_checker.type_check_op_items();
+    let global_var_items = type_checker.type_check_global_var_items();
 
     let decl_order = type_checker.finish()?;
 
@@ -70,7 +71,7 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
         enum_items: env.enum_items,
         struct_items: env.struct_items,
         ir_items: env.ir_items,
-        global_var_items: env.global_var_items,
+        global_var_items,
         fn_items,
         op_items,
         decl_order,
@@ -87,6 +88,7 @@ struct TypeChecker<'a> {
     errors: Vec<TypeCheckError>,
     env: &'a resolver::Env,
     call_graph: CallGraph,
+    var_graph: VarGraph,
     unknown_struct: StructIndex,
     unknown_ir: IrIndex,
 }
@@ -101,6 +103,7 @@ impl<'a> TypeChecker<'a> {
             errors: Vec::new(),
             env,
             call_graph: CallGraph::new(env.fn_items.len(), env.op_items.len()),
+            var_graph: VarGraph::new(env.global_var_items.len()),
             unknown_struct: unknown_struct_index,
             unknown_ir: unknown_ir_index,
         }
@@ -124,7 +127,7 @@ impl<'a> TypeChecker<'a> {
                 }
             });
 
-        let global_var_decl_order = self.env.global_var_items.keys().map(DeclIndex::from);
+        let global_var_decl_order = self.flatten_global_var_graph().into_iter().map(DeclIndex::from);
 
         let callable_decl_order = self.flatten_call_graph().into_iter().map(DeclIndex::from);
 
@@ -194,6 +197,37 @@ impl<'a> TypeChecker<'a> {
         callable_sccs.iter_post_order().collect()
     }
 
+    fn flatten_global_var_graph(&mut self) -> Vec<GlobalVarIndex> {
+        let var_sccs = self.var_graph.sccs();
+
+        for cycle_var_indexes in var_sccs.iter_cycles() {
+            let mut cycle_vars: Vec<_> = cycle_var_indexes
+                .map(|cycle_var_index| {
+                   cycle_var_index 
+                        .map(|cycle_var_index| self.env[cycle_var_index].path.value)
+                })
+                .collect();
+
+            // Rotate cycle_callables so that the first element corresponds to
+            // the call that appears first in the source code.
+            let first_cycle_var_index = cycle_vars 
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, cycle_callable)| cycle_callable.span)
+                .map(|(cycle_var_index, _)| cycle_var_index)
+                .unwrap();
+             cycle_vars.rotate_left(first_cycle_var_index);
+
+            let first_cycle_callable =  cycle_vars.remove(0);
+            self.errors.push(TypeCheckError::CallCycle {
+                first_cycle_callable,
+                other_cycle_callables:  cycle_vars,
+            });
+        }
+
+        var_sccs.iter_post_order().collect()
+    }
+
     fn type_check_fn_items(&mut self) -> TiVec<FnIndex, CallableItem> {
         self.type_check_callable_items(self.env.fn_items.keys())
     }
@@ -231,8 +265,13 @@ impl<'a> TypeChecker<'a> {
 
         let body = callable_item.body.value.as_ref().map(|body| {
             let mut locals = body.locals.clone();
-            let mut scoped_type_checker =
-                ScopedTypeChecker::new(self, callable_index, interprets, emits, &mut locals);
+            let mut scoped_type_checker = ScopedTypeChecker::for_callable(
+                self,
+                callable_index,
+                interprets,
+                emits,
+                &mut locals,
+            );
 
             let body_block_has_explicit_value = body.block.value.is_some();
             let mut block = scoped_type_checker.type_check_block(&body.block);
@@ -284,6 +323,49 @@ impl<'a> TypeChecker<'a> {
             interprets: interprets.map(|interprets| interprets.value),
             emits: emits.map(|emits| emits.value),
             body,
+        }
+    }
+
+    fn type_check_global_var_items(&mut self) -> TiVec<GlobalVarIndex, GlobalVarItem> {
+        self.env
+            .global_var_items
+            .keys()
+            .map(|gvidx| self.type_check_global_var_item(gvidx))
+            .collect()
+    }
+
+    fn type_check_global_var_item(&mut self, global_var_index: GlobalVarIndex) -> GlobalVarItem {
+        let global_var_item = &self.env[global_var_index];
+
+        let value = global_var_item.value.as_ref().map(|value| {
+            if global_var_item.is_mut {
+                self.errors.push(TypeCheckError::MutGlobalVarWithValue {
+                    var: global_var_item.path,
+                });
+            }
+
+            let mut checker = ScopedTypeChecker::for_global_var(self, global_var_index);
+
+            let value = Spanned::new(
+                value.span,
+                checker.type_check_expr_expecting_type(value.as_ref(), global_var_item.type_()),
+            );
+
+            if !is_const(&value.value) {
+                self.errors
+                    .push(TypeCheckError::NonConstGlobalVarItem { expr: value.span });
+            }
+
+            value
+        });
+
+        GlobalVarItem {
+            path: global_var_item.path,
+            parent: global_var_item.parent,
+            is_mut: global_var_item.is_mut,
+            type_: global_var_item.type_(),
+            attrs: global_var_item.attrs,
+            value,
         }
     }
 
@@ -404,16 +486,60 @@ fn build_cast_chain(
     })
 }
 
-// * Scoped Type Checker
+#[derive(Debug)]
+enum ItemContext<'b> {
+    Callable {
+        index: CallableIndex,
+        item: &'b resolver::CallableItem,
+        locals: &'b mut resolver::Locals,
+    },
+    Var {
+        index: GlobalVarIndex
+    }
+} 
 
+impl<'b> ItemContext<'b> {
+    fn param<I>(&self, index: I) -> &<resolver::Params as Index<I>>::Output where resolver::Params: Index<I> {
+        match self {
+            ItemContext::Callable { item, .. } => {
+                &item.params[index]
+            }
+            ItemContext::Var {..} => {
+                panic!("attempted to look up param in non-callable context");
+            }
+        }
+    }
+
+    fn local<I>(&self, index: I) -> &<resolver::Locals as Index<I>>::Output where resolver::Locals: Index<I> {
+        match self {
+            ItemContext::Callable { locals, .. } => {
+                &locals[index]
+            }
+            ItemContext::Var {..} => {
+                panic!("attempted to look up param in non-callable context");
+            }
+        }
+    }
+
+    fn local_mut<I>(&mut self, index: I) -> &mut <resolver::Locals as Index<I>>::Output where resolver::Locals: IndexMut<I> {
+        match self {
+            ItemContext::Callable { locals, .. } => {
+                &mut locals[index]
+            }
+            ItemContext::Var {..} => {
+                panic!("attempted to look up param in non-callable context");
+            }
+        }
+    }
+}
+
+// Scoped Type Checker
 struct ScopedTypeChecker<'a, 'b> {
     type_checker: &'b mut TypeChecker<'a>,
-    callable_index: CallableIndex,
-    callable_item: &'b resolver::CallableItem,
+    context: ItemContext<'b>,
     is_unsafe: bool,
     interprets: Option<Spanned<IrIndex>>,
     emits: Option<Spanned<IrIndex>>,
-    locals: &'b mut resolver::Locals,
 }
 
 impl<'a, 'b> Deref for ScopedTypeChecker<'a, 'b> {
@@ -431,34 +557,58 @@ impl<'a, 'b> DerefMut for ScopedTypeChecker<'a, 'b> {
 }
 
 impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
-    fn new(
+    fn for_global_var(
         type_checker: &'b mut TypeChecker<'a>,
-        callable_index: CallableIndex,
+        index: GlobalVarIndex,
+    ) -> Self {
+        ScopedTypeChecker {
+            type_checker,
+            context: ItemContext::Var { index },
+            is_unsafe: false,
+            interprets: None,
+            emits: None,
+        }
+
+    }
+    fn for_callable(
+        type_checker: &'b mut TypeChecker<'a>,
+        index:CallableIndex,
         interprets: Option<Spanned<IrIndex>>,
         emits: Option<Spanned<IrIndex>>,
         locals: &'b mut resolver::Locals,
     ) -> Self {
-        let callable_item = &type_checker.env[callable_index];
+        let callable = &type_checker.env[index];
+        let context = ItemContext::Callable {
+            index,
+            item: callable,
+            locals
+        };
+
+        let is_unsafe = callable.is_unsafe;
+
         ScopedTypeChecker {
             type_checker,
-            callable_index,
-            callable_item,
-            is_unsafe: callable_item.is_unsafe,
+            context,
+            is_unsafe,
             interprets,
             emits,
-            locals,
         }
     }
 
     fn recurse<'c>(&'c mut self, is_unsafe: bool) -> ScopedTypeChecker<'a, 'c> {
         ScopedTypeChecker {
             type_checker: self.type_checker,
-            callable_index: self.callable_index,
-            callable_item: self.callable_item,
+            context: match &mut self.context {
+                ItemContext::Callable { index, item, locals } => ItemContext::Callable {
+                    index: *index,
+                    item,
+                    locals
+                },
+                ItemContext::Var { index } => ItemContext::Var { index: *index }
+            },
             is_unsafe: self.is_unsafe || is_unsafe,
             interprets: self.interprets,
             emits: self.emits,
-            locals: self.locals,
         }
     }
 
@@ -611,7 +761,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             OutVar::Free(var_index) => self.get_var_type(var_index),
             // If this is an `out let foo`-style argument with no type
             // ascription, infer the type from the parameter.
-            OutVar::Fresh(local_var_index) => *self.locals[local_var_index]
+            OutVar::Fresh(local_var_index) => *self.context.local_mut(local_var_index)
                 .type_
                 .get_or_insert(param_type_index),
         };
@@ -686,7 +836,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 // Infer the label IR from the parameter if one isn't specified
                 // explicitly.
                 let unknown_ir_index = self.unknown_ir;
-                let local_label_ir = &mut self.locals[local_label_index].ir;
+                let local_label_ir = &mut self.context.local_mut(local_label_index).ir;
                 if local_label_ir.is_none() {
                     // As with variable out-parameters, we assign the internal "unknown" IR
                     // if we don't have a corresponding parameter IR.
@@ -715,10 +865,11 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     }
 
     fn type_check_call(&mut self, call: &resolver::Call) -> Call {
-        self.type_checker
-            .call_graph
-            .record_call(self.callable_index, call.target);
-
+        if let ItemContext::Callable { index, .. } = self.context {
+            self.type_checker
+                .call_graph
+                .record_call(index, call.target);
+        }
         let callable_item = &self.env[call.target.value];
 
         if callable_item.is_unsafe && !self.is_unsafe {
@@ -839,7 +990,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     fn type_check_let_stmt(&mut self, let_stmt: &resolver::LetStmt) -> LetStmt {
         let rhs = let_stmt.rhs.as_ref().map(|rhs| self.type_check_expr(rhs));
 
-        let local_var = &mut self.locals[let_stmt.lhs];
+        let local_var = &mut self.context.local_mut(let_stmt.lhs);
 
         let rhs = match local_var.type_ {
             Some(lhs_type_index) => self.expect_expr_type(rhs, lhs_type_index),
@@ -889,15 +1040,20 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         // Treat `return;` as `return unit;`. We do a little finagling here to
         // ensure the span for the value expression always points to a sensible
         // location.
-        let default_ret_value =
-            Spanned::new(ret_stmt.value.span, VarIndex::from(BuiltInVar::Unit)).into();
-        let value = self.type_check_expr_expecting_type(
-            ret_stmt
-                .value
-                .as_ref()
-                .map(|value| value.as_ref().unwrap_or(&default_ret_value)),
-            self.callable_item.type_(),
-        );
+
+        let default = Spanned::new(ret_stmt.value.span, VarIndex::from(BuiltInVar::Unit)).into();
+        let value_or_default = ret_stmt.value.as_ref().map(|value| value.as_ref().unwrap_or(&default));
+
+        let value = match self.context {
+            ItemContext::Callable {item, ..} =>
+                self.type_check_expr_expecting_type(value_or_default, item.type_()),
+            
+            ItemContext::Var {..} => {
+                self.errors
+                    .push(TypeCheckError::ReturnOutsideCallable { span: value_or_default.span });
+                self.type_check_expr(&value_or_default.value)
+            }
+        };
 
         RetStmt { value }
     }
@@ -916,7 +1072,12 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                         goto_stmt.label.span,
                         self.get_label_ident(goto_stmt.label.value).value,
                     ),
-                    callable: self.callable_item.path.value,
+
+                    callable: match self.context {
+                        ItemContext::Callable {item, ..} => Some(item.path.value),
+                        ItemContext::Var {..} => None,
+                    },
+
                     expected_ir: self.interprets.map(|interprets| {
                         interprets.map(|interprets| self.env[interprets].ident.value)
                     }),
@@ -944,7 +1105,10 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                         bind_stmt.label.span,
                         self.get_label_ident(bind_stmt.label.value).value,
                     ),
-                    callable: self.callable_item.path.value,
+                    callable: match self.context {
+                        ItemContext::Callable {item, ..} => Some(item.path.value),
+                        ItemContext::Var {..} => None,
+                    },
                     expected_ir: self
                         .emits
                         .map(|emits| emits.map(|emits| self.env[emits].ident.value)),
@@ -972,7 +1136,10 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                         .errors
                         .push(TypeCheckError::EmitIrMismatch {
                             op: Spanned::new(call.target.span, callable_item.path.value),
-                            callable: self.callable_item.path.value,
+                            callable: match self.context {
+                                ItemContext::Callable {item, ..} => Some(item.path.value),
+                                ItemContext::Var {..} => None,
+                            },
                             expected_ir: self
                                 .emits
                                 .map(|emits| emits.map(|emits| self.env[emits].ident.value)),
@@ -1021,6 +1188,11 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
     fn type_check_var_expr(&mut self, var_index: Spanned<VarIndex>) -> VarExpr {
         let var_type_index = self.get_var_type(var_index);
+        if let VarIndex::Global(target) = var_index.value {
+            if let ItemContext::Var {index: source} = self.context {
+                self.var_graph.record_ref(source, Spanned::new(var_index.span, target));
+            }
+        }
 
         VarExpr {
             var: var_index.value,
@@ -1294,12 +1466,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             VarIndex::BuiltIn(built_in_var) => Path::from(built_in_var.ident()).into(),
             VarIndex::EnumVariant(enum_variant_index) => self.env[enum_variant_index].into(),
             VarIndex::Global(global_var_index) => self.env[global_var_index].path.into(),
-            VarIndex::Param(var_param_index) => self.callable_item.params[var_param_index]
-                .ident
-                .map(Path::from)
-                .into(),
+            VarIndex::Param(var_param_index) => self.context.param(var_param_index).ident.map(Path::from).into(),
             VarIndex::Local(local_var_index) => {
-                self.locals[local_var_index].ident.map(Path::from).into()
+                self.context.local(local_var_index).ident.map(Path::from).into()
             }
         }
     }
@@ -1309,9 +1478,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             VarIndex::BuiltIn(built_in_var) => built_in_var.type_(),
             VarIndex::EnumVariant(enum_variant_index) => enum_variant_index.type_(),
             VarIndex::Global(global_var_index) => self.env[global_var_index].type_,
-            VarIndex::Param(var_param_index) => self.callable_item.params[var_param_index].type_,
+            VarIndex::Param(var_param_index) => self.context.param(var_param_index).type_,
             VarIndex::Local(local_var_index) => {
-                let local_var = &self.locals[local_var_index];
+                let local_var = &self.context.local(local_var_index);
                 match local_var.type_ {
                     Some(type_) => type_,
                     None => panic!(
@@ -1325,20 +1494,16 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
     fn get_label_ident(&self, label_index: LabelIndex) -> Spanned<Ident> {
         match label_index {
-            LabelIndex::Param(label_param_index) => {
-                self.callable_item.params[label_param_index].label.ident
-            }
-            LabelIndex::Local(local_label_index) => self.locals[local_label_index].ident,
+            LabelIndex::Param(label_param_index) => self.context.param(label_param_index).label.ident,
+            LabelIndex::Local(local_label_index) => self.context.local(local_label_index).ident,
         }
     }
 
     fn get_label_ir(&self, label_index: Spanned<LabelIndex>) -> IrIndex {
         match label_index.value {
-            LabelIndex::Param(label_param_index) => {
-                self.callable_item.params[label_param_index].label.ir
-            }
+            LabelIndex::Param(label_param_index) => self.context.param(label_param_index).label.ir,
             LabelIndex::Local(local_label_index) => {
-                let local_label = &self.locals[local_label_index];
+                let local_label = &self.context.local(local_label_index);
                 match local_label.ir {
                     Some(ir) => ir,
                     None => panic!(
@@ -1397,5 +1562,27 @@ fn does_expr_exit_early(expr: &Expr) -> bool {
             }
         }
         Expr::Assign(assign_expr) => does_expr_exit_early(&assign_expr.rhs),
+    }
+}
+
+fn is_const(expr: &Expr) -> bool {
+    match expr {
+        Expr::Var(_) 
+        | Expr::Literal(_) => true,
+        Expr::BinOper(e) => match e.oper {
+            BinOper::Arith(_)
+            | BinOper::Bitwise(_)
+            | BinOper::Compare(_) => is_const(&e.lhs) && is_const(&e.rhs),
+
+            // Don't allow logical operators because the normalizer will introduce if/else
+            // statements. 
+            BinOper::Logical(_) => false,
+        }
+        Expr::Negate(e) => is_const(&e.expr),
+        Expr::Invoke(_)
+        | Expr::FieldAccess(_)
+        | Expr::Cast(_)
+        | Expr::Block(_)
+        | Expr::Assign(_) => false,
     }
 }

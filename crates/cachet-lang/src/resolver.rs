@@ -511,6 +511,11 @@ impl<'a> Resolver<'a> {
             .found(&mut self.errors);
 
         let attrs = self.resolve_attrs(global_var_item.item.attrs);
+        let mut resolver = ScopedResolver::new(self);
+        let value = global_var_item
+            .item
+            .value
+            .and_then(|value| map_spanned(value, |value| resolver.resolve_expr(value.value)));
 
         Some(GlobalVarItem {
             path: global_var_item.path,
@@ -518,6 +523,7 @@ impl<'a> Resolver<'a> {
             attrs: attrs?,
             is_mut: global_var_item.item.is_mut,
             type_: type_?,
+            value,
         })
     }
 

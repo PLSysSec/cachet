@@ -8,7 +8,7 @@ use crate::ast::{Span, Spanned};
 use crate::built_in::BuiltInType;
 
 use crate::type_checker::ast::{
-    CallableIndex, EnumIndex, EnumItem, FnIndex, OpIndex, StructIndex, StructItem, TypeIndex,
+    CallableIndex, EnumIndex, EnumItem, FnIndex, GlobalVarIndex, OpIndex, StructIndex, StructItem, TypeIndex,
 };
 
 pub struct TypeGraph {
@@ -157,6 +157,69 @@ impl CallGraph {
             CallableIndex::Fn(fn_index) => usize::from(fn_index),
             CallableIndex::Op(op_index) => self.num_fn_items + usize::from(op_index),
         })
+    }
+}
+
+pub struct VarGraph {
+    inner: DiGraph<(), Span>,
+}
+
+impl VarGraph {
+    pub fn new(num_var_items: usize) -> Self {
+        let mut inner = DiGraph::with_capacity(num_var_items, 0);
+        for _ in 0..num_var_items {
+            inner.add_node(());
+        }
+        VarGraph {
+            inner,
+        }
+    }
+
+    pub fn record_ref(
+        &mut self,
+        source_var_index: GlobalVarIndex,
+        target_var_index: Spanned<GlobalVarIndex>,
+    ) {
+        self.inner.add_edge(
+            NodeIndex::new(usize::from(source_var_index)),
+            NodeIndex::new(usize::from(target_var_index.value)),
+            target_var_index.span,
+        );
+    }
+
+    pub fn sccs(&self) -> VarSccs<'_> {
+        VarSccs {
+            inner: GraphSccs::new(&self.inner),
+        }
+    }
+}
+
+pub struct VarSccs<'a> {
+    inner: GraphSccs<'a, (), Span>,
+}
+
+impl<'a> VarSccs<'a> {
+    pub fn iter_cycles(
+        &self,
+    ) -> impl '_ + Iterator<Item = impl '_ + Iterator<Item = Spanned<GlobalVarIndex>>> {
+        self.inner.iter_cycles().map(move |cycle_node_indexes| {
+            let mut prev_node_index = *cycle_node_indexes.last().unwrap();
+            cycle_node_indexes.iter().copied().map(move |node_index| {
+                let span = self.inner.graph[self
+                    .inner
+                    .graph
+                    .find_edge(prev_node_index, node_index)
+                    .unwrap()];
+                prev_node_index = node_index;
+                Spanned::new(span, GlobalVarIndex::from(node_index.index()))
+            })
+        })
+    }
+
+    pub fn iter_post_order(&self) -> impl '_ + Iterator<Item = GlobalVarIndex> {
+        self.inner
+            .iter_post_order()
+            .map(|node_index| GlobalVarIndex::from(node_index.index()))
     }
 }
 

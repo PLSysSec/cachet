@@ -3,7 +3,7 @@
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::{self, Display};
 use std::iter;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index};
 
 use enum_map::EnumMap;
 use fix_hidden_lifetime_bug::Captures;
@@ -50,7 +50,7 @@ pub fn compile(env: &flattener::Env) -> BplCode {
         compiler.compile_ir_item(ir_item);
     }
 
-    for global_var_item in &env.global_var_items {
+    for global_var_item in env.global_var_items.keys() {
         compiler.compile_global_var_item(global_var_item);
     }
 
@@ -493,7 +493,9 @@ impl<'a> Compiler<'a> {
         ]);
     }
 
-    fn compile_global_var_item(&mut self, global_var_item: &flattener::GlobalVarItem) {
+    fn compile_global_var_item(&mut self, global_var_index: flattener::GlobalVarIndex) {
+        let global_var_item = &self.env[global_var_index];
+
         if global_var_item.is_prelude() {
             return;
         }
@@ -504,20 +506,50 @@ impl<'a> Compiler<'a> {
             .parent()
             .map(|parent_path| parent_path.ident());
         let var_ident = global_var_item.path.value.ident();
-        let ident = UserGlobalVarIdent {
-            parent_ident,
-            var_ident,
-        }
-        .into();
-
         let type_ = self.get_type_ident(global_var_item.type_).into();
 
-        let var = TypedVar { ident, type_ };
-        self.items.push(if global_var_item.is_mut {
-            GlobalVarItem::from(var).into()
+
+        // If there's a value, associated with the global var then it is a const
+        // We model these as functions whose body is the value expression.
+        if let Some(expr) = &global_var_item.value {
+            let ident = UserFnIdent {
+                parent_ident,
+                fn_ident: var_ident,
+            }
+            .into();
+
+
+            let mut local_vars = vec![];
+            let mut scoped_compiler = ScopedCompiler::new(self, ItemContext::Var, &mut local_vars);
+
+            let value = scoped_compiler.compile_expr(expr.as_ref().value).into();
+
+            self.items.push(
+                FnItem {
+                    ident,
+                    attr: None,
+                    param_vars: TypedVars::default(),
+                    ret: type_,
+                    value,
+                }
+                .into(),
+            )
         } else {
-            ConstItem::from(var).into()
-        });
+            let ident = UserGlobalVarIdent {
+                parent_ident,
+                var_ident,
+            }
+            .into();
+
+            let var = TypedVar { ident, type_ };
+
+            self.items.push(if global_var_item.is_mut {
+                GlobalVarItem::from(var).into()
+            } else {
+                ConstItem::from(var).into()
+            });
+
+        }
     }
 
     fn compile_callable_item(&mut self, callable_index: flattener::CallableIndex) {
@@ -1144,11 +1176,13 @@ impl<'a> Compiler<'a> {
 
         let mut scoped_compiler = ScopedCompiler::new(
             self,
-            callable_index,
-            callable_item,
-            &body.locals,
+            ItemContext::Callable {
+                index: callable_index,
+                item: callable_item,
+            },
             &mut local_vars,
         );
+
         scoped_compiler.compile_stmts(&body.stmts);
         let stmts = scoped_compiler.stmts;
 
@@ -1373,11 +1407,42 @@ impl CallableRepr {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum ItemContext<'b> {
+    Callable {
+        index: flattener::CallableIndex,
+        item: &'b flattener::CallableItem,
+    },
+    Var
+} 
+
+impl<'b> ItemContext<'b> {
+    fn param<I>(&self, index: I) -> &<flattener::Params as Index<I>>::Output where flattener::Params: Index<I> {
+        match self {
+            ItemContext::Callable { item, .. } => {
+                &item.params[index]
+            }
+            ItemContext::Var => {
+                panic!("attempted to look up param in non-callable context");
+            }
+        }
+    }
+
+    fn local<I>(&self, index: I) -> &<flattener::Locals as Index<I>>::Output where flattener::Locals: Index<I> {
+        match self {
+            ItemContext::Callable { item, .. } => {
+                &item.body.as_ref().unwrap().locals[index]
+            }
+            ItemContext::Var => {
+                panic!("attempted to look up local in non-callable context");
+            }
+        }
+    }
+}
+
 struct ScopedCompiler<'a, 'b> {
     compiler: &'b mut Compiler<'a>,
-    callable_index: flattener::CallableIndex,
-    callable_item: &'b flattener::CallableItem,
-    callable_locals: &'b flattener::Locals,
+    context: ItemContext<'b>,
     local_vars: &'b mut Vec<LocalVar>,
     next_local_emit_index: MaybeOwned<'b, LocalEmitIndex>,
     next_synthetic_var_indexes: MaybeOwned<'b, EnumMap<SyntheticVarKind, usize>>,
@@ -1401,16 +1466,12 @@ impl<'a> DerefMut for ScopedCompiler<'a, '_> {
 impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn new(
         compiler: &'b mut Compiler<'a>,
-        callable_index: flattener::CallableIndex,
-        callable_item: &'b flattener::CallableItem,
-        callable_locals: &'b flattener::Locals,
+        context: ItemContext<'b>,
         local_vars: &'b mut Vec<LocalVar>,
     ) -> Self {
         ScopedCompiler {
             compiler,
-            callable_index,
-            callable_item,
-            callable_locals,
+            context,
             local_vars,
             next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
             next_synthetic_var_indexes: MaybeOwned::Owned(EnumMap::default()),
@@ -1421,9 +1482,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn recurse<'c>(&'c mut self) -> ScopedCompiler<'a, 'c> {
         ScopedCompiler {
             compiler: self.compiler,
-            callable_index: self.callable_index,
-            callable_item: self.callable_item,
-            callable_locals: self.callable_locals,
+            context: self.context,
             local_vars: self.local_vars,
             next_local_emit_index: MaybeOwned::Borrowed(&mut self.next_local_emit_index),
             next_synthetic_var_indexes: MaybeOwned::Borrowed(&mut self.next_synthetic_var_indexes),
@@ -1478,14 +1537,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         // Boogie.
         match label_index {
             flattener::LabelIndex::Param(label_param_index) => UserParamVarIdent::from(
-                self.callable_item.params[label_param_index]
+                self.context.param(label_param_index)
                     .label
                     .ident
                     .value,
             )
             .into(),
             flattener::LabelIndex::Local(local_label_index) => LocalLabelVarIdent {
-                ident: self.callable_locals[local_label_index].ident.value,
+                ident: self.context.local(local_label_index).ident.value,
                 index: local_label_index,
             }
             .into(),
@@ -1566,7 +1625,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_let_stmt(&mut self, let_stmt: &flattener::LetStmt) {
         let lhs = LocalVarIdent {
-            ident: self.callable_locals[let_stmt.lhs].ident.value,
+            ident: self.context.local(let_stmt.lhs).ident.value,
             index: let_stmt.lhs,
         }
         .into();
@@ -1577,7 +1636,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_label_stmt(&mut self, label_stmt: &flattener::LabelStmt) {
-        let local_label = &self.callable_locals[label_stmt.label];
+        let local_label = self.context.local(label_stmt.label);
         let ir_ident = self.env[local_label.ir].ident.value.into();
 
         let call = CallExpr {
@@ -1813,8 +1872,15 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             )
         });
 
-        let step_call = match (self.callable_index, self.callable_item.interprets) {
-            (flattener::CallableIndex::Op(_), Some(ir_index)) => {
+        let step_call = match self.context {
+            ItemContext::Callable {
+                index: flattener::CallableIndex::Op(_),
+                item:
+                    &flattener::CallableItem {
+                        interprets: Some(ir_index),
+                        ..
+                    },
+            } => {
                 let ir_ident = self.env[ir_index].ident.value.into();
 
                 Some(
@@ -1892,6 +1958,28 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                     arg_exprs: vec![],
                 }
                 .into()
+            }
+
+            // Global variables with values are modeled as functions so we must emit a call expression
+            // rather than a var expression.
+            flattener::VarIndex::Global(gvi) if self.env[gvi].value.is_some() => {
+                let global_var_item = &self.env[gvi];
+                let parent_ident = global_var_item
+                    .path
+                    .value
+                    .parent()
+                    .map(|parent_path| parent_path.ident());
+                let var_ident = global_var_item.path.value.ident();
+
+                CallExpr {
+                    target: UserFnIdent {
+                        parent_ident,
+                        fn_ident: var_ident,
+                    }.into(),
+                    arg_exprs: vec![],
+                }
+                .into()
+
             }
             var_index => self.get_var_ident(var_index).unwrap().into(),
         }
@@ -2077,11 +2165,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 )
             }
             flattener::VarIndex::Param(var_param_index) => {
-                let var_param = &self.callable_item.params[var_param_index];
+                let var_param = &self.context.param(var_param_index);
                 Some(UserParamVarIdent::from(var_param.ident.value).into())
             }
             flattener::VarIndex::Local(local_var_index) => {
-                let local_var = &self.callable_locals[local_var_index];
+                let local_var = &self.context.local(local_var_index);
                 Some(
                     LocalVarIdent {
                         ident: local_var.ident.value,

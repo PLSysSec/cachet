@@ -1,7 +1,7 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
 use std::iter;
-use std::ops::Deref;
+use std::ops::{Deref, Index};
 
 use derive_more::{Display, From};
 use enum_map::EnumMap;
@@ -425,19 +425,59 @@ impl<'a> Compiler<'a> {
         }
         .into();
 
-        let fn_decl = FnItem {
-            path,
-            is_fully_qualified: false,
-            is_inline: true,
-            params: vec![CONTEXT_PARAM],
-            ret,
-            body: None,
-        }
-        .into();
+        let item_bucket_index = global_var_item.parent.into();
 
-        self.external_decls
-            .bucket_for(global_var_item.parent.into())
-            .push(fn_decl);
+        match &global_var_item.value {
+            Some(value) => {
+                let scoped_compiler = ScopedCompiler::new(self, None, Scope::Empty);
+                let value_expr = scoped_compiler.use_expr(
+                    scoped_compiler.compile_expr(&value.value),
+                    ExprTag::Val.into(),
+                );
+
+                let fn_decl = FnItem {
+                    path,
+                    is_fully_qualified: false,
+                    is_inline: true,
+                    params: vec![],
+                    ret,
+                    body: None,
+                };
+
+                let mut fn_def = fn_decl.clone();
+                fn_def.body = Block {
+                    stmts: vec![
+                        RetStmt {
+                            value: Some(value_expr),
+                        }
+                        .into(),
+                    ],
+                }
+                .into();
+
+                self.internal_decls
+                    .bucket_for(item_bucket_index)
+                    .push(fn_decl.into());
+                self.internal_defs
+                    .bucket_for(item_bucket_index)
+                    .push(fn_def.into());
+            }
+            None => {
+                let fn_decl = FnItem {
+                    path,
+                    is_fully_qualified: false,
+                    is_inline: true,
+                    params: vec![CONTEXT_PARAM],
+                    ret,
+                    body: None,
+                }
+                .into();
+
+                self.external_decls
+                    .bucket_for(item_bucket_index)
+                    .push(fn_decl);
+            }
+        }
     }
 
     fn compile_callable_item(&mut self, callable_index: normalizer::CallableIndex) {
@@ -542,9 +582,7 @@ impl<'a> Compiler<'a> {
                 let mut fn_def = fn_decl.clone();
                 fn_def.is_fully_qualified = true;
                 fn_def.body = Some(self.compile_body(
-                    callable_item.parent,
-                    &callable_item.params,
-                    &callable_item.param_order,
+                    &callable_item,
                     body,
                 ));
 
@@ -617,13 +655,15 @@ impl<'a> Compiler<'a> {
 
     fn compile_body(
         &mut self,
-        parent_index: Option<normalizer::ParentIndex>,
-        params: &normalizer::Params,
-        param_order: &[normalizer::ParamIndex],
-        body: &normalizer::Body,
+        callable: &normalizer::CallableItem,
+        body: &normalizer::Body
     ) -> Block {
-        let mut scoped_compiler = ScopedCompiler::new(self, parent_index, params, &body.locals);
-        scoped_compiler.init_mut_var_params(param_order);
+        let mut scoped_compiler = ScopedCompiler::new(
+            self,
+            callable.parent,
+            callable.into()
+        );
+        scoped_compiler.init_mut_var_params(&callable.param_order);
         scoped_compiler.compile_stmts(&body.stmts);
         scoped_compiler.stmts.into()
     }
@@ -678,13 +718,51 @@ fn generate_cast_fn_decl(
     }
 }
 
-// TODO(spinda): Make this hold a `CallableItem` reference instead of broken-out
-// fields.
+
+#[derive(Copy, Clone)]
+enum Scope<'b> {
+    Empty,
+    Body {
+        params: &'b normalizer::Params,
+        locals: &'b normalizer::Locals,
+    }
+}
+
+impl<'b> Scope<'b> {
+    pub fn local<I>(&self, index: I) -> &<normalizer::Locals as Index<I>>::Output
+    where
+        normalizer::Locals: Index<I>,
+    {
+        match self {
+            Scope::Empty => panic!("Attempted access a local var within an empty scope"),
+            Scope::Body {locals, ..} => &locals[index]
+        }
+    }
+
+    pub fn param<I>(&self, index: I) -> &<normalizer::Params as Index<I>>::Output
+    where
+        normalizer::Params: Index<I>,
+    {
+        match self {
+            Scope::Empty => panic!("Attempted access a param var within an empty scope"),
+            Scope::Body {params, ..} => &params[index]
+        }
+    }
+}
+
+impl<'b> From<&'b normalizer::CallableItem> for Scope<'b> {
+    fn from(callable: &'b normalizer::CallableItem) -> Self {
+        match &callable.body {
+            Some(body) => Scope::Body { params: &callable.params, locals: &body.locals },
+            None => Self::Empty,
+        }
+    }
+}
+
 struct ScopedCompiler<'a, 'b> {
     compiler: &'b Compiler<'a>,
     parent_index: Option<normalizer::ParentIndex>,
-    params: &'b normalizer::Params,
-    locals: &'b normalizer::Locals,
+    scope: Scope<'b>,
     stmts: Vec<Stmt>,
 }
 
@@ -700,14 +778,12 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn new(
         compiler: &'b Compiler<'a>,
         parent_index: Option<normalizer::ParentIndex>,
-        params: &'b normalizer::Params,
-        locals: &'b normalizer::Locals,
+        scope: Scope<'b>,
     ) -> Self {
         ScopedCompiler {
             compiler,
             parent_index,
-            params,
-            locals,
+            scope,
             stmts: Vec::new(),
         }
     }
@@ -716,8 +792,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         ScopedCompiler {
             compiler: self.compiler,
             parent_index: self.parent_index,
-            params: self.params,
-            locals: self.locals,
+            scope: self.scope,
             stmts: Vec::new(),
         }
     }
@@ -725,7 +800,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn init_mut_var_params(&mut self, param_order: &[normalizer::ParamIndex]) {
         for param_index in param_order {
             if let normalizer::ParamIndex::Var(var_param_index) = param_index {
-                let var_param = &self.params[var_param_index];
+                let var_param = &self.scope.param(var_param_index);
 
                 if var_param.kind == VarParamKind::Mut {
                     // Variable parameters are passed in as immutable `Ref`s. To
@@ -782,7 +857,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_label_arg(&self, label_arg: &normalizer::LabelArg) -> Expr {
         match label_arg.label {
             normalizer::LabelIndex::Param(label_param_index) => {
-                UserParamVarIdent::from(self.params[label_param_index].label.ident.value).into()
+                UserParamVarIdent::from(self.scope.param(label_param_index).label.ident.value)
+                    .into()
             }
             normalizer::LabelIndex::Local(local_label_index) => CallExpr {
                 target: IrMemberFnPath {
@@ -796,7 +872,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 .into(),
                 args: vec![
                     LocalLabelVarIdent {
-                        ident: self.locals[local_label_index].ident.value,
+                        ident: self.scope.local(local_label_index).ident.value,
                         index: local_label_index,
                     }
                     .into(),
@@ -849,7 +925,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_let_stmt(&mut self, let_stmt: &normalizer::LetStmt) {
         let lhs = LocalVarIdent {
-            ident: self.locals[let_stmt.lhs].ident.value,
+            ident: self.scope.local(let_stmt.lhs).ident.value,
             index: let_stmt.lhs,
         }
         .into();
@@ -860,7 +936,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_label_stmt(&mut self, label_stmt: &normalizer::LabelStmt) {
-        let local_label = &self.locals[label_stmt.label];
+        let local_label = &self.scope.local(label_stmt.label);
         let ir_ident = self.env[local_label.ir].ident.value;
 
         let lhs = LocalLabelVarIdent {
@@ -1023,7 +1099,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         self.stmts.push(match assign_stmt.lhs {
             normalizer::VarIndex::Param(var_param_index)
-                if self.params[var_param_index].kind == VarParamKind::Out =>
+                if self.scope.param(var_param_index).kind == VarParamKind::Out =>
             {
                 Expr::from(CallExpr {
                     target: TypeMemberFnPath {
@@ -1211,7 +1287,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                             ident: global_var_item.path.value.ident().into(),
                         }
                         .into(),
-                        args: vec![CONTEXT_ARG],
+                        args: if global_var_item.value.is_some() {
+                            vec![]
+                        } else {
+                            vec![CONTEXT_ARG]
+                        },
                     }
                     .into(),
                     type_: global_var_item.type_,
@@ -1219,7 +1299,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 }
             }
             normalizer::VarIndex::Param(var_param_index) => {
-                let var_param = &self.params[var_param_index];
+                let var_param = &self.scope.param(var_param_index);
 
                 TaggedExpr {
                     expr: UserParamVarIdent::from(var_param.ident.value).into(),
@@ -1228,7 +1308,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 }
             }
             normalizer::VarIndex::Local(local_var_index) => {
-                let local_var = &self.locals[local_var_index];
+                let local_var = &self.scope.local(local_var_index);
 
                 TaggedExpr {
                     expr: LocalVarIdent {
@@ -1409,9 +1489,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn get_label_ir(&self, label_index: normalizer::LabelIndex) -> normalizer::IrIndex {
         match label_index {
             normalizer::LabelIndex::Param(label_param_index) => {
-                self.params[label_param_index].label.ir
+                self.scope.param(label_param_index).label.ir
             }
-            normalizer::LabelIndex::Local(local_label_index) => self.locals[local_label_index].ir,
+            normalizer::LabelIndex::Local(local_label_index) => {
+                self.scope.local(local_label_index).ir
+            }
         }
     }
 }
