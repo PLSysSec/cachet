@@ -1,19 +1,22 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::collections::HashMap;
+
+use enum_iterator::IntoEnumIterator;
 use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use typed_index_collections::TiSlice;
 
-use crate::ast::{Span, Spanned};
-use crate::built_in::BuiltInType;
+use crate::ast::{CastSafety, Span, Spanned};
+use crate::built_in::{BuiltInType, IdentEnum};
 
 use crate::type_checker::ast::{
-    CallableIndex, EnumIndex, EnumItem, FnIndex, GlobalVarIndex, OpIndex, StructIndex, StructItem, TypeIndex,
+    CallableIndex, EnumIndex, EnumItem, FnIndex, GlobalVarIndex, OpIndex, StructIndex, StructItem,
+    TypeIndex,
 };
 
 pub struct TypeGraph {
-    inner: DiGraph<(), ()>,
-    num_enum_items: usize,
+    inner: DiGraph<TypeIndex, ()>,
 }
 
 impl TypeGraph {
@@ -27,30 +30,32 @@ impl TypeGraph {
 
         let mut inner = DiGraph::with_capacity(num_types, 0);
 
-        for _ in 0..num_types {
-            inner.add_node(());
-        }
+        let built_in_indices: HashMap<BuiltInType, NodeIndex> = BuiltInType::into_enum_iter()
+            .map(|it| (it, inner.add_node(it.into())))
+            .collect();
+        let enum_indices: HashMap<EnumIndex, NodeIndex> = enum_items
+            .keys()
+            .map(|it| (it, inner.add_node(it.into())))
+            .collect();
+        let struct_indices: HashMap<StructIndex, NodeIndex> = struct_items
+            .keys()
+            .map(|it| (it, inner.add_node(it.into())))
+            .collect();
 
-        let get_built_in_type_node_index =
-            |built_in_type: BuiltInType| NodeIndex::new(built_in_type.index());
-        let get_enum_node_index =
-            |enum_index: EnumIndex| NodeIndex::new(BuiltInType::COUNT + usize::from(enum_index));
-        let get_struct_node_index = |struct_index: StructIndex| {
-            NodeIndex::new(BuiltInType::COUNT + num_enum_items + usize::from(struct_index))
-        };
         let get_type_node_index = |type_index| match type_index {
-            TypeIndex::BuiltIn(built_in_type) => get_built_in_type_node_index(built_in_type),
-            TypeIndex::Enum(enum_index) => get_enum_node_index(enum_index),
-            TypeIndex::Struct(struct_index) => get_struct_node_index(struct_index),
+            TypeIndex::BuiltIn(built_in_type) => built_in_indices[&built_in_type],
+            TypeIndex::Enum(enum_index) => enum_indices[&enum_index],
+            TypeIndex::Struct(struct_index) => struct_indices[&struct_index],
         };
 
-        for built_in_type in BuiltInType::ALL {
-            if let Some(supertype) = built_in_type.supertype() {
-                inner.add_edge(
-                    get_built_in_type_node_index(supertype),
-                    get_built_in_type_node_index(built_in_type),
-                    (),
-                );
+        for a in BuiltInType::into_enum_iter() {
+            for b in BuiltInType::into_enum_iter() {
+                if a == b {
+                    continue;
+                }
+                if a.casts_to(b) == CastSafety::Lossless {
+                    inner.add_edge(built_in_indices[&b], built_in_indices[&a], ());
+                }
             }
         }
 
@@ -58,29 +63,24 @@ impl TypeGraph {
             if let Some(supertype) = struct_item.supertype {
                 inner.add_edge(
                     get_type_node_index(supertype),
-                    get_struct_node_index(struct_index),
+                    struct_indices[&struct_index],
                     (),
                 );
             }
         }
 
-        TypeGraph {
-            inner,
-            num_enum_items,
-        }
+        TypeGraph { inner }
     }
 
     pub fn sccs(&self) -> TypeSccs<'_> {
         TypeSccs {
             inner: GraphSccs::new(&self.inner),
-            num_enum_items: self.num_enum_items,
         }
     }
 }
 
 pub struct TypeSccs<'a> {
-    inner: GraphSccs<'a, (), ()>,
-    num_enum_items: usize,
+    inner: GraphSccs<'a, TypeIndex, ()>,
 }
 
 impl<'a> TypeSccs<'a> {
@@ -88,30 +88,14 @@ impl<'a> TypeSccs<'a> {
         self.inner.iter_cycles().map(move |cycle_node_indexes| {
             cycle_node_indexes
                 .iter()
-                .map(|node_index| self.get_type_index(*node_index))
+                .map(|node_index| self.inner.graph[*node_index])
         })
     }
 
     pub fn iter_post_order(&self) -> impl '_ + Iterator<Item = TypeIndex> {
         self.inner
             .iter_post_order()
-            .map(|node_index| self.get_type_index(node_index))
-    }
-
-    fn get_type_index(&self, node_index: NodeIndex) -> TypeIndex {
-        let mut node_index = node_index.index();
-
-        if let Some(built_in) = BuiltInType::from_index(node_index) {
-            return built_in.into();
-        }
-        node_index -= BuiltInType::COUNT;
-
-        if node_index < self.num_enum_items {
-            return EnumIndex::from(node_index).into();
-        }
-        node_index -= self.num_enum_items;
-
-        StructIndex::from(node_index).into()
+            .map(|node_index| self.inner.graph[node_index])
     }
 }
 
@@ -170,9 +154,7 @@ impl VarGraph {
         for _ in 0..num_var_items {
             inner.add_node(());
         }
-        VarGraph {
-            inner,
-        }
+        VarGraph { inner }
     }
 
     pub fn record_ref(

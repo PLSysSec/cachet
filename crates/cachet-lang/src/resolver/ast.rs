@@ -189,10 +189,12 @@ impl Typed for TypeIndex {
 impl Typed for Literal {
     fn type_(&self) -> TypeIndex {
         match self {
-            Self::Int32(_) => BuiltInType::Int32.into(),
-            Self::Int64(_) => BuiltInType::Int64.into(),
-            Self::UInt16(_) => BuiltInType::UInt16.into(),
-            Self::UInt64(_) => BuiltInType::UInt64.into(),
+            Self::Int16(_) => BuiltInType::INT16.into(),
+            Self::Int32(_) => BuiltInType::INT32.into(),
+            Self::Int64(_) => BuiltInType::INT64.into(),
+            Self::UInt16(_) => BuiltInType::UINT16.into(),
+            Self::UInt32(_) => BuiltInType::UINT32.into(),
+            Self::UInt64(_) => BuiltInType::UINT64.into(),
             Self::Double(_) => BuiltInType::Double.into(),
         }
     }

@@ -15,7 +15,9 @@ axiom (forall x: #Unit, y: #Unit :: x == y);
 type #Bool = bool;
 
 type #UInt16 = bv16;
+type #Int16 = bv16;
 type #Int32 = bv32;
+type #UInt32 = bv32;
 type #Int64 = bv64;
 type #UInt64 = bv64;
 type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/issues/29#issuecomment-231239065
@@ -23,8 +25,56 @@ type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/i
 // Documentation on the available built-in functions can be found at:
 // https://boogie-docs.readthedocs.io/en/latest/LangRef.html#other-operators
 
-function {:bvbuiltin "(_ sign_extend 32)"} #Int32^to#Int64(n: #Int32): #Int64;
-function {:bvbuiltin "(_ extract 31 0)"} #Int32^from#Int64(n: #Int64): #Int32;
+// Conversions to and from double
+function {:builtin "(_ fp.to_sbv 64) RNE"}  #Double^toInt64 (n: #Double): #Int64;
+function {:builtin "(_ fp.to_sbv 32) RNE"}  #Double^toInt32 (n: #Double): #Int32;
+function {:builtin "(_ fp.to_sbv 16) RNE"}  #Double^toInt16 (n: #Double): #Int16;
+function {:builtin "(_ fp.to_ubv 64) RNE"}  #Double^toUInt64 (n: #Double): #UInt64;
+function {:builtin "(_ fp.to_ubv 32) RNE"}  #Double^toUInt32 (n: #Double): #UInt32;
+function {:builtin "(_ fp.to_ubv 16) RNE"}  #Double^toUInt16 (n: #Double): #UInt16;
+
+
+function {:bvbuiltin "(_ extract 15 0)"}   #Int64^to#Int16 (n: #Int64): #Int16;
+function {:bvbuiltin "(_ extract 15 0)"}   #Int64^to#UInt16(n: #Int64): #UInt16;
+function {:bvbuiltin "(_ extract 31 0)"}   #Int64^to#Int32 (n: #Int64): #Int32;
+function {:bvbuiltin "(_ extract 31 0)"}   #Int64^to#UInt32(n: #Int64): #UInt32;
+function                                   #Int64^to#UInt64(n: #Int64): #UInt64 { n }
+function {:builtin "(_ to_fp 11 53) RNE"}  #Int64^to#Double(n: #Int64): #Double;
+
+function {:bvbuiltin "(_ extract 15 0)"}   #Int32^to#Int16 (n: #Int32): #Int16;
+function {:bvbuiltin "(_ extract 15 0)"}   #Int32^to#UInt16(n: #Int32): #UInt16;
+function                                   #Int32^to#UInt32(n: #Int32): #UInt32 { n }
+function {:bvbuiltin "(_ sign_extend 32)"} #Int32^to#Int64 (n: #Int32): #Int64;
+function {:bvbuiltin "(_ sign_extend 32)"} #Int32^to#UInt64(n: #Int32): #UInt64;
+function {:builtin "(_ to_fp 11 53) RNE"}  #Int32^to#Double(n: #Int32): #Double;
+
+function                                   #Int16^to#UInt16(n: #Int16): #UInt16 { n }
+function {:bvbuiltin "(_ sign_extend 16)"} #Int16^to#Int32 (n: #Int16): #Int32;
+function {:bvbuiltin "(_ sign_extend 16)"} #Int16^to#UInt32(n: #Int16): #UInt32;
+function {:bvbuiltin "(_ sign_extend 48)"} #Int16^to#Int64 (n: #Int16): #Int64;
+function {:bvbuiltin "(_ sign_extend 48)"} #Int16^to#UInt64(n: #Int16): #UInt64;
+function {:builtin "(_ to_fp 11 53) RNE"}  #Int16^to#Double(n: #Int16): #Double;
+
+function                                   #UInt16^to#Int16 (n: #UInt16): #UInt16 { n }
+function {:bvbuiltin "(_ zero_extend 16)"} #UInt16^to#Int32 (n: #UInt16): #Int32;
+function {:bvbuiltin "(_ zero_extend 16)"} #UInt16^to#UInt32(n: #UInt16): #UInt32;
+function {:bvbuiltin "(_ zero_extend 48)"} #UInt16^to#Int64 (n: #UInt16): #Int64;
+function {:bvbuiltin "(_ zero_extend 48)"} #UInt16^to#UInt64(n: #UInt16): #UInt64;
+function {:builtin "(_ to_fp 11 53) RNE"}  #UInt16^to#Double(n: #UInt16): #Double;
+
+function {:bvbuiltin "(_ extract 15 0)"}   #UInt32^to#Int16 (n: #UInt32): #Int16;
+function {:bvbuiltin "(_ extract 15 0)"}   #UInt32^to#UInt16(n: #UInt32): #UInt16;
+function                                   #UInt32^to#Int32 (n: #UInt32): #Int32 { n }
+function {:bvbuiltin "(_ zero_extend 32)"} #UInt32^to#Int64 (n: #UInt32): #Int64;
+function {:bvbuiltin "(_ zero_extend 32)"} #UInt32^to#UInt64(n: #UInt32): #UInt64;
+function {:builtin "(_ to_fp 11 53) RNE"}  #UInt32^to#Double(n: #UInt32): #Double;
+
+function {:bvbuiltin "(_ extract 15 0)"}   #UInt64^to#Int16 (n: #UInt64): #Int16;
+function {:bvbuiltin "(_ extract 15 0)"}   #UInt64^to#UInt16(n: #UInt64): #UInt16;
+function {:bvbuiltin "(_ extract 31 0)"}   #UInt64^to#Int32 (n: #UInt64): #Int32;
+function {:bvbuiltin "(_ extract 31 0)"}   #UInt64^to#UInt32(n: #UInt64): #UInt32;
+function                                   #UInt64^to#Int64 (n: #UInt64): #Int64 { n }
+function {:builtin "(_ to_fp 11 53) RNE"}  #UInt64^to#Double(n: #UInt64): #Double;
 
 function {:bvbuiltin "bvneg"} #Int32^negate(n: #Int32): #Int32;
 function {:bvbuiltin "bvadd"} #Int32^add(x: #Int32, y: #Int32): #Int32;
@@ -117,10 +167,6 @@ function {:inline} #Set~remove<a>(set: #Set a, value: a): #Set a {
 }
 
 // Impls for cachet's prelude...
-
-// See the heading "Conversion from other sorts":
-// https://smtlib.cs.uiowa.edu/theories-FloatingPoint.shtml
-function {:builtin "(_ to_fp 11 53) RNE"} #Double~from_i32(n: #Int32): #Double;
 
 const #Double~INFINITY: #Double;
 axiom #Double~INFINITY == 0+oo53e11;

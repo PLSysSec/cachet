@@ -462,7 +462,9 @@ NumericCompareBinOper: NumericCompareBinOper = {
 
 Literal: Literal = {
     <n:UInt16Literal> => Literal::UInt16(n),
+    <n:UInt32Literal> => Literal::UInt32(n),
     <n:UInt64Literal> => Literal::UInt64(n),
+    <n:Int16Literal> => Literal::Int16(n),
     <n:Int32Literal> => Literal::Int32(n),
     <n:Int64Literal> => Literal::Int64(n),
     <n:DoubleLiteral> => Literal::Double(n),
@@ -482,9 +484,23 @@ UInt64Literal: u64 =
                 error: Spanned::new(digits.span, "number too large to fit in UInt16"),
             });
 
+Int16Literal: i16 =
+    <digits:Spanned<r"[0-9]+_i16">> =>?
+        i16::from_str(&digits.value[..digits.value.len() - 4])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in Int32"),
+            });
+
 Int32Literal: i32 =
     <digits:Spanned<r"[0-9]+_i32">> =>?
         i32::from_str(&digits.value[..digits.value.len() - 4])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in Int32"),
+            });
+
+UInt32Literal: u32 =
+    <digits:Spanned<r"[0-9]+_u32">> =>?
+        u32::from_str(&digits.value[..digits.value.len() - 4])
             .map_err(|error| RawParseError::User {
                 error: Spanned::new(digits.span, "number too large to fit in Int32"),
             });

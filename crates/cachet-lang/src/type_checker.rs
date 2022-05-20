@@ -12,10 +12,10 @@ use lazy_static::lazy_static;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
-    BinOper, BlockKind, CastKind, CompareBinOper, Ident, MaybeSpanned, NegateKind, Path, Span,
+    BinOper, BlockKind, CastSafety, CompareBinOper, Ident, MaybeSpanned, NegateKind, Path, Span,
     Spanned, VarParamKind,
 };
-use crate::built_in::{BuiltInType, BuiltInVar};
+use crate::built_in::{BuiltInType, BuiltInVar, IdentEnum};
 use crate::resolver;
 use crate::FrontendError;
 
@@ -127,7 +127,10 @@ impl<'a> TypeChecker<'a> {
                 }
             });
 
-        let global_var_decl_order = self.flatten_global_var_graph().into_iter().map(DeclIndex::from);
+        let global_var_decl_order = self
+            .flatten_global_var_graph()
+            .into_iter()
+            .map(DeclIndex::from);
 
         let callable_decl_order = self.flatten_call_graph().into_iter().map(DeclIndex::from);
 
@@ -203,25 +206,24 @@ impl<'a> TypeChecker<'a> {
         for cycle_var_indexes in var_sccs.iter_cycles() {
             let mut cycle_vars: Vec<_> = cycle_var_indexes
                 .map(|cycle_var_index| {
-                   cycle_var_index 
-                        .map(|cycle_var_index| self.env[cycle_var_index].path.value)
+                    cycle_var_index.map(|cycle_var_index| self.env[cycle_var_index].path.value)
                 })
                 .collect();
 
             // Rotate cycle_callables so that the first element corresponds to
             // the call that appears first in the source code.
-            let first_cycle_var_index = cycle_vars 
+            let first_cycle_var_index = cycle_vars
                 .iter()
                 .enumerate()
                 .min_by_key(|(_, cycle_callable)| cycle_callable.span)
                 .map(|(cycle_var_index, _)| cycle_var_index)
                 .unwrap();
-             cycle_vars.rotate_left(first_cycle_var_index);
+            cycle_vars.rotate_left(first_cycle_var_index);
 
-            let first_cycle_callable =  cycle_vars.remove(0);
+            let first_cycle_callable = cycle_vars.remove(0);
             self.errors.push(TypeCheckError::CallCycle {
                 first_cycle_callable,
-                other_cycle_callables:  cycle_vars,
+                other_cycle_callables: cycle_vars,
             });
         }
 
@@ -371,29 +373,51 @@ impl<'a> TypeChecker<'a> {
 
     fn expect_expr_type(&mut self, expr: Spanned<Expr>, type_index: TypeIndex) -> Expr {
         let expr_span = expr.span;
-        let (success, expr) = self.try_build_upcast_chain(expr.value, type_index);
-        if !success {
-            self.errors.push(TypeCheckError::TypeMismatch {
-                expected_type: self.get_type_ident(type_index),
-                found_type: self.get_type_ident(expr.type_()),
-                span: expr_span,
-            });
+
+        match self.try_build_cast_chain(CastSafety::Lossless, expr.value, type_index) {
+            Ok(expr) => expr,
+            Err(expr) => {
+                self.errors.push(TypeCheckError::TypeMismatch {
+                    expected_type: self.get_type_ident(type_index),
+                    found_type: self.get_type_ident(expr.type_()),
+                    span: expr_span,
+                });
+                expr
+            }
         }
-        expr
     }
 
-    fn try_build_upcast_chain(&self, expr: Expr, type_: TypeIndex) -> (bool, Expr) {
-        let upcast_route = match self.try_match_types(type_, expr.type_()) {
-            Some(upcast_route) => upcast_route,
-            None => return (false, expr),
-        };
-        (
-            true,
-            build_cast_chain(CastKind::Upcast, expr, upcast_route.into_iter()),
-        )
+    fn try_build_cast_chain(
+        &self,
+        min_safety: CastSafety,
+        expr: Expr,
+        type_: TypeIndex,
+    ) -> Result<Expr, Expr> {
+        if expr.type_() == type_ {
+            return Ok(expr);
+        }
+
+        match (expr.type_(), type_) {
+            (TypeIndex::BuiltIn(src_built_in), TypeIndex::BuiltIn(target_built_in)) => {
+                let safety = src_built_in.casts_to(target_built_in);
+                if safety >= min_safety {
+                    Ok(build_cast_chain(safety, expr, iter::once(type_)))
+                } else {
+                    Err(expr)
+                }
+            }
+            _ => match self.find_upcast_route(type_, expr.type_()) {
+                None => Err(expr),
+                Some(route) => Ok(build_cast_chain(
+                    CastSafety::Lossless,
+                    expr,
+                    route.into_iter(),
+                )),
+            },
+        }
     }
 
-    fn try_match_types(
+    fn find_upcast_route(
         &self,
         supertype_index: TypeIndex,
         subtype_index: TypeIndex,
@@ -406,8 +430,7 @@ impl<'a> TypeChecker<'a> {
         let mut curr_type_index = subtype_index;
         loop {
             curr_type_index = match curr_type_index {
-                TypeIndex::BuiltIn(built_in_type) => built_in_type.supertype()?.into(),
-                TypeIndex::Enum(_) => return None,
+                TypeIndex::BuiltIn(_) | TypeIndex::Enum(_) => return None,
                 TypeIndex::Struct(struct_index) => self.env[struct_index].supertype?,
             };
             debug_assert_ne!(curr_type_index, self.unknown_type());
@@ -472,7 +495,7 @@ impl<'a> TypeChecker<'a> {
 }
 
 fn build_cast_chain(
-    kind: CastKind,
+    kind: CastSafety,
     expr: Expr,
     cast_route: impl Iterator<Item = TypeIndex>,
 ) -> Expr {
@@ -494,39 +517,42 @@ enum ItemContext<'b> {
         locals: &'b mut resolver::Locals,
     },
     Var {
-        index: GlobalVarIndex
-    }
-} 
+        index: GlobalVarIndex,
+    },
+}
 
 impl<'b> ItemContext<'b> {
-    fn param<I>(&self, index: I) -> &<resolver::Params as Index<I>>::Output where resolver::Params: Index<I> {
+    fn param<I>(&self, index: I) -> &<resolver::Params as Index<I>>::Output
+    where
+        resolver::Params: Index<I>,
+    {
         match self {
-            ItemContext::Callable { item, .. } => {
-                &item.params[index]
-            }
-            ItemContext::Var {..} => {
+            ItemContext::Callable { item, .. } => &item.params[index],
+            ItemContext::Var { .. } => {
                 panic!("attempted to look up param in non-callable context");
             }
         }
     }
 
-    fn local<I>(&self, index: I) -> &<resolver::Locals as Index<I>>::Output where resolver::Locals: Index<I> {
+    fn local<I>(&self, index: I) -> &<resolver::Locals as Index<I>>::Output
+    where
+        resolver::Locals: Index<I>,
+    {
         match self {
-            ItemContext::Callable { locals, .. } => {
-                &locals[index]
-            }
-            ItemContext::Var {..} => {
+            ItemContext::Callable { locals, .. } => &locals[index],
+            ItemContext::Var { .. } => {
                 panic!("attempted to look up param in non-callable context");
             }
         }
     }
 
-    fn local_mut<I>(&mut self, index: I) -> &mut <resolver::Locals as Index<I>>::Output where resolver::Locals: IndexMut<I> {
+    fn local_mut<I>(&mut self, index: I) -> &mut <resolver::Locals as Index<I>>::Output
+    where
+        resolver::Locals: IndexMut<I>,
+    {
         match self {
-            ItemContext::Callable { locals, .. } => {
-                &mut locals[index]
-            }
-            ItemContext::Var {..} => {
+            ItemContext::Callable { locals, .. } => &mut locals[index],
+            ItemContext::Var { .. } => {
                 panic!("attempted to look up param in non-callable context");
             }
         }
@@ -557,10 +583,7 @@ impl<'a, 'b> DerefMut for ScopedTypeChecker<'a, 'b> {
 }
 
 impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
-    fn for_global_var(
-        type_checker: &'b mut TypeChecker<'a>,
-        index: GlobalVarIndex,
-    ) -> Self {
+    fn for_global_var(type_checker: &'b mut TypeChecker<'a>, index: GlobalVarIndex) -> Self {
         ScopedTypeChecker {
             type_checker,
             context: ItemContext::Var { index },
@@ -568,11 +591,10 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             interprets: None,
             emits: None,
         }
-
     }
     fn for_callable(
         type_checker: &'b mut TypeChecker<'a>,
-        index:CallableIndex,
+        index: CallableIndex,
         interprets: Option<Spanned<IrIndex>>,
         emits: Option<Spanned<IrIndex>>,
         locals: &'b mut resolver::Locals,
@@ -581,7 +603,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let context = ItemContext::Callable {
             index,
             item: callable,
-            locals
+            locals,
         };
 
         let is_unsafe = callable.is_unsafe;
@@ -599,12 +621,16 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         ScopedTypeChecker {
             type_checker: self.type_checker,
             context: match &mut self.context {
-                ItemContext::Callable { index, item, locals } => ItemContext::Callable {
+                ItemContext::Callable {
+                    index,
+                    item,
+                    locals,
+                } => ItemContext::Callable {
                     index: *index,
                     item,
-                    locals
+                    locals,
                 },
-                ItemContext::Var { index } => ItemContext::Var { index: *index }
+                ItemContext::Var { index } => ItemContext::Var { index: *index },
             },
             is_unsafe: self.is_unsafe || is_unsafe,
             interprets: self.interprets,
@@ -721,9 +747,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 ident: param_ident,
                 type_: Some(param_type_index),
                 ..
-            }) => {
-                let (success, expr) = self.try_build_upcast_chain(expr, param_type_index);
-                if !success {
+            }) => match self.try_build_cast_chain(CastSafety::Lossless, expr, param_type_index) {
+                Ok(expr) => expr,
+                Err(expr) => {
                     self.type_checker
                         .errors
                         .push(TypeCheckError::ArgTypeMismatch {
@@ -733,9 +759,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                             target,
                             param: param_ident,
                         });
+                    expr
                 }
-                expr
-            }
+            },
             _ => expr,
         };
 
@@ -761,14 +787,16 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             OutVar::Free(var_index) => self.get_var_type(var_index),
             // If this is an `out let foo`-style argument with no type
             // ascription, infer the type from the parameter.
-            OutVar::Fresh(local_var_index) => *self.context.local_mut(local_var_index)
+            OutVar::Fresh(local_var_index) => *self
+                .context
+                .local_mut(local_var_index)
                 .type_
                 .get_or_insert(param_type_index),
         };
 
         // Upcasting may be needed to convert from the type the out-parameter
         // yields to the type of the variable being written.
-        let upcast_route = match self.try_match_types(arg_type_index, param_type_index) {
+        let upcast_route = match self.find_upcast_route(arg_type_index, param_type_index) {
             Some(upcast_route) => upcast_route,
             None => {
                 self.type_checker
@@ -866,9 +894,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
     fn type_check_call(&mut self, call: &resolver::Call) -> Call {
         if let ItemContext::Callable { index, .. } = self.context {
-            self.type_checker
-                .call_graph
-                .record_call(index, call.target);
+            self.type_checker.call_graph.record_call(index, call.target);
         }
         let callable_item = &self.env[call.target.value];
 
@@ -1042,15 +1068,20 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         // location.
 
         let default = Spanned::new(ret_stmt.value.span, VarIndex::from(BuiltInVar::Unit)).into();
-        let value_or_default = ret_stmt.value.as_ref().map(|value| value.as_ref().unwrap_or(&default));
+        let value_or_default = ret_stmt
+            .value
+            .as_ref()
+            .map(|value| value.as_ref().unwrap_or(&default));
 
         let value = match self.context {
-            ItemContext::Callable {item, ..} =>
-                self.type_check_expr_expecting_type(value_or_default, item.type_()),
-            
-            ItemContext::Var {..} => {
-                self.errors
-                    .push(TypeCheckError::ReturnOutsideCallable { span: value_or_default.span });
+            ItemContext::Callable { item, .. } => {
+                self.type_check_expr_expecting_type(value_or_default, item.type_())
+            }
+
+            ItemContext::Var { .. } => {
+                self.errors.push(TypeCheckError::ReturnOutsideCallable {
+                    span: value_or_default.span,
+                });
                 self.type_check_expr(&value_or_default.value)
             }
         };
@@ -1074,8 +1105,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     ),
 
                     callable: match self.context {
-                        ItemContext::Callable {item, ..} => Some(item.path.value),
-                        ItemContext::Var {..} => None,
+                        ItemContext::Callable { item, .. } => Some(item.path.value),
+                        ItemContext::Var { .. } => None,
                     },
 
                     expected_ir: self.interprets.map(|interprets| {
@@ -1106,8 +1137,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                         self.get_label_ident(bind_stmt.label.value).value,
                     ),
                     callable: match self.context {
-                        ItemContext::Callable {item, ..} => Some(item.path.value),
-                        ItemContext::Var {..} => None,
+                        ItemContext::Callable { item, .. } => Some(item.path.value),
+                        ItemContext::Var { .. } => None,
                     },
                     expected_ir: self
                         .emits
@@ -1137,8 +1168,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                         .push(TypeCheckError::EmitIrMismatch {
                             op: Spanned::new(call.target.span, callable_item.path.value),
                             callable: match self.context {
-                                ItemContext::Callable {item, ..} => Some(item.path.value),
-                                ItemContext::Var {..} => None,
+                                ItemContext::Callable { item, .. } => Some(item.path.value),
+                                ItemContext::Var { .. } => None,
                             },
                             expected_ir: self
                                 .emits
@@ -1189,8 +1220,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     fn type_check_var_expr(&mut self, var_index: Spanned<VarIndex>) -> VarExpr {
         let var_type_index = self.get_var_type(var_index);
         if let VarIndex::Global(target) = var_index.value {
-            if let ItemContext::Var {index: source} = self.context {
-                self.var_graph.record_ref(source, Spanned::new(var_index.span, target));
+            if let ItemContext::Var { index: source } = self.context {
+                self.var_graph
+                    .record_ref(source, Spanned::new(var_index.span, target));
             }
         }
 
@@ -1287,9 +1319,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
                 match expr_type_index {
                     TypeIndex::BuiltIn(BuiltInType::Bool) => CastExpr {
-                        kind: CastKind::Upcast,
+                        kind: CastSafety::Lossless,
                         expr: expr.value,
-                        type_: BuiltInType::Int32.into(),
+                        type_: BuiltInType::INT32.into(),
                     }
                     .into(),
                     _ => expr.value,
@@ -1306,60 +1338,59 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
     fn type_check_cast_expr(&mut self, cast_expr: &resolver::CastExpr) -> Expr {
         let expr = self.type_check_expr(&cast_expr.expr.value);
-
-        let target_type_index = cast_expr.type_;
-        let (upcast_success, expr) = self.try_build_upcast_chain(expr, target_type_index.value);
-        if upcast_success {
-            return expr;
-        }
-
         let source_type_index = expr.type_();
-        if let Some(downcast_route) =
-            self.try_match_types(source_type_index, target_type_index.value)
-        {
-            if !self.is_unsafe {
-                self.type_checker
-                    .errors
-                    .push(TypeCheckError::UnsafeCastInSafeContext {
-                        source_type: self.get_type_ident(source_type_index),
-                        target_type: target_type_index
-                            .map(|target_type_index| self.get_type_ident(target_type_index)),
-                    });
+        let target_type_index = cast_expr.type_;
+        match self.try_build_cast_chain(CastSafety::Truncating, expr, target_type_index.value) {
+            Ok(expr) => expr,
+            Err(expr) => {
+                // Let's try downcasting
+                if let Some(route) = self.find_upcast_route(expr.type_(), target_type_index.value)
+                {
+                    // Okay, we found a downcast route, but let's make sure we're allowed to use it
+                    if !self.is_unsafe {
+                        self.type_checker
+                            .errors
+                            .push(TypeCheckError::UnsafeCastInSafeContext {
+                                source_type: self.get_type_ident(source_type_index),
+                                target_type: target_type_index.map(|target_type_index| {
+                                    self.get_type_ident(target_type_index)
+                                }),
+                            });
+                    }
+
+                    // We now have a route from destination type to expr_type: (dest, expr]
+                    // but we want a route from expr_type to destination: (expr, dest]
+                    // so we reverse the route, skip the first entry (the expr type) and append the
+                    // dest type
+                    return build_cast_chain(
+                        CastSafety::Unsafe,
+                        expr,
+                        iterate![..route.into_iter().rev().skip(1), target_type_index.value],
+                    );
+                }
+
+                // Okay, we tried out best but no possible chain exists
+                self.type_checker.errors.push(TypeCheckError::InvalidCast {
+                    source_type: self.get_type_ident(source_type_index),
+                    target_type: self.get_type_ident(target_type_index.value),
+                    expr_span: cast_expr.expr.span,
+                });
+
+                // Emit an impossible, but correctly-typed cast expression so that anything
+                // depending on its type for inference lines up correctly.
+                CastExpr {
+                    kind: CastSafety::Lossless,
+                    expr,
+                    type_: target_type_index.value,
+                }
+                .into()
             }
-
-            if downcast_route.is_empty() {
-                return expr;
-            }
-
-            return build_cast_chain(
-                CastKind::Downcast,
-                expr,
-                iterate![
-                    ..downcast_route.into_iter().rev().skip(1),
-                    target_type_index.value
-                ],
-            );
         }
-
-        self.type_checker.errors.push(TypeCheckError::InvalidCast {
-            source_type: self.get_type_ident(source_type_index),
-            target_type: self.get_type_ident(target_type_index.value),
-            expr_span: cast_expr.expr.span,
-        });
-
-        // Emit an incorrectly-typed cast expression so that anything depending
-        // on its type for inference lines up correctly.
-        CastExpr {
-            kind: CastKind::Upcast,
-            expr,
-            type_: target_type_index.value,
-        }
-        .into()
     }
 
     fn type_check_bin_oper_expr(&mut self, bin_oper_expr: &resolver::BinOperExpr) -> BinOperExpr {
-        let mut lhs = self.type_check_expr(&bin_oper_expr.lhs.value);
-        let mut rhs = self.type_check_expr(&bin_oper_expr.rhs.value);
+        let lhs = self.type_check_expr(&bin_oper_expr.lhs.value);
+        let rhs = self.type_check_expr(&bin_oper_expr.rhs.value);
 
         let lhs_type_index = lhs.type_();
         let rhs_type_index = rhs.type_();
@@ -1404,22 +1435,27 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         // Ensure the types of the left- and right-hand operands match,
         // upcasting as necessary.
-        let mut success;
-        (success, rhs) = self.try_build_upcast_chain(rhs, lhs_type_index);
-        if !success {
-            (success, lhs) = self.try_build_upcast_chain(lhs, rhs_type_index);
-            if !success {
-                self.type_checker
-                    .errors
-                    .push(TypeCheckError::BinaryOperatorTypeMismatch {
-                        operator_span: bin_oper_expr.oper.span,
-                        lhs_span: bin_oper_expr.lhs.span,
-                        lhs_type: self.get_type_ident(lhs_type_index),
-                        rhs_span: bin_oper_expr.rhs.span,
-                        rhs_type: self.get_type_ident(rhs_type_index),
-                    });
-            }
-        }
+        let (lhs, rhs) = match self.try_build_cast_chain(CastSafety::Lossless, rhs, lhs_type_index)
+        {
+            Ok(rhs) => (lhs, rhs),
+            Err(rhs) => match self.try_build_cast_chain(CastSafety::Lossless, lhs, rhs_type_index)
+            {
+                Ok(lhs) => (lhs, rhs),
+                Err(lhs) => {
+                    self.type_checker
+                        .errors
+                        .push(TypeCheckError::BinaryOperatorTypeMismatch {
+                            operator_span: bin_oper_expr.oper.span,
+                            lhs_span: bin_oper_expr.lhs.span,
+                            lhs_type: self.get_type_ident(lhs_type_index),
+                            rhs_span: bin_oper_expr.rhs.span,
+                            rhs_type: self.get_type_ident(rhs_type_index),
+                        });
+
+                    (lhs, rhs)
+                }
+            },
+        };
 
         // Compute the output type.
         let type_ = match bin_oper_expr.oper.value {
@@ -1441,19 +1477,22 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let lhs_type_index = self.get_var_type(assign_expr.lhs);
 
         let rhs = self.type_check_expr(&assign_expr.rhs.value);
-        let (success, rhs) = self.try_build_upcast_chain(rhs, lhs_type_index);
-        if !success {
-            let lhs_path = self.get_var_path(assign_expr.lhs.value);
-            self.type_checker
-                .errors
-                .push(TypeCheckError::AssignTypeMismatch {
-                    expected_type: self.get_type_ident(lhs_type_index),
-                    found_type: self.get_type_ident(rhs.type_()),
-                    lhs: lhs_path.value,
-                    lhs_defined_at: lhs_path.span,
-                    rhs_span: assign_expr.rhs.span,
-                });
-        }
+        let rhs = match self.try_build_cast_chain(CastSafety::Lossless, rhs, lhs_type_index) {
+            Ok(rhs) => rhs,
+            Err(rhs) => {
+                let lhs_path = self.get_var_path(assign_expr.lhs.value);
+                self.type_checker
+                    .errors
+                    .push(TypeCheckError::AssignTypeMismatch {
+                        expected_type: self.get_type_ident(lhs_type_index),
+                        found_type: self.get_type_ident(rhs.type_()),
+                        lhs: lhs_path.value,
+                        lhs_defined_at: lhs_path.span,
+                        rhs_span: assign_expr.rhs.span,
+                    });
+                rhs
+            }
+        };
 
         AssignExpr {
             lhs: assign_expr.lhs,
@@ -1466,10 +1505,18 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             VarIndex::BuiltIn(built_in_var) => Path::from(built_in_var.ident()).into(),
             VarIndex::EnumVariant(enum_variant_index) => self.env[enum_variant_index].into(),
             VarIndex::Global(global_var_index) => self.env[global_var_index].path.into(),
-            VarIndex::Param(var_param_index) => self.context.param(var_param_index).ident.map(Path::from).into(),
-            VarIndex::Local(local_var_index) => {
-                self.context.local(local_var_index).ident.map(Path::from).into()
-            }
+            VarIndex::Param(var_param_index) => self
+                .context
+                .param(var_param_index)
+                .ident
+                .map(Path::from)
+                .into(),
+            VarIndex::Local(local_var_index) => self
+                .context
+                .local(local_var_index)
+                .ident
+                .map(Path::from)
+                .into(),
         }
     }
 
@@ -1494,7 +1541,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
     fn get_label_ident(&self, label_index: LabelIndex) -> Spanned<Ident> {
         match label_index {
-            LabelIndex::Param(label_param_index) => self.context.param(label_param_index).label.ident,
+            LabelIndex::Param(label_param_index) => {
+                self.context.param(label_param_index).label.ident
+            }
             LabelIndex::Local(local_label_index) => self.context.local(local_label_index).ident,
         }
     }
@@ -1567,17 +1616,16 @@ fn does_expr_exit_early(expr: &Expr) -> bool {
 
 fn is_const(expr: &Expr) -> bool {
     match expr {
-        Expr::Var(_) 
-        | Expr::Literal(_) => true,
+        Expr::Var(_) | Expr::Literal(_) => true,
         Expr::BinOper(e) => match e.oper {
-            BinOper::Arith(_)
-            | BinOper::Bitwise(_)
-            | BinOper::Compare(_) => is_const(&e.lhs) && is_const(&e.rhs),
+            BinOper::Arith(_) | BinOper::Bitwise(_) | BinOper::Compare(_) => {
+                is_const(&e.lhs) && is_const(&e.rhs)
+            }
 
             // Don't allow logical operators because the normalizer will introduce if/else
-            // statements. 
+            // statements.
             BinOper::Logical(_) => false,
-        }
+        },
         Expr::Negate(e) => is_const(&e.expr),
         Expr::Invoke(_)
         | Expr::FieldAccess(_)

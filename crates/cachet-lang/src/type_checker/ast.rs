@@ -9,7 +9,7 @@ use typed_index_collections::TiVec;
 
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
-use crate::ast::{BinOper, BlockKind, CastKind, CheckKind, Ident, NegateKind, Path, Spanned};
+use crate::ast::{BinOper, BlockKind, CastSafety, CheckKind, Ident, NegateKind, Path, Spanned};
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::resolver;
 pub use crate::resolver::{
@@ -572,7 +572,7 @@ impl Typed for NegateExpr {
 
 #[derive(Clone, Debug)]
 pub struct CastExpr {
-    pub kind: CastKind,
+    pub kind: CastSafety,
     pub expr: Expr,
     pub type_: TypeIndex,
 }

@@ -1,0 +1,22 @@
+struct A <: B;
+struct B <: C;
+struct C;
+
+fn test(a: A, b: B, c: C) {
+    assume a == b;
+    assert a as B == b;
+    unsafe {
+        assert b as A == a;
+    }
+
+    assume b == c;
+    assert b as C == c;
+    assert a as C == c;
+    (unsafe {
+        assert c as B == b;
+        assert c as A == a;
+    })
+
+}
+
+fn foo(){}

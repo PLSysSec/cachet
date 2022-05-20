@@ -34,26 +34,13 @@ pub enum NegateKind {
     Logical,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum CastKind {
-    Downcast,
-    Upcast,
-}
-
-impl CastKind {
-    pub const fn is_unsafe(self) -> bool {
-        match self {
-            CastKind::Downcast => true,
-            CastKind::Upcast => false,
-        }
-    }
-
-    pub const fn reverse(self) -> Self {
-        match self {
-            CastKind::Downcast => CastKind::Upcast,
-            CastKind::Upcast => CastKind::Downcast,
-        }
-    }
+/// Describes how "safe" a cast is.
+/// The variants are ordered so that less safe variants < more safe variants
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+pub enum CastSafety {
+    Unsafe,     // Downcasting (requires unsafe context)
+    Truncating, // Numeric conversions that lose data (requires explicit annotation)
+    Lossless,   // Upcasting and value-preserving numeric conversions (can be safely inferred)
 }
 
 #[derive(Clone, Copy, Debug, Display, Eq, Hash, From, PartialEq)]

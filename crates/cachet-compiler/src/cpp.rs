@@ -1,17 +1,19 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::collections::HashMap;
 use std::iter;
 use std::ops::{Deref, Index};
 
 use derive_more::{Display, From};
+use enum_iterator::IntoEnumIterator;
 use enum_map::EnumMap;
 use enumset::EnumSet;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
-use cachet_lang::ast::{BinOper, CastKind, Ident, Path, VarParamKind};
-use cachet_lang::built_in::BuiltInType;
+use cachet_lang::ast::{BinOper, Ident, Path, VarParamKind};
+use cachet_lang::built_in::{BuiltInType, IdentEnum};
 use cachet_lang::normalizer::{self, HasAttrs, Typed};
 
 use crate::cpp::ast::*;
@@ -123,7 +125,7 @@ impl From<normalizer::IrIndex> for IrItemBucketIndex {
 
 #[derive(Clone)]
 struct ItemBuckets {
-    built_in_type_namespace_items: [NamespaceItem; BuiltInType::COUNT],
+    built_in_type_namespace_items: HashMap<BuiltInType, NamespaceItem>,
     enum_namespace_items: TiVec<normalizer::EnumIndex, NamespaceItem>,
     struct_namespace_items: TiVec<normalizer::StructIndex, NamespaceItem>,
     ir_item_buckets: TiVec<normalizer::IrIndex, IrItemBuckets>,
@@ -145,8 +147,9 @@ impl ItemBuckets {
         };
 
         ItemBuckets {
-            built_in_type_namespace_items: BuiltInType::ALL
-                .map(|built_in_type| init_namespace_item(built_in_type.ident())),
+            built_in_type_namespace_items: BuiltInType::into_enum_iter()
+                .map(|built_in_type| (built_in_type, init_namespace_item(built_in_type.ident())))
+                .collect(),
             enum_namespace_items: enum_items
                 .iter()
                 .map(|enum_item| init_namespace_item(enum_item.ident.value))
@@ -182,7 +185,11 @@ impl ItemBuckets {
     }
 
     fn bucket_for_built_in_type(&mut self, built_in_type: BuiltInType) -> &mut Vec<Item> {
-        &mut self.built_in_type_namespace_items[built_in_type.index()].items
+        &mut self
+            .built_in_type_namespace_items
+            .get_mut(&built_in_type)
+            .unwrap()
+            .items
     }
 
     fn bucket_for_enum(&mut self, enum_index: normalizer::EnumIndex) -> &mut Vec<Item> {
@@ -214,7 +221,9 @@ impl IntoIterator for ItemBuckets {
 
         iterate![
             ..iterate![
-                ..built_in_type_namespace_items,
+                ..built_in_type_namespace_items
+                    .into_iter()
+                    .map(|(_, items)| items),
                 ..enum_namespace_items,
                 ..struct_namespace_items,
             ]
@@ -371,34 +380,14 @@ impl<'a> Compiler<'a> {
             let supertype_ident = self.get_type_ident(supertype_index);
 
             self.external_decls.bucket_for_struct(struct_index).extend([
-                generate_cast_fn_decl(
-                    CastKind::Downcast,
-                    supertype_ident,
-                    struct_item.ident.value,
-                    ExprTag::Val,
-                )
-                .into(),
-                generate_cast_fn_decl(
-                    CastKind::Downcast,
-                    supertype_ident,
-                    struct_item.ident.value,
-                    ExprTag::Ref,
-                )
-                .into(),
-                generate_cast_fn_decl(
-                    CastKind::Upcast,
-                    supertype_ident,
-                    struct_item.ident.value,
-                    ExprTag::Val,
-                )
-                .into(),
-                generate_cast_fn_decl(
-                    CastKind::Upcast,
-                    supertype_ident,
-                    struct_item.ident.value,
-                    ExprTag::Ref,
-                )
-                .into(),
+                generate_cast_fn_decl(supertype_ident, struct_item.ident.value, ExprTag::Val)
+                    .into(),
+                generate_cast_fn_decl(supertype_ident, struct_item.ident.value, ExprTag::Ref)
+                    .into(),
+                generate_cast_fn_decl(struct_item.ident.value, supertype_ident, ExprTag::Val)
+                    .into(),
+                generate_cast_fn_decl(struct_item.ident.value, supertype_ident, ExprTag::Ref)
+                    .into(),
             ]);
         }
     }
@@ -581,10 +570,7 @@ impl<'a> Compiler<'a> {
             Some(body) => {
                 let mut fn_def = fn_decl.clone();
                 fn_def.is_fully_qualified = true;
-                fn_def.body = Some(self.compile_body(
-                    &callable_item,
-                    body,
-                ));
+                fn_def.body = Some(self.compile_body(&callable_item, body));
 
                 self.internal_decls
                     .bucket_for(item_bucket_index)
@@ -656,13 +642,9 @@ impl<'a> Compiler<'a> {
     fn compile_body(
         &mut self,
         callable: &normalizer::CallableItem,
-        body: &normalizer::Body
+        body: &normalizer::Body,
     ) -> Block {
-        let mut scoped_compiler = ScopedCompiler::new(
-            self,
-            callable.parent,
-            callable.into()
-        );
+        let mut scoped_compiler = ScopedCompiler::new(self, callable.parent, callable.into());
         scoped_compiler.init_mut_var_params(&callable.param_order);
         scoped_compiler.compile_stmts(&body.stmts);
         scoped_compiler.stmts.into()
@@ -678,33 +660,23 @@ impl<'a> Compiler<'a> {
 }
 
 fn generate_cast_fn_decl(
-    kind: CastKind,
-    supertype_ident: Ident,
-    subtype_ident: Ident,
+    source_type_ident: Ident,
+    target_type_ident: Ident,
     param_tag: ExprTag,
 ) -> FnItem {
-    let subtype_path = TypeMemberTypePath {
-        parent: subtype_ident,
+    let source_type_path = TypeMemberTypePath {
+        parent: source_type_ident,
         ident: param_tag.into(),
     };
-    let supertype_path = TypeMemberTypePath {
-        parent: supertype_ident,
+    let target_type_path = TypeMemberTypePath {
+        parent: target_type_ident,
         ident: param_tag.into(),
-    };
-
-    let (source_type_path, target_type_path) = match kind {
-        CastKind::Downcast => (supertype_path, subtype_path),
-        CastKind::Upcast => (subtype_path, supertype_path),
     };
 
     FnItem {
         path: TypeMemberFnPath {
-            parent: subtype_ident,
-            ident: CastTypeMemberFnIdent {
-                kind,
-                supertype: supertype_ident,
-            }
-            .into(),
+            parent: source_type_ident,
+            ident: CastTypeMemberFnIdent { target_type_ident }.into(),
         }
         .into(),
         is_fully_qualified: false,
@@ -718,14 +690,13 @@ fn generate_cast_fn_decl(
     }
 }
 
-
 #[derive(Copy, Clone)]
 enum Scope<'b> {
     Empty,
     Body {
         params: &'b normalizer::Params,
         locals: &'b normalizer::Locals,
-    }
+    },
 }
 
 impl<'b> Scope<'b> {
@@ -735,7 +706,7 @@ impl<'b> Scope<'b> {
     {
         match self {
             Scope::Empty => panic!("Attempted access a local var within an empty scope"),
-            Scope::Body {locals, ..} => &locals[index]
+            Scope::Body { locals, .. } => &locals[index],
         }
     }
 
@@ -745,7 +716,7 @@ impl<'b> Scope<'b> {
     {
         match self {
             Scope::Empty => panic!("Attempted access a param var within an empty scope"),
-            Scope::Body {params, ..} => &params[index]
+            Scope::Body { params, .. } => &params[index],
         }
     }
 }
@@ -753,7 +724,10 @@ impl<'b> Scope<'b> {
 impl<'b> From<&'b normalizer::CallableItem> for Scope<'b> {
     fn from(callable: &'b normalizer::CallableItem) -> Self {
         match &callable.body {
-            Some(body) => Scope::Body { params: &callable.params, locals: &body.locals },
+            Some(body) => Scope::Body {
+                params: &callable.params,
+                locals: &body.locals,
+            },
             None => Self::Empty,
         }
     }
@@ -1214,24 +1188,34 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_literal(&self, literal: &normalizer::Literal) -> TaggedExpr<Literal> {
         match literal {
+            normalizer::Literal::Int16(n) => TaggedExpr {
+                expr: Literal::Int16(*n),
+                type_: BuiltInType::INT16.into(),
+                tags: ExprTag::Val.into(),
+            },
             normalizer::Literal::Int32(n) => TaggedExpr {
                 expr: Literal::Int32(*n),
-                type_: BuiltInType::Int32.into(),
+                type_: BuiltInType::INT32.into(),
                 tags: ExprTag::Val.into(),
             },
             normalizer::Literal::Int64(n) => TaggedExpr {
                 expr: Literal::Int64(*n),
-                type_: BuiltInType::Int64.into(),
+                type_: BuiltInType::INT64.into(),
                 tags: ExprTag::Val.into(),
             },
             normalizer::Literal::UInt16(n) => TaggedExpr {
                 expr: Literal::UInt16(*n),
-                type_: BuiltInType::UInt16.into(),
+                type_: BuiltInType::UINT16.into(),
+                tags: ExprTag::Val.into(),
+            },
+            normalizer::Literal::UInt32(n) => TaggedExpr {
+                expr: Literal::UInt32(*n),
+                type_: BuiltInType::UINT32.into(),
                 tags: ExprTag::Val.into(),
             },
             normalizer::Literal::UInt64(n) => TaggedExpr {
                 expr: Literal::UInt64(*n),
-                type_: BuiltInType::UInt64.into(),
+                type_: BuiltInType::UINT64.into(),
                 tags: ExprTag::Val.into(),
             },
             normalizer::Literal::Double(n) => TaggedExpr {
@@ -1388,35 +1372,48 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_cast_expr<E: CompileExpr + Typed>(
         &self,
         cast_expr: &normalizer::CastExpr<E>,
-    ) -> TaggedExpr<CallExpr> {
+    ) -> TaggedExpr<Expr> {
         let expr = self.use_expr(cast_expr.expr.compile(self), ExprTag::Ref.into());
 
         let source_type_index = cast_expr.expr.type_();
         let target_type_index = cast_expr.type_;
 
-        let (supertype_index, subtype_index) = match cast_expr.kind {
-            CastKind::Downcast => (source_type_index, target_type_index),
-            CastKind::Upcast => (target_type_index, source_type_index),
-        };
+        let source_type_ident = self.get_type_ident(source_type_index);
+        let target_type_ident = self.get_type_ident(target_type_index);
 
-        let supertype_ident = self.get_type_ident(supertype_index);
-        let subtype_ident = self.get_type_ident(subtype_index);
-
-        TaggedExpr {
-            expr: CallExpr {
-                target: TypeMemberFnPath {
-                    parent: subtype_ident,
-                    ident: CastTypeMemberFnIdent {
-                        kind: cast_expr.kind,
-                        supertype: supertype_ident,
+        match (source_type_index, target_type_index) {
+            // Rather than specifying functions for each builtin cast, we'll just use C++
+            // static_casts
+            (
+                cachet_lang::type_checker::TypeIndex::BuiltIn(_),
+                cachet_lang::type_checker::TypeIndex::BuiltIn(_),
+            ) => TaggedExpr {
+                expr: CastExpr {
+                    kind: CastStyle::Functional(FunctionalCastStyle::Static),
+                    type_: TypeMemberTypePath {
+                        parent: target_type_ident,
+                        ident: TypeMemberTypeIdent::ExprTag(ExprTag::Val),
                     }
                     .into(),
+                    expr,
                 }
                 .into(),
-                args: vec![expr],
+                type_: cast_expr.type_(),
+                tags: ExprTag::Val.into(),
             },
-            type_: cast_expr.type_(),
-            tags: ExprTag::Ref.into(),
+            _ => TaggedExpr {
+                expr: CallExpr {
+                    target: TypeMemberFnPath {
+                        parent: source_type_ident,
+                        ident: CastTypeMemberFnIdent { target_type_ident }.into(),
+                    }
+                    .into(),
+                    args: vec![expr],
+                }
+                .into(),
+                type_: cast_expr.type_(),
+                tags: ExprTag::Ref.into(),
+            },
         }
     }
 

@@ -11,8 +11,8 @@ use derive_more::{Display, From};
 use enum_map::Enum;
 
 use cachet_lang::ast::{
-    ArithBinOper, BitwiseBinOper, CastKind, CheckKind, CompareBinOper, Ident, LogicalBinOper,
-    NegateKind, NumericCompareBinOper,
+    ArithBinOper, BitwiseBinOper, CheckKind, CompareBinOper, Ident, LogicalBinOper, NegateKind,
+    NumericCompareBinOper,
 };
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 use cachet_util::{
@@ -288,21 +288,12 @@ pub enum TypeMemberFnSelector {
 
 #[derive(Clone, Copy, Debug)]
 pub struct CastTypeMemberFnSelector {
-    pub kind: CastKind,
-    pub supertype_ident: UserTypeIdent,
+    pub target_type_ident: UserTypeIdent,
 }
 
 impl Display for CastTypeMemberFnSelector {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}{}",
-            match self.kind {
-                CastKind::Downcast => "from",
-                CastKind::Upcast => "to",
-            },
-            self.supertype_ident
-        )?;
+        write!(f, "to{}", self.target_type_ident)?;
         Ok(())
     }
 }

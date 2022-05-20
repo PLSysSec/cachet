@@ -10,7 +10,7 @@ use enum_map::Enum;
 use enumset::EnumSetType;
 
 use cachet_lang::ast::{
-    ArithBinOper, BinOper, BitwiseBinOper, CastKind, CompareBinOper, Ident, NegateKind,
+    ArithBinOper, BinOper, BitwiseBinOper, CompareBinOper, Ident, NegateKind,
     NumericCompareBinOper,
 };
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
@@ -363,8 +363,7 @@ impl ToTagTypeMemberFnIdent {
 
 #[derive(Clone, Copy, Debug)]
 pub struct CastTypeMemberFnIdent {
-    pub kind: CastKind,
-    pub supertype: Ident,
+    pub target_type_ident: Ident,
 }
 
 impl CastTypeMemberFnIdent {
@@ -373,15 +372,7 @@ impl CastTypeMemberFnIdent {
 
 impl Display for CastTypeMemberFnIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}_{}",
-            match self.kind {
-                CastKind::Downcast => "From",
-                CastKind::Upcast => "To",
-            },
-            self.supertype
-        )
+        write!(f, "To_{}", self.target_type_ident)
     }
 }
 
@@ -1010,9 +1001,11 @@ impl FromIterator<Stmt> for BlockExpr {
 // `::std::int32_t(<n>)`?).
 #[derive(Clone, Copy, Debug, Display)]
 pub enum Literal {
+    Int16(i16),
     Int32(i32),
     Int64(i64),
     UInt16(u16),
+    UInt32(u32),
     UInt64(u64),
     Double(f64),
 }

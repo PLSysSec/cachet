@@ -18,6 +18,10 @@ impl Ident {
     pub fn nest(self, ident: Ident) -> Path {
         Path::new(Some(Path::from(self)), ident)
     }
+
+    pub fn from_display(name: impl ToString) -> Self {
+        Ident(name.to_string().into())
+    }
 }
 
 impl<T: ?Sized> AsRef<T> for Ident
