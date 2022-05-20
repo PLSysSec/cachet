@@ -6,7 +6,7 @@ use derive_more::From;
 use enumset::EnumSet;
 use typed_index_collections::TiVec;
 
-use crate::ast::{BinOper, BlockKind, CastKind, CheckKind, NegateKind, Path, Spanned};
+use crate::ast::{BinOper, BlockKind, CastSafety, CheckKind, NegateKind, Path, Spanned};
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 
 pub use crate::type_checker::{
@@ -511,7 +511,7 @@ impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for FieldAccessExpr<PureExpr> {
 
 #[derive(Clone, Debug)]
 pub struct CastExpr<E = Expr> {
-    pub kind: CastKind,
+    pub kind: CastSafety,
     pub expr: E,
     pub type_: TypeIndex,
 }

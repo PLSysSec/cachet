@@ -14,7 +14,7 @@ use typed_index_collections::TiSlice;
 use void::unreachable;
 
 use cachet_lang::ast::{
-    ArithBinOper, BinOper, CastKind, CheckKind, CompareBinOper, Ident, NegateKind, Path,
+    ArithBinOper, BinOper, CastSafety, CheckKind, CompareBinOper, Ident, NegateKind, Path,
     VarParamKind,
 };
 use cachet_lang::built_in::{BuiltInType, BuiltInVar, IdentEnum, Signedness};
@@ -2156,9 +2156,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
 fn compile_literal(literal: flattener::Literal) -> Literal {
     match literal {
+        flattener::Literal::Int16(n) => Literal::Bv16(n as u16),
         flattener::Literal::Int32(n) => Literal::Bv32(n as u32),
         flattener::Literal::Int64(n) => Literal::Bv64(n as u64),
         flattener::Literal::UInt64(n) => Literal::Bv64(n),
+        flattener::Literal::UInt32(n) => Literal::Bv32(n),
         flattener::Literal::UInt16(n) => Literal::Bv16(n),
         flattener::Literal::Double(n) => Literal::Float64(n),
     }

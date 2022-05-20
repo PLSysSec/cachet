@@ -7,7 +7,7 @@ use enum_iterator::IntoEnumIterator;
 use enumset::EnumSetType;
 use lazy_static::lazy_static;
 
-use crate::ast::{CastKind, Ident, Path};
+use crate::ast::{CastSafety, Ident, Path};
 
 macro_rules! impl_ordered_ident_enum {
     ($t:ident) => {
@@ -63,7 +63,7 @@ pub trait IdentEnum: 'static + Sized + Copy + Hash + Eq + IntoEnumIterator {
 }
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Hash, IntoEnumIterator, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, IntoEnumIterator, PartialEq, Eq)]
 pub enum Width {
     W16 = 16,
     W32 = 32,
@@ -117,11 +117,49 @@ impl Display for BuiltInType {
 impl_ordered_ident_enum!(BuiltInType);
 
 impl BuiltInType {
-    pub const fn casts_to(self, other: Self) -> CastKind {
+    pub fn casts_to(self, other: Self) -> CastSafety {
         use BuiltInType::*;
+
+        // You can always cast to yourself
+        if self == other {
+            return CastSafety::Lossless;
+        }
+
         match (self, other) {
-            (Bool, Self::INT32) | (Self::INT32, Self::INT64) => CastKind::Safe,
-            _ => CastKind::Unsafe,
+            // Casting an integral to a larger integral is always safe
+            (Integral(_, self_width), Integral(_, other_width)) if other_width > self_width => {
+                CastSafety::Lossless
+            }
+
+            // Casting to a smaller type always causes data loss.
+            (Integral(_, self_width), Integral(_, other_width)) if other_width < self_width => {
+                CastSafety::Truncating
+            }
+
+            // Casting to the same size but different signedness also causes data loss
+            (Integral(self_sign, self_width), Integral(other_sign, other_width))
+                if other_width == self_width && other_sign != self_sign =>
+            {
+                CastSafety::Truncating
+            }
+
+            // Integers (signed or unsigned) of 52 bits or less can be safely cast to Doubles
+            (Integral(_, self_width), Double) => {
+                if (self_width as u8) < 52 {
+                    CastSafety::Lossless
+                } else {
+                    CastSafety::Truncating
+                }
+            }
+
+            // Dataloss is always possible when casting from a floating point type to an integral
+            // type
+            (Double, Integral(..)) => CastSafety::Truncating,
+
+            // Bools can cast to integrals and doubles safely
+            (Bool, Integral(..) | Double) => CastSafety::Lossless,
+
+            _ => CastSafety::Unsafe,
         }
     }
 

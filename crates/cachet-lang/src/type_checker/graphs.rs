@@ -7,7 +7,7 @@ use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use typed_index_collections::TiSlice;
 
-use crate::ast::{CastKind, Span, Spanned};
+use crate::ast::{CastSafety, Span, Spanned};
 use crate::built_in::{BuiltInType, IdentEnum};
 
 use crate::type_checker::ast::{
@@ -53,7 +53,7 @@ impl TypeGraph {
                 if a == b {
                     continue;
                 }
-                if a.casts_to(b) == CastKind::Safe {
+                if a.casts_to(b) == CastSafety::Lossless {
                     inner.add_edge(built_in_indices[&b], built_in_indices[&a], ());
                 }
             }

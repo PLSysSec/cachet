@@ -126,10 +126,12 @@ struct IntegralType : public NumericType<T> {
 
 using Type_Unit = PrimitiveType<std::monostate>;
 using Type_Bool = NumericType<bool>;
-using Type_Int32 = IntegralType<int32_t>;
 using Type_Double = NumericType<double>;
+using Type_Int16 = IntegralType<int16_t>;
+using Type_Int32 = IntegralType<int32_t>;
 using Type_Int64 = IntegralType<int64_t>;
 using Type_UInt16 = IntegralType<uint16_t>;
+using Type_UInt32 = IntegralType<uint32_t>;
 using Type_UInt64 = IntegralType<uint64_t>;
 
 namespace Impl_Double {
@@ -151,18 +153,6 @@ namespace Impl_Double {
   template <typename T>
   inline Type_Double::Val Var_NEG_INFINITY(T ctx) {
     return std::numeric_limits<double>::infinity();
-  }
-}
-
-namespace Impl_Int32 {
-  inline Type_Int32::Val From_Int64(Type_Int64::Ref v) {
-    return static_cast<Type_Int32::Val>(v);
-  }
-}
-
-namespace Impl_Int64 {
-  inline Type_Int64::Val From_Int32(Type_Int32::Ref v) {
-    return static_cast<Type_Int64::Val>(v);
   }
 }
 

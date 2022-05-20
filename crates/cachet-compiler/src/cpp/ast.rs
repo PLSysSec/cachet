@@ -10,7 +10,7 @@ use enum_map::Enum;
 use enumset::EnumSetType;
 
 use cachet_lang::ast::{
-    ArithBinOper, BinOper, BitwiseBinOper, CastKind, CompareBinOper, Ident, NegateKind,
+    ArithBinOper, BinOper, BitwiseBinOper, CastSafety, CompareBinOper, Ident, NegateKind,
     NumericCompareBinOper,
 };
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
@@ -1001,9 +1001,11 @@ impl FromIterator<Stmt> for BlockExpr {
 // `::std::int32_t(<n>)`?).
 #[derive(Clone, Copy, Debug, Display)]
 pub enum Literal {
+    Int16(i16),
     Int32(i32),
     Int64(i64),
     UInt16(u16),
+    UInt32(u32),
     UInt64(u64),
     Double(f64),
 }
