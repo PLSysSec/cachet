@@ -10,7 +10,7 @@ use enum_map::Enum;
 use enumset::EnumSetType;
 
 use cachet_lang::ast::{
-    ArithBinOper, BinOper, BitwiseBinOper, CastSafety, CompareBinOper, Ident, NegateKind,
+    ArithBinOper, BinOper, BitwiseBinOper, CompareBinOper, Ident, NegateKind,
     NumericCompareBinOper,
 };
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};

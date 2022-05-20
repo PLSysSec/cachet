@@ -5,7 +5,6 @@ use std::fmt::{self, Display};
 use std::iter;
 use std::ops::{Deref, DerefMut, Index};
 
-use cachet_lang::type_checker::TypeIndex;
 use enum_map::EnumMap;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
@@ -14,10 +13,9 @@ use typed_index_collections::TiSlice;
 use void::unreachable;
 
 use cachet_lang::ast::{
-    ArithBinOper, BinOper, CastSafety, CheckKind, CompareBinOper, Ident, NegateKind, Path,
-    VarParamKind,
+    ArithBinOper, BinOper, CheckKind, CompareBinOper, Ident, NegateKind, Path, VarParamKind,
 };
-use cachet_lang::built_in::{BuiltInType, BuiltInVar, IdentEnum, Signedness};
+use cachet_lang::built_in::{BuiltInVar, IdentEnum};
 use cachet_lang::flattener::{self, HasAttrs, Typed};
 use cachet_util::MaybeOwned;
 

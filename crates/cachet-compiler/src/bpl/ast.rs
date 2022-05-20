@@ -7,13 +7,12 @@ use std::fmt::{self, Display, Write};
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 
-use cachet_lang::built_in::Signedness;
 use derive_more::{Display, From};
 use enum_map::Enum;
 
 use cachet_lang::ast::{
-    ArithBinOper, BitwiseBinOper, CastSafety, CheckKind, CompareBinOper, Ident, LogicalBinOper,
-    NegateKind, NumericCompareBinOper,
+    ArithBinOper, BitwiseBinOper, CheckKind, CompareBinOper, Ident, LogicalBinOper, NegateKind,
+    NumericCompareBinOper,
 };
 pub use cachet_lang::normalizer::{LocalLabelIndex, LocalVarIndex};
 use cachet_util::{
