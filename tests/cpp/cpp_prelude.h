@@ -8,6 +8,7 @@
 #define cachet_prelude 
 
 #include <cstdint>
+#include <cstring>
 #include <utility>
 #include <variant>
 #include <cmath>
@@ -138,6 +139,13 @@ namespace Impl_Double {
   template <typename T>
   inline Type_Double::Val Fn_is_nan(T ctx, Type_Double::Ref v) {
     return std::isnan(v);
+  }
+
+  template <typename T>
+  inline Type_UInt64::Val Fn_bits(T ctx, Type_Double::Ref v) {
+    Type_UInt64::Val out;
+    memcpy(&out, &v, sizeof(Type_Double::Ref));
+    return out;
   }
 
   template <typename T>

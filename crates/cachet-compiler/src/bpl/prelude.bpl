@@ -26,12 +26,12 @@ type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/i
 // https://boogie-docs.readthedocs.io/en/latest/LangRef.html#other-operators
 
 // Conversions to and from double
-function {:builtin "(_ fp.to_sbv 64) RNE"}  #Double^toInt64 (n: #Double): #Int64;
-function {:builtin "(_ fp.to_sbv 32) RNE"}  #Double^toInt32 (n: #Double): #Int32;
-function {:builtin "(_ fp.to_sbv 16) RNE"}  #Double^toInt16 (n: #Double): #Int16;
-function {:builtin "(_ fp.to_ubv 64) RNE"}  #Double^toUInt64 (n: #Double): #UInt64;
-function {:builtin "(_ fp.to_ubv 32) RNE"}  #Double^toUInt32 (n: #Double): #UInt32;
-function {:builtin "(_ fp.to_ubv 16) RNE"}  #Double^toUInt16 (n: #Double): #UInt16;
+function {:builtin "(_ fp.to_sbv 64) RNE"}  #Double^to#Int64 (n: #Double): #Int64;
+function {:builtin "(_ fp.to_sbv 32) RNE"}  #Double^to#Int32 (n: #Double): #Int32;
+function {:builtin "(_ fp.to_sbv 16) RNE"}  #Double^to#Int16 (n: #Double): #Int16;
+function {:builtin "(_ fp.to_ubv 64) RNE"}  #Double^to#UInt64 (n: #Double): #UInt64;
+function {:builtin "(_ fp.to_ubv 32) RNE"}  #Double^to#UInt32 (n: #Double): #UInt32;
+function {:builtin "(_ fp.to_ubv 16) RNE"}  #Double^to#UInt16 (n: #Double): #UInt16;
 
 
 function {:bvbuiltin "(_ extract 15 0)"}   #Int64^to#Int16 (n: #Int64): #Int16;
@@ -128,6 +128,32 @@ function {:bvbuiltin "bvand"} #UInt16^bitAnd(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvxor"} #UInt16^xor(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvshl"} #UInt16^shl(a: #UInt16, y: #UInt16): #UInt16;
 
+function {:bvbuiltin "bvadd"} #Int16^add(x: #Int16, y: #Int16): #Int16;
+function {:bvbuiltin "bvsub"} #Int16^sub(x: #Int16, y: #Int16): #Int16;
+function {:bvbuiltin "bvmul"} #Int16^mul(x: #Int16, y: #Int16): #Int16;
+function {:bvbuiltin "bvudiv"} #Int16^div(x: #Int16, y: #Int16): #Int16;
+function {:bvbuiltin "bvsle"} #Int16^lte(a: #Int16, y: #Int16): #Bool;
+function {:bvbuiltin "bvsge"} #Int16^gte(a: #Int16, y: #Int16): #Bool;
+function {:bvbuiltin "bvslt"} #Int16^lt(a: #Int16, y: #Int16): #Bool;
+function {:bvbuiltin "bvsgt"} #Int16^gt(a: #Int16, y: #Int16): #Bool;
+function {:bvbuiltin "bvor"} #Int16^bitOr(a: #Int16, y: #Int16): #Int16;
+function {:bvbuiltin "bvand"} #Int16^bitAnd(a: #Int16, y: #Int16): #Int16;
+function {:bvbuiltin "bvxor"} #Int16^xor(a: #Int16, y: #Int16): #Int16;
+function {:bvbuiltin "bvshl"} #Int16^shl(a: #Int16, y: #Int16): #Int16;
+
+function {:bvbuiltin "bvadd"} #UInt32^add(x: #UInt32, y: #UInt32): #UInt32;
+function {:bvbuiltin "bvsub"} #UInt32^sub(x: #UInt32, y: #UInt32): #UInt32;
+function {:bvbuiltin "bvmul"} #UInt32^mul(x: #UInt32, y: #UInt32): #UInt32;
+function {:bvbuiltin "bvudiv"} #UInt32^div(x: #UInt32, y: #UInt32): #UInt32;
+function {:bvbuiltin "bvsle"} #UInt32^lte(a: #UInt32, y: #UInt32): #Bool;
+function {:bvbuiltin "bvsge"} #UInt32^gte(a: #UInt32, y: #UInt32): #Bool;
+function {:bvbuiltin "bvslt"} #UInt32^lt(a: #UInt32, y: #UInt32): #Bool;
+function {:bvbuiltin "bvsgt"} #UInt32^gt(a: #UInt32, y: #UInt32): #Bool;
+function {:bvbuiltin "bvor"} #UInt32^bitOr(a: #UInt32, y: #UInt32): #UInt32;
+function {:bvbuiltin "bvand"} #UInt32^bitAnd(a: #UInt32, y: #UInt32): #UInt32;
+function {:bvbuiltin "bvxor"} #UInt32^xor(a: #UInt32, y: #UInt32): #UInt32;
+function {:bvbuiltin "bvshl"} #UInt32^shl(a: #UInt32, y: #UInt32): #UInt32;
+
 function {:bvbuiltin "bvadd"} #UInt64^add(x: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvsub"} #UInt64^sub(x: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvmul"} #UInt64^mul(x: #UInt64, y: #UInt64): #UInt64;
@@ -174,6 +200,22 @@ axiom #Double~INFINITY == 0+oo53e11;
 const #Double~NEG_INFINITY: #Double;
 axiom #Double~NEG_INFINITY == 0-oo53e11;
 
+
 function {:builtin "fp.isNaN"} #Double~is_nan(n: #Double): #Bool;
+
+// "There is no function for converting from (_ FloatingPoint eb sb) to the
+//  corresponding IEEE 754-2008 binary format, as a bit vector (_ BitVec m) with 
+//  m = eb + sb, because (_ NaN eb sb) has multiple, well-defined representations.
+//  Instead, an encoding of the kind below is recommended, where f is a term
+//  of sort (_ FloatingPoint eb sb):
+//
+// (declare-fun b () (_ BitVec m))
+// (assert (= ((_ to_fp eb sb) b) f))
+//"
+//
+// Copied from https://smtlib.cs.uiowa.edu/theories-FloatingPoint.shtml
+function #Double~bits(n: #Double): #UInt64;
+function {:builtin "(_ to_fp 11 53)"} ReinterpretUInt64AsDouble(d: #UInt64): #Double;
+axiom (forall d: #Double :: ReinterpretUInt64AsDouble(#Double~bits(d)) == d);
 
 // ... end prelude ...

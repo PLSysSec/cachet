@@ -143,7 +143,7 @@ for f in $(ls -d $repo_dir/tests/**/*.cachet); do
     fi
 done
 
-rm -rf "$INCLUDE_DIR"
+# rm -rf "$INCLUDE_DIR"
 echo ""
 
 FAILED_COUNT=${#FAILED_TESTS[@]}

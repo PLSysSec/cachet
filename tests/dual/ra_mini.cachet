@@ -1,0 +1,218 @@
+struct Range {
+    lower_: Int32,
+    upper_: Int32,
+    hasInt32LowerBound_: Bool,
+    hasInt32UpperBound_: Bool,
+    canHaveFractionalPart_: Bool,
+    canBeNegativeZero_: Bool,
+    max_exponent_: UInt16,
+}
+
+struct JSVal;
+
+impl JSVal {
+    var intMax: Double = ((2_i64 << 53_u16) - 1_i64) as Double;
+    var intMin: Double = -JSVal::intMax;
+}
+
+impl Range {
+    // Int32 are signed. INT32_MAX is pow(2,31)-1 and INT32_MIN is -pow(2,31),
+    // so the greatest exponent we need is 31.
+    var maxInt32Exponent: UInt16 = 31_u16;
+
+    // UInt32 are unsigned. UINT32_MAX is pow(2,32)-1, so it's the greatest
+    // value that has an exponent of 31.
+    var maxUInt32Exponent: UInt16 = 31_u16;
+
+    // Maximal exponenent under which we have no precission loss on double
+    // operations. Double has 52 bits of mantissa, so 2^52+1 cannot be
+    // represented without loss.
+    var maxTruncatableExponent: UInt16 = 53_u16;
+
+    // Maximum exponent for finite values.
+    var maxFiniteExponent: UInt16 = 1023_u16;
+
+    // An special exponent value representing all non-NaN values. This
+    // includes finite values and the infinities.
+    var includesInfinity: UInt16 = Range::maxFiniteExponent + 1_u16;
+
+    // An special exponent value representing all possible double-precision
+    // values. This includes finite values, the infinities, and NaNs.
+    var includesInfinityAndNaN: UInt16 = UInt16::max;
+
+    // This range class uses int32_t ranges, but has several interfaces which
+    // use int64_t, which either holds an int32_t value, or one of the following
+    // special values which mean a value which is beyond the int32 range,
+    // potentially including infinity or NaN. These special values are
+    // guaranteed to compare greater, and less than, respectively, any int32_t
+    // value.
+    var noInt32UpperBound: Int64 = JSVal::intMax as Int64 + 1_i64;
+    var noInt32LowerBound: Int64 = JSVal::intMin as Int64 - 1_i64;
+}
+
+unsafe fn mk_range_raw (
+    lower_: Int32,
+    upper_: Int32,
+    hasInt32LowerBound_: Bool,
+    hasInt32UpperBound_: Bool,
+    canHaveFractionalPart_: Bool,
+    canBeNegativeZero_: Bool,
+    max_exponent_: UInt16,
+) -> Range;
+
+fn mk_range(
+    lower_: Int32,
+    upper_: Int32,
+    hasInt32LowerBound_: Bool,
+    hasInt32UpperBound_: Bool,
+    canHaveFractionalPart_: Bool,
+    canBeNegativeZero_: Bool,
+    max_exponent_: UInt16,
+) -> Range {
+    let r = (unsafe {
+        mk_range_raw(lower_, upper_, hasInt32LowerBound_, hasInt32UpperBound_, canHaveFractionalPart_, canBeNegativeZero_, max_exponent_)
+    });
+
+    assume r.lower_ == lower_;
+    assume r.upper_ == upper_;
+    assume r.hasInt32LowerBound_ == hasInt32LowerBound_;
+    assume r.hasInt32UpperBound_ == hasInt32UpperBound_;
+    assume r.canHaveFractionalPart_ == canHaveFractionalPart_;
+    assume r.canBeNegativeZero_ == canBeNegativeZero_;
+    assume r.max_exponent_ == max_exponent_;
+
+    r
+}
+
+
+fn test() {
+    let x = 4.0;
+    let r = mk_range(
+        0_i32,
+        10_i32,
+        true,
+        true,
+        false,
+        false,
+        Range::maxFiniteExponent,
+    );
+
+    assert well_formed(r);
+    assert in_range(r, x);
+}
+
+
+fn get_exp(n: Double) -> UInt16 {
+    let bits = Double::bits(n);
+    let exp_bits = bits & UInt16::max;
+    exp_bits as UInt16
+}
+
+fn is_inf(n: Double) -> Bool {
+    n == Double::INFINITY || n == Double::NEG_INFINITY
+}
+
+fn well_formed(r: Range) -> Bool {
+    // Basic sanity :).
+    if !(r.lower_ < r.upper_) {
+        return false;
+    }
+
+
+    // When hasInt32LowerBound_ or hasInt32UpperBound_ are false, we set
+    // lower_ and upper_ to these specific values as it simplifies the
+    // implementation in some places.
+    if !r.hasInt32LowerBound_ && r.lower_ != JSVal::intMin {
+        return false;
+    }
+
+    if !r.hasInt32UpperBound_ && r.upper_ != JSVal::intMax {
+        return false;
+    }
+
+    // max_exponent_ must be one of three possible things.
+    if !(r.max_exponent_ <= Range::maxFiniteExponent ||
+         r.max_exponent_ == Range::includesInfinity ||
+         r.max_exponent_ == Range::includesInfinityAndNaN
+        ) {
+            return false;
+        }
+
+
+
+    // Forbid the max_exponent_ field from implying better bounds for
+    // lower_/upper_ fields. We have to add 1 to the max_exponent_ when
+    // canHaveFractionalPart_ is true in order to accomodate
+    // fractional offsets. For example, 2147483647.9 is greater than
+    // INT32_MAX, so a range containing that value will have
+    // hasInt32UpperBound_ set to false, however that value also has
+    // exponent 30, which is strictly less than MaxInt32Exponent. For
+    // another example, 1.9 has an exponent of 0 but requires upper_ to be
+    // at least 2, which has exponent 1.
+    let mut adjustedExponent: UInt32 = r.max_exponent_;
+    if r.canHaveFractionalPart_ {
+        adjustedExponent = adjustedExponent + 1_u16;
+    }
+
+    if (!r.hasInt32LowerBound_ || !r.hasInt32UpperBound_) && !(adjustedExponent >= Range::maxInt32Exponent) {
+        return false;
+    }
+
+    if !(get_exp(r.lower_) <= adjustedExponent) {
+        return false;
+    }
+
+    if !(get_exp(r.upper_) <= adjustedExponent) {
+        return false;
+    }
+
+
+    // Bonus conditions from VeRA:
+
+    // lower and upper bounds fall within the integer range
+    if !(JSVal::intMin <= r.lower_ && r.lower_ <= JSVal::intMax) {
+        return false;
+    }
+
+    if !(JSVal::intMin <= r.upper_ && r.upper_ <= JSVal::intMax) {
+        return false;
+    }
+
+
+    // Don't be bigger than maxFiniteExponent
+    if !(r.max_exponent_ <= Range::maxFiniteExponent) {
+        return false;
+    }
+
+    true
+}
+
+fn in_range(r: Range, n: Double) -> Bool {
+    if (is_inf(n) && r.max_exponent_ < Range::includesInfinity) {
+        return false;
+    }
+
+    if (Double::is_nan(n) && r.max_exponent_ != Range::includesInfinityAndNaN) {
+        return false;
+    }
+
+    if !r.canBeNegativeZero_ && n == -0.0 {
+        return false;
+    }
+
+    if r.hasInt32LowerBound_ && n < r.lower_ {
+        return false;
+    }
+
+    if (r.hasInt32UpperBound_ && r.upper_ < n) {
+        return false;
+    }
+
+    let exp = get_exp(n);
+
+    if (exp > r.max_exponent_) {
+        return false;
+    }
+
+    true
+}
