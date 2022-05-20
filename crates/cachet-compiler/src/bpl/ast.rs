@@ -7,6 +7,7 @@ use std::fmt::{self, Display, Write};
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 
+use cachet_lang::built_in::Signedness;
 use derive_more::{Display, From};
 use enum_map::Enum;
 
@@ -288,16 +289,12 @@ pub enum TypeMemberFnSelector {
 
 #[derive(Clone, Copy, Debug)]
 pub struct CastTypeMemberFnSelector {
-    pub from: UserTypeIdent,
+    pub target_type_ident: UserTypeIdent,
 }
 
 impl Display for CastTypeMemberFnSelector {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "from{}",
-            self.from
-        )?;
+        write!(f, "to{}", self.target_type_ident)?;
         Ok(())
     }
 }

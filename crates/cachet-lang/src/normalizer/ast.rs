@@ -107,7 +107,6 @@ impl<B> IndexMut<CallableIndex> for Env<B> {
 
 deref_index!(Env<B>[&CallableIndex] => CallableItem<B> | <B>);
 
-
 #[derive(Clone, Debug)]
 pub struct CallableItem<B = ()> {
     pub path: Spanned<Path>,

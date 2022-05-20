@@ -7,11 +7,12 @@ use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use typed_index_collections::TiSlice;
 
-use crate::ast::{Span, Spanned, CastKind};
+use crate::ast::{CastKind, Span, Spanned};
 use crate::built_in::{BuiltInType, IdentEnum};
 
 use crate::type_checker::ast::{
-    CallableIndex, EnumIndex, EnumItem, FnIndex, GlobalVarIndex, OpIndex, StructIndex, StructItem, TypeIndex,
+    CallableIndex, EnumIndex, EnumItem, FnIndex, GlobalVarIndex, OpIndex, StructIndex, StructItem,
+    TypeIndex,
 };
 
 pub struct TypeGraph {
@@ -29,9 +30,17 @@ impl TypeGraph {
 
         let mut inner = DiGraph::with_capacity(num_types, 0);
 
-        let built_in_indices: HashMap<BuiltInType, NodeIndex> = BuiltInType::into_enum_iter().map(|it| (it, inner.add_node(it.into()))).collect();
-        let enum_indices: HashMap<EnumIndex, NodeIndex> = enum_items.keys().map(|it| (it, inner.add_node(it.into()))).collect();
-        let struct_indices: HashMap<StructIndex, NodeIndex> = struct_items.keys().map(|it| (it, inner.add_node(it.into()))).collect();
+        let built_in_indices: HashMap<BuiltInType, NodeIndex> = BuiltInType::into_enum_iter()
+            .map(|it| (it, inner.add_node(it.into())))
+            .collect();
+        let enum_indices: HashMap<EnumIndex, NodeIndex> = enum_items
+            .keys()
+            .map(|it| (it, inner.add_node(it.into())))
+            .collect();
+        let struct_indices: HashMap<StructIndex, NodeIndex> = struct_items
+            .keys()
+            .map(|it| (it, inner.add_node(it.into())))
+            .collect();
 
         let get_type_node_index = |type_index| match type_index {
             TypeIndex::BuiltIn(built_in_type) => built_in_indices[&built_in_type],
@@ -41,13 +50,11 @@ impl TypeGraph {
 
         for a in BuiltInType::into_enum_iter() {
             for b in BuiltInType::into_enum_iter() {
-                if a == b { continue; }
+                if a == b {
+                    continue;
+                }
                 if a.casts_to(b) == CastKind::Safe {
-                    inner.add_edge(
-                        built_in_indices[&b],
-                        built_in_indices[&a],
-                        (),
-                    );
+                    inner.add_edge(built_in_indices[&b], built_in_indices[&a], ());
                 }
             }
         }
@@ -62,9 +69,7 @@ impl TypeGraph {
             }
         }
 
-        TypeGraph {
-            inner,
-        }
+        TypeGraph { inner }
     }
 
     pub fn sccs(&self) -> TypeSccs<'_> {
@@ -149,9 +154,7 @@ impl VarGraph {
         for _ in 0..num_var_items {
             inner.add_node(());
         }
-        VarGraph {
-            inner,
-        }
+        VarGraph { inner }
     }
 
     pub fn record_ref(

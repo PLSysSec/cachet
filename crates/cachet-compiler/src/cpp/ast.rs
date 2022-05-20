@@ -363,7 +363,7 @@ impl ToTagTypeMemberFnIdent {
 
 #[derive(Clone, Copy, Debug)]
 pub struct CastTypeMemberFnIdent {
-    pub source_type_ident: Ident,
+    pub target_type_ident: Ident,
 }
 
 impl CastTypeMemberFnIdent {
@@ -372,11 +372,7 @@ impl CastTypeMemberFnIdent {
 
 impl Display for CastTypeMemberFnIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "From_{}",
-            self.source_type_ident
-        )
+        write!(f, "To_{}", self.target_type_ident)
     }
 }
 

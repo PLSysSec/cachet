@@ -5,6 +5,7 @@ use std::fmt::{self, Display};
 use std::iter;
 use std::ops::{Deref, DerefMut, Index};
 
+use cachet_lang::type_checker::TypeIndex;
 use enum_map::EnumMap;
 use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
@@ -16,7 +17,7 @@ use cachet_lang::ast::{
     ArithBinOper, BinOper, CastKind, CheckKind, CompareBinOper, Ident, NegateKind, Path,
     VarParamKind,
 };
-use cachet_lang::built_in::{BuiltInVar, IdentEnum};
+use cachet_lang::built_in::{BuiltInType, BuiltInVar, IdentEnum, Signedness};
 use cachet_lang::flattener::{self, HasAttrs, Typed};
 use cachet_util::MaybeOwned;
 
@@ -508,7 +509,6 @@ impl<'a> Compiler<'a> {
         let var_ident = global_var_item.path.value.ident();
         let type_ = self.get_type_ident(global_var_item.type_).into();
 
-
         // If there's a value, associated with the global var then it is a const
         // We model these as functions whose body is the value expression.
         if let Some(expr) = &global_var_item.value {
@@ -517,7 +517,6 @@ impl<'a> Compiler<'a> {
                 fn_ident: var_ident,
             }
             .into();
-
 
             let mut local_vars = vec![];
             let mut scoped_compiler = ScopedCompiler::new(self, ItemContext::Var, &mut local_vars);
@@ -548,7 +547,6 @@ impl<'a> Compiler<'a> {
             } else {
                 ConstItem::from(var).into()
             });
-
         }
     }
 
@@ -1272,11 +1270,8 @@ fn generate_cast_fn_item(
 ) -> FnItem {
     FnItem {
         ident: TypeMemberFnIdent {
-            type_ident: target_type_ident,
-            selector: CastTypeMemberFnSelector {
-                from: source_type_ident,
-            }
-            .into(),
+            type_ident: source_type_ident,
+            selector: CastTypeMemberFnSelector { target_type_ident }.into(),
         }
         .into(),
         attr: None,
@@ -1301,9 +1296,9 @@ fn generate_cast_axiom_item(
 
     let inner_call_expr = CallExpr {
         target: TypeMemberFnIdent {
-            type_ident: supertype_ident,
+            type_ident: subtype_ident,
             selector: CastTypeMemberFnSelector {
-                from: subtype_ident,
+                target_type_ident: supertype_ident,
             }
             .into(),
         }
@@ -1314,9 +1309,9 @@ fn generate_cast_axiom_item(
 
     let lhs = CallExpr {
         target: TypeMemberFnIdent {
-            type_ident: subtype_ident,
+            type_ident: supertype_ident,
             selector: CastTypeMemberFnSelector {
-                from: supertype_ident,
+                target_type_ident: subtype_ident,
             }
             .into(),
         }
@@ -1399,26 +1394,28 @@ enum ItemContext<'b> {
         index: flattener::CallableIndex,
         item: &'b flattener::CallableItem,
     },
-    Var
-} 
+    Var,
+}
 
 impl<'b> ItemContext<'b> {
-    fn param<I>(&self, index: I) -> &<flattener::Params as Index<I>>::Output where flattener::Params: Index<I> {
+    fn param<I>(&self, index: I) -> &<flattener::Params as Index<I>>::Output
+    where
+        flattener::Params: Index<I>,
+    {
         match self {
-            ItemContext::Callable { item, .. } => {
-                &item.params[index]
-            }
+            ItemContext::Callable { item, .. } => &item.params[index],
             ItemContext::Var => {
                 panic!("attempted to look up param in non-callable context");
             }
         }
     }
 
-    fn local<I>(&self, index: I) -> &<flattener::Locals as Index<I>>::Output where flattener::Locals: Index<I> {
+    fn local<I>(&self, index: I) -> &<flattener::Locals as Index<I>>::Output
+    where
+        flattener::Locals: Index<I>,
+    {
         match self {
-            ItemContext::Callable { item, .. } => {
-                &item.body.as_ref().unwrap().locals[index]
-            }
+            ItemContext::Callable { item, .. } => &item.body.as_ref().unwrap().locals[index],
             ItemContext::Var => {
                 panic!("attempted to look up local in non-callable context");
             }
@@ -1522,13 +1519,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         // label arguments and label out-arguments the same way when generating
         // Boogie.
         match label_index {
-            flattener::LabelIndex::Param(label_param_index) => UserParamVarIdent::from(
-                self.context.param(label_param_index)
-                    .label
-                    .ident
-                    .value,
-            )
-            .into(),
+            flattener::LabelIndex::Param(label_param_index) => {
+                UserParamVarIdent::from(self.context.param(label_param_index).label.ident.value)
+                    .into()
+            }
             flattener::LabelIndex::Local(local_label_index) => LocalLabelVarIdent {
                 ident: self.context.local(local_label_index).ident.value,
                 index: local_label_index,
@@ -1946,8 +1940,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 .into()
             }
 
-            // Global variables with values are modeled as functions so we must emit a call expression
-            // rather than a var expression.
+            // Global variables with values are modeled as functions so we must emit a call
+            // expression rather than a var expression.
             flattener::VarIndex::Global(gvi) if self.env[gvi].value.is_some() => {
                 let global_var_item = &self.env[gvi];
                 let parent_ident = global_var_item
@@ -1961,11 +1955,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                     target: UserFnIdent {
                         parent_ident,
                         fn_ident: var_ident,
-                    }.into(),
+                    }
+                    .into(),
                     arg_exprs: vec![],
                 }
                 .into()
-
             }
             var_index => self.get_var_ident(var_index).unwrap().into(),
         }
@@ -2034,26 +2028,24 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_cast_expr<E: CompileExpr + Typed>(
         &mut self,
         cast_expr: &flattener::CastExpr<E>,
-    ) -> CallExpr {
+    ) -> Expr {
         let expr = cast_expr.expr.compile(self);
 
         let source_type_index = cast_expr.expr.type_();
         let target_type_index = cast_expr.type_;
 
-        let source_ident = self.get_type_ident(source_type_index);
-        let target_ident = self.get_type_ident(target_type_index);
+        let source_type_ident = self.get_type_ident(source_type_index);
+        let target_type_ident = self.get_type_ident(target_type_index);
 
         CallExpr {
             target: TypeMemberFnIdent {
-                type_ident: target_ident,
-                selector: CastTypeMemberFnSelector {
-                    from: source_ident,
-                }
-                .into(),
+                type_ident: source_type_ident,
+                selector: CastTypeMemberFnSelector { target_type_ident }.into(),
             }
             .into(),
             arg_exprs: vec![expr],
         }
+        .into()
     }
 
     fn compile_bin_oper_expr(&mut self, bin_oper_expr: &flattener::BinOperExpr) -> Expr {
