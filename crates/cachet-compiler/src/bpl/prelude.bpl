@@ -168,10 +168,6 @@ function {:inline} #Set~remove<a>(set: #Set a, value: a): #Set a {
 
 // Impls for cachet's prelude...
 
-// See the heading "Conversion from other sorts":
-// https://smtlib.cs.uiowa.edu/theories-FloatingPoint.shtml
-function {:builtin "(_ to_fp 11 53) RNE"} #Double~from_i32(n: #Int32): #Double;
-
 const #Double~INFINITY: #Double;
 axiom #Double~INFINITY == 0+oo53e11;
 
