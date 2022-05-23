@@ -84,7 +84,7 @@ function cpp_test() {
 }
 
 function verifier_test() {
-    OUT=$($CORRAL "/main:#test" /trackAllVars /recursionBound:4 $TEST_DIR/test.bpl 2>&1)
+    OUT=$($CORRAL "/main:#test" /trackAllVars /recursionBound:4 $TEST_DIR/test.bpl)
     EXIT_CODE=$?
 
     echo -e "$OUT"
@@ -126,6 +126,13 @@ export -f dual_test
 export -f should_fail
 export -f build
 
+
+echo -e -n "Building..."
+cargo build $CARGO_FLAGS 
+if [[ $? -ne 0 ]]; then
+    exit 1;
+fi
+echo -e "DONE\n"
 
 MAX_LENGTH=0
 ALL_TESTS=$(ls -d $REPO_DIR/tests/**/*.cachet)
