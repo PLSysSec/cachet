@@ -1,81 +1,90 @@
-#!/bin/bash
+#! /usr/bin/env bash
 
 shopt -s globstar
 
-repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && cd .. && pwd)"
+export REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && cd .. && pwd)"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m' # No Color
-PASS="${GREEN}PASS${NC}"
-FAIL="${RED}FAIL${NC}"
+export RED='\033[0;31m'
+export GRAY='\033[0;90m'
+export GREEN='\033[0;32m'
+export NC='\033[0m' # No Color
+export PASS="${GREEN}PASS${NC}"
+export SKIP="${GRAY}SKIP${NC}"
+export FAIL="${RED}FAIL${NC}"
 
-INCLUDE_DIR=$(mktemp -d)
-TMP_INC="$INCLUDE_DIR/test.inc"
-TMP_H="$INCLUDE_DIR/test.h"
-TMP_OUT="$INCLUDE_DIR/test"
-TMP_BPL="$INCLUDE_DIR/test.bpl"
+export CARGO_FLAGS="--manifest-path "$REPO_DIR/Cargo.toml" --quiet --bin cachet-compiler"
+export CORRAL="$REPO_DIR/vendor/corral/source/Corral/bin/Release/net5.0/corral"
+export WORK_DIR=$(mktemp -d)
 
-DEFAULT_CPP_TEST="$repo_dir/tests/cpp/default.cpp"
 
-CARGO_FLAGS="--manifest-path "$repo_dir/Cargo.toml" --quiet --bin cachet-compiler"
+export DEFAULT_CPP_TEST="$REPO_DIR/tests/cpp/default.cpp"
 
-FILTER=$1
+export FILTER="$1"
 
-function matches() {
-    if [[ -z "$FILTER" ]] || [[ $1 == *"$FILTER"* ]]
-    then
-        return 0
+
+function run_test() {
+    export CACHET_FILE=$1
+    export TEST_NAME="${CACHET_FILE#"$REPO_DIR/tests/"}"
+    export TEST_DIR="$WORK_DIR/$TEST_NAME"
+
+    mkdir -p "$TEST_DIR"
+
+    printf "%-${MAX_LENGTH}s   " "$TEST_NAME" | tr " " "."
+
+
+
+    ERROR=$(case $TEST_NAME in
+        ("cpp/"*) build && cpp_test ;;
+        ("dual/"*) build && dual_test ;;
+        ("verifier/pass"*) build && verifier_test ;;
+        ("verifier/fail"*) build && verifier_test; should_fail ;;
+        ("frontend/pass"*) build ;;
+        ("frontend/fail"*) build ; should_fail;;
+        (*) echo "Unknown test "; false ;;
+    esac)
+
+    RESULT=$?
+
+    if [[ $RESULT -eq 0 ]]; then
+        echo -e "$PASS"
+        echo $TEST_NAME >> $WORK_DIR/passed
     else
-        return 1
+        echo -e "$FAIL" 
+        echo -e "$ERROR"
+        echo $TEST_NAME >> $WORK_DIR/failed
     fi
+
+    return $RESULT
 }
 
 function build() {
-    cachet_file=$1
-    cargo run $CARGO_FLAGS $cachet_file $TMP_H $TMP_INC $TMP_BPL 2>&1
+    cargo run $CARGO_FLAGS $CACHET_FILE "$TEST_DIR/test.h" "$TEST_DIR/test.inc" "$TEST_DIR/test.bpl" 2>&1
     return $?
 }
 
 function cpp_test() {
-    cachet_file=$1
-    build $cachet_file
-    if [ $? -ne 0 ]; then
-        return 1
+    CPP_FILE="${CACHET_FILE%.cachet}.cpp"
+    if [[ ! -f $CPP_FILE ]]; then
+        CPP_FILE="$DEFAULT_CPP_TEST"
     fi
 
-    cpp_file="${cachet_file%.cachet}.cpp"
-    if [[ ! -f $cpp_file ]]; then
-        cpp_file="$DEFAULT_CPP_TEST"
-    fi
 
-    clang++ -std=c++17 -I $INCLUDE_DIR -I $repo_dir/tests/cpp $cpp_file -o $TMP_OUT 2>&1
+    clang++ -std=c++17 -I $TEST_DIR -I $REPO_DIR/tests/cpp $CPP_FILE -o "$TEST_DIR/out"
     if [[ $? -ne 0 ]]; then
         return 1
     fi
 
-    $TMP_OUT
+    $TEST_DIR/out
     if [[ $? -ne 0 ]]; then
-        echo "Compiled program returned a non-zero status"
+        echo -e "Compiled program returned a non-zero status"
         return 1
     fi
 
     return 0
 }
 
-function dual_test() {
-    cpp_test "$1" && verifier_test "$1"
-}
-
 function verifier_test() {
-    corral_exe="${repo_dir}/vendor/corral/source/Corral/bin/Release/net5.0/corral"
-    cachet_file=$1
-    build $cachet_file
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
-
-    OUT=$($corral_exe "/main:#test" /trackAllVars /recursionBound:4 $TMP_BPL 2>&1)
+    OUT=$($CORRAL "/main:#test" /trackAllVars /recursionBound:4 $TEST_DIR/test.bpl 2>&1)
     EXIT_CODE=$?
 
     echo -e "$OUT"
@@ -87,6 +96,20 @@ function verifier_test() {
     return 1
 }
 
+function dual_test() {
+    cpp_test
+    CPP=$?
+
+    verifier_test
+    VER=$?
+
+    if [[ $CPP -ne 0 ]] || [[ $VER -ne 0 ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
 function should_fail() {
     if [[ $? -eq 0 ]]; then
         echo -e "${RED}Test passed when it should have failed${NC}"
@@ -96,64 +119,60 @@ function should_fail() {
     return 0
 }
 
-max_length=0
-for f in $(ls -d $repo_dir/tests/**/*.cachet); do
-    test_name="${f#"$repo_dir/tests/"}"
-    name_length=${#test_name}
-    if [[ $name_length -gt $max_length ]]; then
-        max_length=$name_length
+export -f run_test
+export -f cpp_test
+export -f verifier_test
+export -f dual_test
+export -f should_fail
+export -f build
+
+
+MAX_LENGTH=0
+ALL_TESTS=$(ls -d $REPO_DIR/tests/**/*.cachet)
+for f in $ALL_TESTS; do
+    TEST_NAME="${f#"$REPO_DIR/tests/"}"
+    NAME_LENGTH=${#TEST_NAME}
+    if [[ $NAME_LENGTH -gt $MAX_LENGTH ]]; then
+        MAX_LENGTH=$NAME_LENGTH
     fi
 done
 
-echo -n "Building..."
-cargo build $CARGO_FLAGS 
-if [[ $? -ne 0 ]]; then
-    exit 1;
-fi
-echo -e "DONE\n"
 
+export MAX_LENGTH=$MAX_LENGTH
 
-PASSED_COUNT=0
-FAILED_TESTS=()
-for f in $(ls -d $repo_dir/tests/**/*.cachet); do
-    test_name="${f#"$repo_dir/tests/"}"
-    printf "%-${max_length}s   " "$test_name" | tr " " "."
-    if ! ( matches $test_name ); then
-        echo "SKIP"
-        continue
-    fi
+touch $WORK_DIR/passed $WORK_DIR/failed $WORK_DIR/skipped
 
-    ERROR=$(case $test_name in
-        ("cpp/"*) cpp_test "$f" ;;
-        ("dual/"*) dual_test "$f" ;;
-        ("verifier/pass"*) verifier_test "$f" 0;;
-        ("verifier/fail"*) verifier_test "$f"; should_fail ;;
-        ("frontend/pass"*) build "$f";;
-        ("frontend/fail"*) build "$f"; should_fail;;
-        (*) echo "Unknown test $f"; false ;;
-    esac)
-
-    if [[ $? -eq 0 ]]; then
-        PASSED_COUNT=$((PASSED_COUNT+1))
-        echo -e "$PASS"
+for f in $ALL_TESTS; do
+    if [[ -z "$FILTER" ]] || [[ $f == *"$FILTER"* ]]; then
+        echo "$f"
     else
-        FAILED_TESTS+=($test_name)
-        echo -e "$FAIL" 
-        echo -e "$ERROR"
+        echo "$f" >> "$WORK_DIR/skipped"
     fi
-done
+done | parallel run_test
+PARALLEL_PROC=$!
 
-# rm -rf "$INCLUDE_DIR"
-echo ""
+function ctrl_c() {
+    echo "INTERRUPTED!"
+    kill $PARALLEL_PROC
+}
 
-FAILED_COUNT=${#FAILED_TESTS[@]}
+trap ctrl_c INT
+
+wait $PARALLEL_PROC
+
+PASSED_COUNT=$(wc -l  < $WORK_DIR/passed)
 echo -e "${GREEN}$PASSED_COUNT${NC} tests passed"
-if [[ $FAILED_COUNT  -eq 0 ]]; then
-    exit 0
+
+SKIPPED_COUNT=$(wc -l  < $WORK_DIR/skipped)
+echo -e "${GRAY}$SKIPPED_COUNT${NC} tests skipped"
+
+FAILED_COUNT=$(wc -l < $WORK_DIR/failed)
+if [[ $FAILED_COUNT -ne 0 ]]; then
+    echo -e "${RED}$FAILED_COUNT${NC} tests failed:"
+    for failed_test in $(cat $WORK_DIR/failed); do
+        echo -e "\t$failed_test"
+    done
 fi
 
-echo -e "${RED}$FAILED_COUNT${NC} tests failed:"
-for failed_test in "${FAILED_TESTS[@]}"; do
-    echo -e "\t$failed_test"
-done
-exit 1
+rm -r $WORK_DIR
+exit $FAILED_COUNT
