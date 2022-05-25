@@ -1,0 +1,369 @@
+struct Range {
+    lower_: Int32,
+    upper_: Int32,
+    hasInt32LowerBound_: Bool,
+    hasInt32UpperBound_: Bool,
+    canHaveFractionalPart_: Bool,
+    canBeNegativeZero_: Bool,
+    max_exponent_: UInt16,
+}
+
+struct JSVal;
+
+impl JSVal {
+    var intMax: Int32 = 0x7fffffff as Int32;
+    var intMin: Int32 = 0x80000000 as Int32;
+}
+
+impl Range {
+    // Int32 are signed. INT32_MAX is pow(2,31)-1 and INT32_MIN is -pow(2,31),
+    // so the greatest exponent we need is 31.
+    var maxInt32Exponent: UInt16 = 31_u16;
+
+    // UInt32 are unsigned. UINT32_MAX is pow(2,32)-1, so it's the greatest
+    // value that has an exponent of 31.
+    var maxUInt32Exponent: UInt16 = 31_u16;
+
+    // Maximal exponenent under which we have no precission loss on double
+    // operations. Double has 52 bits of mantissa, so 2^52+1 cannot be
+    // represented without loss.
+    var maxTruncatableExponent: UInt16 = 53_u16;
+
+    // Maximum exponent for finite values.
+    var maxFiniteExponent: UInt16 = 1023_u16;
+
+    // An special exponent value representing all non-NaN values. This
+    // includes finite values and the infinities.
+    var includesInfinity: UInt16 = Range::maxFiniteExponent + 1_u16;
+
+    // An special exponent value representing all possible double-precision
+    // values. This includes finite values, the infinities, and NaNs.
+    var includesInfinityAndNaN: UInt16 = UInt16::max;
+
+    // This range class uses int32_t ranges, but has several interfaces which
+    // use int64_t, which either holds an int32_t value, or one of the following
+    // special values which mean a value which is beyond the int32 range,
+    // potentially including infinity or NaN. These special values are
+    // guaranteed to compare greater, and less than, respectively, any int32_t
+    // value.
+    var noInt32UpperBound: Int64 = JSVal::intMax + 1_i64;
+    var noInt32LowerBound: Int64 = JSVal::intMin - 1_i64;
+
+
+    // Compute the least exponent value that would be compatible with the
+    // values of lower() and upper().
+    //
+    // Note:
+    //     exponent of JSVAL_INT_MIN == 31
+    //     exponent of JSVAL_INT_MAX == 30
+    fn exponentImpliedByInt32Bounds(r: Range) -> UInt16 {
+        // The number of bits needed to encode |max| is the power of 2 plus one.
+        let max = Int32::max(Int32::abs(r.lower_), Int32::abs(r.upper_));
+
+
+
+
+
+        return floor_log_2(max as UInt32) as UInt16;
+    }
+
+    fn hasInt32Bounds(r: Range) -> Bool {
+        r.hasInt32LowerBound_ && r.hasInt32UpperBound_
+    }
+
+    fn ceil(r: Range) -> Range {
+        let mut max_exponent_ = r.max_exponent_;
+
+        if Range::hasInt32Bounds(r) {
+            max_exponent_ = Range::exponentImpliedByInt32Bounds(r);
+
+        } else if max_exponent_ < Range::maxFiniteExponent {
+            max_exponent_ = max_exponent_ + 1_u16;
+
+        }
+
+        let canBeNegativeZero_ = r.canBeNegativeZero_ || (r.lower_ <= 0_i32 && r.upper_ > -1_i32);
+
+        let canHaveFractionalPart_ = false;
+
+        mk_range(
+            r.lower_,
+            r.upper_,
+            r.hasInt32LowerBound_,
+            r.hasInt32UpperBound_,
+            canHaveFractionalPart_,
+            canBeNegativeZero_,
+            max_exponent_
+        )
+    }
+}
+
+unsafe fn mk_range_raw (
+    lower_: Int32,
+    upper_: Int32,
+    hasInt32LowerBound_: Bool,
+    hasInt32UpperBound_: Bool,
+    canHaveFractionalPart_: Bool,
+    canBeNegativeZero_: Bool,
+    max_exponent_: UInt16,
+) -> Range;
+
+fn mk_range(
+    lower_: Int32,
+    upper_: Int32,
+    hasInt32LowerBound_: Bool,
+    hasInt32UpperBound_: Bool,
+    canHaveFractionalPart_: Bool,
+    canBeNegativeZero_: Bool,
+    max_exponent_: UInt16,
+) -> Range {
+    let r = (unsafe {
+        mk_range_raw(lower_, upper_, hasInt32LowerBound_, hasInt32UpperBound_, canHaveFractionalPart_, canBeNegativeZero_, max_exponent_)
+    });
+
+    assume r.lower_ == lower_;
+    assume r.upper_ == upper_;
+    assume r.hasInt32LowerBound_ == hasInt32LowerBound_;
+    assume r.hasInt32UpperBound_ == hasInt32UpperBound_;
+    assume r.canHaveFractionalPart_ == canHaveFractionalPart_;
+    assume r.canBeNegativeZero_ == canBeNegativeZero_;
+    assume r.max_exponent_ == max_exponent_;
+
+    r
+}
+
+var x: Double;
+var r: Range;
+fn test() {
+    assume vera_well_formed(r);
+    assume in_range(r, x);
+
+    let ceil_r = Range::ceil(r);
+    let ceil_x = js_ceil(x);
+
+    assert vera_well_formed(ceil_r);
+    assert in_range(ceil_r, ceil_x);
+}
+
+fn js_ceil(n: Double) -> Double {
+    Double::ceil(n)
+}
+
+fn popcnt(n: UInt32) -> UInt32
+{
+    let mut x = n;
+    x = x - ((x >> 1_u32) & 0x55555555);
+    x = (((x >> 2_u32) & 0x33333333) + (x & 0x33333333));
+    x = (((x >> 4_u32) + x) & 0x0f0f0f0f);
+    x = x + (x >> 8_u32);
+    x = x + (x >> 16_u32);
+    return x & 0x0000003f;
+}
+
+fn clz(n: UInt32) -> UInt32 {
+    let mut x = n;
+
+    //do the smearing
+    x = x | (x >> 1_u32); 
+    x = x | (x >> 2_u32);
+    x = x | (x >> 4_u32);
+    x = x | (x >> 8_u32);
+    x = x | (x >> 16_u32);  
+
+    return 32_u32 - popcnt(x);
+}
+
+// fn floor_log_2(n: UInt32) -> UInt32 {
+//     31_u32 - clz(n | 1_u32)
+// }
+
+fn floor_log_2(n: UInt32) -> UInt32 {
+    if n < 2_u32 { return 0_u32; }
+    else if n < 4_u32 { return 1_u32; }
+    else if n < 8_u32 { return 2_u32; }
+    else if n < 16_u32 { return 3_u32; }
+    else if n < 32_u32 { return 4_u32; }
+    else if n < 64_u32 { return 5_u32; }
+    else if n < 128_u32 { return 6_u32; }
+    else if n < 256_u32 { return 7_u32; }
+    else if n < 512_u32 { return 8_u32; }
+    else if n < 1024_u32 { return 9_u32; }
+    else if n < 2048_u32 { return 10_u32; }
+    else if n < 4096_u32 { return 11_u32; }
+    else if n < 8192_u32 { return 12_u32; }
+    else if n < 16384_u32 { return 13_u32; }
+    else if n < 32768_u32 { return 14_u32; }
+    else if n < 65536_u32 { return 15_u32; }
+    else if n < 131072_u32 { return 16_u32; }
+    else if n < 262144_u32 { return 17_u32; }
+    else if n < 524288_u32 { return 18_u32; }
+    else if n < 1048576_u32 { return 19_u32; }
+    else if n < 2097152_u32 { return 20_u32; }
+    else if n < 4194304_u32 { return 21_u32; }
+    else if n < 8388608_u32 { return 22_u32; }
+    else if n < 16777216_u32 { return 23_u32; }
+    else if n < 33554432_u32 { return 24_u32; }
+    else if n < 67108864_u32 { return 25_u32; }
+    else if n < 134217728_u32 { return 26_u32; }
+    else if n < 268435456_u32 { return 27_u32; }
+    else if n < 536870912_u32 { return 28_u32; }
+    else if n < 1073741824_u32 { return 29_u32; }
+    else if n < 2147483648_u32 { return 30_u32; }
+    else { return 31_u32; }
+}
+
+var doubleExpBias: Int16 = ((1_u16 << 10_u16) - 1_u16) as Int16;
+fn get_exp(n: Double) -> Int16 {
+    if n == 0.0 || n == -0.0 {
+        return 0_i16;
+    }
+
+    let bits = Double::bits(n);
+
+    let exp_bits = ((bits >> 52_u64) & 0x7ff) as Int16;
+
+    let exp = exp_bits - doubleExpBias;
+
+    exp as Int16
+}
+
+fn is_inf(n: Double) -> Bool {
+    n == Double::INFINITY || n == Double::NEG_INFINITY
+}
+
+fn well_formed(r: Range) -> Bool {
+    // Basic sanity :).
+    if !(r.lower_ < r.upper_) {
+        return false;
+    }
+
+
+
+    // When hasInt32LowerBound_ or hasInt32UpperBound_ are false, we set
+    // lower_ and upper_ to these specific values as it simplifies the
+    // implementation in some places.
+    if !r.hasInt32LowerBound_ && r.lower_ != JSVal::intMin {
+        return false;
+    }
+
+    if !r.hasInt32UpperBound_ && r.upper_ != JSVal::intMax {
+        return false;
+    }
+
+    // max_exponent_ must be one of three possible things.
+    if !(r.max_exponent_ <= Range::maxFiniteExponent ||
+         r.max_exponent_ == Range::includesInfinity ||
+         r.max_exponent_ == Range::includesInfinityAndNaN
+        ) {
+            return false;
+        }
+
+
+
+    // Forbid the max_exponent_ field from implying better bounds for
+    // lower_/upper_ fields. We have to add 1 to the max_exponent_ when
+    // canHaveFractionalPart_ is true in order to accomodate
+    // fractional offsets. For example, 2147483647.9 is greater than
+    // INT32_MAX, so a range containing that value will have
+    // hasInt32UpperBound_ set to false, however that value also has
+    // exponent 30, which is strictly less than MaxInt32Exponent. For
+    // another example, 1.9 has an exponent of 0 but requires upper_ to be
+    // at least 2, which has exponent 1.
+    let mut adjustedExponent: UInt32 = r.max_exponent_;
+    if r.canHaveFractionalPart_ {
+        adjustedExponent = adjustedExponent + 1_u16;
+    }
+
+    if (!r.hasInt32LowerBound_ || !r.hasInt32UpperBound_) && !(adjustedExponent >= Range::maxInt32Exponent) {
+        return false;
+    }
+
+    if !(floor_log_2(Int32::abs(r.lower_) as UInt32) <= adjustedExponent) {
+        return false;
+    }
+
+    if !(floor_log_2(Int32::abs(r.upper_) as UInt32) <= adjustedExponent) {
+        return false;
+    }
+
+    true
+}
+
+fn vera_well_formed(r: Range) -> Bool {
+    if r.lower_ < JSVal::intMin || r.lower_ > JSVal::intMax {
+        return false;
+    }
+
+    if r.upper_ < JSVal::intMin || r.upper_ > JSVal::intMax {
+        return false;
+    }
+
+    if r.lower_ > r.upper_ {
+        return false;
+    }
+
+    if !r.hasInt32LowerBound_ && r.lower_ != JSVal::intMin {
+        return false;
+    }
+
+    if !r.hasInt32UpperBound_ && r.upper_ != JSVal::intMax {
+        return false;
+    }
+
+    if r.canBeNegativeZero_ && r.lower_ > 0_i32 || r.upper_ < 0_i32 {
+        return false;
+    }
+
+    // max_exponent_ must be one of three possible things.
+    if !(r.max_exponent_ <= Range::maxFiniteExponent ||
+         r.max_exponent_ == Range::includesInfinity ||
+         r.max_exponent_ == Range::includesInfinityAndNaN
+        ) {
+            return false;
+        }
+
+    if Range::hasInt32Bounds(r) && r.max_exponent_ != Range::exponentImpliedByInt32Bounds(r) {
+        return false;
+    }
+
+    if r.hasInt32LowerBound_ && r.max_exponent_ < floor_log_2(Int32::abs(r.lower_) as UInt32) {
+        return false;
+    }
+
+
+    if r.hasInt32UpperBound_ && r.max_exponent_ < floor_log_2(Int32::abs(r.upper_) as UInt32) {
+        return false;
+    }
+
+    return true;
+}
+
+fn in_range(r: Range, n: Double) -> Bool {
+    if (is_inf(n) && r.max_exponent_ < Range::includesInfinity) {
+        return false;
+    }
+
+    if (Double::is_nan(n) && r.max_exponent_ != Range::includesInfinityAndNaN) {
+        return false;
+    }
+
+    if !r.canBeNegativeZero_ && n == -0.0 {
+        return false;
+    }
+
+    if r.hasInt32LowerBound_ && n < r.lower_ {
+        return false;
+    }
+
+    if (r.hasInt32UpperBound_ && r.upper_ < n) {
+        return false;
+    }
+
+    let exp = get_exp(n);
+
+    if (Int16::abs(exp) as UInt16 > r.max_exponent_) {
+        return false;
+    }
+
+    true
+}

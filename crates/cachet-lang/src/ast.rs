@@ -76,6 +76,8 @@ pub enum ArithBinOper {
 pub enum BitwiseBinOper {
     #[display(fmt = "<<")]
     Shl,
+    #[display(fmt = ">>")]
+    Shr,
     #[display(fmt = "&")]
     And,
     #[display(fmt = "^")]

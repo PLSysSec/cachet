@@ -19,8 +19,17 @@ export WORK_DIR=$(mktemp -d)
 
 export DEFAULT_CPP_TEST="$REPO_DIR/tests/cpp/default.cpp"
 
-export FILTER="$1"
+export FILTER=$1
+export RUN_SLOW_TESTS=0
 
+while getopts ":s" arg; do
+    case $arg in
+        s) export RUN_SLOW_TESTS=0 ;;
+        *) echo "Unknown arg" ;;
+    esac
+done
+
+echo $WORK_DIR
 
 function run_test() {
     export CACHET_FILE=$1
@@ -69,7 +78,7 @@ function cpp_test() {
     fi
 
 
-    clang++ -std=c++17 -I $TEST_DIR -I $REPO_DIR/tests/cpp $CPP_FILE -o "$TEST_DIR/out"
+    clang++ -std=c++17 -g -I $TEST_DIR -I $REPO_DIR/tests/cpp $CPP_FILE -o "$TEST_DIR/out" 2>&1
     if [[ $? -ne 0 ]]; then
         return 1
     fi
@@ -84,12 +93,12 @@ function cpp_test() {
 }
 
 function verifier_test() {
-    OUT=$($CORRAL "/main:#test" /trackAllVars /recursionBound:4 $TEST_DIR/test.bpl)
+    OUT=$($CORRAL "/main:#test" /recursionBound:4 $TEST_DIR/test.bpl)
     EXIT_CODE=$?
 
     echo -e "$OUT"
 
-    if [[ $EXIT_CODE -eq 0 && "$OUT" != *"potential bug"* ]]; then
+    if [[ $EXIT_CODE -eq 0 && "$OUT" == *"Program has no bugs"* ]]; then
         return 0
     fi
 
@@ -150,7 +159,7 @@ export MAX_LENGTH=$MAX_LENGTH
 touch $WORK_DIR/passed $WORK_DIR/failed $WORK_DIR/skipped
 
 for f in $ALL_TESTS; do
-    if [[ -z "$FILTER" ]] || [[ $f == *"$FILTER"* ]]; then
+    if ( [[ -z "$FILTER" ]] || [[ $f == *"$FILTER"* ]] ) && ( [[ $f != *.slow.cachet ]] || [[ $RUN_SLOW_TESTS == 1 ]] ); then
         echo "$f"
     else
         echo "$f" >> "$WORK_DIR/skipped"
@@ -179,7 +188,9 @@ if [[ $FAILED_COUNT -ne 0 ]]; then
     for failed_test in $(cat $WORK_DIR/failed); do
         echo -e "\t$failed_test"
     done
+else
+    # Only delete the directory if tests failed.
+    rm -r $WORK_DIR
 fi
 
-rm -r $WORK_DIR
 exit $FAILED_COUNT

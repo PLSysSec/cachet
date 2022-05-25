@@ -331,6 +331,7 @@ impl Display for BinOperTypeMemberFnSelector {
                 },
                 BinOperTypeMemberFnSelector::Bitwise(bitwise_bin_oper) => match bitwise_bin_oper {
                     BitwiseBinOper::Shl => "shl",
+                    BitwiseBinOper::Shr => "shr",
                     BitwiseBinOper::And => "bitAnd",
                     BitwiseBinOper::Xor => "xor",
                     BitwiseBinOper::Or => "bitOr",

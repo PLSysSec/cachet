@@ -60,21 +60,21 @@ function {:bvbuiltin "(_ zero_extend 16)"} #UInt16^to#Int32 (n: #UInt16): #Int32
 function {:bvbuiltin "(_ zero_extend 16)"} #UInt16^to#UInt32(n: #UInt16): #UInt32;
 function {:bvbuiltin "(_ zero_extend 48)"} #UInt16^to#Int64 (n: #UInt16): #Int64;
 function {:bvbuiltin "(_ zero_extend 48)"} #UInt16^to#UInt64(n: #UInt16): #UInt64;
-function {:builtin "(_ to_fp 11 53) RNE"}  #UInt16^to#Double(n: #UInt16): #Double;
+function {:builtin "(_ to_fp_unsigned 11 53) RNE"}  #UInt16^to#Double(n: #UInt16): #Double;
 
 function {:bvbuiltin "(_ extract 15 0)"}   #UInt32^to#Int16 (n: #UInt32): #Int16;
 function {:bvbuiltin "(_ extract 15 0)"}   #UInt32^to#UInt16(n: #UInt32): #UInt16;
 function                                   #UInt32^to#Int32 (n: #UInt32): #Int32 { n }
 function {:bvbuiltin "(_ zero_extend 32)"} #UInt32^to#Int64 (n: #UInt32): #Int64;
 function {:bvbuiltin "(_ zero_extend 32)"} #UInt32^to#UInt64(n: #UInt32): #UInt64;
-function {:builtin "(_ to_fp 11 53) RNE"}  #UInt32^to#Double(n: #UInt32): #Double;
+function {:builtin "(_ to_fp_unsigned 11 53) RNE"}  #UInt32^to#Double(n: #UInt32): #Double;
 
 function {:bvbuiltin "(_ extract 15 0)"}   #UInt64^to#Int16 (n: #UInt64): #Int16;
 function {:bvbuiltin "(_ extract 15 0)"}   #UInt64^to#UInt16(n: #UInt64): #UInt16;
 function {:bvbuiltin "(_ extract 31 0)"}   #UInt64^to#Int32 (n: #UInt64): #Int32;
 function {:bvbuiltin "(_ extract 31 0)"}   #UInt64^to#UInt32(n: #UInt64): #UInt32;
 function                                   #UInt64^to#Int64 (n: #UInt64): #Int64 { n }
-function {:builtin "(_ to_fp 11 53) RNE"}  #UInt64^to#Double(n: #UInt64): #Double;
+function {:builtin "(_ to_fp_unsigned 11 53) RNE"}  #UInt64^to#Double(n: #UInt64): #Double;
 
 function {:bvbuiltin "bvneg"} #Int32^negate(n: #Int32): #Int32;
 function {:bvbuiltin "bvadd"} #Int32^add(x: #Int32, y: #Int32): #Int32;
@@ -89,6 +89,7 @@ function {:bvbuiltin "bvor"} #Int32^bitOr(a: #Int32, y: #Int32): #Int32;
 function {:bvbuiltin "bvand"} #Int32^bitAnd(a: #Int32, y: #Int32): #Int32;
 function {:bvbuiltin "bvxor"} #Int32^xor(a: #Int32, y: #Int32): #Int32;
 function {:bvbuiltin "bvshl"} #Int32^shl(a: #Int32, y: #Int32): #Int32;
+function {:bvbuiltin "bvlshr"} #Int32^shr(a: #Int32, y: #Int32): #Int32;
 
 function {:bvbuiltin "fp.neg"} #Double^negate(n: #Double): #Double;
 function {:bvbuiltin "fp.add RNE"} #Double^add(x: #Double, y: #Double): #Double;
@@ -114,7 +115,9 @@ function {:bvbuiltin "bvor"} #Int64^bitOr(a: #Int64, y: #Int64): #Int64;
 function {:bvbuiltin "bvand"} #Int64^bitAnd(a: #Int64, y: #Int64): #Int64;
 function {:bvbuiltin "bvxor"} #Int64^xor(a: #Int64, y: #Int64): #Int64;
 function {:bvbuiltin "bvshl"} #Int64^shl(a: #Int64, y: #Int64): #Int64;
+function {:bvbuiltin "bvlshr"} #Int64^shr(a: #Int64, y: #Int64): #Int64;
 
+function {:bvbuiltin "bvneg"} #UInt16^negate(n: #UInt16): #UInt16;
 function {:bvbuiltin "bvadd"} #UInt16^add(x: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvsub"} #UInt16^sub(x: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvmul"} #UInt16^mul(x: #UInt16, y: #UInt16): #UInt16;
@@ -127,7 +130,9 @@ function {:bvbuiltin "bvor"} #UInt16^bitOr(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvand"} #UInt16^bitAnd(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvxor"} #UInt16^xor(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvshl"} #UInt16^shl(a: #UInt16, y: #UInt16): #UInt16;
+function {:bvbuiltin "bvlshr"} #UInt16^shr(a: #UInt16, y: #UInt16): #UInt16;
 
+function {:bvbuiltin "bvneg"} #Int16^negate(n: #Int16): #Int16;
 function {:bvbuiltin "bvadd"} #Int16^add(x: #Int16, y: #Int16): #Int16;
 function {:bvbuiltin "bvsub"} #Int16^sub(x: #Int16, y: #Int16): #Int16;
 function {:bvbuiltin "bvmul"} #Int16^mul(x: #Int16, y: #Int16): #Int16;
@@ -140,7 +145,9 @@ function {:bvbuiltin "bvor"} #Int16^bitOr(a: #Int16, y: #Int16): #Int16;
 function {:bvbuiltin "bvand"} #Int16^bitAnd(a: #Int16, y: #Int16): #Int16;
 function {:bvbuiltin "bvxor"} #Int16^xor(a: #Int16, y: #Int16): #Int16;
 function {:bvbuiltin "bvshl"} #Int16^shl(a: #Int16, y: #Int16): #Int16;
+function {:bvbuiltin "bvlshr"} #Int16^shr(a: #Int16, y: #Int16): #Int16;
 
+function {:bvbuiltin "bvneg"} #UInt32^negate(n: #UInt32): #UInt32;
 function {:bvbuiltin "bvadd"} #UInt32^add(x: #UInt32, y: #UInt32): #UInt32;
 function {:bvbuiltin "bvsub"} #UInt32^sub(x: #UInt32, y: #UInt32): #UInt32;
 function {:bvbuiltin "bvmul"} #UInt32^mul(x: #UInt32, y: #UInt32): #UInt32;
@@ -153,7 +160,9 @@ function {:bvbuiltin "bvor"} #UInt32^bitOr(a: #UInt32, y: #UInt32): #UInt32;
 function {:bvbuiltin "bvand"} #UInt32^bitAnd(a: #UInt32, y: #UInt32): #UInt32;
 function {:bvbuiltin "bvxor"} #UInt32^xor(a: #UInt32, y: #UInt32): #UInt32;
 function {:bvbuiltin "bvshl"} #UInt32^shl(a: #UInt32, y: #UInt32): #UInt32;
+function {:bvbuiltin "bvlshr"} #UInt32^shr(a: #UInt32, y: #UInt32): #UInt32;
 
+function {:bvbuiltin "bvneg"} #UInt64^negate(n: #UInt64): #UInt64;
 function {:bvbuiltin "bvadd"} #UInt64^add(x: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvsub"} #UInt64^sub(x: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvmul"} #UInt64^mul(x: #UInt64, y: #UInt64): #UInt64;
@@ -166,7 +175,7 @@ function {:bvbuiltin "bvor"} #UInt64^bitOr(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvand"} #UInt64^bitAnd(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvxor"} #UInt64^xor(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvshl"} #UInt64^shl(a: #UInt64, y: #UInt64): #UInt64;
-
+function {:bvbuiltin "bvlshr"} #UInt64^shr(a: #UInt64, y: #UInt64): #UInt64;
 
 type #Map k v = [k]v;
 
@@ -194,6 +203,7 @@ function {:inline} #Set~remove<a>(set: #Set a, value: a): #Set a {
 
 // Impls for cachet's prelude...
 
+
 const #Double~INFINITY: #Double;
 axiom #Double~INFINITY == 0+oo53e11;
 
@@ -202,6 +212,7 @@ axiom #Double~NEG_INFINITY == 0-oo53e11;
 
 
 function {:builtin "fp.isNaN"} #Double~is_nan(n: #Double): #Bool;
+function {:bvbuiltin "fp.roundToIntegral RTP"} #Double~ceil(x: #Double): #Double;
 
 // "There is no function for converting from (_ FloatingPoint eb sb) to the
 //  corresponding IEEE 754-2008 binary format, as a bit vector (_ BitVec m) with 

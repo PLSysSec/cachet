@@ -304,6 +304,9 @@ PrecExpr: PrecExpr = {
             (NegateKind::Arith, Expr::Literal(Literal::Int64(n))) => {
                 Expr::from(Literal::Int64(-n))
             }
+            (NegateKind::Arith, Expr::Literal(Literal::Double(n))) => {
+                Expr::from(Literal::Double(-n))
+            }
             (_, expr) => {
                 Expr::from(NegateExpr {
                     kind,
@@ -342,6 +345,14 @@ PrecExpr: PrecExpr = {
     <lhs:Spanned<PrecExpr>> <oper:Spanned<"<<">> <rhs:Spanned<PrecExpr>> =>
         Expr::from(BinOperExpr {
             oper: Spanned::new(oper.span, BitwiseBinOper::Shl.into()),
+            lhs: lhs.map(|lhs| lhs.expr),
+            rhs: rhs.map(|rhs| rhs.expr)
+        }).into(),
+
+    #[assoc(side = "left")]
+    <lhs:Spanned<PrecExpr>> <oper:Spanned<">>">> <rhs:Spanned<PrecExpr>> =>
+        Expr::from(BinOperExpr {
+            oper: Spanned::new(oper.span, BitwiseBinOper::Shr.into()),
             lhs: lhs.map(|lhs| lhs.expr),
             rhs: rhs.map(|rhs| rhs.expr)
         }).into(),
@@ -467,8 +478,23 @@ Literal: Literal = {
     <n:Int16Literal> => Literal::Int16(n),
     <n:Int32Literal> => Literal::Int32(n),
     <n:Int64Literal> => Literal::Int64(n),
+    <n:HexLiteral> => n,
     <n:DoubleLiteral> => Literal::Double(n),
 };
+
+HexLiteral: Literal =
+    <digits:Spanned<r"0x[0-9A-Fa-f]+">> =>? {
+        let radix = &digits.value[2..];
+        match radix.len() {
+            // Safety: The regex and length checks ensure the radix can be successfully parsed
+            1..=4 => Ok(Literal::UInt16(u16::from_str_radix(radix, 16).unwrap())),
+            5..=8 => Ok(Literal::UInt32(u32::from_str_radix(radix, 16).unwrap())),
+            9..=16 => Ok(Literal::UInt64(u64::from_str_radix(radix, 16).unwrap()).into()),
+            _ => Err(RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in any numeric type"),
+            })
+        }
+    };
 
 UInt16Literal: u16 =
     <digits:Spanned<r"[0-9]+_u16">> =>?
@@ -506,7 +532,7 @@ UInt32Literal: u32 =
             });
 
 DoubleLiteral : f64 =
-    <digits:Spanned<r"[0-9]+.[0-9]+">> =>?
+    <digits:Spanned<r"[0-9]+\.[0-9]+">> =>?
         f64::from_str(digits.value)
             .map_err(|error| RawParseError::User {
                 error: Spanned::new(digits.span, "number is not a valid double"),

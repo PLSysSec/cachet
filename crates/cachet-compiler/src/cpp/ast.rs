@@ -404,6 +404,7 @@ impl Display for BinOperTypeMemberFnIdent {
                 },
                 BinOperTypeMemberFnIdent::Bitwise(bitwise_bin_oper) => match bitwise_bin_oper {
                     BitwiseBinOper::Shl => "Shl",
+                    BitwiseBinOper::Shr => "Shr",
                     BitwiseBinOper::And => "BitAnd",
                     BitwiseBinOper::Xor => "Xor",
                     BitwiseBinOper::Or => "BitOr",

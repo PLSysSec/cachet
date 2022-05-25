@@ -11,12 +11,8 @@
 #include <cstring>
 #include <utility>
 #include <variant>
+#include <algorithm>
 #include <cmath>
-
-namespace cachet {
-
-namespace prelude {
-
 
 template <typename T>
 struct PrimitiveType {
@@ -111,6 +107,10 @@ struct IntegralType : public NumericType<T> {
     return lhs << rhs;
   }
 
+  static Val Shr(Ref lhs, Ref rhs) {
+    return lhs >> rhs;
+  }
+
   static Val BitAnd(Ref lhs, Ref rhs) {
     return lhs & rhs;
   }
@@ -149,6 +149,11 @@ namespace Impl_Double {
   }
 
   template <typename T>
+  inline Type_Double::Val Fn_ceil(T ctx, Type_Double::Ref v) {
+    return std::ceil(v);
+  }
+
+  template <typename T>
   inline Type_Double::Val Var_INFINITY(T ctx) {
     return std::numeric_limits<double>::infinity();
   }
@@ -156,6 +161,13 @@ namespace Impl_Double {
   template <typename T>
   inline Type_Double::Val Var_NEG_INFINITY(T ctx) {
     return std::numeric_limits<double>::infinity();
+  }
+}
+
+namespace Impl_Int32 {
+  template <typename T>
+  inline Type_Int32::Val Fn_abs(T ctx, Type_Int32::Ref v) {
+    return std::abs(v);
   }
 }
 
@@ -172,9 +184,5 @@ template <typename T>
 inline Type_Bool::Ref Var_false(T ctx) {
   return false;
 }
-
-};  // namespace prelude
-
-};  // namespace cachet
 
 #endif /*  cachet_prelude */

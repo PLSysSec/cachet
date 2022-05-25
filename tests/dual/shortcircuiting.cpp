@@ -2,7 +2,6 @@
 #define Cachet_Assert assert
 #include <cpp_prelude.h>
 #include <stdio.h>
-using namespace cachet::prelude;
 using Cachet_ContextRef = std::monostate;
 
 static int x = 0;

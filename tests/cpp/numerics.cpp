@@ -7,7 +7,6 @@
 using Cachet_ContextRef = std::monostate;
 
 #include <cpp_prelude.h>
-using namespace cachet::prelude;
 
 #include <test.h>
 #include <test.inc>
