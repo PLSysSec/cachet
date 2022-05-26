@@ -4,10 +4,9 @@ mod ast;
 mod error;
 mod helpers;
 
-use anyhow::{Context};
+use anyhow::Context;
 
-use std::collections::HashMap;
-
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -44,7 +43,7 @@ pub type Files = codespan::Files<String>;
 
 pub struct Parser {
     pub files: Files,
-    pub file_paths: HashMap<PathBuf, FileId>,
+    pub file_paths: HashSet<PathBuf>,
     pub items: Vec<Spanned<Item>>,
 }
 
@@ -52,7 +51,7 @@ impl Parser {
     pub fn new() -> Self {
         Self {
             files: Files::new(),
-            file_paths: HashMap::new(),
+            file_paths: HashSet::new(),
             items: vec![],
         }
     }
@@ -70,7 +69,7 @@ impl Parser {
             )
         })?;
 
-        if self.file_paths.contains_key(&canon_path) {
+        if !self.file_paths.insert(canon_path.clone()) {
             return Ok(());
         }
 
@@ -107,6 +106,7 @@ impl Parser {
             .as_ref()
             .canonicalize()
             .with_context(|| "invalid path provided")?;
+        self.file_paths.insert(canon_path.clone());
         let contents = read_to_string(&canon_path)
             .with_context(|| format!("Failed to read {}", canon_path.display()))?;
         self.parse_str(canon_path, &contents)

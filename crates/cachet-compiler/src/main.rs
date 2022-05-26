@@ -1,6 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-use std::fs::{File};
+use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
