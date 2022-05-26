@@ -13,7 +13,7 @@ use structopt::StructOpt;
 
 use cachet_lang::flattener::flatten;
 use cachet_lang::normalizer::normalize;
-use cachet_lang::parser::{Files, Parser};
+use cachet_lang::parser::{Files, ParseError, Parser};
 use cachet_lang::resolver::{resolve, ResolveErrors};
 use cachet_lang::type_checker::{type_check, TypeCheckErrors};
 use cachet_lang::FrontendError;
@@ -75,16 +75,20 @@ struct Opt {
 fn main() -> Result<(), Error> {
     let opt = Opt::from_args();
 
-    let src = read_to_string(&opt.input)
-        .with_context(|| format!("Failed to read {}", opt.input.display()))?;
-
     let mut parser = Parser::new();
-    let prelude = parser.parse("<prelude>", cachet_lang::PRELUDE);
-    let main = parser.parse(&opt.input, &src);
+    let prelude = parser.parse_str("<prelude>", cachet_lang::PRELUDE);
+    let main = parser.parse_file(&opt.input);
+    let main_err = match main.err() {
+        Some(e) => match e.downcast::<ParseError>() {
+            Ok(parse_error) => Some(parse_error),
+            Err(e) => Err(e)?,
+        },
+        None => None,
+    };
 
-    if prelude.is_err() || main.is_err() {
+    if prelude.is_err() || main_err.is_some() {
         let errors: Vec<_> =
-            iterate![..prelude.err().into_iter(), ..main.err().into_iter()].collect();
+            iterate![..prelude.err().into_iter(), ..main_err.into_iter()].collect();
         report_all(&parser.files, errors.iter());
 
         let first_error_file_name = Path::new(parser.files.name(errors[0].file_id()));

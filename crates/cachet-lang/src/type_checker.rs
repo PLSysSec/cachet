@@ -1627,10 +1627,7 @@ fn is_const(expr: &Expr) -> bool {
             BinOper::Logical(_) => false,
         },
         Expr::Negate(e) => is_const(&e.expr),
-        Expr::Invoke(_)
-        | Expr::FieldAccess(_)
-        | Expr::Block(_)
-        | Expr::Assign(_) => false,
+        Expr::Invoke(_) | Expr::FieldAccess(_) | Expr::Block(_) | Expr::Assign(_) => false,
         Expr::Cast(cast_expr) => {
             is_const(&cast_expr.expr) && matches!(cast_expr.type_, TypeIndex::BuiltIn(_))
         }

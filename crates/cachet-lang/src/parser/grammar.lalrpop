@@ -31,6 +31,7 @@ Attr: Attr =
 pub Items: Vec<Spanned<Item>> = Spanned<Item>*;
 
 Item: Item = {
+    <import_item:ImportItem> => Item::from(import_item).into(),
     <enum_item:EnumItem> => Item::from(enum_item).into(),
     <struct_item:StructItem> => Item::from(struct_item).into(),
     <ir_item:IrItem> => Item::from(ir_item).into(),
@@ -41,6 +42,9 @@ Item: Item = {
 
 EnumItem: EnumItem =
     "enum" <ident:Spanned<Ident>> "{" <variants:EnumVariants> "}" => EnumItem { ident, variants };
+
+ImportItem: ImportItem =
+    "import" <file_path:Spanned<StringLiteral>> => ImportItem { file_path: file_path.map(|path| path.into()) };
 
 EnumVariants: TiVec<VariantIndex, Spanned<Ident>> =
     <variants:Comma<Spanned<Ident>>> => variants.into();
@@ -544,6 +548,9 @@ Int64Literal: i64 =
             .map_err(|error| RawParseError::User {
                 error: Spanned::new(digits.span, "number too large to fit in Int64"),
             });
+
+StringLiteral: String =
+    <s:r#""(?:[^"\\]|\\.)*""#> => s[1..s.len()-1].into();
 
 Ident: Ident =
     <name:r"[A-Za-z_][A-Za-z0-9_]*"> => Ident::from(name);

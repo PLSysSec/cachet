@@ -186,6 +186,7 @@ impl ItemCatalog {
             parser::Item::Impl(impl_item) => {
                 self.catalog_impl_item(parent, Spanned::new(item.span, impl_item))
             }
+            parser::Item::Import(_) => {} // Imports are handled in the parser time
             parser::Item::GlobalVar(global_var_item) => {
                 self.catalog_global_var_item(parent, global_var_item)
             }

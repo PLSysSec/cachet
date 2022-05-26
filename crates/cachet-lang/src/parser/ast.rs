@@ -1,5 +1,7 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::path::PathBuf;
+
 use derive_more::From;
 use typed_index_collections::TiVec;
 
@@ -17,6 +19,8 @@ pub enum Item {
     #[from]
     Enum(EnumItem),
     #[from]
+    Import(ImportItem),
+    #[from]
     Struct(StructItem),
     #[from]
     Ir(IrItem),
@@ -32,6 +36,11 @@ pub enum Item {
 pub struct EnumItem {
     pub ident: Spanned<Ident>,
     pub variants: TiVec<VariantIndex, Spanned<Ident>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportItem {
+    pub file_path: Spanned<PathBuf>,
 }
 
 typed_field_index!(EnumItem:variants[pub VariantIndex] => Spanned<Ident>);
