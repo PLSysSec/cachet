@@ -4,10 +4,10 @@ mod ast;
 mod error;
 mod helpers;
 
-use anyhow::{Context, Error};
-use std::collections::hash_map::Entry;
+use anyhow::{Context};
+
 use std::collections::HashMap;
-use std::collections::HashSet;
+
 use std::ffi::OsString;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -18,7 +18,7 @@ lalrpop_mod!(grammar, "/parser/grammar.rs");
 use lazy_static::lazy_static;
 
 use crate::ast::FileId;
-use crate::ast::Span;
+
 use crate::ast::Spanned;
 
 pub use crate::parser::ast::*;
