@@ -90,6 +90,28 @@ impl Range {
         )
     }
 
+    fn abs(r: Range) -> Range {
+        let mut upper = -r.upper_;
+        if r.upper_ == JSValue::intMin {
+            upper = JSValue::intMax;
+        }
+
+        let mut lower = -r.lower_;
+        if r.lower_ == JSValue::intMin {
+            lower = JSValue::intMax;
+        }
+
+        mk_range(
+            Int32::max(Int32::max(0_i32, r.lower_), upper),
+            Int32::max(Int32::max(0_i32, r.upper_), lower),
+            true,
+            Range::hasInt32Bounds(r) && (r.lower_ != JSValue::intMin),
+            r.canHaveFractionalPart_,
+            false,
+            r.max_exponent_
+        )
+    }
+
 
     fn in_range(r: Range, n: Double) -> Bool {
         if (is_inf(n) && r.max_exponent_ < Range::includesInfinity) {
@@ -147,7 +169,7 @@ impl Range {
             return false;
         }
 
-        // max_exponent_ must be one of three possible things.
+        // W4: max_exponent_ must be one of three possible things.
         if !(r.max_exponent_ <= Range::maxFiniteExponent ||
             r.max_exponent_ == Range::includesInfinity ||
             r.max_exponent_ == Range::includesInfinityAndNaN
@@ -159,11 +181,12 @@ impl Range {
             return false;
         }
 
+        // W4: max_exponent is less precise can int bounds
         if r.hasInt32LowerBound_ && r.max_exponent_ < floor_log_2(Int32::abs(r.lower_) as UInt32) {
             return false;
         }
 
-
+        // W4: max_exponent is less precise can int bounds
         if r.hasInt32UpperBound_ && r.max_exponent_ < floor_log_2(Int32::abs(r.upper_) as UInt32) {
             return false;
         }

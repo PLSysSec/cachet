@@ -1,7 +1,11 @@
 include(`macros.m4')
 
+var r: Range;
+var y: Int32;
+var x: Double = y;
+
 foreach(`OP', unops, `
-fn OP()_spec(r: Range, x: Double) {
+fn OP()_spec() {
     assume Range::well_formed(r);
     assume Range::in_range(r, x);
 

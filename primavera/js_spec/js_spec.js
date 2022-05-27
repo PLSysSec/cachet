@@ -7,6 +7,7 @@ const ops = {
     add: (x,y) => x + y,
     sub: (x,y) => x - y,
     ceil: (x) => Math.ceil(x),
+    abs: (x) => Math.abs(x),
 }
 
 // source: https://stackoverflow.com/questions/70075794/javascript-convert-hex-to-ieee-754-64-bit-double-precision

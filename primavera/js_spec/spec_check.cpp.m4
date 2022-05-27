@@ -18,7 +18,7 @@ using Cachet_ContextRef = std::monostate;
 #include <js_spec.h>
 #include <js_spec.inc>
 
-static std::string JS_INTERP("./js_spec.js");
+static std::string JS_INTERP("./js_spec/js_spec.js");
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;

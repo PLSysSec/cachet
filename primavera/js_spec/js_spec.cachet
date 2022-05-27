@@ -7,4 +7,13 @@ impl JSValue {
     fn ceil(d: Double) -> Double {
         Double::ceil(d)
     }
+
+    fn abs(n: Double) -> Double {
+        if Double::is_nan(n) { return n; }
+        if n == -0.0 { return 0.0; }
+        if n == Double::NEG_INFINITY { Double::INFINITY }
+        if n < -0.0 { return -n; }
+
+        n
+    }
 }

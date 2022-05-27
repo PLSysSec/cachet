@@ -1,0 +1,57 @@
+struct Range {
+    min: Int32,
+    max: Int32,
+    hasMin: Bool,
+    hasMax: Bool,
+}
+
+unsafe fn mk_range_raw(min: Int32, max: Int32, hasMin: Bool, hasMax: Bool) -> Range;
+fn mk_range(min: Int32, max: Int32, hasMin: Bool, hasMax: Bool) -> Range {
+    let r = (unsafe { mk_range_raw(min, max, hasMin, hasMax) });
+    assume r.min == min;
+    assume r.max == max;
+    assume r.hasMin == hasMin;
+    assume r.hasMax == hasMax;
+    r
+}
+
+impl Range {
+    fn in_range(r: Range, d: Double) -> Bool {
+        if Double::is_nan(d) {
+            return true;
+        }
+
+        if r.hasMin && d < r.min {
+            return false;
+        }
+
+        if r.hasMax && d > r.max {
+            return false;
+        }
+
+        true
+    }
+
+    fn well_formed(r: Range) -> Bool {
+        r.min <= r.max
+    }
+
+    fn ceil(r: Range) -> Range {
+        if r.max == 2147483647_i32 {
+            return mk_range(
+                r.min,
+                r.max,
+                r.hasMin,
+                false
+            );
+        } else {
+            return mk_range(
+                r.min,
+                r.max + 1_i32,
+                r.hasMin,
+                r.hasMax
+            );
+        }
+    }
+}
+
