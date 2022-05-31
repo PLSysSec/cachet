@@ -77,7 +77,7 @@ GlobalVarItem: GlobalVarItem =
         GlobalVarItem { ident, attrs, is_mut: tags.mut_tag.is_some(), type_, value };
 
 GlobalVarValue: Spanned<Expr> =
-    "=" <expr:Spanned<Expr>> => expr;
+    "=" <expr:Spanned<Expr<WithBlock>>> => expr;
 
 #[inline]
 VarTags: VarTags =
@@ -165,7 +165,7 @@ Label: Label =
     "label" <ident:Spanned<Ident>> ":" <ir:Spanned<Path>> => Label { ident, ir };
 
 Arg: Arg = {
-    <expr:PrecExpr> => {
+    <expr:PrecExpr<NoBlock>> => {
         match expr.expr {
             Expr::Var(path) if !expr.is_grouped => {
                 FreeVarOrLabelArg { path, is_out: false }.into()
@@ -190,20 +190,22 @@ LocalLabel: LocalLabel =
     "label" <ident:Spanned<Ident>> <ir:(":" <Spanned<Path>>)?> => LocalLabel { ident, ir };
 
 Block: Block =
-    "{" ";"* <block:BlockInner> "}" => block;
+    "{" <block:BlockInner> "}" => block;
 
 BlockInner: Block = {
-    <stmts:BlockOrStmt*> <value:Expr> => Block { stmts, value: Some(value) }, 
-    <mut stmts:BlockOrStmt*> <stmt:SemiStmt> => {
+    <stmts:BlockOrStmt*> <value:Expr<NoBlock>> => Block { stmts, value: Some(value) },
+    <stmts:BlockOrStmt*> <value:BlockExpr> => Block { stmts, value: Some(value) },
+    <mut stmts:BlockOrStmt*> <stmt:Spanned<Stmt>> => {
         stmts.push(stmt);
         Block { stmts, value: None }
     },
-    => Block { stmts: vec![], value: None }, 
+    => Block { stmts: vec![], value: None },
 };
 
+#[inline]
 BlockOrStmt: Spanned<Stmt> = {
-    <block:Spanned<KindedBlock>> => block.map(Stmt::from),
-    <stmt:SemiStmt> => stmt
+    <stmt:Spanned<BlockStmt>> => stmt,
+    <stmt:Spanned<Stmt>> => stmt
 };
 
 KindedBlock: KindedBlock = {
@@ -217,11 +219,8 @@ BlockKind: BlockKind = {
     "unsafe" => BlockKind::Unsafe,
 };
 
-#[inline]
-SemiStmt: Spanned<Stmt> =
-    <stmt:Spanned<Stmt>> ";"* => stmt;
-
 Stmt: Stmt = {
+    ";" => Stmt::Empty,
     <let_stmt:LetStmt> ";" => let_stmt.into(),
     <label_stmt:LabelStmt> ";" => label_stmt.into(),
     <if_stmt:IfStmt> => if_stmt.into(),
@@ -230,17 +229,17 @@ Stmt: Stmt = {
     <bind_stmt:BindStmt> ";" => bind_stmt.into(),
     <emit_stmt:EmitStmt> ";" => emit_stmt,
     <ret_stmt:RetStmt> ";" => ret_stmt.into(),
-    <expr:Expr> ";" => expr.into(),
+    <expr:Expr<NoBlock>> ";" => expr.into(),
 };
 
 LetStmt: LetStmt =
-    <lhs:LocalVar> "=" <rhs:Spanned<Expr>> => LetStmt { lhs, rhs };
+    <lhs:LocalVar> "=" <rhs:Spanned<Expr<WithBlock>>> => LetStmt { lhs, rhs };
 
 LabelStmt: LabelStmt =
     <label:Label> => LabelStmt { label };
 
 IfStmt: IfStmt =
-    "if" <cond:Spanned<Expr>> <then:Block> <else_:("else" <ElseClause>)?> =>
+    "if" <cond:Spanned<Expr<WithBlock>>> <then:Block> <else_:("else" <ElseClause>)?> =>
         IfStmt { cond, then, else_ };
 
 ElseClause: ElseClause = {
@@ -249,7 +248,7 @@ ElseClause: ElseClause = {
 }
 
 CheckStmt: CheckStmt =
-    <kind:CheckKind> <cond:Spanned<Expr>> => CheckStmt { kind, cond };
+    <kind:CheckKind> <cond:Spanned<Expr<WithBlock>>> => CheckStmt { kind, cond };
 
 CheckKind: CheckKind = {
     "assert" => CheckKind::Assert,
@@ -266,20 +265,37 @@ EmitStmt: Stmt =
     "emit" <call:Call> => Stmt::Emit(call);
 
 RetStmt: RetStmt =
-    "return" <value:Spanned<Expr?>> => RetStmt { value };
+    "return" <value:Spanned<Expr<WithBlock>?>> => RetStmt { value };
 
-Expr: Expr = {
-    <expr:PrecExpr> => expr.expr,
+Expr<B>: Expr = {
+    <expr:PrecExpr<B>> => expr.expr,
 };
 
-PrecExpr: PrecExpr = {
+NoBlock: PrecExpr= {};
+
+WithBlock: PrecExpr = {
+   BlockExpr => <>.into(),
+}
+
+#[inline]
+BlockExpr: Expr = {
+   KindedBlock => Expr::from(<>),
+}
+
+#[inline]
+BlockStmt: Stmt = {
+   BlockExpr => Stmt::from(<>),
+}
+
+PrecExpr<B>: B = {
     // Note that this breaks out of the precedence chain: an expression of any
     // precedence level can be grouped inside parentheses.
-    #[precedence(level = "0")]
-    "(" <expr:Expr> ")" => PrecExpr::grouped(expr),
 
     #[precedence(level = "0")]
-    "(" <block:KindedBlock> ")" => Expr::from(block).into(),
+    "(" <expr:Expr<WithBlock>> ")" => PrecExpr::grouped(expr),
+
+    #[precedence(level = "0")]
+    <b:B> => b,
 
     #[precedence(level = "0")]
     <literal:Literal> => Expr::from(literal).into(),
@@ -291,13 +307,13 @@ PrecExpr: PrecExpr = {
     <call:Call> => Expr::Invoke(call).into(),
 
     #[precedence(level = "0")]
-    <parent:Spanned<PrecExpr>> "." <field: Spanned<Ident>> => Expr::from(FieldAccessExpr {
+    <parent:Spanned<PrecExpr<B>>> "." <field: Spanned<Ident>> => Expr::from(FieldAccessExpr {
         parent: parent.map(|parent| parent.expr),
         field,
     }).into(),
 
     #[precedence(level = "1")]
-    <kind:Spanned<NegateKind>> <expr:Spanned<PrecExpr>> => {
+    <kind:Spanned<NegateKind>> <expr:Spanned<PrecExpr<WithBlock>>> => {
         let expr_span = expr.span;
         match (kind.value, expr.value.expr) {
             // If we're applying arithmetic negation to a numeric literal, negate
@@ -321,14 +337,14 @@ PrecExpr: PrecExpr = {
     }.into(),
 
     #[precedence(level = "2")]
-    <expr:Spanned<PrecExpr>> "as" <type_:Spanned<Path>> => Expr::from(CastExpr {
+    <expr:Spanned<PrecExpr<B>>> "as" <type_:Spanned<Path>> => Expr::from(CastExpr {
         expr: expr.map(|expr| expr.expr),
         type_,
     }).into(),
 
     #[precedence(level = "3")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <oper:Spanned<MulArithBinOper>> <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr<B>>> <oper:Spanned<MulArithBinOper>> <rhs:Spanned<PrecExpr<B>>> =>
         Expr::from(BinOperExpr {
             oper: oper.map(Into::into),
             lhs: lhs.map(|lhs| lhs.expr),
@@ -337,7 +353,7 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "4")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <oper:Spanned<AddArithBinOper>> <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr<B>>> <oper:Spanned<AddArithBinOper>> <rhs:Spanned<PrecExpr<B>>> =>
         Expr::from(BinOperExpr {
             oper: oper.map(Into::into),
             lhs: lhs.map(|lhs| lhs.expr),
@@ -346,7 +362,7 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "5")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <oper:Spanned<"<<">> <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr<B>>> <oper:Spanned<"<<">> <rhs:Spanned<PrecExpr<B>>> =>
         Expr::from(BinOperExpr {
             oper: Spanned::new(oper.span, BitwiseBinOper::Shl.into()),
             lhs: lhs.map(|lhs| lhs.expr),
@@ -354,7 +370,7 @@ PrecExpr: PrecExpr = {
         }).into(),
 
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <oper:Spanned<">>">> <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr<B>>> <oper:Spanned<">>">> <rhs:Spanned<PrecExpr<B>>> =>
         Expr::from(BinOperExpr {
             oper: Spanned::new(oper.span, BitwiseBinOper::Shr.into()),
             lhs: lhs.map(|lhs| lhs.expr),
@@ -363,7 +379,7 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "6")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <oper:Spanned<"&">> <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr<B>>> <oper:Spanned<"&">> <rhs:Spanned<PrecExpr<B>>> =>
         Expr::from(BinOperExpr {
             oper: Spanned::new(oper.span, BitwiseBinOper::And.into()),
             lhs: lhs.map(|lhs| lhs.expr),
@@ -372,7 +388,7 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "7")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <oper:Spanned<"^">> <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr<B>>> <oper:Spanned<"^">> <rhs:Spanned<PrecExpr<B>>> =>
         Expr::from(BinOperExpr {
             oper: Spanned::new(oper.span, BitwiseBinOper::Xor.into()),
             lhs: lhs.map(|lhs| lhs.expr),
@@ -381,7 +397,7 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "8")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <oper:Spanned<"|">> <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr<B>>> <oper:Spanned<"|">> <rhs:Spanned<PrecExpr<B>>> =>
         Expr::from(BinOperExpr {
             oper: Spanned::new(oper.span, BitwiseBinOper::Or.into()),
             lhs: lhs.map(|lhs| lhs.expr),
@@ -390,7 +406,7 @@ PrecExpr: PrecExpr = {
     
     #[precedence(level = "9")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <oper:Spanned<CompareBinOper>> <rhs:Spanned<PrecExpr>> =>? {
+    <lhs:Spanned<PrecExpr<B>>> <oper:Spanned<CompareBinOper>> <rhs:Spanned<PrecExpr<B>>> =>? {
         if !lhs.value.is_grouped {
             if let Expr::BinOper(lhs) = &lhs.value.expr {
                 if let BinOper::Compare(_) = lhs.oper.value {
@@ -410,7 +426,7 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "10")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <oper:Spanned<"&&">> <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr<B>>> <oper:Spanned<"&&">> <rhs:Spanned<PrecExpr<B>>> =>
     {
         Expr::from(BinOperExpr {
             oper: Spanned::new(oper.span, LogicalBinOper::And.into()),
@@ -421,7 +437,7 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "11")]
     #[assoc(side = "left")]
-    <lhs:Spanned<PrecExpr>> <oper:Spanned<"||">> <rhs:Spanned<PrecExpr>> =>
+    <lhs:Spanned<PrecExpr<B>>> <oper:Spanned<"||">> <rhs:Spanned<PrecExpr<B>>> =>
     {
         Expr::from(BinOperExpr {
             oper: Spanned::new(oper.span, LogicalBinOper::Or.into()),
@@ -432,7 +448,7 @@ PrecExpr: PrecExpr = {
 
     #[precedence(level = "12")]
     #[assoc(side = "right")]
-    <lhs:Spanned<PrecExpr>> "=" <rhs:Spanned<PrecExpr>> =>? {
+    <lhs:Spanned<PrecExpr<B>>> "=" <rhs:Spanned<PrecExpr<B>>> =>? {
         match lhs.value.expr {
             Expr::Var(lhs) => Ok(Expr::from(AssignExpr {
                 lhs: lhs,

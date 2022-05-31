@@ -890,7 +890,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
             normalizer::Stmt::Bind(bind_stmt) => self.compile_bind_stmt(bind_stmt),
             normalizer::Stmt::Emit(call) => self.compile_emit_stmt(call),
-            normalizer::Stmt::Block(_, block_stmt) => self.compile_block_stmt(block_stmt),
             normalizer::Stmt::Invoke(invoke_stmt) => self.compile_invoke_stmt(invoke_stmt),
             normalizer::Stmt::Assign(assign_stmt) => self.compile_assign_stmt(assign_stmt),
             normalizer::Stmt::Ret(ret_stmt) => self.compile_ret_stmt(ret_stmt),
@@ -1047,12 +1046,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         self.stmts
             .push(Expr::from(CallExpr { target, args }).into());
-    }
-
-    fn compile_block_stmt(&mut self, block_stmt: &normalizer::BlockStmt) {
-        let stmts = self.compile_block(&block_stmt.stmts);
-
-        self.stmts.push(BlockStmt::from(stmts).into());
     }
 
     fn compile_invoke_stmt(&mut self, invoke_stmt: &normalizer::InvokeStmt) {
