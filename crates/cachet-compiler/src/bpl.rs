@@ -1594,7 +1594,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
             flattener::Stmt::Bind(bind_stmt) => self.compile_bind_stmt(bind_stmt),
             flattener::Stmt::Emit(call) => self.compile_emit_stmt(call),
-            flattener::Stmt::Block(void, _) => unreachable(*void),
             flattener::Stmt::Invoke(invoke_stmt) => self.compile_invoke_stmt(invoke_stmt),
             flattener::Stmt::Assign(assign_stmt) => self.compile_assign_stmt(assign_stmt),
             flattener::Stmt::Ret(ret_stmt) => self.compile_ret_stmt(ret_stmt),

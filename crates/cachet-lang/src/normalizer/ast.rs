@@ -179,19 +179,12 @@ pub enum Stmt<B = ()> {
     Bind(BindStmt),
     #[from]
     Emit(EmitStmt),
-    Block(B, BlockStmt<B>),
     #[from]
     Invoke(InvokeStmt),
     #[from]
     Assign(AssignStmt<B>),
     #[from]
     Ret(RetStmt<B>),
-}
-
-impl<B: Default> From<BlockStmt<B>> for Stmt<B> {
-    fn from(block_stmt: BlockStmt<B>) -> Self {
-        Stmt::Block(B::default(), block_stmt)
-    }
 }
 
 #[derive(Clone, Debug)]

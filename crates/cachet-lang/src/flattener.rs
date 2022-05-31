@@ -134,9 +134,6 @@ impl Flattener {
             normalizer::Stmt::Emit(emit_stmt) => {
                 self.stmts.push(emit_stmt.into());
             }
-            normalizer::Stmt::Block(_, block_stmt) => {
-                self.flatten_block_stmt(block_stmt);
-            }
             normalizer::Stmt::Invoke(invoke_stmt) => {
                 self.stmts.push(invoke_stmt.into());
             }
@@ -193,10 +190,6 @@ impl Flattener {
             }
             .into(),
         );
-    }
-
-    fn flatten_block_stmt(&mut self, block_stmt: normalizer::BlockStmt) {
-        self.flatten_stmts(block_stmt.stmts);
     }
 
     fn flatten_assign_stmt(&mut self, assign_stmt: normalizer::AssignStmt) {

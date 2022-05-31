@@ -315,8 +315,6 @@ impl From<Block> for KindedBlock {
 
 #[derive(Clone, Debug, From)]
 pub enum Stmt {
-    #[from(types(Block))]
-    Block(KindedBlock),
     #[from]
     Let(LetStmt),
     #[from]
@@ -340,7 +338,6 @@ pub enum Stmt {
 impl Typed for Stmt {
     fn type_(&self) -> TypeIndex {
         match self {
-            Self::Block(block) => block.type_(),
             Self::Let(let_stmt) => let_stmt.type_(),
             Self::Label(label_stmt) => label_stmt.type_(),
             Self::If(if_stmt) => if_stmt.type_(),

@@ -198,12 +198,6 @@ impl From<Block> for KindedBlock {
 
 #[derive(Clone, Debug, From)]
 pub enum Stmt {
-    /// Represents a freestanding block in the statement position, *without*
-    /// a trailing semicolon. Requires that the block be unit-typed. A trailing
-    /// semicolon should cause the block to be parsed as an expression
-    /// statement, which ignores the type.
-    #[from(types(Block))]
-    Block(KindedBlock),
     #[from]
     Let(LetStmt),
     #[from]
@@ -221,6 +215,7 @@ pub enum Stmt {
     Ret(RetStmt),
     #[from]
     Expr(Expr),
+    Empty,
 }
 
 #[derive(Clone, Debug)]

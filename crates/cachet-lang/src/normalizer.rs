@@ -319,17 +319,12 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         let (mut stmts, call) = self.normalize_call(call);
         let stmt = stmt_ctor(call);
 
-        self.stmts.push(if stmts.is_empty() {
-            stmt
-        } else {
-            stmts.push(stmt);
-            BlockStmt { kind: None, stmts }.into()
-        });
+        stmts.push(stmt);
+        self.stmts.append(&mut stmts);
     }
 
     fn normalize_stmt(&mut self, stmt: type_checker::Stmt) {
         match stmt {
-            type_checker::Stmt::Block(block) => self.normalize_unused_block_expr(block),
             type_checker::Stmt::Let(let_stmt) => self.normalize_let_stmt(let_stmt),
             type_checker::Stmt::Label(label_stmt) => self.stmts.push(label_stmt.into()),
             type_checker::Stmt::If(if_stmt) => self.normalize_if_stmt(if_stmt),
@@ -502,16 +497,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
 
         let mut scoped_normalizer = self.nest(&mut stmts);
         scoped_normalizer.normalize_unused_expr(kinded_block.block.value);
-
-        if !stmts.is_empty() {
-            self.stmts.push(
-                BlockStmt {
-                    kind: kinded_block.kind,
-                    stmts,
-                }
-                .into(),
-            );
-        }
+        self.stmts.extend(stmts);
     }
 
     fn normalize_used_invoke_expr(&mut self, invoke_expr: type_checker::InvokeExpr) -> Expr {

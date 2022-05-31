@@ -468,8 +468,6 @@ impl From<Block> for KindedBlock {
 
 #[derive(Clone, Debug, From)]
 pub enum Stmt {
-    #[from(types(Block))]
-    Block(KindedBlock),
     #[from]
     Let(LetStmt),
     #[from]

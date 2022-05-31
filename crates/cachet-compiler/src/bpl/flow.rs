@@ -6,7 +6,6 @@ use std::ops::ControlFlow::{self, Break, Continue};
 
 use derive_more::From;
 use typed_index_collections::{TiSlice, TiVec};
-use void::unreachable;
 
 use cachet_lang::flattener;
 use cachet_util::{typed_field_index, MaybeOwned};
@@ -303,7 +302,6 @@ impl<'a> FlowTracer<'a> {
             flattener::Stmt::Goto(goto_stmt) => self.trace_goto_stmt(goto_stmt),
             flattener::Stmt::Bind(bind_stmt) => self.trace_bind_stmt(bind_stmt),
             flattener::Stmt::Emit(emit_stmt) => self.trace_emit_stmt(emit_stmt),
-            flattener::Stmt::Block(void, _) => unreachable(*void),
             flattener::Stmt::Invoke(invoke_stmt) => self.trace_invoke_stmt(invoke_stmt),
         }
 

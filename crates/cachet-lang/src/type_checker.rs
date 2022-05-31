@@ -984,7 +984,6 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let stmt_span = stmt.span;
 
         let stmt: Option<Stmt> = match stmt.value {
-            resolver::Stmt::Block(block) => Some(self.type_check_kinded_block(block).into()),
             resolver::Stmt::Let(let_stmt) => Some(self.type_check_let_stmt(let_stmt).into()),
             resolver::Stmt::Label(LabelStmt { label }) => Some(LabelStmt { label: *label }.into()),
             resolver::Stmt::If(if_stmt) => Some(self.type_check_if_stmt(if_stmt).into()),
@@ -1574,7 +1573,6 @@ struct ParamSummary {
 
 fn does_stmt_exit_early(stmt: &Stmt) -> bool {
     match stmt {
-        Stmt::Block(kinded_block) => kinded_block.block.exits_early,
         Stmt::Let(LetStmt { rhs: expr, .. }) | Stmt::Expr(expr) => does_expr_exit_early(expr),
         Stmt::If(if_stmt) => does_if_stmt_exit_early(if_stmt),
         Stmt::Ret(_) => true,
