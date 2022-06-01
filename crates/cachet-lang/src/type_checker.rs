@@ -275,7 +275,7 @@ impl<'a> TypeChecker<'a> {
                 &mut locals,
             );
 
-            let body_block_has_explicit_value = body.block.value.is_some();
+            let body_block_has_explicit_value = body.block.value.value.is_some();
             let mut block = scoped_type_checker.type_check_block(&body.block);
             // If the callable's body block doesn't exit early, we need to check
             // that the type of its value matches the return type of the
@@ -952,7 +952,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 .filter_map(|stmt| self.type_check_stmt(stmt.as_ref())),
         );
 
-        let value = match &block.value {
+        let value = match &block.value.value {
             None => BuiltInVar::Unit.into(),
             Some(value) => self.type_check_expr(value),
         };
@@ -995,6 +995,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             resolver::Stmt::Emit(call) => self.type_check_emit_stmt(call).map(Into::into),
             resolver::Stmt::Ret(ret_stmt) => Some(self.type_check_ret_stmt(ret_stmt).into()),
             resolver::Stmt::Expr(expr) => Some(self.type_check_expr(expr).into()),
+            resolver::Stmt::Block(kinded_block) => {
+                Some(self.type_check_block_stmt(kinded_block).into())
+            }
         };
 
         if let Some(stmt) = &stmt {
@@ -1010,6 +1013,22 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         }
 
         stmt
+    }
+
+    fn type_check_block_stmt(&mut self, kinded_block: &resolver::KindedBlock) -> Expr {
+        let typed_kinded_block = self.type_check_kinded_block(kinded_block);
+        let type_ = typed_kinded_block.type_();
+        if type_ != BuiltInType::Unit.into() {
+            let expected_type = self.get_type_ident(BuiltInType::Unit.into());
+            let found_type = self.get_type_ident(type_);
+            self.errors.push(TypeCheckError::TypeMismatch {
+                expected_type,
+                found_type,
+                span: kinded_block.block.value.span,
+            });
+        }
+
+        typed_kinded_block.into()
     }
 
     fn type_check_let_stmt(&mut self, let_stmt: &resolver::LetStmt) -> LetStmt {

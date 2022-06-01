@@ -451,7 +451,7 @@ impl From<Label> for LocalLabel {
 #[derive(Clone, Debug)]
 pub struct Block {
     pub stmts: Vec<Spanned<Stmt>>,
-    pub value: Option<Expr>,
+    pub value: Spanned<Option<Expr>>,
 }
 
 #[derive(Clone, Debug)]
@@ -468,6 +468,8 @@ impl From<Block> for KindedBlock {
 
 #[derive(Clone, Debug, From)]
 pub enum Stmt {
+    #[from(types(Block))]
+    Block(KindedBlock),
     #[from]
     Let(LetStmt),
     #[from]

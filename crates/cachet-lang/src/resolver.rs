@@ -863,18 +863,20 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             block
                 .stmts
                 .into_iter()
-                .filter(|stmt| !matches!(stmt.value, parser::Stmt::Empty))
                 .map(|stmt| map_spanned(stmt, |stmt| self.resolve_stmt(stmt.value))),
         );
 
-        let value = match block.value {
-            Some(value) => self.resolve_expr(value).map(Some),
-            None => Some(None),
-        };
+        let value = Spanned::new(
+            block.value.span,
+            match block.value.value {
+                Some(expr) => self.resolve_expr(expr)?.into(),
+                None => None,
+            },
+        );
 
         Some(Block {
             stmts: stmts?,
-            value: value?,
+            value: value,
         })
     }
 
@@ -889,7 +891,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
 
     fn resolve_stmt(&mut self, stmt: parser::Stmt) -> Option<Stmt> {
         match stmt {
-            parser::Stmt::Empty => unreachable!("These should be filtered out by now"),
+            parser::Stmt::Block(block) => self.resolve_kinded_block(block).map(Stmt::from),
             parser::Stmt::Let(let_stmt) => self.resolve_let_stmt(let_stmt).map(Stmt::from),
             parser::Stmt::Label(label_stmt) => self.resolve_label_stmt(label_stmt).map(Stmt::from),
             parser::Stmt::If(if_stmt) => self.resolve_if_stmt(if_stmt).map(Stmt::from),
