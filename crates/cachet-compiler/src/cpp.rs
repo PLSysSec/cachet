@@ -12,7 +12,7 @@ use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
-use cachet_lang::ast::{BinOper, Ident, Path, VarParamKind};
+use cachet_lang::ast::{BinOper, Ident, NegateKind, Path, VarParamKind};
 use cachet_lang::built_in::{BuiltInType, IdentEnum};
 use cachet_lang::normalizer::{self, HasAttrs, Typed};
 
@@ -1348,15 +1348,37 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_negate_expr<E: CompileExpr + Typed>(
         &self,
         negate_expr: &normalizer::NegateExpr<E>,
-    ) -> TaggedExpr<NegateExpr> {
+    ) -> TaggedExpr<Expr> {
         let expr = self.use_expr(negate_expr.expr.compile(self), ExprTag::Ref | ExprTag::Val);
 
-        // TODO(spinda): Replace this with a helper function call.
+        let ident = TypeMemberFnIdent::Negate(match negate_expr.kind {
+            NegateKind::Arith | NegateKind::Bitwise => negate_expr.kind.into(),
+            NegateKind::Logical => {
+                return TaggedExpr {
+                    expr: NegateExpr {
+                        kind: negate_expr.kind,
+                        expr,
+                    }
+                    .into(),
+                    type_: negate_expr.type_(),
+                    tags: ExprTag::Ref | ExprTag::Val,
+                };
+            }
+        });
+
+        let expr_type = negate_expr.expr.type_();
+        let target = TypeMemberFnPath {
+            parent: self.get_type_ident(expr_type),
+            ident,
+        }
+        .into();
+
         TaggedExpr {
-            expr: NegateExpr {
-                kind: negate_expr.kind,
-                expr,
-            },
+            expr: CallExpr {
+                target,
+                args: vec![expr],
+            }
+            .into(),
             type_: negate_expr.type_(),
             tags: ExprTag::Ref | ExprTag::Val,
         }

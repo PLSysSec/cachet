@@ -32,6 +32,8 @@ pub enum NegateKind {
     Arith,
     #[display(fmt = "!")]
     Logical,
+    #[display(fmt = "~")]
+    Bitwise,
 }
 
 /// Describes how "safe" a cast is.

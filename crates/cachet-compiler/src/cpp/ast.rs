@@ -332,6 +332,7 @@ pub enum TypeMemberFnIdent {
     SetMutRef,
     #[display(fmt = "Fields")]
     Fields,
+    Negate(NegateTypeMemberFnIdent),
     Cast(CastTypeMemberFnIdent),
     Variant(VariantTypeMemberFnIdent),
     BinOper(BinOperTypeMemberFnIdent),
@@ -344,6 +345,7 @@ impl TypeMemberFnIdent {
             | TypeMemberFnIdent::SetMutRef
             | TypeMemberFnIdent::Fields => NamespaceKind::Type,
             TypeMemberFnIdent::ToTag(_) => ToTagTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
+            TypeMemberFnIdent::Negate(_) => NegateTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Cast(_) => CastTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Variant(_) => VariantTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::BinOper(_) => BinOperTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
@@ -359,6 +361,29 @@ pub struct ToTagTypeMemberFnIdent {
 
 impl ToTagTypeMemberFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
+}
+
+#[derive(Clone, Copy, Debug, From)]
+pub struct NegateTypeMemberFnIdent {
+    pub kind: NegateKind,
+}
+
+impl NegateTypeMemberFnIdent {
+    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
+}
+
+impl Display for NegateTypeMemberFnIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self.kind {
+                NegateKind::Arith => "Negate",
+                NegateKind::Bitwise => "BitNot",
+                NegateKind::Logical => unreachable!("logical negate doesn't use member function"),
+            }
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

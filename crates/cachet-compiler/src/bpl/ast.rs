@@ -274,8 +274,8 @@ pub struct TypeMemberFnIdent {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum TypeMemberFnSelector {
-    #[display(fmt = "negate")]
-    Negate,
+    #[from]
+    Negate(NegateTypeMemberFnSelector),
     #[from]
     Cast(CastTypeMemberFnSelector),
     #[from]
@@ -284,6 +284,25 @@ pub enum TypeMemberFnSelector {
     Field(FieldTypeMemberFnSelector),
     #[from]
     BinOper(BinOperTypeMemberFnSelector),
+}
+
+#[derive(Clone, Copy, Debug, From)]
+pub struct NegateTypeMemberFnSelector {
+    kind: NegateKind,
+}
+
+impl Display for NegateTypeMemberFnSelector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self.kind {
+                NegateKind::Arith => "negate",
+                NegateKind::Bitwise => "bitNot",
+                NegateKind::Logical => unreachable!("logical negate doesn't use member function"),
+            }
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

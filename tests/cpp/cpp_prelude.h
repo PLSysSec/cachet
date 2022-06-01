@@ -87,6 +87,10 @@ struct NumericType : public PrimitiveType<T> {
     return lhs > rhs;
   }
 
+  static Val Negate(Ref val) {
+    return -val;
+  }
+
   static Val Add(Ref lhs, Ref rhs) {
     return lhs + rhs;
   }
@@ -109,6 +113,10 @@ struct IntegralType : public NumericType<T> {
 
   static Val Shr(Ref lhs, Ref rhs) {
     return lhs >> rhs;
+  }
+
+  static Val BitNot(Ref val) {
+    return ~val;
   }
 
   static Val BitAnd(Ref lhs, Ref rhs) {
