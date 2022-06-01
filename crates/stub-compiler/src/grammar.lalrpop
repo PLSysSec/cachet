@@ -1,0 +1,55 @@
+use crate::stub_ast::*;
+
+grammar();
+
+pub IC: IC =
+    <name: Ident> "IonIC"
+    <instructions: Instruction*>
+    "ReturnFromIC"
+    <facts: Fact*> => IC { name, instructions, facts};
+
+Instruction: Instruction =
+    <name: Ident> <args: Comma<Arg>> => Instruction { name, args };
+
+
+Arg: Arg =
+    "[" <type_: Type> <hint: Ident> "]" <value: Value> => Arg {type_, hint, value};
+
+Value: Value = {
+    "true" => Value::Bool(true),
+    "false" => Value::Bool(false),
+    Num => Value::Index(<>)
+};
+
+Type: Type = {
+    FieldKind => Type::Field(<>),
+    Ident => Type::Id(<>)
+};
+
+Fact: Fact = {
+    "ShapeNumFixedSlots" <address:Num> "," <num_slots: Num> => Fact::ShapeNumFixedSlots { address, num_slots },
+    "ShapeSlotSpan" <address:Num> "," <span: Num> => Fact::ShapeSlotSpan { address, span },
+    <kind: FieldKind> <offset: Num> "," <address:Num> => Fact::Field { kind, offset, address }
+};
+
+#[inline]
+FieldKind: FieldKind = {
+    "ShapeField" => FieldKind::Shape,
+    "RawInt32Field" => FieldKind::RawInt32,
+    "StringField" => FieldKind::String,
+    "JSObjectField" => FieldKind::JSObject
+};
+
+Num: usize = Word => usize::from_str_radix(&<>, 16).unwrap();
+
+Word: String = r"\w+" => <>.to_string();
+
+Ident: String = Word;
+
+
+Comma<Rule>: Vec<Rule> =
+    <mut xs:(<Rule> ",")*> <x:Rule> => {
+        xs.push(x);
+        xs
+    }
+;
