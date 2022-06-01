@@ -1355,6 +1355,19 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 }
             }
             NegateKind::Logical => self.expect_expr_type(expr, BuiltInType::Bool.into()),
+            NegateKind::Bitwise => {
+                if !self.is_integral_type(expr_type_index) {
+                    self.type_checker
+                        .errors
+                        .push(TypeCheckError::NumericOperatorTypeMismatch {
+                            operand_span: expr.span,
+                            operand_type: self.get_type_ident(expr_type_index),
+                            operator_span: negate_expr.kind.span,
+                        });
+                }
+
+                expr.value
+            }
         };
 
         NegateExpr {

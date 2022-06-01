@@ -231,7 +231,18 @@ ir CacheIR emits MASM {
       emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
 
       CacheIR::releaseReg(scratchReg);
-  }
+    }
+
+    op Int32NotResult(inputId: Int32Id) {
+        let inputReg = CacheIR::useInt32Reg(inputId);
+        let scratchReg = CacheIR::allocateReg();
+
+        emit MASM::Mov(inputReg, scratchReg);
+        emit MASM::Not32(scratchReg);
+        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+        CacheIR::releaseReg(scratchReg);
+    }
 
     fn addFailurePath(out label failure: MASM);
 

@@ -2005,13 +2005,13 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let expr = negate_expr.expr.compile(self);
 
         match negate_expr.kind {
-            NegateKind::Arith => {
+            NegateKind::Arith | NegateKind::Bitwise => {
                 let type_ident = self.get_type_ident(negate_expr.type_()).into();
-
+                let selector: NegateTypeMemberFnSelector = negate_expr.kind.into();
                 CallExpr {
                     target: TypeMemberFnIdent {
                         type_ident,
-                        selector: TypeMemberFnSelector::Negate,
+                        selector: selector.into(),
                     }
                     .into(),
                     arg_exprs: vec![expr],
