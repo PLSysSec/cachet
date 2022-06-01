@@ -15,7 +15,7 @@ use crate::ast::{
     BinOper, BlockKind, CastSafety, CompareBinOper, Ident, MaybeSpanned, NegateKind, Path, Span,
     Spanned, VarParamKind,
 };
-use crate::built_in::{BuiltInType, BuiltInVar, IdentEnum};
+use crate::built_in::{BuiltInType, BuiltInVar, IdentEnum, Signedness, Width};
 use crate::resolver;
 use crate::FrontendError;
 
@@ -500,6 +500,15 @@ fn build_cast_chain(
     cast_route: impl Iterator<Item = TypeIndex>,
 ) -> Expr {
     cast_route.fold(expr, |expr, type_index| {
+        // If we're casting a literal, let's try to produce a new literal rather than
+        // wrap the literal in a cast expression. It's important for correctness
+        // that this conversion act the same as the C++ and Boogie backends
+        if let (Expr::Literal(l), TypeIndex::BuiltIn(built_in)) = (&expr, type_index) {
+            if let Some(literal) = cast_literal(l, built_in) {
+                return literal.into();
+            }
+        }
+
         CastExpr {
             kind,
             expr,
@@ -1649,4 +1658,42 @@ fn is_const(expr: &Expr) -> bool {
             is_const(&cast_expr.expr) && matches!(cast_expr.type_, TypeIndex::BuiltIn(_))
         }
     }
+}
+
+fn cast_literal(l: &Literal, t: BuiltInType) -> Option<Literal> {
+    match l {
+        Literal::Int16(v) => try_construct_lit(t, *v),
+        Literal::Int32(v) => try_construct_lit(t, *v),
+        Literal::Int64(v) => try_construct_lit(t, *v),
+        Literal::UInt16(v) => try_construct_lit(t, *v),
+        Literal::UInt32(v) => try_construct_lit(t, *v),
+        Literal::UInt64(v) => try_construct_lit(t, *v),
+        Literal::Double(_) => None,
+    }
+}
+
+fn try_construct_lit<V>(t: BuiltInType, v: V) -> Option<Literal>
+where
+    i16: TryFrom<V>,
+    i32: TryFrom<V>,
+    i64: TryFrom<V>,
+    u16: TryFrom<V>,
+    u32: TryFrom<V>,
+    u64: TryFrom<V>,
+{
+    use Signedness::*;
+    use Width::*;
+
+    match t {
+        BuiltInType::Unit => None?,
+        BuiltInType::Bool => None?,
+        BuiltInType::Double => None?,
+        BuiltInType::Integral(Signed, W16) => Literal::Int16(v.try_into().ok()?),
+        BuiltInType::Integral(Signed, W32) => Literal::Int32(v.try_into().ok()?),
+        BuiltInType::Integral(Signed, W64) => Literal::Int64(v.try_into().ok()?),
+        BuiltInType::Integral(Unsigned, W16) => Literal::UInt16(v.try_into().ok()?),
+        BuiltInType::Integral(Unsigned, W32) => Literal::UInt32(v.try_into().ok()?),
+        BuiltInType::Integral(Unsigned, W64) => Literal::UInt64(v.try_into().ok()?),
+    }
+    .into()
 }
