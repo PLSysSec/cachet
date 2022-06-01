@@ -190,21 +190,22 @@ LocalLabel: LocalLabel =
     "label" <ident:Spanned<Ident>> <ir:(":" <Spanned<Path>>)?> => LocalLabel { ident, ir };
 
 Block: Block =
-    "{" <block:BlockInner> "}" => block;
+    "{" ";"* <block:BlockInner> "}" => block;
 
 BlockInner: Block = {
-    <stmts:BlockOrStmt*> <value:Expr<NoBlock>> => Block { stmts, value: Some(value) },
-    <stmts:BlockOrStmt*> <value:BlockExpr> => Block { stmts, value: Some(value) },
-    <mut stmts:BlockOrStmt*> <stmt:Spanned<Stmt>> => {
+    <stmts:BlockOrStmt*> <value:Spanned<Some<Expr<NoBlock>>>> => Block { stmts, value },
+    <stmts:BlockOrStmt*> <value:Spanned<Some<BlockExpr>>> => Block { stmts, value },
+    <mut stmts:BlockOrStmt*> <stmt:Spanned<Stmt>> <value:Spanned<None<Expr<NoBlock>>>> => {
         stmts.push(stmt);
-        Block { stmts, value: None }
+        Block { stmts, value }
     },
-    => Block { stmts: vec![], value: None },
+    EmptySpan => Block { stmts: vec![], value: Spanned::new(<>, None)},
 };
+
 
 #[inline]
 BlockOrStmt: Spanned<Stmt> = {
-    <stmt:Spanned<BlockStmt>> => stmt,
+    <block:Spanned<KindedBlock>> => block.map(Stmt::from),
     <stmt:Spanned<Stmt>> => stmt
 };
 
@@ -220,16 +221,16 @@ BlockKind: BlockKind = {
 };
 
 Stmt: Stmt = {
-    ";" => Stmt::Empty,
-    <let_stmt:LetStmt> ";" => let_stmt.into(),
-    <label_stmt:LabelStmt> ";" => label_stmt.into(),
+    <let_stmt:LetStmt> ";"+ => let_stmt.into(),
+    <label_stmt:LabelStmt> ";"+ => label_stmt.into(),
     <if_stmt:IfStmt> => if_stmt.into(),
-    <check_stmt:CheckStmt> ";" => check_stmt.into(),
-    <goto_stmt:GotoStmt> ";" => goto_stmt.into(),
-    <bind_stmt:BindStmt> ";" => bind_stmt.into(),
-    <emit_stmt:EmitStmt> ";" => emit_stmt,
-    <ret_stmt:RetStmt> ";" => ret_stmt.into(),
-    <expr:Expr<NoBlock>> ";" => expr.into(),
+    <check_stmt:CheckStmt> ";"+ => check_stmt.into(),
+    <goto_stmt:GotoStmt> ";"+ => goto_stmt.into(),
+    <bind_stmt:BindStmt> ";"+ => bind_stmt.into(),
+    <emit_stmt:EmitStmt> ";"+ => emit_stmt,
+    <ret_stmt:RetStmt> ";"+ => ret_stmt.into(),
+    <expr:Expr<NoBlock>> ";"+ => expr.into(),
+    <expr:BlockExpr> ";"+ => expr.into(),
 };
 
 LetStmt: LetStmt =
@@ -280,22 +281,17 @@ WithBlock: PrecExpr = {
 #[inline]
 BlockExpr: Expr = {
    KindedBlock => Expr::from(<>),
-}
-
-#[inline]
-BlockStmt: Stmt = {
-   BlockExpr => Stmt::from(<>),
-}
+};
 
 PrecExpr<B>: B = {
+    #[precedence(level = "0")]
+    B,
+
     // Note that this breaks out of the precedence chain: an expression of any
     // precedence level can be grouped inside parentheses.
-
     #[precedence(level = "0")]
     "(" <expr:Expr<WithBlock>> ")" => PrecExpr::grouped(expr),
 
-    #[precedence(level = "0")]
-    <b:B> => b,
 
     #[precedence(level = "0")]
     <literal:Literal> => Expr::from(literal).into(),
@@ -577,6 +573,17 @@ Path: Path =
 Spanned<Rule>: Spanned<Rule> =
     <start: @L> <value: Rule> <end: @R> =>
         Spanned::new(Span::new(file_id, start as RawIndex..end as RawIndex), value);
+
+EmptySpan: Span =
+    <start: @L> <end: @R> => Span::new(file_id, start as RawIndex..end as RawIndex );
+
+Some<T>: Option<T> = {
+    T => Some(<>)
+}
+
+None<T>: Option<T> = {
+    => None
+};
 
 Box<Rule>: Box<Rule> =
     <value: Rule> =>
