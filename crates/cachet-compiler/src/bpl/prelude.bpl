@@ -122,10 +122,10 @@ function {:bvbuiltin "bvadd"} #UInt16^add(x: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvsub"} #UInt16^sub(x: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvmul"} #UInt16^mul(x: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvudiv"} #UInt16^div(x: #UInt16, y: #UInt16): #UInt16;
-function {:bvbuiltin "bvsle"} #UInt16^lte(a: #UInt16, y: #UInt16): #Bool;
-function {:bvbuiltin "bvsge"} #UInt16^gte(a: #UInt16, y: #UInt16): #Bool;
-function {:bvbuiltin "bvslt"} #UInt16^lt(a: #UInt16, y: #UInt16): #Bool;
-function {:bvbuiltin "bvsgt"} #UInt16^gt(a: #UInt16, y: #UInt16): #Bool;
+function {:bvbuiltin "bvule"} #UInt16^lte(a: #UInt16, y: #UInt16): #Bool;
+function {:bvbuiltin "bvuge"} #UInt16^gte(a: #UInt16, y: #UInt16): #Bool;
+function {:bvbuiltin "bvult"} #UInt16^lt(a: #UInt16, y: #UInt16): #Bool;
+function {:bvbuiltin "bvugt"} #UInt16^gt(a: #UInt16, y: #UInt16): #Bool;
 function {:bvbuiltin "bvor"} #UInt16^bitOr(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvand"} #UInt16^bitAnd(a: #UInt16, y: #UInt16): #UInt16;
 function {:bvbuiltin "bvxor"} #UInt16^xor(a: #UInt16, y: #UInt16): #UInt16;
@@ -152,10 +152,10 @@ function {:bvbuiltin "bvadd"} #UInt32^add(x: #UInt32, y: #UInt32): #UInt32;
 function {:bvbuiltin "bvsub"} #UInt32^sub(x: #UInt32, y: #UInt32): #UInt32;
 function {:bvbuiltin "bvmul"} #UInt32^mul(x: #UInt32, y: #UInt32): #UInt32;
 function {:bvbuiltin "bvudiv"} #UInt32^div(x: #UInt32, y: #UInt32): #UInt32;
-function {:bvbuiltin "bvsle"} #UInt32^lte(a: #UInt32, y: #UInt32): #Bool;
-function {:bvbuiltin "bvsge"} #UInt32^gte(a: #UInt32, y: #UInt32): #Bool;
-function {:bvbuiltin "bvslt"} #UInt32^lt(a: #UInt32, y: #UInt32): #Bool;
-function {:bvbuiltin "bvsgt"} #UInt32^gt(a: #UInt32, y: #UInt32): #Bool;
+function {:bvbuiltin "bvule"} #UInt32^lte(a: #UInt32, y: #UInt32): #Bool;
+function {:bvbuiltin "bvuge"} #UInt32^gte(a: #UInt32, y: #UInt32): #Bool;
+function {:bvbuiltin "bvult"} #UInt32^lt(a: #UInt32, y: #UInt32): #Bool;
+function {:bvbuiltin "bvugt"} #UInt32^gt(a: #UInt32, y: #UInt32): #Bool;
 function {:bvbuiltin "bvor"} #UInt32^bitOr(a: #UInt32, y: #UInt32): #UInt32;
 function {:bvbuiltin "bvand"} #UInt32^bitAnd(a: #UInt32, y: #UInt32): #UInt32;
 function {:bvbuiltin "bvxor"} #UInt32^xor(a: #UInt32, y: #UInt32): #UInt32;
@@ -167,10 +167,10 @@ function {:bvbuiltin "bvadd"} #UInt64^add(x: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvsub"} #UInt64^sub(x: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvmul"} #UInt64^mul(x: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvudiv"} #UInt64^div(x: #UInt64, y: #UInt64): #UInt64;
-function {:bvbuiltin "bvsle"} #UInt64^lte(a: #UInt64, y: #UInt64): #Bool;
-function {:bvbuiltin "bvsge"} #UInt64^gte(a: #UInt64, y: #UInt64): #Bool;
-function {:bvbuiltin "bvslt"} #UInt64^lt(a: #UInt64, y: #UInt64): #Bool;
-function {:bvbuiltin "bvsgt"} #UInt64^gt(a: #UInt64, y: #UInt64): #Bool;
+function {:bvbuiltin "bvule"} #UInt64^lte(a: #UInt64, y: #UInt64): #Bool;
+function {:bvbuiltin "bvuge"} #UInt64^gte(a: #UInt64, y: #UInt64): #Bool;
+function {:bvbuiltin "bvult"} #UInt64^lt(a: #UInt64, y: #UInt64): #Bool;
+function {:bvbuiltin "bvugt"} #UInt64^gt(a: #UInt64, y: #UInt64): #Bool;
 function {:bvbuiltin "bvor"} #UInt64^bitOr(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvand"} #UInt64^bitAnd(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvxor"} #UInt64^xor(a: #UInt64, y: #UInt64): #UInt64;
@@ -210,9 +210,22 @@ axiom #Double~INFINITY == 0+oo53e11;
 const #Double~NEG_INFINITY: #Double;
 axiom #Double~NEG_INFINITY == 0-oo53e11;
 
+procedure boogie_si_record_bv32(x:bv32);
+procedure #Int32~print(d: #Int32) {
+  call {:cexpr "Int32"} boogie_si_record_bv32(d);
+}
 
+procedure #UInt32~print(d: #UInt32) {
+  call {:cexpr "UInt32"} boogie_si_record_bv32(d);
+}
+
+procedure boogie_si_record_bv64(x:#UInt64);
+procedure #Double~print(d: #Double) {
+  call {:cexpr "Double"} boogie_si_record_bv64(#Double~bits(d));
+}
 function {:builtin "fp.isNaN"} #Double~is_nan(n: #Double): #Bool;
 function {:bvbuiltin "fp.roundToIntegral RTP"} #Double~ceil(x: #Double): #Double;
+function {:bvbuiltin "fp.abs"} #Double~abs(x: #Double): #Double;
 
 // "There is no function for converting from (_ FloatingPoint eb sb) to the
 //  corresponding IEEE 754-2008 binary format, as a bit vector (_ BitVec m) with 
@@ -225,8 +238,8 @@ function {:bvbuiltin "fp.roundToIntegral RTP"} #Double~ceil(x: #Double): #Double
 //"
 //
 // Copied from https://smtlib.cs.uiowa.edu/theories-FloatingPoint.shtml
-function #Double~bits(n: #Double): #UInt64;
-function {:builtin "(_ to_fp 11 53)"} ReinterpretUInt64AsDouble(d: #UInt64): #Double;
-axiom (forall d: #Double :: ReinterpretUInt64AsDouble(#Double~bits(d)) == d);
+function                              #Double~bits     (n: #Double): #UInt64;
+function {:builtin "(_ to_fp 11 53)"} #Double~from_bits(n: #UInt64): #Double;
+axiom (forall d: #Double :: #Double~from_bits(#Double~bits(d)) == d);
 
 // ... end prelude ...
