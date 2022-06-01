@@ -95,11 +95,39 @@ ir MASM {
       }
     }
 
-    op BranchTest32(condition: Condition, src1Reg: Reg, src2Reg: Reg, label branch: MASM) {
-      let src1Int32 = MASM::getInt32(src1Reg);
-      let src2Int32 = MASM::getInt32(src2Reg);
+    op BranchTest32(condition: Condition, lhsReg: Reg, rhsReg: Reg, label branch: MASM) {
+      let lhsInt32 = MASM::getInt32(lhsReg);
+      let rhsInt32 = MASM::getInt32(rhsReg);
 
-      let result = src1Int32 & src2Int32;
+      let result = lhsInt32 & rhsInt32;
+
+      assert condition != Condition::Equal;
+      assert condition != Condition::NotEqual;
+      assert condition != Condition::Overflow;
+
+      if condition == Condition::Zero {
+        if result == 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::NonZero {
+        if result != 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::Signed {
+        if result < 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::NotSigned {
+        if result > 0_i32 {
+          goto branch;
+        }
+      }
+    }
+
+    op BranchTest32Imm(condition: Condition, lhsReg: Reg, rhsInt32: Int32, label branch: MASM) {
+      let lhsInt32 = MASM::getInt32(lhsReg);
+
+      let result = lhsInt32 & rhsInt32;
 
       assert condition != Condition::Equal;
       assert condition != Condition::NotEqual;
@@ -294,6 +322,13 @@ ir MASM {
       }
 
       MASM::setInt32(dstReg, result);
+    }
+
+    op Neg32(valueReg: Reg) {
+      let valueInt32 = MASM::getInt32(valueReg);
+      let result = -valueInt32;
+
+      MASM::setInt32(valueReg, result);
     }
 
     op Or32(srcReg: Reg, dstReg: Reg) {

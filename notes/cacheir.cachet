@@ -219,6 +219,20 @@ ir CacheIR emits MASM {
       CacheIR::releaseReg(scratchReg);
     }
 
+    op Int32NegationResult(inputId: Int32Id) {
+      let inputReg = CacheIR::useInt32Reg(inputId);
+      let scratchReg = CacheIR::allocateReg();
+
+      CacheIR::addFailurePath(out label failure);
+
+      emit MASM::BranchTest32Imm(Condition::Zero, inputReg, 0_i32, failure);
+      emit MASM::Mov(inputReg, scratchReg);
+      emit MASM::Neg32(scratchReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+      CacheIR::releaseReg(scratchReg);
+  }
+
     fn addFailurePath(out label failure: MASM);
 
     fn allocateReg() -> Reg;
