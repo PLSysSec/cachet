@@ -366,10 +366,28 @@ ir MASM {
     }
 
     op FlexibleLshift32(shiftReg: Reg, srcDestReg: Reg) {
-      let shiftInt32 = MASM::getInt32(shiftReg);
+      let shiftInt32 = MASM::getInt32(shiftReg) & 31_i32;
       let srcInt32 = MASM::getInt32(srcDestReg);
 
       let result = srcInt32 << shiftInt32;
+
+      MASM::setInt32(srcDestReg, result);
+    }
+
+    op FlexibleRshift32Arithmetic(shiftReg: Reg, srcDestReg: Reg) {
+      let shiftInt32 = MASM::getInt32(shiftReg) & 31_i32;
+      let srcInt32 = MASM::getInt32(srcDestReg);
+
+      let result = srcInt32 >> shiftInt32;
+
+      MASM::setInt32(srcDestReg, result);
+    }
+
+    op FlexibleRshift32(shiftReg: Reg, srcDestReg: Reg) {
+      let shiftInt32 = MASM::getInt32(shiftReg) & 31_i32;
+      let srcInt32 = MASM::getInt32(srcDestReg);
+
+      let result = ((srcInt32 as UInt32) >> (shiftInt32 as UInt32)) as Int32;
 
       MASM::setInt32(srcDestReg, result);
     }

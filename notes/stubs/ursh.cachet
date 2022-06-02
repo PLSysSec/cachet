@@ -1,0 +1,14 @@
+import "../cacheir.cachet"
+
+ir CacheStub emits CacheIR {
+    op Ursh(
+        lhsValueId: ValueId,
+        rhsValueId: ValueId,
+        lhsInt32Id: Int32Id,
+        rhsInt32Id: Int32Id,
+    ) {
+        emit CacheIR::GuardToInt32(lhsValueId, lhsInt32Id);
+        emit CacheIR::GuardToInt32(rhsValueId, rhsInt32Id);
+        emit CacheIR::Int32URightShiftResult(lhsInt32Id, rhsInt32Id);
+    }
+}

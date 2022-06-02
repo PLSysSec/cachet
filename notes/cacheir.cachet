@@ -219,6 +219,34 @@ ir CacheIR emits MASM {
       CacheIR::releaseReg(scratchReg);
     }
 
+    op Int32RightShiftResult(lhsId: Int32Id, rhsId: Int32Id) {
+        let lhsReg = CacheIR::useInt32Reg(lhsId);
+        let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+        let scratchReg = CacheIR::allocateReg();
+        emit MASM::Mov(lhsReg, scratchReg);
+        emit MASM::FlexibleRshift32Arithmetic(rhsReg, scratchReg);
+        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
+    // TODO(abhishekc-sharma): handle the forceDouble case.
+    op Int32URightShiftResult(lhsId: Int32Id, rhsId: Int32Id) {
+        let lhsReg = CacheIR::useInt32Reg(lhsId);
+        let rhsReg = CacheIR::useInt32Reg(rhsId);
+        let scratchReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+    
+        emit MASM::Mov(lhsReg, scratchReg);
+        emit MASM::FlexibleRshift32(rhsReg, scratchReg);
+        emit MASM::BranchTest32(Condition::Signed, scratchReg, scratchReg, failure);
+        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
     op Int32NegationResult(inputId: Int32Id) {
       let inputReg = CacheIR::useInt32Reg(inputId);
       let scratchReg = CacheIR::allocateReg();
