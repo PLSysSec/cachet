@@ -68,6 +68,8 @@ pub enum ArithBinOper {
     Mul,
     #[display(fmt = "/")]
     Div,
+    #[display(fmt = "%")]
+    Mod,
     #[display(fmt = "+")]
     Add,
     #[display(fmt = "-")]

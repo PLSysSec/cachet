@@ -424,6 +424,7 @@ impl Display for BinOperTypeMemberFnIdent {
                 BinOperTypeMemberFnIdent::Arith(arith_bin_oper) => match arith_bin_oper {
                     ArithBinOper::Mul => "Mul",
                     ArithBinOper::Div => "Div",
+                    ArithBinOper::Mod => "Mod",
                     ArithBinOper::Add => "Add",
                     ArithBinOper::Sub => "Sub",
                 },

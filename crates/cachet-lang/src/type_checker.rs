@@ -12,8 +12,8 @@ use lazy_static::lazy_static;
 use typed_index_collections::TiVec;
 
 use crate::ast::{
-    BinOper, BlockKind, CastSafety, CompareBinOper, Ident, MaybeSpanned, NegateKind, Path, Span,
-    Spanned, VarParamKind,
+    ArithBinOper, BinOper, BlockKind, CastSafety, CompareBinOper, Ident, MaybeSpanned, NegateKind,
+    Path, Span, Spanned, VarParamKind,
 };
 use crate::built_in::{BuiltInType, BuiltInVar, IdentEnum, Signedness, Width};
 use crate::resolver;
@@ -1438,13 +1438,13 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         // Check that the types of the operands are compatible with the
         // operator.
         let (lhs_type_matches, rhs_type_matches) = match bin_oper_expr.oper.value {
+            BinOper::Arith(ArithBinOper::Mod) | BinOper::Bitwise(_) => (
+                self.is_integral_type(lhs_type_index),
+                self.is_integral_type(rhs_type_index),
+            ),
             BinOper::Arith(_) | BinOper::Compare(CompareBinOper::Numeric(_)) => (
                 self.is_numeric_type(lhs_type_index),
                 self.is_numeric_type(rhs_type_index),
-            ),
-            BinOper::Bitwise(_) => (
-                self.is_integral_type(lhs_type_index),
-                self.is_integral_type(rhs_type_index),
             ),
             BinOper::Compare(_) => (true, true),
             BinOper::Logical(_) => (

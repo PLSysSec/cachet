@@ -345,6 +345,7 @@ impl Display for BinOperTypeMemberFnSelector {
                 BinOperTypeMemberFnSelector::Arith(arith_bin_oper) => match arith_bin_oper {
                     ArithBinOper::Mul => "mul",
                     ArithBinOper::Div => "div",
+                    ArithBinOper::Mod => "mod",
                     ArithBinOper::Add => "add",
                     ArithBinOper::Sub => "sub",
                 },
