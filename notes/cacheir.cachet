@@ -171,6 +171,73 @@ ir CacheIR emits MASM {
       CacheIR::releaseReg(scratchReg);
     }
 
+    op Int32DivResult(lhsId: Int32Id, rhsId: Int32Id) {
+        let lhsReg = CacheIR::useInt32Reg(lhsId);
+        let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+        let remReg = CacheIR::allocateReg();
+        let scratchReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        // prevent division by 0.
+        emit MASM::BranchTest32(Condition::Zero, rhsReg, rhsReg, failure);
+
+        // prevent -2147483648 / -1.
+        label notOverflow: MASM;
+        emit MASM::Branch32Imm(Condition::NotEqual, lhsReg, -2147483647_i32 - 1_i32, notOverflow);
+        emit MASM::Branch32Imm(Condition::Equal, rhsReg, -1_i32, failure);
+        bind notOverflow;
+
+        // prevent negative 0.
+        label notZero: MASM;
+        emit MASM::BranchTest32(Condition::NonZero, lhsReg, lhsReg, notZero);
+        emit MASM::BranchTest32(Condition::Signed, rhsReg, rhsReg, failure);
+        bind notZero;
+
+        emit MASM::Mov(lhsReg, scratchReg);
+        emit MASM::FlexibleDivMod32(rhsReg, scratchReg, remReg);
+
+        // A remainder implies a double result.
+        emit MASM::BranchTest32(Condition::NonZero, remReg, remReg, failure);
+
+        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+        CacheIR::releaseReg(remReg);
+        CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32ModResult(lhsId: Int32Id, rhsId: Int32Id) {
+        let lhsReg = CacheIR::useInt32Reg(lhsId);
+        let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+        let scratchReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        // x % 0 results in NaN.
+        emit MASM::BranchTest32(Condition::Zero, rhsReg, rhsReg, failure);
+
+        // Prevent -2147483648 % -1.
+        label notOverflow: MASM;
+        emit MASM::Branch32Imm(Condition::NotEqual, lhsReg, -2147483647_i32 - 1_i32, notOverflow);
+        emit MASM::Branch32Imm(Condition::Equal, rhsReg, -1_i32, failure);
+        bind notOverflow;
+
+        emit MASM::Mov(lhsReg, scratchReg);
+        emit MASM::FlexibleRemainder32(rhsReg, scratchReg);
+
+        // Modulo takes the sign of the dividend; we can't return negative zero here.
+        label notZero: MASM;
+        emit MASM::BranchTest32(Condition::NonZero, scratchReg, scratchReg, notZero);
+        emit MASM::BranchTest32(Condition::Signed, lhsReg, lhsReg, failure);
+        bind notZero;
+
+        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+        CacheIR::releaseReg(scratchReg); 
+    }
+
     op Int32BitOrResult(lhsId: Int32Id, rhsId: Int32Id) {
       let lhsReg = CacheIR::useInt32Reg(lhsId);
       let rhsReg = CacheIR::useInt32Reg(rhsId);
@@ -231,7 +298,7 @@ ir CacheIR emits MASM {
         CacheIR::releaseReg(scratchReg);
     }
 
-    // TODO(abhishekc-sharma): handle the forceDouble case.
+    // TODO(abhishekc-sharma): handle forceDouble.
     op Int32URightShiftResult(lhsId: Int32Id, rhsId: Int32Id) {
         let lhsReg = CacheIR::useInt32Reg(lhsId);
         let rhsReg = CacheIR::useInt32Reg(rhsId);
