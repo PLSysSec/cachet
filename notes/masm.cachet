@@ -95,6 +95,18 @@ ir MASM {
       }
     }
 
+    op Branch32Imm(condition: Condition, lhsReg: Reg, rhsInt32: Int32, label branch: MASM) {
+      let lhsInt32 = MASM::getInt32(lhsReg);
+
+      assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+      if condition == Condition::Equal && lhsInt32 == rhsInt32 {
+        goto branch;
+      } else if condition == Condition::NotEqual && lhsInt32 != rhsInt32 {
+        goto branch;
+      }
+    }
+
     op BranchTest32(condition: Condition, lhsReg: Reg, rhsReg: Reg, label branch: MASM) {
       let lhsInt32 = MASM::getInt32(lhsReg);
       let rhsInt32 = MASM::getInt32(rhsReg);
@@ -322,6 +334,27 @@ ir MASM {
       }
 
       MASM::setInt32(dstReg, result);
+    }
+
+    // TODO(abhishekc-sharma): handle isUnsigned.
+    op FlexibleDivMod32(rhsReg: Reg, lhsOutputReg: Reg, remReg: Reg) {
+      let lhsInt32 = MASM::getInt32(lhsOutputReg);
+      let rhsInt32 = MASM::getInt32(rhsReg);
+
+      let quotient = lhsInt32 / rhsInt32;
+      let remainder = lhsInt32 % rhsInt32;
+
+      MASM::setInt32(lhsOutputReg, quotient);
+      MASM::setInt32(remReg, remainder);
+    }
+
+    // TODO(abhishekc-sharma): handle isUnsigned.
+    op FlexibleRemainder32(rhsReg: Reg, lhsOutputReg: Reg) {
+      let lhsInt32 = MASM::getInt32(lhsOutputReg);
+      let rhsInt32 = MASM::getInt32(rhsReg);
+
+      let remainder = lhsInt32 % rhsInt32;
+      MASM::setInt32(lhsOutputReg, remainder);
     }
 
     op Neg32(valueReg: Reg) {
