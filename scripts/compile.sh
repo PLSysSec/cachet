@@ -7,7 +7,7 @@ shift
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && cd .. && pwd)"
 
 notes_dir="${repo_dir}/notes"
-cachet_file="${notes_dir}/${sample_name}.cachet"
+cachet_file="${notes_dir}/stubs/${sample_name}.cachet"
 hacks_bpl_file="${notes_dir}/hacks.bpl"
 
 out_dir="${repo_dir}/out"

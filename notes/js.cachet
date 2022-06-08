@@ -1,0 +1,175 @@
+// vim: set tw=99 ts=4 sts=4 sw=4 et:
+
+struct Heap;
+var mut heap: Heap;
+
+enum ValueType {
+  Double,
+  Int32,
+  Bool,
+  Undefined,
+  Null,
+  Magic,
+  String,
+  Symbol,
+  PrivateGCThing,
+  BigInt,
+  Object,
+}
+
+struct Value;
+
+impl Value {
+    fn typeOf(value: Value) -> ValueType;
+
+    // ...
+
+    fn isInt32(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Int32
+    }
+
+    fn fromInt32(int32: Int32) -> Value {
+        let value = (unsafe { Value::fromInt32Unchecked(int32) });
+        assume Value::isInt32(value);
+        assume (unsafe { Value::toInt32Unchecked(value) }) == int32;
+        value
+    }
+
+    unsafe fn fromInt32Unchecked(value: Int32) -> Value;
+
+    fn toInt32(value: Value) -> Int32 {
+        assert Value::isInt32(value);
+        let int32 = (unsafe { Value::toInt32Unchecked(value) });
+        assume (unsafe { Value::fromInt32Unchecked(int32) }) == value;
+        int32
+    }
+
+    unsafe fn toInt32Unchecked(value: Value) -> Int32;
+
+    fn isBool(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Bool
+    }
+
+    fn fromBool(bool: Bool) -> Value {
+        let value = (unsafe { Value::fromBoolUnchecked(bool) });
+        assume Value::isBool(value);
+        assume (unsafe { Value::toBoolUnchecked(value) }) == bool;
+        value
+    }
+
+    unsafe fn fromBoolUnchecked(value: Bool) -> Value;
+
+    fn toBool(value: Value) -> Bool {
+        assert Value::isBool(value);
+        let bool = (unsafe { Value::toBoolUnchecked(value) });
+        assume (unsafe { Value::fromBoolUnchecked(bool) }) == value;
+        bool
+    }
+
+    unsafe fn toBoolUnchecked(value: Value) -> Bool;
+
+    fn isNull(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Null
+    }
+
+    fn isObject(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Object
+    }
+
+    fn fromObject(object: Object) -> Value {
+        let value = (unsafe { Value::fromObjectUnchecked(object) });
+        assume Value::isObject(value);
+        assume (unsafe { Value::toObjectUnchecked(value) }) == object;
+        value
+    }
+
+    unsafe fn fromObjectUnchecked(value: Object) -> Value;
+
+    fn toObject(value: Value) -> Object {
+        assert Value::isObject(value);
+        let object = (unsafe { Value::toObjectUnchecked(value) });
+        assume (unsafe { Value::fromObjectUnchecked(object) }) == value;
+        object
+    }
+
+    unsafe fn toObjectUnchecked(value: Value) -> Object;
+
+    fn isMagic(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Magic
+    }
+}
+
+struct Object;
+
+impl Object {
+    // #[reads(heap)]
+    // fn shapeOf(object: Object) -> Shape;
+    fn shapeOf(object: Object) -> Shape {
+        (unsafe { Object::shapeOfUnchecked(heap, object) })
+    }
+
+    unsafe fn shapeOfUnchecked(heap: Heap, object: Object) -> Shape;
+
+    // #[reads(heap)]
+    // fn protoOf(object: Object) -> Value;
+    fn protoOf(object: Object) -> Value {
+        (unsafe { Object::protoOfUnchecked(heap, object) })
+    }
+
+    unsafe fn protoOfUnchecked(heap: Heap, object: Object) -> Value;
+
+    fn toNativeObject(object: Object) -> NativeObject {
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        assert Class::isNativeObject(class);
+        (unsafe { object as NativeObject })
+    }
+
+    fn toArgumentsObject(object: Object) -> ArgumentsObject {
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        assert Class::isArgumentsObject(class);
+        (unsafe { object as ArgumentsObject })
+    }
+  
+    fn getFixedSlot(object: Object, slot: Int32) -> Value {
+        let nativeObject = Object::toNativeObject(object);
+        NativeObject::getFixedSlot(nativeObject, slot)
+    }
+}
+
+struct NativeObject <: Object;
+
+impl NativeObject {
+    fn getFixedSlot(nativeObject: NativeObject, slot: Int32) -> Value {
+        let shape = Object::shapeOf(nativeObject);
+        assert Shape::hasFixedSlot(shape, slot);
+        (unsafe { NativeObject::getFixedSlotUnchecked(heap, nativeObject, slot) })
+    }
+
+    // #[reads(heap)]
+    // unsafe fn getFixedSlotUnchecked(nativeObject: NativeObject, slot: Int32) -> Value;
+    unsafe fn getFixedSlotUnchecked(heap: Heap, nativeObject: NativeObject, slot: Int32) -> Value;
+}
+
+struct ArgumentsObject <: NativeObject;
+
+impl ArgumentsObject {
+    fn getInitialLength(obj: ArgumentsObject) -> Int32;
+    fn hasOverriddenLength(obj: ArgumentsObject) -> Bool;
+}
+
+struct Shape;
+
+impl Shape {
+    fn classOf(shape: Shape) -> Class;
+
+    fn hasFixedSlot(shape: Shape, slot: Int32) -> Bool;
+}
+
+struct Class;
+
+impl Class {
+    fn isNativeObject(class: Class) -> Bool;
+    fn isArgumentsObject(class: Class) -> Bool;
+}
