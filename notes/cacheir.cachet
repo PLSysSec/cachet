@@ -1,0 +1,325 @@
+// vim: set tw=99 ts=4 sts=4 sw=4 et:
+
+import "./masm.cachet"
+
+struct ValueId;
+struct ObjectId;
+struct Int32Id;
+
+struct Int32Field;
+struct ShapeField;
+
+ir CacheIR emits MASM {
+    op GuardIsNull(valueId: ValueId){
+        let valueReg = CacheIR::useValueReg(valueId);
+        CacheIR::addFailurePath(out label failure);
+        emit MASM::BranchTestNull(Condition::NotEqual, valueReg, failure);
+    }
+
+    op GuardToObject(valueId: ValueId, objectId: ObjectId) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        let objectReg = CacheIR::useObjectReg(objectId);
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::BranchTestObject(Condition::NotEqual, valueReg, failure);
+        emit MASM::UnboxObject(valueReg, objectReg);
+    }
+
+    op GuardShape(objectId: ObjectId, shapeField: ShapeField) {
+      let objectReg = CacheIR::useObjectReg(objectId);
+      let shape = CacheIR::readShapeField(shapeField);
+
+      CacheIR::addFailurePath(out label failure);
+
+      let needsSpectreMitigations = CacheIR::objectGuardNeedsSpectreMitigations(objectId);
+
+      if needsSpectreMitigations {
+        let scratchReg = CacheIR::allocateReg();
+        emit MASM::BranchTestObjectShape(
+            Condition::NotEqual, objectReg, shape, scratchReg, objectReg, failure
+            );
+        CacheIR::releaseReg(scratchReg);
+      } else {
+        emit MASM::BranchTestObjectShapeNoSpectreMitigations(
+            Condition::NotEqual, objectReg, shape, failure
+            );
+      }
+    }
+
+    op GuardToInt32(valueId: ValueId, int32Id: Int32Id) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        let int32Reg = CacheIR::useInt32Reg(int32Id);
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::BranchTestInt32(Condition::NotEqual, valueReg, failure);
+        emit MASM::UnboxInt32(valueReg, int32Reg);
+    }
+
+    op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let slot = CacheIR::readInt32Field(slotField);
+        emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
+    }
+
+    op LoadArgumentsObjectLengthResult(objectId: ObjectId) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let argObjLengthReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::LoadArgumentsObjectLength(objectReg, argObjLengthReg, failure);
+        emit MASM::TagValue(ValueType::Int32, argObjLengthReg, CacheIR::outputReg);
+
+        CacheIR::releaseReg(argObjLengthReg);
+    }
+
+    op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId) {
+        let lhsReg = CacheIR::useValueReg(lhsId);
+        let protoReg = CacheIR::useObjectReg(protoId);
+        let scratchReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        label loopHead: MASM;
+        label returnFalse: MASM;
+        label returnTrue: MASM;
+        label done: MASM;
+
+        emit MASM::BranchTestObject(Condition::NotEqual, lhsReg, returnFalse);
+        emit MASM::UnboxObject(lhsReg, scratchReg);
+        emit MASM::LoadObjectProto(scratchReg, lhsReg);
+
+        bind loopHead;
+        emit MASM::BranchTestNull(Condition::Equal, lhsReg, returnFalse);
+        emit MASM::BranchTestMagic(Condition::Equal, lhsReg, failure);
+
+        emit MASM::BranchTestObject(Condition::NotEqual, lhsReg, returnFalse);
+        emit MASM::UnboxObject(lhsReg, scratchReg);
+        emit MASM::BranchObject(Condition::Equal, scratchReg, protoReg, returnTrue);
+
+        emit MASM::LoadObjectProto(scratchReg, lhsReg);
+        //emit MASM::StoreBool(true, protoReg); <-- uncomment to induce error
+        emit MASM::Jump(loopHead);
+
+        bind returnFalse;
+        emit MASM::StoreBoolValue(false, CacheIR::outputReg);
+        emit MASM::Jump(done);
+
+        bind returnTrue;
+        emit MASM::StoreBoolValue(true, CacheIR::outputReg);
+
+        bind done;
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32AddResult(lhsId: Int32Id, rhsId: Int32Id) {
+      let lhsReg = CacheIR::useInt32Reg(lhsId);
+      let rhsReg = CacheIR::useInt32Reg(rhsId);
+      let scratchReg = CacheIR::allocateReg();
+
+      CacheIR::addFailurePath(out label failure);
+
+      emit MASM::Mov(rhsReg, scratchReg);
+      emit MASM::BranchAdd32(Condition::Overflow, lhsReg, scratchReg, failure);
+      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+      CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32SubResult(lhsId: Int32Id, rhsId: Int32Id) {
+      let lhsReg = CacheIR::useInt32Reg(lhsId);
+      let rhsReg = CacheIR::useInt32Reg(rhsId);
+      let scratchReg = CacheIR::allocateReg();
+
+      CacheIR::addFailurePath(out label failure);
+
+      emit MASM::Mov(lhsReg, scratchReg);
+      emit MASM::BranchSub32(Condition::Overflow, rhsReg, scratchReg, failure);
+      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+      CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32MulResult(lhsId: Int32Id, rhsId: Int32Id) {
+      let lhsReg = CacheIR::useInt32Reg(lhsId);
+      let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+      let scratchReg = CacheIR::allocateReg();
+      let scratch2Reg = CacheIR::allocateReg();
+
+      CacheIR::addFailurePath(out label failure);
+
+      label maybeNegZero: MASM;
+      label done: MASM;
+
+      emit MASM::Mov(lhsReg, scratchReg);
+      emit MASM::BranchMul32(Condition::Overflow, rhsReg, scratchReg, failure);
+      emit MASM::BranchTest32(Condition::Zero, scratchReg, scratchReg, maybeNegZero);
+      emit MASM::Jump(done);
+
+      bind maybeNegZero;
+      emit MASM::Mov(lhsReg, scratch2Reg);
+      emit MASM::Or32(rhsReg, scratch2Reg);
+      emit MASM::BranchTest32(Condition::Signed, scratch2Reg, scratch2Reg, failure);
+
+      bind done;
+      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+      CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32BitOrResult(lhsId: Int32Id, rhsId: Int32Id) {
+      let lhsReg = CacheIR::useInt32Reg(lhsId);
+      let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+      let scratchReg = CacheIR::allocateReg();
+      emit MASM::Mov(rhsReg, scratchReg);
+      emit MASM::Or32(lhsReg, scratchReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+      CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32BitXorResult(lhsId: Int32Id, rhsId: Int32Id) {
+      let lhsReg = CacheIR::useInt32Reg(lhsId);
+      let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+      let scratchReg = CacheIR::allocateReg();
+      emit MASM::Mov(rhsReg, scratchReg);
+      emit MASM::Xor32(lhsReg, scratchReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+      CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32BitAndResult(lhsId: Int32Id, rhsId: Int32Id) {
+      let lhsReg = CacheIR::useInt32Reg(lhsId);
+      let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+      let scratchReg = CacheIR::allocateReg();
+      emit MASM::Mov(rhsReg, scratchReg);
+      emit MASM::And32(lhsReg, scratchReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+      CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32LeftShiftResult(lhsId: Int32Id, rhsId: Int32Id) {
+      let lhsReg = CacheIR::useInt32Reg(lhsId);
+      let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+      let scratchReg = CacheIR::allocateReg();
+      emit MASM::Mov(lhsReg, scratchReg);
+      emit MASM::FlexibleLshift32(rhsReg, scratchReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+      CacheIR::releaseReg(scratchReg);
+    }
+
+    fn addFailurePath(out label failure: MASM);
+
+    fn allocateReg() -> Reg;
+    fn releaseReg(reg: Reg);
+
+    fn allocateValueReg() -> ValueReg;
+    fn releaseValueReg(valueReg: ValueReg);
+
+    fn useValueReg(valueId: ValueId) -> ValueReg;
+    fn useObjectReg(objectId: ObjectId) -> Reg;
+    fn useInt32Reg(int32Id: Int32Id) -> Reg;
+
+    var outputReg: ValueReg;
+
+    fn readInt32Field(int32Field: Int32Field) -> Int32;
+    fn readShapeField(shapeField: ShapeField) -> Shape;
+
+    fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
+}
+
+//spec struct RegAllocState;
+
+//impl CacheIR {
+    //spec var mut regAllocState: RegAllocState;
+
+    //spec var mut allocatedRegs: Set<Reg>;
+    //spec var mut allocatedValueRegs: Set<ValueReg>;
+
+    //#[reads(CacheIR::regAllocState)]
+    //#[writes(CacheIR::regAllocState)]
+    //fn allocateReg() -> Reg;
+
+    //refine fn allocateReg() -> Reg {
+        //let reg = raw CacheIR::allocateReg();
+        //assume !Set::contains(CacheIR::allocatedRegs, reg);
+        //CacheIR::allocatedRegs = Set::add(CacheIR::allocatedRegs, reg);
+        //reg
+    //}
+
+    //#[writes(CacheIR::regAllocState)]
+    //fn releaseReg(reg: Reg);
+
+    //refine fn releaseReg(reg: Reg) {
+        //raw CacheIR::releaseReg(reg);
+        //CacheIR::allocatedRegs = Set::remove(CacheIR::allocatedRegs, reg);
+    //}
+
+    //#[reads(CacheIR::regAllocState)]
+    //#[writes(CacheIR::regAllocState)]
+    //fn allocateValueReg() -> ValueReg;
+
+    //refine fn allocateValueReg() -> ValueReg {
+        //let valueReg = raw CacheIR::allocateValueReg();
+        //assume !Set::contains(CacheIR::allocatedValueRegs, valueReg);
+        //CacheIR::allocatedValueRegs = Set::add(CacheIR::allocatedValueRegs, valueReg);
+        //valueReg
+    //}
+
+    //#[writes(CacheIR::regAllocState)]
+    //fn releaseValueReg(valueReg: ValueReg);
+
+    //refine fn releaseValueReg(valueReg: ValueReg) {
+        //raw CacheIR::releaseValueReg(valueReg);
+        //CacheIR::allocatedValueRegs = Set::remove(CacheIR::allocatedValueRegs, valueReg);
+    //}
+//}
+
+// interpreter version:
+//ir CacheIR {
+    //op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId) {
+        //CacheIR::getFailurePath(out label failure);
+
+        //let lhs = CacheIR::getValue(lhsId);
+        //let proto = CacheIR::getObject(protoId);
+
+        //if !Value::isObject(lhs) {
+            //goto failure;
+        //}
+        //let mut currentObject = Value::toObject(lhs);
+        //let mut currentProto = Object::getProto(currentObject);
+
+        //loop {
+            //if Value::isNull(currentProto) {
+                //CacheIR::setOutput(Value::fromBool(false));
+                //return;
+            //}
+            //if Value::isMagic(currentProto) {
+                //goto failure;
+            //}
+
+            //if !Value::isObject(currentProto) {
+                //CacheIR::setOutput(Value::fromBool(false));
+                //return;
+            //}
+            //currentObject = Value::toObject(currentProto);
+            //if currentObject == proto {
+                //CacheIR::setOutput(Value::fromBool(true));
+                //return;
+            //}
+
+            //currentProto = Object::getProto(currentObject);
+        //}
+    //}
+//}

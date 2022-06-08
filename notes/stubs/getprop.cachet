@@ -1,0 +1,26 @@
+ir CacheStub emits CacheIR {
+    op GetProp(
+        valueId: ValueId,
+        objectId: ObjectId,
+        shapeField: ShapeField,
+        slotField: Int32Field,
+    ) {
+        assume CacheIR::useValueReg(valueId) == CacheIR::allocateValueReg();
+        assume CacheIR::useObjectReg(objectId) == CacheIR::allocateReg();
+
+        let shape = CacheIR::readShapeField(shapeField);
+
+        assume Class::isNativeObject(Shape::classOf(shape));
+
+        assume Shape::hasFixedSlot(shape, 0_i32);
+        assume Shape::hasFixedSlot(shape, 1_i32);
+        assume Shape::hasFixedSlot(shape, 2_i32);
+
+        let slot = CacheIR::readInt32Field(slotField);
+        assume slot == 1_i32;
+
+        emit CacheIR::GuardToObject(valueId, objectId);
+        emit CacheIR::GuardShape(objectId, shapeField);
+        emit CacheIR::LoadFixedSlotResult(objectId, slotField);
+    }
+}
