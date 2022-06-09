@@ -5,15 +5,72 @@ import "./masm.cachet"
 struct ValueId;
 struct ObjectId;
 struct Int32Id;
+struct NumberId;
+struct BooleanId;
+struct StringId;
+struct SymbolId;
 
+struct ValueField;
 struct Int32Field;
 struct ShapeField;
 
 ir CacheIR emits MASM {
+    op GuardIsNumber(valueId: ValueId) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        CacheIR::addFailurePath(out label failure);
+        emit MASM::BranchTestNumber(Condition::NotEqual, valueReg, failure);
+    }
+
+    op GuardIsNullOrUndefined(valueId: ValueId) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        CacheIR::addFailurePath(out label failure);
+
+        label success: MASM;
+        emit MASM::BranchTestNull(Condition::Equal, valueReg, success);
+        emit MASM::BranchTestUndefined(Condition::NotEqual, valueReg, failure);
+
+        bind success;
+    }
+
     op GuardIsNull(valueId: ValueId){
         let valueReg = CacheIR::useValueReg(valueId);
         CacheIR::addFailurePath(out label failure);
         emit MASM::BranchTestNull(Condition::NotEqual, valueReg, failure);
+    }
+
+    op GuardIsUndefined(valueId: ValueId) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        CacheIR::addFailurePath(out label failure);
+        emit MASM::BranchTestUndefined(Condition::NotEqual, valueReg, failure);
+    }
+
+    op GuardIsNativeObject(objectId: ObjectId) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let scratchReg = CacheIR::allocateReg();
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::BranchIfNonNativeObj(objectReg, scratchReg, failure);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
+    op GuardIsProxy(objectId: ObjectId) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let scratchReg = CacheIR::allocateReg();
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::BranchTestObjectIsProxy(false, objectReg, scratchReg, failure);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
+    op GuardBooleanToInt32(valueId: ValueId, int32Id: Int32Id) {
+        let int32Reg = CacheIR::useInt32Reg(int32Id);
+        let valueReg = CacheIR::useValueReg(valueId);
+
+        CacheIR::addFailurePath(out label failure);
+        emit MASM::FallibleUnboxBoolean(valueReg, int32Reg, failure);
+        emit MASM::CastBoolToInt32(int32Reg);
     }
 
     op GuardToObject(valueId: ValueId, objectId: ObjectId) {
@@ -47,6 +104,26 @@ ir CacheIR emits MASM {
       }
     }
 
+    op GuardToString(valueId: ValueId, stringId: StringId) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        let stringReg = CacheIR::useStringReg(stringId);
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::BranchTestString(Condition::NotEqual, valueReg, failure);
+        emit MASM::UnboxString(valueReg, stringReg);
+    }
+
+    op GuardToSymbol(valueId: ValueId, symbolId: SymbolId) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        let symbolReg = CacheIR::useSymbolReg(symbolId);
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::BranchTestSymbol(Condition::NotEqual, valueReg, failure);
+        emit MASM::UnboxSymbol(valueReg, symbolReg);
+    }
+
     op GuardToInt32(valueId: ValueId, int32Id: Int32Id) {
         let valueReg = CacheIR::useValueReg(valueId);
         let int32Reg = CacheIR::useInt32Reg(int32Id);
@@ -56,6 +133,7 @@ ir CacheIR emits MASM {
         emit MASM::BranchTestInt32(Condition::NotEqual, valueReg, failure);
         emit MASM::UnboxInt32(valueReg, int32Reg);
     }
+
 
     op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
         let objectReg = CacheIR::useObjectReg(objectId);
@@ -393,9 +471,13 @@ ir CacheIR emits MASM {
     fn useValueReg(valueId: ValueId) -> ValueReg;
     fn useObjectReg(objectId: ObjectId) -> Reg;
     fn useInt32Reg(int32Id: Int32Id) -> Reg;
+    fn useBooleanReg(booleanId: BooleanId) -> Reg;
+    fn useStringReg(stringId: StringId) -> Reg;
+    fn useSymbolReg(symbolId: SymbolId) -> Reg;
 
     var outputReg: ValueReg;
 
+    fn readValueField(valueField: ValueField) -> Value;
     fn readInt32Field(int32Field: Int32Field) -> Int32;
     fn readShapeField(shapeField: ShapeField) -> Shape;
 
