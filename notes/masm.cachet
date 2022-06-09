@@ -71,6 +71,54 @@ ir MASM {
         MASM::setObject(objectReg, Value::toObject(value));
     }
 
+    op FallibleUnboxBoolean(valueReg: ValueReg, boolReg: Reg, label failure: MASM) {
+        let value = MASM::getValue(valueReg);
+        let valueIsBool = Value::isBool(value);
+
+        if !valueIsBool {
+            goto failure;
+        }
+
+        let bool = Value::toBool(value);
+        MASM::setBool(boolReg, bool);
+    }
+
+    op UnboxString(valueReg: ValueReg, stringReg: Reg) {
+        let value = MASM::getValue(valueReg);
+        MASM::setString(stringReg, Value::toString(value));
+    }
+
+    op UnboxSymbol(valueReg: ValueReg, symbolReg: Reg) {
+        let value = MASM::getValue(valueReg);
+        MASM::setSymbol(symbolReg, Value::toSymbol(value));
+    }
+
+    op CastBoolToInt32(int32Reg: Reg) {
+        let bool = MASM::getBool(int32Reg);
+        if bool {
+            MASM::setInt32(int32Reg, 1_i32);
+        } else {
+            MASM::setInt32(int32Reg, 0_i32);
+        }
+    }
+
+    op BranchTestNumber(
+        condition: Condition,
+        valueReg: ValueReg,
+        label branch: MASM,
+    ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let value = MASM::getValue(valueReg);
+
+        let valueIsNumber = Value::isInt32(value) || Value::isDouble(value);
+
+        if condition == Condition::Equal && valueIsNumber {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsNumber {
+            goto branch;
+        }
+    }
+
     op BranchObject(
         condition: Condition,
         lhsReg: Reg,
@@ -109,6 +157,30 @@ ir MASM {
       } else {
         assert false;
       }
+    }
+
+    op BranchTestString(condition: Condition, valueReg: ValueReg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let value = MASM::getValue(valueReg);
+        let valueIsString = Value::isString(value);
+
+        if condition == Condition::Equal && valueIsString {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsString {
+            goto branch;
+        }
+    }
+
+    op BranchTestSymbol(condition: Condition, valueReg: ValueReg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let value = MASM::getValue(valueReg);
+        let valueIsSymbol = Value::isSymbol(value);
+
+        if condition == Condition::Equal && valueIsSymbol {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsSymbol {
+            goto branch;
+        }
     }
 
     op Branch32Imm(condition: Condition, lhsReg: Reg, rhsInt32: Int32, label branch: MASM) {
@@ -220,6 +292,21 @@ ir MASM {
         }
     }
 
+    op BranchTestUndefined(condition: Condition, valueReg: ValueReg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+        let value = MASM::getValue(valueReg);
+        let valueIsUndefined = Value::isUndefined(value);
+
+        if condition == Condition::Equal && valueIsUndefined{
+            goto branch;
+        }
+
+        if condition == Condition::NotEqual && !valueIsUndefined {
+            goto branch;
+        }
+    }
+
     op BranchTestMagic(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         let value = MASM::getValue(valueReg);
         let valueIsMagic = Value::isMagic(value);
@@ -277,6 +364,30 @@ ir MASM {
             if !objectHasShape {
                 goto branch;
             }
+        }
+    }
+
+    op BranchIfNonNativeObj(objectReg: Reg, scratchReg: Reg, label branch: MASM) {
+        let object = MASM::getObject(objectReg);
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        let objectIsNative = Class::isNativeObject(class);
+
+        if !objectIsNative {
+            goto branch;
+        }
+    }
+
+    op BranchTestObjectIsProxy(proxy: Bool, objectReg: Reg, scratchReg: Reg, label branch: MASM) {
+        let object = MASM::getObject(objectReg);
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        let objectIsProxy = Class::isProxyObject(class);
+
+        if !proxy && !objectIsProxy {
+            goto branch;
+        } else if proxy && objectIsProxy {
+            goto branch;
         }
     }
 
@@ -502,6 +613,12 @@ ir MASM {
 
     fn getBool(reg: Reg) -> Bool;
     fn setBool(reg: Reg, bool: Bool);
+
+    fn getString(reg: Reg) -> String;
+    fn setString(reg: Reg, string: String);
+
+    fn getSymbol(reg: Reg) -> Symbol;
+    fn setSymbol(reg: Reg, symbol: Symbol);
 }
 
 //impl MASM {
