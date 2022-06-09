@@ -326,6 +326,41 @@ ir MASM {
         }
     }
 
+    op BranchTestObjectClass(
+        condition: Condition, objectReg: Reg, class: Class, scratchReg: Reg, spectreRegToZero: Reg,
+        label branch: MASM
+    ) {
+        let object = MASM::getObject(objectReg);
+        let shape = Object::shapeOf(object);
+
+        let objectHasClass = Shape::classOf(shape) == class;
+
+        if condition == Condition::Equal && objectHasClass {
+            MASM::setInt32(scratchReg, 0_i32);
+            MASM::setInt32(spectreRegToZero, MASM::getInt32(scratchReg));
+            goto branch;
+        } else if condition == Condition::NotEqual && !objectHasClass {
+            MASM::setInt32(scratchReg, 0_i32);
+            MASM::setInt32(spectreRegToZero, MASM::getInt32(scratchReg));
+            goto branch;
+        }
+    }
+
+    op BranchTestObjectClassNoSpectreMitigations(
+        condition: Condition, objectReg: Reg, class: Class, scratchReg: Reg, label branch: MASM
+    ) {
+        let object = MASM::getObject(objectReg);
+        let shape = Object::shapeOf(object);
+
+        let objectHasClass = Shape::classOf(shape) == class;
+
+        if condition == Condition::Equal && objectHasClass {
+            goto branch;
+        } else if condition == Condition::NotEqual && !objectHasClass {
+            goto branch;
+        }
+    }
+
     op BranchIfNonNativeObj(objectReg: Reg, scratchReg: Reg, label branch: MASM) {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
