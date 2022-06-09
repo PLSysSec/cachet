@@ -66,6 +66,11 @@ ir MASM {
       MASM::setInt32(int32Reg, Value::toInt32(value)); 
     }
 
+    op UnboxBoolean(valueReg: ValueReg, boolReg: Reg) {
+      let value = MASM::getValue(valueReg);
+      MASM::setBool(boolReg, Value::toBool(value));
+    }
+
     op UnboxObject(valueReg: ValueReg, objectReg: Reg) {
         let value = MASM::getValue(valueReg);
         MASM::setObject(objectReg, Value::toObject(value));
@@ -91,6 +96,11 @@ ir MASM {
     op UnboxSymbol(valueReg: ValueReg, symbolReg: Reg) {
         let value = MASM::getValue(valueReg);
         MASM::setSymbol(symbolReg, Value::toSymbol(value));
+    }
+
+    op UnboxBigInt(valueReg: ValueReg, bigIntReg: Reg) {
+      let value = MASM::getValue(valueReg);
+      MASM::setBigInt(bigIntReg, Value::toBigInt(value));
     }
 
     op CastBoolToInt32(int32Reg: Reg) {
@@ -159,6 +169,18 @@ ir MASM {
       }
     }
 
+    op BranchTestBoolean(condition: Condition, valueReg: ValueReg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let value = MASM::getValue(valueReg);
+        let valueIsBool = Value::isBool(value);
+
+        if condition == Condition::Equal && valueIsBool {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsBool {
+            goto branch;
+        }
+    }
+
     op BranchTestString(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         assert condition == Condition::Equal || condition == Condition::NotEqual;
         let value = MASM::getValue(valueReg);
@@ -183,79 +205,16 @@ ir MASM {
         }
     }
 
-    op Branch32Imm(condition: Condition, lhsReg: Reg, rhsInt32: Int32, label branch: MASM) {
-      let lhsInt32 = MASM::getInt32(lhsReg);
+    op BranchTestBigInt(condition: Condition, valueReg: ValueReg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let value = MASM::getValue(valueReg);
+        let valueIsBigInt = Value::isBigInt(value);
 
-      assert condition == Condition::Equal || condition == Condition::NotEqual;
-
-      if condition == Condition::Equal && lhsInt32 == rhsInt32 {
-        goto branch;
-      } else if condition == Condition::NotEqual && lhsInt32 != rhsInt32 {
-        goto branch;
-      }
-    }
-
-    op BranchTest32(condition: Condition, lhsReg: Reg, rhsReg: Reg, label branch: MASM) {
-      let lhsInt32 = MASM::getInt32(lhsReg);
-      let rhsInt32 = MASM::getInt32(rhsReg);
-
-      let result = lhsInt32 & rhsInt32;
-
-      assert (
-        condition == Condition::Zero ||
-        condition == Condition::NonZero ||
-        condition == Condition::Signed ||
-        condition == Condition::NotSigned
-      );
-
-      if condition == Condition::Zero {
-        if result == 0_i32 {
-          goto branch;
+        if condition == Condition::Equal && valueIsBigInt {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsBigInt {
+            goto branch;
         }
-      } else if condition == Condition::NonZero {
-        if result != 0_i32 {
-          goto branch;
-        }
-      } else if condition == Condition::Signed {
-        if result < 0_i32 {
-          goto branch;
-        }
-      } else if condition == Condition::NotSigned {
-        if result > 0_i32 {
-          goto branch;
-        }
-      }
-    }
-
-    op BranchTest32Imm(condition: Condition, lhsReg: Reg, rhsInt32: Int32, label branch: MASM) {
-      let lhsInt32 = MASM::getInt32(lhsReg);
-
-      let result = lhsInt32 & rhsInt32;
-
-      assert (
-        condition == Condition::Zero ||
-        condition == Condition::NonZero ||
-        condition == Condition::Signed ||
-        condition == Condition::NotSigned
-      );
-
-      if condition == Condition::Zero {
-        if result == 0_i32 {
-          goto branch;
-        }
-      } else if condition == Condition::NonZero {
-        if result != 0_i32 {
-          goto branch;
-        }
-      } else if condition == Condition::Signed {
-        if result < 0_i32 {
-          goto branch;
-        }
-      } else if condition == Condition::NotSigned {
-        if result > 0_i32 {
-          goto branch;
-        }
-      }
     }
 
     op BranchTestObject(condition: Condition, valueReg: ValueReg, label branch: MASM) {
@@ -389,6 +348,87 @@ ir MASM {
         } else if proxy && objectIsProxy {
             goto branch;
         }
+    }
+
+    op Branch32Imm(condition: Condition, lhsReg: Reg, rhsInt32: Int32, label branch: MASM) {
+        assert (
+            condition == Condition::Equal ||
+            condition == Condition::NotEqual ||
+            condition == Condition::LessThan
+        );
+
+        let lhsInt32 = MASM::getInt32(lhsReg);
+
+        if condition == Condition::Equal && lhsInt32 == rhsInt32 {
+            goto branch;
+        } else if condition == Condition::NotEqual && lhsInt32 != rhsInt32 {
+            goto branch;
+        } else if condition == Condition::LessThan && lhsInt32 < rhsInt32 {
+            goto branch;
+        }
+    }
+
+    op BranchTest32(condition: Condition, lhsReg: Reg, rhsReg: Reg, label branch: MASM) {
+      let lhsInt32 = MASM::getInt32(lhsReg);
+      let rhsInt32 = MASM::getInt32(rhsReg);
+
+      let result = lhsInt32 & rhsInt32;
+
+      assert (
+        condition == Condition::Zero ||
+        condition == Condition::NonZero ||
+        condition == Condition::Signed ||
+        condition == Condition::NotSigned
+      );
+
+      if condition == Condition::Zero {
+        if result == 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::NonZero {
+        if result != 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::Signed {
+        if result < 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::NotSigned {
+        if result > 0_i32 {
+          goto branch;
+        }
+      }
+    }
+
+    op BranchTest32Imm(condition: Condition, lhsReg: Reg, rhsInt32: Int32, label branch: MASM) {
+      let lhsInt32 = MASM::getInt32(lhsReg);
+
+      let result = lhsInt32 & rhsInt32;
+
+      assert (
+        condition == Condition::Zero ||
+        condition == Condition::NonZero ||
+        condition == Condition::Signed ||
+        condition == Condition::NotSigned
+      );
+
+      if condition == Condition::Zero {
+        if result == 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::NonZero {
+        if result != 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::Signed {
+        if result < 0_i32 {
+          goto branch;
+        }
+      } else if condition == Condition::NotSigned {
+        if result > 0_i32 {
+          goto branch;
+        }
+      }
     }
 
     op BranchAdd32(condition: Condition, srcReg: Reg, dstReg: Reg, label branch: MASM) {
@@ -619,6 +659,9 @@ ir MASM {
 
     fn getSymbol(reg: Reg) -> Symbol;
     fn setSymbol(reg: Reg, symbol: Symbol);
+
+    fn getBigInt(reg: Reg) -> BigInt;
+    fn setBigInt(reg: Reg, bigInt: BigInt);
 }
 
 //impl MASM {

@@ -167,6 +167,28 @@ impl Value {
     }
 
     unsafe fn toSymbolUnchecked(value: Value) -> Symbol;
+
+    fn isBigInt(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::BigInt
+    }
+
+    fn fromBigInt(bigInt: BigInt) -> Value {
+        let value = (unsafe { Value::fromBigIntUnchecked(bigInt) });
+        assume Value::isBigInt(value);
+        assume (unsafe { Value::toBigIntUnchecked(value) }) == bigInt;
+        value
+    }
+
+    unsafe fn fromBigIntUnchecked(bigInt: BigInt) -> Value;
+
+    fn toBigInt(value: Value) -> BigInt {
+        assert Value::isBigInt(value);
+        let bigInt = (unsafe { Value::toBigIntUnchecked(value) });
+        assume (unsafe { Value::fromBigIntUnchecked(bigInt) }) == value;
+        bigInt
+    }
+
+    unsafe fn toBigIntUnchecked(value: Value) -> BigInt;
 }
 
 struct Object;
@@ -248,3 +270,5 @@ impl Class {
 struct String;
 
 struct Symbol;
+
+struct BigInt;
