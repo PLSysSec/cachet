@@ -14,6 +14,7 @@ struct BigIntId;
 struct ValueField;
 struct Int32Field;
 struct ShapeField;
+struct ClassField;
 
 ir CacheIR emits MASM {
     op GuardIsNumber(valueId: ValueId) {
@@ -131,6 +132,28 @@ ir CacheIR emits MASM {
             Condition::NotEqual, objectReg, shape, failure
             );
       }
+    }
+
+    op GuardAnyClass(objectId: ObjectId, classField: ClassField) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let scratchReg = CacheIR::allocateReg();
+        let class = CacheIR::readClassField(classField);
+
+        CacheIR::addFailurePath(out label failure);
+
+        let needsSpectreMitigations = CacheIR::objectGuardNeedsSpectreMitigations(objectId);
+
+        if needsSpectreMitigations {
+            emit MASM::BranchTestObjectClass(
+                Condition::NotEqual, objectReg, class, scratchReg, objectReg, failure
+            );
+        } else {
+            emit MASM::BranchTestObjectClassNoSpectreMitigations(
+                Condition::NotEqual, objectReg, class, scratchReg, failure
+            );
+        }
+
+        CacheIR::releaseReg(scratchReg);
     }
 
     op GuardToString(valueId: ValueId, stringId: StringId) {
@@ -529,6 +552,7 @@ ir CacheIR emits MASM {
     fn readValueField(valueField: ValueField) -> Value;
     fn readInt32Field(int32Field: Int32Field) -> Int32;
     fn readShapeField(shapeField: ShapeField) -> Shape;
+    fn readClassField(classField: ClassField) -> Class;
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
 }
