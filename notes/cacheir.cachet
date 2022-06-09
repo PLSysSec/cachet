@@ -9,6 +9,7 @@ struct NumberId;
 struct BooleanId;
 struct StringId;
 struct SymbolId;
+struct BigIntId;
 
 struct ValueField;
 struct Int32Field;
@@ -62,6 +63,34 @@ ir CacheIR emits MASM {
         emit MASM::BranchTestObjectIsProxy(false, objectReg, scratchReg, failure);
 
         CacheIR::releaseReg(scratchReg);
+    }
+
+    op GuardInt32IsNonNegative(indexId: Int32Id) {
+        let indexReg = CacheIR::useInt32Reg(indexId);
+        CacheIR::addFailurePath(out label failure);
+        emit MASM::Branch32Imm(Condition::LessThan, indexReg, 0_i32, failure);
+    }
+
+    op GuardNonDoubleType(valueId: ValueId, type: ValueType) {
+        let valueReg = CacheIR::useValueReg(valueId);
+
+        CacheIR::addFailurePath(out label failure);
+
+        if type == ValueType::String {
+            emit MASM::BranchTestString(Condition::NotEqual, valueReg, failure);
+        } else if type == ValueType::Symbol {
+            emit MASM::BranchTestSymbol(Condition::NotEqual, valueReg, failure);
+        } else if type == ValueType::BigInt {
+            emit MASM::BranchTestBigInt(Condition::NotEqual, valueReg, failure);
+        } else if type == ValueType::Bool {
+            emit MASM::BranchTestBoolean(Condition::NotEqual, valueReg, failure);
+        } else if type == ValueType::Undefined {
+            emit MASM::BranchTestUndefined(Condition::NotEqual, valueReg, failure);
+        } else if type == ValueType::Null {
+            emit MASM::BranchTestNull(Condition::NotEqual, valueReg, failure);
+        } else {
+            assert false;
+        }
     }
 
     op GuardBooleanToInt32(valueId: ValueId, int32Id: Int32Id) {
@@ -134,6 +163,25 @@ ir CacheIR emits MASM {
         emit MASM::UnboxInt32(valueReg, int32Reg);
     }
 
+    op GuardToBoolean(valueId: ValueId, booleanId: BooleanId) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        let booleanReg = CacheIR::useBooleanReg(booleanId);
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::BranchTestBoolean(Condition::NotEqual, valueReg, failure);
+        emit MASM::UnboxBoolean(valueReg, booleanReg);
+    }
+
+    op GuardToBigInt(valueId: ValueId, bigIntId: BigIntId) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        let bigIntReg = CacheIR::useBigIntReg(bigIntId);
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::BranchTestBigInt(Condition::NotEqual, valueReg, failure);
+        emit MASM::UnboxBigInt(valueReg, bigIntReg);
+    }
 
     op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
         let objectReg = CacheIR::useObjectReg(objectId);
@@ -474,6 +522,7 @@ ir CacheIR emits MASM {
     fn useBooleanReg(booleanId: BooleanId) -> Reg;
     fn useStringReg(stringId: StringId) -> Reg;
     fn useSymbolReg(symbolId: SymbolId) -> Reg;
+    fn useBigIntReg(bigIntId: BigIntId) -> Reg;
 
     var outputReg: ValueReg;
 
