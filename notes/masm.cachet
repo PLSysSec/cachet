@@ -22,8 +22,18 @@ enum Condition {
 }
 
 ir MASM {
+    // NOTE: Needs to be implemented to call the equivalent
+    // op with string as argument.
+    op AssumeUnreachable() {
+        assert false;
+    }
+
     op Mov(srcReg: Reg, dstReg: Reg) {
       MASM::setInt32(dstReg, MASM::getInt32(srcReg));
+    }
+
+    op MoveValue(srcReg: ValueReg, dstReg: ValueReg) {
+        MASM::setValue(dstReg, MASM::getValue(srcReg));
     }
 
     op Cmp32Move32(condition: Condition, lhsReg: Reg, rhsReg: Reg, srcReg: Reg, dstReg: Reg) {
@@ -50,6 +60,10 @@ ir MASM {
 
     op Jump(label target: MASM) {
       goto target;
+    }
+
+    op Load32(int32: Int32, dstReg: Reg) {
+        MASM::setInt32(dstReg, int32);
     }
 
     op TagValue(valTy: ValueType, payload: Reg, dest: ValueReg) {
@@ -103,6 +117,9 @@ ir MASM {
       MASM::setBigInt(bigIntReg, Value::toBigInt(value));
     }
 
+    // NOTE: This Op needs to be implemented as a Phantom Op on the
+    // C++ side since Firefox implicitly reinterprets booleans
+    // as int32 within registers.
     op CastBoolToInt32(int32Reg: Reg) {
         let bool = MASM::getBool(int32Reg);
         if bool {
@@ -110,6 +127,18 @@ ir MASM {
         } else {
             MASM::setInt32(int32Reg, 0_i32);
         }
+    }
+
+    op ConvertInt32ValueToDouble(valueReg: ValueReg) {
+        let value = MASM::getValue(valueReg);
+
+        if !Value::isInt32(value) {
+            return;
+        }
+
+        let int32 = Value::toInt32(value);
+        let double = int32 as Double;
+        MASM::setValue(valueReg, Value::fromDouble(double));
     }
 
     op BranchTestNumber(
@@ -125,6 +154,23 @@ ir MASM {
         if condition == Condition::Equal && valueIsNumber {
             goto branch;
         } else if condition == Condition::NotEqual && !valueIsNumber {
+            goto branch;
+        }
+    }
+
+    op BranchTestDouble(
+        condition: Condition,
+        valueReg: ValueReg,
+        label branch: MASM,
+    ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let value = MASM::getValue(valueReg);
+
+        let valueIsDouble = Value::isDouble(value);
+
+        if condition == Condition::Equal && valueIsDouble {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsDouble {
             goto branch;
         }
     }
@@ -385,6 +431,8 @@ ir MASM {
         }
     }
 
+    // NOTE: This Op needs to be implemented on the C++ to delegate to the
+    // appropriate overload of Branch32Imm since Cachet doesn't have overloading.
     op Branch32Imm(condition: Condition, lhsReg: Reg, rhsInt32: Int32, label branch: MASM) {
         assert (
             condition == Condition::Equal ||
