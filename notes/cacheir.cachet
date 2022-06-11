@@ -17,10 +17,12 @@ struct ShapeField;
 struct ClassField;
 
 ir CacheIR emits MASM {
-    op GuardIsNumber(valueId: ValueId) {
+    op GuardIsNumber(valueId: ValueId, numberId: NumberId) {
         let valueReg = CacheIR::useValueReg(valueId);
+        let numberReg = CacheIR::useNumberReg(numberId);
         CacheIR::addFailurePath(out label failure);
         emit MASM::BranchTestNumber(Condition::NotEqual, valueReg, failure);
+        emit MASM::MoveValue(valueReg, numberReg);
     }
 
     op GuardIsNullOrUndefined(valueId: ValueId) {
@@ -206,6 +208,14 @@ ir CacheIR emits MASM {
         emit MASM::UnboxBigInt(valueReg, bigIntReg);
     }
 
+    op BooleanToNumber(booleanId: BooleanId, numberId: NumberId) {
+        let booleanReg = CacheIR::useBooleanReg(booleanId);
+        let numberReg = CacheIR::useNumberReg(numberId);
+
+        emit MASM::CastBoolToInt32(booleanReg);
+        emit MASM::TagValue(ValueType::Int32, booleanReg, numberReg);
+    }
+
     op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
         let objectReg = CacheIR::useObjectReg(objectId);
         let slot = CacheIR::readInt32Field(slotField);
@@ -262,6 +272,48 @@ ir CacheIR emits MASM {
         bind done;
 
         CacheIR::releaseReg(scratchReg);
+    }
+
+    op LoadStringResult(stringId: StringId) {
+        let stringReg = CacheIR::useStringReg(stringId);
+        emit MASM::TagValue(ValueType::String, stringReg, CacheIR::outputReg);
+    }
+
+    op LoadSymbolResult(symbolId: SymbolId) {
+        let symbolReg = CacheIR::useSymbolReg(symbolId);
+        emit MASM::TagValue(ValueType::Symbol, symbolReg, CacheIR::outputReg);
+    }
+
+    op LoadInt32Result(int32Id: Int32Id) {
+        let int32Reg = CacheIR::useInt32Reg(int32Id);
+        emit MASM::TagValue(ValueType::Int32, int32Reg, CacheIR::outputReg);
+    }
+
+    op LoadBigIntResult(bigIntId: BigIntId) {
+        let bigIntReg = CacheIR::useBigIntReg(bigIntId);
+        emit MASM::TagValue(ValueType::BigInt, bigIntReg, CacheIR::outputReg);
+    }
+
+    op LoadDoubleResult(numberId: NumberId) {
+        let numberReg = CacheIR::useNumberReg(numberId);
+
+        // ifdef DEBUG
+        // label ok: MASM;
+        // emit MASM::BranchTestDouble(Condition::Equal, numberReg, ok);
+        // emit MASM::BranchTestInt32(Condition::Equal, numberReg, ok);
+        // emit MASM::AssumeUnreachable();
+        // bind ok;
+        // endif
+
+        emit MASM::MoveValue(numberReg, CacheIR::outputReg);
+        emit MASM::ConvertInt32ValueToDouble(CacheIR::outputReg);
+    }
+
+    op LoadInt32Constant(valField: Int32Field, resultId: Int32Id) {
+        let resultReg = CacheIR::useInt32Reg(resultId);
+        let val = CacheIR::readInt32Field(valField);
+
+        emit MASM::Load32(val, resultReg);
     }
 
     op Int32AddResult(lhsId: Int32Id, rhsId: Int32Id) {
@@ -540,6 +592,7 @@ ir CacheIR emits MASM {
     fn releaseValueReg(valueReg: ValueReg);
 
     fn useValueReg(valueId: ValueId) -> ValueReg;
+    fn useNumberReg(numberId: NumberId) -> ValueReg;
     fn useObjectReg(objectId: ObjectId) -> Reg;
     fn useInt32Reg(int32Id: Int32Id) -> Reg;
     fn useBooleanReg(booleanId: BooleanId) -> Reg;

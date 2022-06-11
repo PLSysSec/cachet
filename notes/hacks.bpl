@@ -62,6 +62,54 @@ procedure #MASM~setObject($reg: #Reg, $object: #Object)
   call #MASM~setValue($reg, tmp'0);
 }
 
+procedure #MASM~getString($reg: #Reg)
+  returns (ret: #String)
+{
+  var tmp'0: #Value;
+  call tmp'0 := #MASM~getValue($reg);
+  call ret := #Value~toString(tmp'0);
+}
+
+procedure #MASM~setString($reg: #Reg, $string: #String)
+  modifies #MASM~regs;
+{
+  var tmp'0: #Value;
+  call tmp'0 := #Value~fromString($string);
+  call #MASM~setValue($reg, tmp'0);
+}
+
+procedure #MASM~getSymbol($reg: #Reg)
+  returns (ret: #Symbol)
+{
+  var tmp'0: #Value;
+  call tmp'0 := #MASM~getValue($reg);
+  call ret := #Value~toSymbol(tmp'0);
+}
+
+procedure #MASM~setSymbol($reg: #Reg, $symbol: #Symbol)
+  modifies #MASM~regs;
+{
+  var tmp'0: #Value;
+  call tmp'0 := #Value~fromSymbol($symbol);
+  call #MASM~setValue($reg, tmp'0);
+}
+
+procedure #MASM~getBigInt($reg: #Reg)
+  returns (ret: #BigInt)
+{
+  var tmp'0: #Value;
+  call tmp'0 := #MASM~getValue($reg);
+  call ret := #Value~toBigInt(tmp'0);
+}
+
+procedure #MASM~setBigInt($reg: #Reg, $bigInt: #BigInt)
+  modifies #MASM~regs;
+{
+  var tmp'0: #Value;
+  call tmp'0 := #Value~fromBigInt($bigInt);
+  call #MASM~setValue($reg, tmp'0);
+}
+
 procedure #CacheIR~allocateValueReg()
   returns (ret: #ValueReg)
   modifies #CacheIR~allocatedRegs;
