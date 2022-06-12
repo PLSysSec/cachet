@@ -1,0 +1,14 @@
+import "../cacheir.cachet"
+
+ir CacheStub emits CacheIR {
+    op Pos(
+        lhsValueId: ValueId,
+        rhsValueId: ValueId,
+        lhsNumberId: NumberId,
+        rhsNumberId: NumberId,
+    ) {
+        emit CacheIR::GuardIsNumber(lhsValueId, lhsNumberId);
+        emit CacheIR::GuardIsNumber(rhsValueId, rhsNumberId);
+        emit CacheIR::DoubleAddResult(lhsNumberId, rhsNumberId);
+    }
+}

@@ -24,6 +24,28 @@ impl Value {
 
     // ...
 
+    fn isDouble(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Double
+    }
+
+    fn fromDouble(double: Double) -> Value {
+        let value = (unsafe { Value::fromDouble(double) });
+        assume Value::isDouble(value);
+        assume (unsafe { Value::toDoubleUnchecked(value) }) == double;
+        value
+    }
+
+    unsafe fn fromDoubleUnchecked(value: Double) -> Value;
+
+    fn toDouble(value: Value) -> Double {
+        assert Value::isDouble(value);
+        let double = (unsafe { Value::toDoubleUnchecked(value) });
+        assume (unsafe { Value::fromDoubleUnchecked(double) }) == value;
+        double
+    }
+
+    unsafe fn toDoubleUnchecked(value: Value) -> Double;
+
     fn isInt32(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Int32
     }
@@ -97,6 +119,28 @@ impl Value {
     fn isMagic(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Magic
     }
+
+    fn isString(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::String
+    }
+
+    fn fromString(string: String) -> Value {
+        let value = (unsafe { Value::fromStringUnchecked(string) });
+        assume Value::isString(value);
+        assume (unsafe { Value::toStringUnchecked(value) }) == string;
+        value
+    }
+
+    unsafe fn fromStringUnchecked(string: String) -> Value;
+
+    fn toString(value: Value) -> String {
+        assert Value::isString(value);
+        let string = (unsafe { Value::toStringUnchecked(value) });
+        assume (unsafe { Value::fromStringUnchecked(string) }) == value;
+        string
+    }
+
+    unsafe fn toStringUnchecked(value: Value) -> String;
 }
 
 struct Object;
@@ -173,3 +217,5 @@ impl Class {
     fn isNativeObject(class: Class) -> Bool;
     fn isArgumentsObject(class: Class) -> Bool;
 }
+
+struct String;

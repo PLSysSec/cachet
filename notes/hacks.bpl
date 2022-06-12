@@ -1,7 +1,7 @@
 type #ValueReg = #Reg;
 
 var #MASM~regs: #Map #Reg #Value;
-    
+
 procedure #MASM~getValue($valueReg: #ValueReg)
   returns (ret: #Value)
 {
@@ -62,6 +62,22 @@ procedure #MASM~setObject($reg: #Reg, $object: #Object)
   call #MASM~setValue($reg, tmp'0);
 }
 
+procedure #MASM~getString($reg: #Reg)
+  returns (ret: #String)
+{
+  var tmp'0: #Value;
+  call tmp'0 := #MASM~getValue($reg);
+  call ret := #Value~toString(tmp'0);
+}
+
+procedure #MASM~setString($reg: #Reg, $string: #String)
+  modifies #MASM~regs;
+{
+  var tmp'0: #Value;
+  call tmp'0 := #Value~fromString($string);
+  call #MASM~setValue($reg, tmp'0);
+}
+
 procedure #CacheIR~allocateValueReg()
   returns (ret: #ValueReg)
   modifies #CacheIR~allocatedRegs;
@@ -98,3 +114,39 @@ procedure #CacheIR~releaseReg($reg: #Reg)
   #CacheIR~allocatedRegs := #Set~remove(#CacheIR~allocatedRegs, $reg);
 }
 
+var #MASM~floatRegs: #Map #FloatReg #Double;
+
+procedure #MASM~getDouble($floatReg: #FloatReg)
+  returns (ret: #Double)
+{
+  ret := #Map~get(#MASM~floatRegs, $floatReg);
+}
+
+procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double)
+  modifies #MASM~floatRegs;
+{
+  #MASM~floatRegs := #Map~set(#MASM~floatRegs, $floatReg, $double);
+}
+
+var #CacheIR~allocatedFloatRegs: #Set #FloatReg;
+
+procedure #CacheIR~allocateFloatReg()
+  returns (ret: #FloatReg)
+  modifies #CacheIR~allocatedFloatRegs;
+{
+  var $floatReg: #FloatReg;
+  var tmp'0: #Bool;
+  $floatReg := #CacheIR~allocateFloatRegUnchecked(#CacheIR~allocatedFloatRegs);
+  tmp'0 := #Set~contains(#CacheIR~allocatedFloatRegs, $floatReg);
+  assume !tmp'0;
+  #CacheIR~allocatedFloatRegs := #Set~add(#CacheIR~allocatedFloatRegs, $floatReg);
+  ret := $floatReg;
+}
+
+function #CacheIR~allocateFloatRegUnchecked($allocatedFloatRegs: #Set #FloatReg): #FloatReg;
+
+procedure #CacheIR~releaseFloatReg($floatReg: #FloatReg)
+  modifies #CacheIR~allocatedFloatRegs;
+{
+  #CacheIR~allocatedFloatRegs := #Set~remove(#CacheIR~allocatedFloatRegs, $floatReg);
+}

@@ -2200,16 +2200,22 @@ lazy_static! {
             (Ident::from("ValueReg").into(), Proc),
             (Ident::from("MASM").nest("getValue".into()), Proc),
             (Ident::from("MASM").nest("setValue".into()), Proc),
+            (Ident::from("MASM").nest("getDouble".into()), Proc),
+            (Ident::from("MASM").nest("setDouble".into()), Proc),
             (Ident::from("MASM").nest("getInt32".into()), Proc),
             (Ident::from("MASM").nest("setInt32".into()), Proc),
             (Ident::from("MASM").nest("getBool".into()), Proc),
             (Ident::from("MASM").nest("setBool".into()), Proc),
             (Ident::from("MASM").nest("getObject".into()), Proc),
             (Ident::from("MASM").nest("setObject".into()), Proc),
+            (Ident::from("MASM").nest("getString".into()), Proc),
+            (Ident::from("MASM").nest("setString".into()), Proc),
             (Ident::from("CacheIR").nest("allocateValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("releaseValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("allocateReg".into()), Proc),
             (Ident::from("CacheIR").nest("releaseReg".into()), Proc),
+            (Ident::from("CacheIR").nest("allocateFloatReg".into()), Proc),
+            (Ident::from("CacheIR").nest("releaseFloatReg".into()), Proc),
         ])
     };
 

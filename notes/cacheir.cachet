@@ -5,11 +5,23 @@ import "./masm.cachet"
 struct ValueId;
 struct ObjectId;
 struct Int32Id;
+struct NumberId <: ValueId;
+struct StringId;
 
 struct Int32Field;
 struct ShapeField;
 
 ir CacheIR emits MASM {
+    // NOTE: added the numberId parameter here. Firefox uses
+    // ValueReg for NumberId's and uses the same register as valueId.
+    op GuardIsNumber(valueId: ValueId, numberId: NumberId) {
+        let valueReg = CacheIR::useValueReg(valueId);
+        let numberReg = CacheIR::useNumberReg(numberId);
+        CacheIR::addFailurePath(out label failure);
+        emit MASM::BranchTestNumber(Condition::NotEqual, valueReg, failure);
+        emit MASM::MoveValue(valueReg, numberReg);
+    }
+
     op GuardIsNull(valueId: ValueId){
         let valueReg = CacheIR::useValueReg(valueId);
         CacheIR::addFailurePath(out label failure);
@@ -219,6 +231,39 @@ ir CacheIR emits MASM {
       CacheIR::releaseReg(scratchReg);
     }
 
+    op DoubleNegationResult(inputId: NumberId) {
+        let inputReg = CacheIR::useNumberReg(inputId);
+        CacheIR::addFailurePath(out label failure);
+
+        let floatReg = CacheIR::allocateFloatReg();
+
+        emit MASM::EnsureDouble(inputReg, floatReg, failure);
+        emit MASM::NegateDouble(floatReg);
+        emit MASM::BoxDouble(floatReg, CacheIR::outputReg, floatReg);
+
+        CacheIR::releaseFloatReg(floatReg);
+    }
+
+    op DoubleAddResult(lhsId: NumberId, rhsId: NumberId) {
+        let lhsReg = CacheIR::useNumberReg(lhsId);
+        let rhsReg = CacheIR::useNumberReg(rhsId);
+
+        let floatReg0 = CacheIR::allocateFloatReg();
+        let floatReg1 = CacheIR::allocateFloatReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::EnsureDouble(lhsReg, floatReg0, failure);
+        emit MASM::EnsureDouble(rhsReg, floatReg1, failure);
+
+        emit MASM::AddDouble(floatReg1, floatReg0);
+        emit MASM::BoxDouble(floatReg0, CacheIR::outputReg, floatReg0);
+
+        CacheIR::releaseFloatReg(floatReg0);
+        CacheIR::releaseFloatReg(floatReg1);
+    }
+
+
     fn addFailurePath(out label failure: MASM);
 
     fn allocateReg() -> Reg;
@@ -227,9 +272,14 @@ ir CacheIR emits MASM {
     fn allocateValueReg() -> ValueReg;
     fn releaseValueReg(valueReg: ValueReg);
 
+    fn allocateFloatReg() -> FloatReg;
+    fn releaseFloatReg(floatReg: FloatReg);
+
     fn useValueReg(valueId: ValueId) -> ValueReg;
     fn useObjectReg(objectId: ObjectId) -> Reg;
+    fn useNumberReg(numberId: NumberId) -> ValueReg;
     fn useInt32Reg(int32Id: Int32Id) -> Reg;
+    fn useStringReg(stringId: StringId) -> Reg;
 
     var outputReg: ValueReg;
 

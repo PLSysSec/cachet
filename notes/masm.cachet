@@ -9,6 +9,8 @@ struct ValueReg;
 // #[cfg(verify)]
 // type ValueReg = Reg;
 
+struct FloatReg;
+
 enum Condition {
     Equal,
     NotEqual,
@@ -24,6 +26,10 @@ ir MASM {
       MASM::setInt32(dstReg, MASM::getInt32(srcReg));
     }
 
+    op MoveValue(srcReg: ValueReg, dstReg: ValueReg) {
+        MASM::setValue(dstReg, MASM::getValue(srcReg));
+    }
+
     op StoreBool(bool: Bool, reg: Reg) {
         MASM::setBool(reg, bool);
     }
@@ -37,12 +43,24 @@ ir MASM {
     }
 
     op TagValue(valTy: ValueType, payload: Reg, dest: ValueReg) {
-      // TODO: Don't have getters/setters for other types yet
-      if valTy == ValueType::Int32 {
-        let i = MASM::getInt32(payload);
-        let val = Value::fromInt32(i);
-        MASM::setValue(dest, val);
-      }
+        // TODO: Don't have getters/setters for other types yet
+        if valTy == ValueType::Int32 {
+            let i = MASM::getInt32(payload);
+            let val = Value::fromInt32(i);
+            MASM::setValue(dest, val);
+        } else if valTy == ValueType::String {
+            let s = MASM::getString(payload);
+            let val = Value::fromString(s);
+            MASM::setValue(dest, val);
+        } else {
+            assert false;
+        }
+    }
+
+    op BoxDouble(floatReg: FloatReg, dstReg: ValueReg, srcReg: FloatReg) {
+        let double = MASM::getDouble(floatReg);
+        let val = Value::fromDouble(double);
+        MASM::setValue(dstReg, val);
     }
 
     op UnboxInt32(valueReg: ValueReg, int32Reg: Reg) {
@@ -53,6 +71,96 @@ ir MASM {
     op UnboxObject(valueReg: ValueReg, objectReg: Reg) {
         let value = MASM::getValue(valueReg);
         MASM::setObject(objectReg, Value::toObject(value));
+    }
+
+    op FallibleUnboxBoolean(valueReg: ValueReg, boolReg: Reg, label failure: MASM) {
+        let value = MASM::getValue(valueReg);
+        let valueIsBool = Value::isBool(value);
+
+        if !valueIsBool {
+            goto failure;
+        }
+
+        let bool = Value::toBool(value);
+        MASM::setBool(boolReg, bool);
+    }
+
+    op UnboxString(valueReg: ValueReg, stringReg: Reg) {
+        let value = MASM::getValue(valueReg);
+        MASM::setString(stringReg, Value::toString(value));
+    }
+
+    // NOTE: This Op needs to be implemented as a Phantom Op on the
+    // C++ side since Firefox implicitly reinterprets booleans
+    // as int32 within registers.
+    op CastBoolToInt32(int32Reg: Reg) {
+        let bool = MASM::getBool(int32Reg);
+        if bool {
+            MASM::setInt32(int32Reg, 1_i32);
+        } else {
+            MASM::setInt32(int32Reg, 0_i32);
+        }
+    }
+
+    op ConvertInt32ValueToDouble(valueReg: ValueReg) {
+        let value = MASM::getValue(valueReg);
+
+        if !Value::isInt32(value) {
+            return;
+        }
+
+        let int32 = Value::toInt32(value);
+        let double = int32 as Double;
+        MASM::setValue(valueReg, Value::fromDouble(double));
+    }
+
+    op EnsureDouble(valueReg: ValueReg, floatReg: FloatReg, label failure: MASM) {
+        let value = MASM::getValue(valueReg);
+
+        if Value::isDouble(value) {
+            let double = Value::toDouble(value);
+            MASM::setDouble(floatReg, double);
+        } else if Value::isInt32(value) {
+            let int32 = Value::toInt32(value);
+            let double = int32 as Double;
+            MASM::setDouble(floatReg, double);
+        } else {
+            goto failure;
+        }
+    }
+
+    op BranchTestNumber(
+        condition: Condition,
+        valueReg: ValueReg,
+        label branch: MASM,
+    ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let value = MASM::getValue(valueReg);
+
+        let valueIsNumber = Value::isInt32(value) || Value::isDouble(value);
+
+        if condition == Condition::Equal && valueIsNumber {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsNumber {
+            goto branch;
+        }
+    }
+
+    op BranchTestDouble(
+        condition: Condition,
+        valueReg: ValueReg,
+        label branch: MASM,
+    ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let value = MASM::getValue(valueReg);
+
+        let valueIsDouble = Value::isDouble(value);
+
+        if condition == Condition::Equal && valueIsDouble {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsDouble {
+            goto branch;
+        }
     }
 
     op BranchObject(
@@ -332,6 +440,19 @@ ir MASM {
       MASM::setInt32(srcDestReg, result);
     }
 
+    op NegateDouble(floatReg: FloatReg) {
+        let double = MASM::getDouble(floatReg);
+        let result = -double;
+        MASM::setDouble(floatReg, result);
+    }
+
+    op AddDouble(srcReg: FloatReg, dstReg: FloatReg) {
+        let lhs = MASM::getDouble(dstReg);
+        let rhs = MASM::getDouble(srcReg);
+        let result = lhs + rhs;
+        MASM::setDouble(dstReg, result);
+    }
+
     op LoadObjectFixedSlot(objectReg: Reg, slot: Int32, outputReg: ValueReg) {
         let object = MASM::getObject(objectReg);
         MASM::setValue(outputReg, Object::getFixedSlot(object, slot));
@@ -357,6 +478,9 @@ ir MASM {
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);
 
+    fn getDouble(floatReg: FloatReg) -> Double;
+    fn setDouble(floatReg: FloatReg, double: Double);
+
     fn getInt32(reg: Reg) -> Int32;
     fn setInt32(reg: Reg, int32: Int32);
 
@@ -365,6 +489,9 @@ ir MASM {
 
     fn getBool(reg: Reg) -> Bool;
     fn setBool(reg: Reg, bool: Bool);
+
+    fn getString(reg: Reg) -> String;
+    fn setString(reg: Reg, string: String);
 }
 
 //impl MASM {
