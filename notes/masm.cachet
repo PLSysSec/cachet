@@ -67,12 +67,28 @@ ir MASM {
     }
 
     op TagValue(valTy: ValueType, payload: Reg, dest: ValueReg) {
-      // TODO: Don't have getters/setters for other types yet
-      if valTy == ValueType::Int32 {
-        let i = MASM::getInt32(payload);
-        let val = Value::fromInt32(i);
-        MASM::setValue(dest, val);
-      }
+        // TODO: Don't have getters/setters for other types yet
+        if valTy == ValueType::Int32 {
+            let i = MASM::getInt32(payload);
+            let val = Value::fromInt32(i);
+            MASM::setValue(dest, val);
+        } else if valTy == ValueType::Bool {
+            let b = MASM::getBool(payload);
+            let val = Value::fromBool(b);
+            MASM::setValue(dest, val);
+        } else if valTy == ValueType::String {
+            let s = MASM::getString(payload);
+            let val = Value::fromString(s);
+            MASM::setValue(dest, val);
+        } else if valTy == ValueType::Symbol {
+            let s = MASM::getSymbol(payload);
+            let val = Value::fromSymbol(s);
+            MASM::setValue(dest, val);
+        } else if valTy == ValueType::BigInt {
+            let b = MASM::getBigInt(payload);
+            let val = Value::fromBigInt(b);
+            MASM::setValue(dest, val);
+        }
     }
 
     op UnboxInt32(valueReg: ValueReg, int32Reg: Reg) {
