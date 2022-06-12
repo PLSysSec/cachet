@@ -11,6 +11,13 @@ struct ValueReg;
 
 struct FloatReg;
 
+struct LiveRegisterSet;
+
+impl LiveRegisterSet {
+    fn addGeneralReg(lrs: LiveRegisterSet, reg: Reg);
+    fn addFloatReg(lrs: LiveRegisterSet, floatReg: FloatReg);
+}
+
 enum Condition {
     Equal,
     NotEqual,
@@ -129,6 +136,25 @@ ir MASM {
         }
     }
 
+    op GuardStringToInt32(
+        strReg: Reg, outputReg: Reg, scratchReg: Reg,
+        volatileRegs: LiveRegisterSet, label failure: MASM
+    ) {
+        let str = MASM::getString(strReg);
+
+        if String::hasIndexValue(str) {
+            let index = String::getIndexValue(str);
+            MASM::setInt32(outputReg, index);
+        } else {
+            if !VMFunction::GetInt32FromStringPureSuccess(str) {
+                goto failure;
+            }
+
+            let output = VMFunction::GetInt32FromStringPure(str);
+            MASM::setInt32(outputReg, output);
+        }
+    }
+
     op BranchTestNumber(
         condition: Condition,
         valueReg: ValueReg,
@@ -201,6 +227,18 @@ ir MASM {
       } else {
         assert false;
       }
+    }
+
+    op BranchTestString(condition: Condition, valueReg: ValueReg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let value = MASM::getValue(valueReg);
+        let valueIsString = Value::isString(value);
+
+        if condition == Condition::Equal && valueIsString {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsString {
+            goto branch;
+        }
     }
 
     op BranchTest32(condition: Condition, src1Reg: Reg, src2Reg: Reg, label branch: MASM) {
@@ -492,6 +530,9 @@ ir MASM {
 
     fn getString(reg: Reg) -> String;
     fn setString(reg: Reg, string: String);
+
+    fn volatileLiveRegisterSet() -> LiveRegisterSet;
+    fn emptyLiveRegisterSet() -> LiveRegisterSet;
 }
 
 //impl MASM {

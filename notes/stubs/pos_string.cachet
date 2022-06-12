@@ -1,0 +1,17 @@
+import "../cacheir.cachet"
+
+ir CacheStub emits CacheIR {
+    op GetProp(
+        valueId: ValueId,
+        stringId: StringId,
+        int32Id: Int32Id,
+    ) {
+        assume CacheIR::useValueReg(valueId) == CacheIR::allocateValueReg();
+        assume CacheIR::useStringReg(stringId) == CacheIR::allocateReg();
+        assume CacheIR::useInt32Reg(int32Id) == CacheIR::allocateReg();
+
+        emit CacheIR::GuardToString(valueId, stringId);
+        emit CacheIR::GuardStringToInt32(stringId, int32Id);
+        emit CacheIR::LoadInt32Result(int32Id);
+    }
+}

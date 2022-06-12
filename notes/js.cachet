@@ -219,3 +219,27 @@ impl Class {
 }
 
 struct String;
+
+impl String {
+    fn hasIndexValue(string: String) -> Bool;
+
+    fn getIndexValue(string: String) -> Int32 {
+        assert String::hasIndexValue(string);
+        (unsafe { String::getIndexValueUnchecked(string) })
+    }
+
+    unsafe fn getIndexValueUnchecked(string: String) -> Int32;
+}
+
+struct VMFunction;
+
+impl VMFunction {
+    fn GetInt32FromStringPureSuccess(str: String) -> Bool;
+
+    fn GetInt32FromStringPure(str: String) -> Int32 {
+        assert VMFunction::GetInt32FromStringPureSuccess(str);
+        (unsafe { VMFunction::GetInt32FromStringPureUnchecked(str) })
+    }
+
+    unsafe fn GetInt32FromStringPureUnchecked(str: String) -> Int32;
+}
