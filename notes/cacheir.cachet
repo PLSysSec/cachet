@@ -4,7 +4,22 @@ import "./masm.cachet"
 
 struct ValueId;
 struct ObjectId;
+// Int32Id corresponds to Int32OperandId in existing C++ code
 struct Int32Id;
+
+struct BaselineFrameSlot {
+    slot: UInt32,
+}
+
+impl BaselineFrameSlot {
+    fn fromUInt32(val: UInt32) -> BaselineFrameSlot {
+        let res = (unsafe { BaselineFrameSlot::fromUInt32Unchecked(val) });
+        assume res.slot == val;
+        res
+    }
+
+    unsafe fn fromUInt32Unchecked(val: UInt32) -> BaselineFrameSlot;
+}
 
 struct Int32Field;
 struct ShapeField;
@@ -219,10 +234,173 @@ ir CacheIR emits MASM {
       CacheIR::releaseReg(scratchReg);
     }
 
+    op CompareInt32Result(jsop: JSOp, lhsId: Int32Id, rhsId: Int32Id) {
+        let lhsReg = CacheIR::useInt32Reg(lhsId);
+        let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+        label ifTrue: MASM;
+        label done: MASM;
+
+        let cond = CacheIR::jsopToCondition(jsop, true);
+        emit MASM::BranchTest32(cond, lhsReg, rhsReg, ifTrue);
+
+        emit MASM::StoreBoolValue(false, CacheIR::outputReg);
+        emit MASM::Jump(done);
+
+        bind ifTrue;
+        emit MASM::StoreBoolValue(true, CacheIR::outputReg);
+
+        bind done;
+    }
+
+    op CompareNullUndefinedResult(jsop: JSOp, isUndefined: Bool, inputId: ValueId) {
+        let input = CacheIR::useValueReg(inputId);
+        let scratch = CacheIR::allocateReg();
+
+        if CacheIR::isStrictEqualityOp(jsop) {
+            if isUndefined {
+                let cond = CacheIR::jsopToCondition(jsop, false);
+                emit MASM::TestUndefinedSet(cond, input, scratch);
+            } else {
+                let cond = CacheIR::jsopToCondition(jsop, false);
+                emit MASM::TestNullSet(cond, input, scratch);
+            }
+
+            // TODO: Call EmitStoreResult once we have a mechanism to emit inside functions we
+            // call from other operations.
+            // This is copy-pasted from the EmitStoreResult function that's commented out.
+            {
+                let reg = scratch;
+                let ty = ValueType::Bool;
+                let output = CacheIR::outputReg;
+                if CacheIR::hasValue(output) {
+                    emit MASM::TagValue(ty, reg, output);
+                    return;
+                }
+                if (ty == ValueType::Int32) && (CacheIR::isFloat(CacheIR::typedReg(output))) {
+                    emit MASM::ConvertInt32ToDouble(reg, CacheIR::fpu(CacheIR::typedReg(output)));
+                    return;
+                }
+                if ty == CacheIR::getType(output) {
+                    emit MASM::Mov(reg, CacheIR::gpr(CacheIR::typedReg(output)));
+                    return;
+                }
+                // TODO: Assert this is unreachable
+            }
+        } else {
+            CacheIR::addFailurePath(out label failure);
+
+            assert CacheIR::isLoseEqualityOp(jsop);
+
+            label nullOrLikeUndefined: MASM;
+            label notNullOrLikeUndefined: MASM;
+            label done: MASM;
+
+            let tag = CacheIR::tag(input);
+            emit MASM::SplitTagForTest(input, tag);
+
+            // TODO: This should be handled implicitly because ScratchTagScope
+            // inherits from ValueReg
+            let tagReg = CacheIR::scratchTagScopeToValueReg(tag);
+            if isUndefined {
+                emit MASM::BranchTestUndefined(Condition::Equal, tagReg, nullOrLikeUndefined);
+                emit MASM::BranchTestNull(Condition::Equal, tagReg, nullOrLikeUndefined);
+            } else {
+                emit MASM::BranchTestNull(Condition::Equal, tagReg, nullOrLikeUndefined);
+                emit MASM::BranchTestUndefined(Condition::Equal, tagReg, nullOrLikeUndefined);
+            }
+
+            emit MASM::BranchTestObject(Condition::NotEqual, tagReg, notNullOrLikeUndefined);
+
+            // TODO: I've added an extra scope here to emulate what's going on with the
+            // ScratchTagScopeRelease (see below) since in the existing C++ code, it needs to
+            // be destructed properly here. Not sure the correct way to handle this in cachet.
+            {
+                // TODO: Figure out how to handle this. This is a weird thing where we release
+                // a scratch register (tag) by creating a new object (ScratchTagScopeRelease)
+                // which marks the register as released in its constructor, and unreleases it in
+                // the destructor. This is super weird if we want to preserve this pattern, but
+                // probably reasonable to just say we release the register here instead.
+                CacheIR::scratchTagScopeRelease(tag);
+
+                emit MASM::UnboxObject(input, scratch);
+                emit MASM::BranchIfObjectEmulatesUndefined(scratch, scratch, failure, nullOrLikeUndefined);
+
+                emit MASM::Jump(notNullOrLikeUndefined);
+            }
+
+            bind nullOrLikeUndefined;
+            emit MASM::StoreBoolValue(jsop == JSOp::Eq, CacheIR::outputReg);
+            emit MASM::Jump(done);
+
+            bind notNullOrLikeUndefined;
+            emit MASM::StoreBoolValue(jsop == JSOp::Ne, CacheIR::outputReg);
+
+            bind done;
+        }
+
+        CacheIR::releaseReg(scratch);
+    }
+
+    op LoadOperandResult(inputId: ValueId) {
+        let input = CacheIR::useValueReg(inputId);
+        emit MASM::MoveValue(input, CacheIR::outputReg);
+    }
+
+    op LoadValueResult(inputId: UInt32) {
+        let addr = CacheIR::stubAddress(inputId);
+        emit MASM::LoadValueFromAddress(addr, CacheIR::outputReg);
+    }
+
+    // TODO: slotIndex is really a UInt8. Fix this once we get more types and casting
+    op LoadArgumentFixedSlot(resultId: ValueId, slotIndex: UInt32) {
+        let slot = BaselineFrameSlot::fromUInt32(slotIndex);
+        let addr = CacheIR::addressOf(slot);
+        emit MASM::LoadValueFromAddress(addr, CacheIR::outputReg);
+    }
+
+    // TODO: slotIndex is really a UInt8. Fix this once we get more types and casting
+    op LoadArgumentDynamicSlot(resultId: ValueId, argcId: Int32Id, slotIndex: UInt32) {
+        let argcReg = CacheIR::useInt32Reg(argcId);
+        let slot = BaselineFrameSlot::fromUInt32(slotIndex);
+        let addr = CacheIR::addressOfRegister(argcReg, slot);
+        emit MASM::LoadValueFromAddress(addr, CacheIR::outputReg);
+    }
+
+    // TODO: Use this function once we have a mechanism to emit inside functions we
+    // call from other operations
+    /*
+    fn EmitStoreResult(reg: Reg, ty: ValueType, output: ValueReg) {
+        if CacheIR::hasValue(output) {
+            emit MASM::TagValue(ty, reg, output);
+            return;
+        }
+        if (ty == ValueType::Int32) && (CacheIR::isFloat(CacheIR::typedReg(output))) {
+            emit MASM::ConvertInt32ToDouble(reg, CacheIR::fpu(CacheIR::typedReg(output)));
+            return;
+        }
+        if ty == CacheIR::getType(output) {
+            emit MASM::Mov(reg, CacheIR::gpr(CacheIR::typedReg(output)));
+            return;
+        }
+        // TODO: Assert this is unreachable
+    }
+    */
+
     fn addFailurePath(out label failure: MASM);
 
     fn allocateReg() -> Reg;
     fn releaseReg(reg: Reg);
+
+    fn getType(valueReg: ValueReg) -> ValueType;
+    fn hasValue(valueReg: ValueReg) -> Bool;
+
+    // TODO: These are a little confused right now because we don't have the full
+    // hierarchy of registers
+    fn typedReg(valueReg: ValueReg) -> Reg;
+    fn isFloat(reg: Reg) -> Bool;
+    fn fpu(reg: Reg) -> FloatReg;
+    fn gpr(reg: Reg) -> Reg;
 
     fn allocateValueReg() -> ValueReg;
     fn releaseValueReg(valueReg: ValueReg);
@@ -237,6 +415,22 @@ ir CacheIR emits MASM {
     fn readShapeField(shapeField: ShapeField) -> Shape;
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
+
+    fn stubAddress(offset: UInt32) -> Address;
+    fn addressOf(slot: BaselineFrameSlot) -> Address;
+    fn addressOfRegister(reg: Reg, slot: BaselineFrameSlot) -> Address;
+
+    fn jsopToCondition(jsop: JSOp, b: Bool) -> Condition;
+    fn isStrictEqualityOp(jsop: JSOp) -> Bool {
+        (jsop == JSOp::StrictEq) || (jsop == JSOp::StrictNe)
+    }
+    fn isLoseEqualityOp(jsop: JSOp) -> Bool {
+        (jsop == JSOp::Eq) || (jsop == JSOp::Ne)
+    }
+
+    fn tag(reg: ValueReg) -> ScratchTagScope;
+    fn scratchTagScopeToValueReg(tag: ScratchTagScope) -> ValueReg;
+    fn scratchTagScopeRelease(tag: ScratchTagScope);
 }
 
 //spec struct RegAllocState;

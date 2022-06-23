@@ -9,6 +9,40 @@ struct ValueReg;
 // #[cfg(verify)]
 // type ValueReg = Reg;
 
+struct FloatReg;
+
+struct ScratchTagScope;
+
+struct Address {
+    base: Reg,
+    offset: Int32,
+}
+
+enum OperandKind {
+    Reg,
+    MemRegDisp,
+    FPReg,
+    MemScale,
+    MemAddress32,
+}
+
+enum Scale {
+    TimesOne,
+    TimesTwo,
+    TimesFour,
+    TimesEight,
+}
+
+struct Encoding;
+
+struct Operand {
+    kind: OperandKind,
+    base: UInt32,
+    scale: Scale,
+    index: Encoding,
+    disp: Int32,
+}
+
 enum Condition {
     Equal,
     NotEqual,
@@ -21,13 +55,14 @@ enum Condition {
 
 ir MASM {
     op Mov(srcReg: Reg, dstReg: Reg) {
-      MASM::setInt32(dstReg, MASM::getInt32(srcReg));
+        MASM::setInt32(dstReg, MASM::getInt32(srcReg));
     }
 
     op StoreBool(bool: Bool, reg: Reg) {
         MASM::setBool(reg, bool);
     }
 
+    // Corresponds to EmitStoreBoolean
     op StoreBoolValue(bool: Bool, valueReg: ValueReg) {
         MASM::setValue(valueReg, Value::fromBool(bool));
     }
@@ -45,9 +80,26 @@ ir MASM {
       }
     }
 
+    op LoadValueFromAddress(src: Address, val: ValueReg) {
+        let operand = MASM::addressToOperand(src);
+        // TODO: This is op directly touches memory which we need to implement
+        // still. For now, just uses an uninterpreted function.
+        MASM::movqq(operand, val);
+    }
+
+    op MoveValue(src: ValueReg, dest: ValueReg) {
+        let val = MASM::getValue(dest);
+        MASM::setValue(src, val);
+    }
+
     op UnboxInt32(valueReg: ValueReg, int32Reg: Reg) {
       let value = MASM::getValue(valueReg);
-      MASM::setInt32(int32Reg, Value::toInt32(value)); 
+      MASM::setInt32(int32Reg, Value::toInt32(value));
+    }
+
+    op ConvertInt32ToDouble(src: Reg, dest: FloatReg) {
+        MASM::zeroDouble(dest);
+        MASM::vcvtsi2sd(src, dest, dest);
     }
 
     op UnboxObject(valueReg: ValueReg, objectReg: Reg) {
@@ -76,6 +128,32 @@ ir MASM {
                 goto branch;
             }
         }
+    }
+
+    op BranchIfObjectEmulatesUndefined(
+        objReg: Reg,
+        scratch: Reg,
+        label slowCheck: MASM,
+        label l: MASM,
+    ) {
+        MASM::loadObjClassUnsafe(objReg, scratch);
+        MASM::branchTestClassIsProxy(true, scratch, slowCheck);
+        let flagsOffset = MASM::jsClassOffsetOfFlags();
+        let flags = MASM::makeAddress(scratch, flagsOffset);
+        let imm = MASM::jsClassEmulatesUndefinedConstant();
+        // TODO: Remove this function call once we can cast between UInt32 and Int32
+        let immI32 = MASM::convertUInt32ToInt32(imm);
+        MASM::branchTest32(Condition::NonZero, flags, immI32, l);
+    }
+
+    op TestUndefinedSet(cond: Condition, value: ValueReg, dest: Reg) {
+        let newCond = MASM::testUndefined(cond, value);
+        MASM::emitSet(newCond, dest);
+    }
+
+    op TestNullSet(cond: Condition, value: ValueReg, dest: Reg) {
+        let newCond = MASM::testNull(cond, value);
+        MASM::emitSet(newCond, dest);
     }
 
     op BranchTestInt32(condition: Condition, valueReg: ValueReg, label branch: MASM) {
@@ -122,6 +200,21 @@ ir MASM {
           goto branch;
         }
       }
+    }
+
+    op BranchTestUndefined(condition: Condition, valueReg: ValueReg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+        let value = MASM::getValue(valueReg);
+        let valueIsUndefined = Value::isUndefined(value);
+
+        if condition == Condition::Equal && valueIsUndefined{
+            goto branch;
+        }
+
+        if condition == Condition::NotEqual && !valueIsUndefined {
+            goto branch;
+        }
     }
 
     op BranchTestObject(condition: Condition, valueReg: ValueReg, label branch: MASM) {
@@ -223,7 +316,7 @@ ir MASM {
       let rhsInt32 = MASM::getInt32(dstReg);
 
       let result = lhsInt32 + rhsInt32;
-      
+
       assert condition == Condition::Overflow;
       if lhsInt32 > 0_i32 {
         if rhsInt32 > 0_i32 {
@@ -354,6 +447,10 @@ ir MASM {
         MASM::setValue(protoReg, Object::protoOf(object));
     }
 
+    op SplitTagForTest(value: ValueReg, tag: ScratchTagScope) {
+        MASM::splitTag(value, tag);
+    }
+
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);
 
@@ -365,6 +462,31 @@ ir MASM {
 
     fn getBool(reg: Reg) -> Bool;
     fn setBool(reg: Reg, bool: Bool);
+
+    // TODO: This function can be removed once we have proper casting
+    fn convertUInt32ToInt32(i: UInt32) -> Int32;
+
+    fn loadObjClassUnsafe(obj: Reg, dest: Reg);
+
+    fn zeroDouble(reg: FloatReg);
+    fn vcvtsi2sd(src1: Reg, src0: FloatReg, dest: FloatReg);
+
+    // TODO: Figure out how to construct a struct. This is just passing through the fields.
+    fn makeAddress(base: Reg, offset: Int32) -> Address;
+    fn addressToOperand(addr: Address) -> Operand;
+    fn movqq(src: Operand, val: ValueReg);
+
+    fn jsClassOffsetOfFlags() -> Int32;
+    fn jsClassEmulatesUndefinedConstant() -> UInt32;
+
+    fn branchTestClassIsProxy(proxy: Bool, clasp: Reg, label l: MASM);
+    fn branchTest32(cond: Condition, lhs: Address, rhs: Int32, label l: MASM);
+
+    fn testUndefined(cond: Condition, valueReg: ValueReg) -> Condition;
+    fn testNull(cond: Condition, valueReg: ValueReg) -> Condition;
+    fn emitSet(cond: Condition, dest: Reg);
+
+    fn splitTag(value: ValueReg, tag: ScratchTagScope);
 }
 
 //impl MASM {

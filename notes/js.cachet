@@ -1,5 +1,7 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+import "jsops.cachet"
+
 struct Heap;
 var mut heap: Heap;
 
@@ -23,6 +25,10 @@ impl Value {
     fn typeOf(value: Value) -> ValueType;
 
     // ...
+
+    fn isUndefined(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::Undefined
+    }
 
     fn isInt32(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Int32
@@ -131,7 +137,7 @@ impl Object {
         assert Class::isArgumentsObject(class);
         (unsafe { object as ArgumentsObject })
     }
-  
+
     fn getFixedSlot(object: Object, slot: Int32) -> Value {
         let nativeObject = Object::toNativeObject(object);
         NativeObject::getFixedSlot(nativeObject, slot)
