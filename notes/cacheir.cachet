@@ -196,6 +196,7 @@ ir CacheIR emits MASM {
         bind notZero;
 
         emit MASM::Mov(lhsReg, scratchReg);
+        // TODO(abhishekc-sharma): volatile registers
         emit MASM::FlexibleDivMod32(rhsReg, scratchReg, remReg);
 
         // A remainder implies a double result.
@@ -225,6 +226,7 @@ ir CacheIR emits MASM {
         bind notOverflow;
 
         emit MASM::Mov(lhsReg, scratchReg);
+        // TODO(abhishekc-sharma): volatile registers
         emit MASM::FlexibleRemainder32(rhsReg, scratchReg);
 
         // Modulo takes the sign of the dividend; we can't return negative zero here.
@@ -326,6 +328,32 @@ ir CacheIR emits MASM {
       emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
 
       CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32IncResult(inputId: Int32Id) {
+        let inputReg = CacheIR::useInt32Reg(inputId);
+        let scratchReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::Mov(inputReg, scratchReg);
+        emit MASM::BranchAdd32Imm(Condition::Overflow, 1_i32, scratchReg, failure);
+        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32DecResult(inputId: Int32Id) {
+        let inputReg = CacheIR::useInt32Reg(inputId);
+        let scratchReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::Mov(inputReg, scratchReg);
+        emit MASM::BranchAdd32Imm(Condition::Overflow, 1_i32, scratchReg, failure);
+        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+
+        CacheIR::releaseReg(scratchReg);
     }
 
     op Int32NotResult(inputId: Int32Id) {

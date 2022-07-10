@@ -276,9 +276,51 @@ ir MASM {
       MASM::setInt32(dstReg, result);
     }
 
+    // this op corresponds to an overload of the BranchAdd32 MASM op.
+    op BranchAdd32Imm(condition: Condition, lhsInt32: Int32, dstReg: Reg, label branch: MASM) {
+      let rhsInt32 = MASM::getInt32(dstReg);
+
+      let result = lhsInt32 + rhsInt32;
+
+      assert condition == Condition::Overflow;
+      if lhsInt32 > 0_i32 && rhsInt32 > 0_i32 && result < 0_i32 {
+          goto branch;
+      }
+
+      if lhsInt32 < 0_i32 && rhsInt32 < 0_i32 && result > 0_i32 {
+          goto branch;
+      }
+
+      MASM::setInt32(dstReg, result);
+    }
+
     op BranchSub32(condition: Condition, srcReg: Reg, dstReg: Reg, label branch: MASM) {
       let lhsInt32 = MASM::getInt32(dstReg);
       let rhsInt32 = MASM::getInt32(srcReg);
+
+      let result = lhsInt32 - rhsInt32;
+
+      assert condition == Condition::Overflow;
+
+      let rhsInt32Neg = -rhsInt32;
+      let minInt32 = 1_i32 << 31_i32; // Do it this way until negative literals are a thing
+
+      if rhsInt32 == minInt32 && lhsInt32 >= 0_i32 {
+          goto branch;
+      } else if lhsInt32 > 0_i32 && rhsInt32 < 0_i32 && result < 0_i32 {
+          goto branch;
+      }
+
+      if lhsInt32 < 0_i32 && rhsInt32 > 0_i32 && result > 0_i32 {
+          goto branch;
+      }
+
+      MASM::setInt32(dstReg, result);
+    }
+
+    // this op corresponds to an overload of the BranchAdd32 MASM op.
+    op BranchSub32Imm(condition: Condition, rhsInt32: Int32, dstReg: Reg, label branch: MASM) {
+      let lhsInt32 = MASM::getInt32(dstReg);
 
       let result = lhsInt32 - rhsInt32;
 
@@ -316,7 +358,7 @@ ir MASM {
       MASM::setInt32(dstReg, result);
     }
 
-    // TODO(abhishekc-sharma): handle isUnsigned.
+    // TODO(abhishekc-sharma): handle isUnsigned and volatile registers.
     op FlexibleDivMod32(rhsReg: Reg, lhsOutputReg: Reg, remReg: Reg) {
       let lhsInt32 = MASM::getInt32(lhsOutputReg);
       let rhsInt32 = MASM::getInt32(rhsReg);
@@ -328,7 +370,7 @@ ir MASM {
       MASM::setInt32(remReg, remainder);
     }
 
-    // TODO(abhishekc-sharma): handle isUnsigned.
+    // TODO(abhishekc-sharma): handle isUnsigned and volatile registers.
     op FlexibleRemainder32(rhsReg: Reg, lhsOutputReg: Reg) {
       let lhsInt32 = MASM::getInt32(lhsOutputReg);
       let rhsInt32 = MASM::getInt32(rhsReg);
