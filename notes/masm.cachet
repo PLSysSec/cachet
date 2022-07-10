@@ -265,20 +265,12 @@ ir MASM {
       let result = lhsInt32 + rhsInt32;
       
       assert condition == Condition::Overflow;
-      if lhsInt32 > 0_i32 {
-        if rhsInt32 > 0_i32 {
-          if result < 0_i32 {
-            goto branch;
-          }
-        }
+      if lhsInt32 > 0_i32 && rhsInt32 > 0_i32 && result < 0_i32 {
+          goto branch;
       }
 
-      if lhsInt32 < 0_i32 {
-        if rhsInt32 < 0_i32 {
-          if result > 0_i32 {
-            goto branch;
-          }
-        }
+      if lhsInt32 < 0_i32 && rhsInt32 < 0_i32 && result > 0_i32 {
+          goto branch;
       }
 
       MASM::setInt32(dstReg, result);
@@ -295,26 +287,14 @@ ir MASM {
       let rhsInt32Neg = -rhsInt32;
       let minInt32 = 1_i32 << 31_i32; // Do it this way until negative literals are a thing
 
-      if rhsInt32 == minInt32 {
-        if lhsInt32 >= 0_i32 {
+      if rhsInt32 == minInt32 && lhsInt32 >= 0_i32 {
           goto branch;
-        }
-      } else {
-        if lhsInt32 > 0_i32 {
-          if rhsInt32 < 0_i32 {
-            if result < 0_i32 {
-              goto branch;
-            }
-          }
-        }
+      } else if lhsInt32 > 0_i32 && rhsInt32 < 0_i32 && result < 0_i32 {
+          goto branch;
       }
 
-      if lhsInt32 < 0_i32 {
-        if rhsInt32 > 0_i32 {
-          if result > 0_i32 {
-            goto branch;
-          }
-        }
+      if lhsInt32 < 0_i32 && rhsInt32 > 0_i32 && result > 0_i32 {
+          goto branch;
       }
 
       MASM::setInt32(dstReg, result);
