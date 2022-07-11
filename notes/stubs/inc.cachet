@@ -1,0 +1,14 @@
+import "../cacheir.cachet"
+
+ir CacheStub emits CacheIR {
+    op Inc(
+        inputValueId: ValueId,
+        inputInt32Id: Int32Id,
+    ) {
+        assume CacheIR::useValueReg(inputValueId) == CacheIR::allocateValueReg();
+        assume CacheIR::useInt32Reg(inputInt32Id) == CacheIR::allocateReg();
+
+        emit CacheIR::GuardToInt32(inputValueId, inputInt32Id);
+        emit CacheIR::Int32IncResult(inputInt32Id);
+    }
+}

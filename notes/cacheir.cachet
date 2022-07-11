@@ -367,6 +367,21 @@ ir CacheIR emits MASM {
         CacheIR::releaseReg(scratchReg);
     }
 
+    op Int32MinMax(isMax: Bool, firstId: Int32Id, secondId: Int32Id, resultId: Int32Id) {
+        let firstReg = CacheIR::useInt32Reg(firstId);
+        let secondReg = CacheIR::useInt32Reg(secondId);
+        let resultReg = CacheIR::useInt32Reg(resultId);
+
+        emit MASM::Mov(firstReg, resultReg);
+        if isMax {
+            emit MASM::Cmp32Move32(Condition::GreaterThan, secondReg,
+                firstReg, secondReg, resultReg);
+        } else {
+            emit MASM::Cmp32Move32(Condition::LessThan, secondReg,
+                firstReg, secondReg, resultReg);
+        }
+    }
+
     fn addFailurePath(out label failure: MASM);
 
     fn allocateReg() -> Reg;
