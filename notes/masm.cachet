@@ -36,6 +36,12 @@ ir MASM {
         MASM::setValue(dstReg, MASM::getValue(srcReg));
     }
 
+    // this op corresponds to an overload of the MoveValue op
+    // that takes an immediate boolean value
+    op MoveBooleanValueImm(bool: Bool, dstReg: ValueReg) {
+        MASM::setValue(dstReg, Value::fromBool(bool));
+    }
+
     op Cmp32Move32(condition: Condition, lhsReg: Reg, rhsReg: Reg, srcReg: Reg, dstReg: Reg) {
         assert (condition == Condition::GreaterThan || condition == Condition::LessThan);
 
@@ -229,6 +235,15 @@ ir MASM {
       } else {
         assert false;
       }
+    }
+
+    op BranchTestInt32Truthy(truthy: Bool, valueReg: ValueReg, label branch: MASM) {
+        let value = MASM::getValue(valueReg);
+        let int32 = Value::toInt32(value);
+
+        if (!truthy && int32 == 0_i32) || (truthy && int32 != 0_i32) {
+            goto branch;
+        }
     }
 
     op BranchTestBoolean(condition: Condition, valueReg: ValueReg, label branch: MASM) {
@@ -717,6 +732,21 @@ ir MASM {
       let result = ((srcInt32 as UInt32) >> (shiftInt32 as UInt32)) as Int32;
 
       MASM::setInt32(srcDestReg, result);
+    }
+
+    op TestObjectSet(condition: Condition, valueReg: ValueReg, dstReg: Reg) {
+        assert (condition == Condition::Equal || condition == Condition::NotEqual);
+
+        let value = MASM::getValue(valueReg);
+        let isObject = Value::isObject(value);
+
+        MASM::setBool(dstReg, false);
+
+        if condition == Condition::Equal && isObject {
+            MASM::setBool(dstReg, true);
+        } else if condition == Condition::NotEqual && !isObject {
+            MASM::setBool(dstReg, true);
+        }
     }
 
     op LoadObjectFixedSlot(objectReg: Reg, slot: Int32, outputReg: ValueReg) {
