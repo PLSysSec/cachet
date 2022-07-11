@@ -17,11 +17,27 @@ enum Condition {
     NonZero,
     Signed,
     NotSigned,
+    GreaterThan,
+    LessThan,
 }
 
 ir MASM {
     op Mov(srcReg: Reg, dstReg: Reg) {
       MASM::setInt32(dstReg, MASM::getInt32(srcReg));
+    }
+
+    op Cmp32Move32(condition: Condition, lhsReg: Reg, rhsReg: Reg, srcReg: Reg, dstReg: Reg) {
+        assert (condition == Condition::GreaterThan || condition == Condition::LessThan);
+
+        let lhsInt32 = MASM::getInt32(lhsReg);
+        let rhsInt32 = MASM::getInt32(rhsReg);
+        let srcInt32 = MASM::getInt32(srcReg);
+
+        if condition == Condition::GreaterThan && lhsInt32 > rhsInt32 {
+            MASM::setInt32(dstReg, srcInt32);
+        } else if condition == Condition::LessThan && lhsInt32 < rhsInt32 {
+            MASM::setInt32(dstReg, srcInt32);
+        }
     }
 
     op StoreBool(bool: Bool, reg: Reg) {
@@ -113,9 +129,12 @@ ir MASM {
 
       let result = lhsInt32 & rhsInt32;
 
-      assert condition != Condition::Equal;
-      assert condition != Condition::NotEqual;
-      assert condition != Condition::Overflow;
+      assert (
+        condition == Condition::Zero ||
+        condition == Condition::NonZero ||
+        condition == Condition::Signed ||
+        condition == Condition::NotSigned
+      );
 
       if condition == Condition::Zero {
         if result == 0_i32 {
@@ -141,9 +160,12 @@ ir MASM {
 
       let result = lhsInt32 & rhsInt32;
 
-      assert condition != Condition::Equal;
-      assert condition != Condition::NotEqual;
-      assert condition != Condition::Overflow;
+      assert (
+        condition == Condition::Zero ||
+        condition == Condition::NonZero ||
+        condition == Condition::Signed ||
+        condition == Condition::NotSigned
+      );
 
       if condition == Condition::Zero {
         if result == 0_i32 {
