@@ -74,6 +74,16 @@ ir CacheIR emits MASM {
         emit MASM::Branch32Imm(Condition::LessThan, indexReg, 0_i32, failure);
     }
 
+    op IsObjectResult(inputId: ValueId) {
+        let scratchReg = CacheIR::allocateReg();
+        let valueReg = CacheIR::useValueReg(inputId);
+
+        emit MASM::TestObjectSet(Condition::Equal, valueReg, scratchReg);
+        emit MASM::TagValue(ValueType::Bool, scratchReg, CacheIR::outputReg);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
     op GuardNonDoubleType(valueId: ValueId, type: ValueType) {
         let valueReg = CacheIR::useValueReg(valueId);
 
@@ -314,6 +324,21 @@ ir CacheIR emits MASM {
         let val = CacheIR::readInt32Field(valField);
 
         emit MASM::Load32(val, resultReg);
+    }
+
+    op LoadInt32TruthyResult(inputId: ValueId) {
+        let valueReg = CacheIR::useValueReg(inputId);
+
+        label ifFalse: MASM;
+        label done: MASM;
+        emit MASM::BranchTestInt32Truthy(false, valueReg, ifFalse);
+        emit MASM::MoveBooleanValueImm(true, CacheIR::outputReg);
+        emit MASM::Jump(done);
+
+        bind ifFalse;
+        emit MASM::MoveBooleanValueImm(false, CacheIR::outputReg);
+
+        bind done;
     }
 
     op Int32AddResult(lhsId: Int32Id, rhsId: Int32Id) {
