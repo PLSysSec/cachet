@@ -1121,7 +1121,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         if !self
             .interprets
-            .is_some_with(|interprets| self.is_same_ir(ir_index, interprets.value))
+            .is_some_and(|interprets| self.is_same_ir(ir_index, interprets.value))
         {
             self.type_checker
                 .errors
@@ -1154,7 +1154,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         if !self
             .emits
-            .is_some_with(|emits| self.is_same_ir(ir_index, emits.value))
+            .is_some_and(|emits| self.is_same_ir(ir_index, emits.value))
         {
             self.type_checker
                 .errors
@@ -1186,7 +1186,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             Some(ParentIndex::Ir(ir_index)) => {
                 if self
                     .emits
-                    .is_some_with(|emits| self.is_same_ir(emits.value, ir_index))
+                    .is_some_and(|emits| self.is_same_ir(emits.value, ir_index))
                 {
                     Some(ir_index)
                 } else {
