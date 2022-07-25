@@ -299,7 +299,7 @@ impl Display for NegateTypeMemberFnSelector {
             match self.kind {
                 NegateKind::Arith => "negate",
                 NegateKind::Bitwise => "bitNot",
-                NegateKind::Logical => unreachable!("logical negate doesn't use member function"),
+                NegateKind::Logical => panic!("logical negate doesn't use member function"),
             }
         )
     }
