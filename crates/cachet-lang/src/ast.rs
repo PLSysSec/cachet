@@ -30,10 +30,10 @@ pub enum BlockKind {
 pub enum NegateKind {
     #[display(fmt = "-")]
     Arith,
-    #[display(fmt = "!")]
-    Logical,
     #[display(fmt = "~")]
     Bitwise,
+    #[display(fmt = "!")]
+    Logical,
 }
 
 /// Describes how "safe" a cast is.
