@@ -2,14 +2,232 @@
 
 import "./masm.cachet"
 
-struct ValueId;
-struct ObjectId;
-struct Int32Id;
-struct NumberId;
-struct BooleanId;
-struct StringId;
-struct SymbolId;
-struct BigIntId;
+enum OperandLocationKind {
+    Uninitialized,
+    PayloadReg,
+    ValueReg,
+}
+
+struct OperandLocation;
+
+impl OperandLocation {
+    fn kind(loc: OperandLocation) -> OperandLocationKind; 
+
+    fn newUninitialized() -> OperandLocation {
+        let loc = (unsafe { OperandLocation::newUninitializedUnchecked() });
+        assume OperandLocation::kind(loc) == OperandLocationKind::Uninitialized;
+        loc
+    }
+
+    unsafe fn newUninitializedUnchecked() -> OperandLocation;
+
+    fn setValueReg(out loc: OperandLocation, valueReg: ValueReg) {
+        (unsafe { OperandLocation::setValueRegUnchecked(out loc, valueReg) }); 
+        assume OperandLocation::kind(loc) == OperandLocationKind::ValueReg;
+        assume (unsafe { OperandLocation::getValueRegUnchecked(loc) } ) == valueReg;
+    }
+
+    unsafe fn setValueRegUnchecked(out loc: OperandLocation, valueReg: ValueReg);
+
+    fn getValueReg(loc: OperandLocation) -> ValueReg {
+        assert OperandLocation::kind(loc) == OperandLocationKind::ValueReg;
+        let valueReg = (unsafe { OperandLocation::getValueRegUnchecked(loc) });
+        valueReg
+    }
+
+    unsafe fn getValueRegUnchecked(loc: OperandLocation) -> ValueReg;
+
+    fn setPayloadReg(out loc: OperandLocation, reg: Reg, type: ValueType) {
+        (unsafe { OperandLocation::setPayloadRegUnchecked(out loc, reg, type) }); 
+        assume OperandLocation::kind(loc) == OperandLocationKind::PayloadReg;
+        assume (unsafe { OperandLocation::getPayloadRegUnchecked(loc) } ) == reg;
+        assume (unsafe { OperandLocation::getPayloadTypeUnchecked(loc) } ) == type;
+    }
+
+    unsafe fn setPayloadRegUnchecked(out loc: OperandLocation, reg: Reg, type: ValueType);
+
+    fn getPayloadReg(loc: OperandLocation) -> Reg {
+        assert OperandLocation::kind(loc) == OperandLocationKind::PayloadReg;
+        let reg = (unsafe { OperandLocation::getPayloadRegUnchecked(loc) });
+        reg
+    }
+
+    unsafe fn getPayloadRegUnchecked(loc: OperandLocation) -> Reg;
+
+    fn getPayloadType(loc: OperandLocation) -> ValueType {
+        assert OperandLocation::kind(loc) == OperandLocationKind::PayloadReg;
+        let type = (unsafe { OperandLocation::getPayloadTypeUnchecked(loc) });
+        type
+    }
+
+    unsafe fn getPayloadTypeUnchecked(loc: OperandLocation) -> ValueType;
+}
+
+struct OperandId;
+
+struct ValueId <: OperandId;
+struct ObjectId <: OperandId;
+struct Int32Id <: OperandId;
+struct NumberId <: ValueId;
+struct BooleanId <: OperandId;
+struct StringId <: OperandId;
+struct SymbolId <: OperandId;
+struct BigIntId <: OperandId;
+
+struct TypedId <: OperandId;
+
+impl TypedId {
+    fn type(typedId: TypedId) -> ValueType;
+
+    fn isValueId(typedId: TypedId) -> Bool;
+
+    fn fromValueId(valueId: ValueId, type: ValueType) -> TypedId {
+        let typedId = (unsafe { TypedId::fromValueIdUnchecked(valueId, type) });
+        assume TypedId::isValueId(typedId);
+        assume TypedId::type(typedId) == type;
+        assume (unsafe { TypedId::toValueIdUnchecked(typedId) }) == valueId;
+        assume (valueId as OperandId) == (typedId as OperandId);
+        typedId
+    }
+
+    unsafe fn fromValueIdUnchecked(valueId: ValueId, type: ValueType) -> TypedId; 
+
+    fn toValueId(typedId: TypedId) -> ValueId {
+        assert TypedId::isValueId(typedId);
+        let type = TypedId::type(typedId);
+        let valueId = (unsafe { TypedId::toValueIdUnchecked(typedId) });
+        assume (unsafe { TypedId::fromValueIdUnchecked(valueId, type) }) == typedId; 
+        valueId
+    }
+
+    unsafe fn toValueIdUnchecked(typedId: TypedId) -> ValueId;
+
+    fn fromObjectId(objectId: ObjectId) -> TypedId {
+        let typedId = (unsafe { TypedId::fromObjectIdUnchecked(objectId) });
+        assume !TypedId::isValueId(typedId);
+        assume TypedId::type(typedId) == ValueType::Object;
+        assume (unsafe { TypedId::toObjectIdUnchecked(typedId) }) == objectId;
+        assume (objectId as OperandId) == (typedId as OperandId);
+        typedId
+    }
+
+    unsafe fn fromObjectIdUnchecked(objectId: ObjectId) -> TypedId;
+
+    fn toObjectId(typedId: TypedId) -> ObjectId {
+        assert !TypedId::isValueId(typedId);
+        assert TypedId::type(typedId) == ValueType::Object;
+        let objectId = (unsafe { TypedId::toObjectIdUnchecked(typedId) });
+        assume (unsafe { TypedId::fromObjectIdUnchecked(objectId) }) == typedId;
+        objectId
+    }
+
+    unsafe fn toObjectIdUnchecked(typedId: TypedId) -> ObjectId;
+
+    fn fromInt32Id(int32Id: Int32Id) -> TypedId {
+        let typedId = (unsafe { TypedId::fromInt32IdUnchecked(int32Id) });
+        assume !TypedId::isValueId(typedId);
+        assume TypedId::type(typedId) == ValueType::Int32;
+        assume (unsafe { TypedId::toInt32IdUnchecked(typedId) }) == int32Id;
+        assume (int32Id as OperandId) == (typedId as OperandId);
+        typedId
+    }
+
+    unsafe fn fromInt32IdUnchecked(int32Id: Int32Id) -> TypedId;
+
+    fn toInt32Id(typedId: TypedId) -> Int32Id {
+        assert !TypedId::isValueId(typedId);
+        assert TypedId::type(typedId) == ValueType::Int32;
+        let int32Id = (unsafe { TypedId::toInt32IdUnchecked(typedId) });
+        assume (unsafe { TypedId::fromInt32IdUnchecked(int32Id) }) == typedId;
+        int32Id
+    }
+
+    unsafe fn toInt32IdUnchecked(typedId: TypedId) -> Int32Id;
+
+    fn fromBooleanId(booleanId: BooleanId) -> TypedId {
+        let typedId = (unsafe { TypedId::fromBooleanIdUnchecked(booleanId) });
+        assume !TypedId::isValueId(typedId);
+        assume TypedId::type(typedId) == ValueType::Bool;
+        assume (unsafe { TypedId::toBooleanIdUnchecked(typedId) }) == booleanId;
+        assume (booleanId as OperandId) == (typedId as OperandId);
+        typedId
+    }
+
+    unsafe fn fromBooleanIdUnchecked(booleanId: BooleanId) -> TypedId;
+
+    fn toBooleanId(typedId: TypedId) -> BooleanId {
+        assert !TypedId::isValueId(typedId);
+        assert TypedId::type(typedId) == ValueType::Bool;
+        let booleanId = (unsafe { TypedId::toBooleanIdUnchecked(typedId) });
+        assume (unsafe { TypedId::fromBooleanIdUnchecked(booleanId) }) == typedId;
+        booleanId
+    }
+
+    unsafe fn toBooleanIdUnchecked(typedId: TypedId) -> BooleanId;
+
+    fn fromStringId(stringId: StringId) -> TypedId {
+        let typedId = (unsafe { TypedId::fromStringIdUnchecked(stringId) });
+        assume !TypedId::isValueId(typedId);
+        assume TypedId::type(typedId) == ValueType::String;
+        assume (unsafe { TypedId::toStringIdUnchecked(typedId) }) == stringId;
+        assume (stringId as OperandId) == (typedId as OperandId);
+        typedId
+    }
+
+    unsafe fn fromStringIdUnchecked(stringId: StringId) -> TypedId;
+
+    fn toStringId(typedId: TypedId) -> StringId {
+        assert !TypedId::isValueId(typedId);
+        assert TypedId::type(typedId) == ValueType::String;
+        let stringId = (unsafe { TypedId::toStringIdUnchecked(typedId) });
+        assume (unsafe { TypedId::fromStringIdUnchecked(stringId) }) == typedId;
+        stringId
+    }
+
+    unsafe fn toStringIdUnchecked(typedId: TypedId) -> StringId;
+
+    fn fromSymbolId(symbolId: SymbolId) -> TypedId {
+        let typedId = (unsafe { TypedId::fromSymbolIdUnchecked(symbolId) });
+        assume !TypedId::isValueId(typedId);
+        assume TypedId::type(typedId) == ValueType::Symbol;
+        assume (unsafe { TypedId::toSymbolIdUnchecked(typedId) }) == symbolId;
+        assume (symbolId as OperandId) == (typedId as OperandId);
+        typedId
+    }
+
+    unsafe fn fromSymbolIdUnchecked(symbolId: SymbolId) -> TypedId;
+
+    fn toSymbolId(typedId: TypedId) -> SymbolId {
+        assert !TypedId::isValueId(typedId);
+        assert TypedId::type(typedId) == ValueType::Symbol;
+        let symbolId = (unsafe { TypedId::toSymbolIdUnchecked(typedId) });
+        assume (unsafe { TypedId::fromSymbolIdUnchecked(symbolId) }) == typedId;
+        symbolId
+    }
+
+    unsafe fn toSymbolIdUnchecked(typedId: TypedId) -> SymbolId;
+
+    fn fromBigIntId(bigIntId: BigIntId) -> TypedId {
+        let typedId = (unsafe { TypedId::fromBigIntIdUnchecked(bigIntId) });
+        assume !TypedId::isValueId(typedId);
+        assume TypedId::type(typedId) == ValueType::BigInt;
+        assume (unsafe { TypedId::toBigIntIdUnchecked(typedId) }) == bigIntId;
+        assume (bigIntId as OperandId) == (typedId as OperandId);
+        typedId
+    }
+
+    unsafe fn fromBigIntIdUnchecked(bigIntId: BigIntId) -> TypedId;
+
+    fn toBigIntId(typedId: TypedId) -> BigIntId {
+        assert !TypedId::isValueId(typedId);
+        assert TypedId::type(typedId) == ValueType::BigInt;
+        let bigIntId = (unsafe { TypedId::toBigIntIdUnchecked(typedId) });
+        assume (unsafe { TypedId::fromBigIntIdUnchecked(bigIntId) }) == typedId;
+        bigIntId
+    }
+
+    unsafe fn toBigIntIdUnchecked(typedId: TypedId) -> BigIntId;
+}
 
 struct ValueField;
 struct Int32Field;
@@ -616,14 +834,23 @@ ir CacheIR emits MASM {
     fn allocateValueReg() -> ValueReg;
     fn releaseValueReg(valueReg: ValueReg);
 
+    fn defineValueReg(valueId: ValueId) -> ValueReg;
+    fn defineObjectReg(id: ObjectId) -> Reg;
+    fn defineInt32Reg(id: Int32Id) -> Reg;
+    fn defineNumberReg(id: NumberId) -> ValueReg;
+    fn defineBooleanReg(id: BooleanId) -> Reg;
+    fn defineStringReg(id: StringId) -> Reg;
+    fn defineSymbolReg(id: SymbolId) -> Reg;
+    fn defineBigIntReg(id: BigIntId) -> Reg;
+
     fn useValueReg(valueId: ValueId) -> ValueReg;
-    fn useNumberReg(numberId: NumberId) -> ValueReg;
-    fn useObjectReg(objectId: ObjectId) -> Reg;
-    fn useInt32Reg(int32Id: Int32Id) -> Reg;
-    fn useBooleanReg(booleanId: BooleanId) -> Reg;
-    fn useStringReg(stringId: StringId) -> Reg;
-    fn useSymbolReg(symbolId: SymbolId) -> Reg;
-    fn useBigIntReg(bigIntId: BigIntId) -> Reg;
+    fn useObjectReg(id: ObjectId) -> Reg;
+    fn useInt32Reg(id: Int32Id) -> Reg;
+    fn useNumberReg(id: NumberId) -> ValueReg;
+    fn useBooleanReg(id: BooleanId) -> Reg;
+    fn useStringReg(id: StringId) -> Reg;
+    fn useSymbolReg(id: SymbolId) -> Reg;
+    fn useBigIntReg(id: BigIntId) -> Reg;
 
     var outputReg: ValueReg;
 
@@ -633,7 +860,18 @@ ir CacheIR emits MASM {
     fn readClassField(classField: ClassField) -> Class;
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
+
+    fn initValueInput(valueId: ValueId);
+    fn initObjectInput(id: ObjectId);
+    fn initInt32Input(id: Int32Id);
+    fn initNumberInput(id: NumberId);
+    fn initBooleanInput(id: BooleanId);
+    fn initStringInput(id: StringId);
+    fn initSymbolInput(id: SymbolId);
+    fn initBigIntInput(id: BigIntId);
 }
+
+
 
 //spec struct RegAllocState;
 

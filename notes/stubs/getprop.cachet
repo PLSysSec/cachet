@@ -1,3 +1,5 @@
+import "../cacheir.cachet"
+
 ir CacheStub emits CacheIR {
     op GetProp(
         valueId: ValueId,
@@ -5,8 +7,8 @@ ir CacheStub emits CacheIR {
         shapeField: ShapeField,
         slotField: Int32Field,
     ) {
-        assume CacheIR::useValueReg(valueId) == CacheIR::allocateValueReg();
-        assume CacheIR::useObjectReg(objectId) == CacheIR::allocateReg();
+        CacheIR::initValueInput(valueId);
+        CacheIR::initObjectInput(objectId);
 
         let shape = CacheIR::readShapeField(shapeField);
 

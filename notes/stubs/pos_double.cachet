@@ -5,8 +5,8 @@ ir CacheStub emits CacheIR {
         inputId: ValueId,
         valId: NumberId,
     ) {
-        assume CacheIR::useValueReg(inputId) == CacheIR::allocateValueReg();
-        assume CacheIR::useNumberReg(valId) == CacheIR::allocateValueReg();
+        CacheIR::initValueInput(inputId);
+        CacheIR::initNumberInput(valId);
 
         emit CacheIR::GuardIsNumber(inputId, valId);
         emit CacheIR::LoadDoubleResult(valId);

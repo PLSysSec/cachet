@@ -2,9 +2,9 @@ import "../cacheir.cachet"
 
 ir CacheStub emits CacheIR {
     op InstanceOf(lhsId: ValueId, rhsId: ValueId, protoId: ObjectId) {
-        assume CacheIR::useValueReg(lhsId) == CacheIR::allocateValueReg();
-        assume CacheIR::useValueReg(rhsId) == CacheIR::allocateValueReg();
-        assume CacheIR::useObjectReg(protoId) == CacheIR::allocateReg();
+        CacheIR::initValueInput(lhsId);
+        CacheIR::initValueInput(rhsId);
+        CacheIR::initObjectInput(protoId);
 
         emit CacheIR::GuardToObject(rhsId, protoId);
         emit CacheIR::LoadInstanceOfObjectResult(lhsId, protoId);
