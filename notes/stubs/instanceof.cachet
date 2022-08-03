@@ -3,8 +3,11 @@ import "../cacheir.cachet"
 ir CacheStub emits CacheIR {
     op InstanceOf(lhsId: ValueId, rhsId: ValueId, protoId: ObjectId) {
         CacheIR::initValueInput(lhsId);
+        CacheIR::defineValueReg(lhsId);
         CacheIR::initValueInput(rhsId);
+        CacheIR::defineValueReg(rhsId);
         CacheIR::initObjectInput(protoId);
+        CacheIR::defineObjectReg(protoId);
 
         emit CacheIR::GuardToObject(rhsId, protoId);
         emit CacheIR::LoadInstanceOfObjectResult(lhsId, protoId);

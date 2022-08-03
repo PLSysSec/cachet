@@ -363,23 +363,24 @@ procedure #CacheIR~useBigIntReg($id: #BigIntId)
   return;
 }
 
-procedure #CacheIR~initInputLocation($typedId: #TypedId)
-    modifies #CacheIR~operandLocations;
+procedure #CacheIR~initInput($typedId: #TypedId)
+    modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
     var $operandId'0: #OperandId;
     var tmp'0: #Bool;
     var $loc'0: #OperandLocation;
 
     $operandId'0 := #TypedId^to#OperandId($typedId);
-    call $loc'0 := #OperandLocation~newUninitialized();
     tmp'0 := #Set~contains(#CacheIR~knownOperandIds, $operandId'0);
     assume !tmp'0;
     #CacheIR~knownOperandIds := #Set~add(#CacheIR~knownOperandIds, $operandId'0);
+
+    call $loc'0 := #OperandLocation~newUninitialized();
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId'0, $loc'0);
 }
 
-procedure #CacheIR~initValueInputLocation($valueId: #ValueId)
-    modifies #CacheIR~operandLocations;
+procedure #CacheIR~initValueInput($valueId: #ValueId)
+    modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
     var $operandId'0: #OperandId;
     var tmp'0: #Bool;
@@ -394,28 +395,8 @@ procedure #CacheIR~initValueInputLocation($valueId: #ValueId)
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId'0, $loc'0);
 }
 
-procedure #CacheIR~initInput($typedId: #TypedId)
-    modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
-{
-  var out'0: #Reg;
-  
-  call #CacheIR~initInputLocation($typedId);
-  call out'0 := #CacheIR~defineReg($typedId);
-  return;
-}
-
-procedure #CacheIR~initValueInput($valueId: #ValueId)
-    modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
-{
-  var out'0: #ValueReg;
-  
-  call #CacheIR~initValueInputLocation($valueId);
-  call out'0 := #CacheIR~defineValueReg($valueId);
-  return;
-}
-
 procedure #CacheIR~initObjectInput($id: #ObjectId)
-    modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
+    modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
   var $typedId'v0: #TypedId;
   var out'0: #TypedId;
@@ -427,7 +408,7 @@ procedure #CacheIR~initObjectInput($id: #ObjectId)
 }
 
 procedure #CacheIR~initInt32Input($id: #Int32Id)
-    modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
+    modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
   var $typedId'v0: #TypedId;
   var out'0: #TypedId;
@@ -439,7 +420,7 @@ procedure #CacheIR~initInt32Input($id: #Int32Id)
 }
 
 procedure #CacheIR~initNumberInput($id: #NumberId)
-    modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
+    modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
   var $valueId'v0: #ValueId;
   
@@ -449,7 +430,7 @@ procedure #CacheIR~initNumberInput($id: #NumberId)
 }
 
 procedure #CacheIR~initBooleanInput($id: #BooleanId)
-    modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
+    modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
   var $typedId'v0: #TypedId;
   var out'0: #TypedId;
@@ -461,7 +442,7 @@ procedure #CacheIR~initBooleanInput($id: #BooleanId)
 }
 
 procedure #CacheIR~initStringInput($id: #StringId)
-    modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
+    modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
   var $typedId'v0: #TypedId;
   var out'0: #TypedId;
@@ -473,7 +454,7 @@ procedure #CacheIR~initStringInput($id: #StringId)
 }
 
 procedure #CacheIR~initSymbolInput($id: #SymbolId)
-    modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
+    modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
   var $typedId'v0: #TypedId;
   var out'0: #TypedId;
@@ -485,7 +466,7 @@ procedure #CacheIR~initSymbolInput($id: #SymbolId)
 }
 
 procedure #CacheIR~initBigIntInput($id: #BigIntId)
-    modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
+    modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
   var $typedId'v0: #TypedId;
   var out'0: #TypedId;
