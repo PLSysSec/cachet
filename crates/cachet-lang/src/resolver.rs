@@ -783,13 +783,13 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                         }
                     }
                 }),
-            parser::Arg::FreeVarInRef(var_path) => self
-                .lookup_var_scoped(var_path)
+            parser::Arg::FreeVarRef(free_arg) => self
+                .lookup_var_scoped(free_arg.path)
                 .found(&mut self.errors)
                 .map(|var_index| {
                     FreeVarRef {
-                        var: Spanned::new(var_path.span, var_index),
-                        kind: VarRefKind::In,
+                        var: Spanned::new(free_arg.path.span, var_index),
+                        kind: free_arg.kind,
                     }
                     .into()
                 }),

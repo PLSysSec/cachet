@@ -376,6 +376,7 @@ impl<'a> Compiler<'a> {
                 [
                     TypeRepr::Value,
                     VarRefKind::In.into(),
+                    VarRefKind::Mut.into(),
                     VarRefKind::Out.into(),
                 ]
                 .into_iter()
@@ -1165,24 +1166,17 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_assign_stmt(&mut self, assign_stmt: &normalizer::AssignStmt) {
         let lhs = self.compile_var_access(assign_stmt.lhs);
-        debug_assert!(
-            match lhs.repr {
-                TypeRepr::Local | TypeRepr::Ref(VarRefKind::Out) => true,
-                TypeRepr::Value | TypeRepr::Ref(VarRefKind::In) => false,
-            },
-            "left-hand side of an assignment must be assignable"
-        );
-
         let rhs = self.compile_expr(&assign_stmt.rhs);
-        debug_assert!(
-            match rhs.repr {
-                TypeRepr::Value | TypeRepr::Local | TypeRepr::Ref(VarRefKind::In) => true,
-                TypeRepr::Ref(VarRefKind::Out) => false,
-            },
-            "right-hand side of an assignment must be readable"
-        );
 
         debug_assert_eq!(lhs.type_, rhs.type_);
+        debug_assert!(
+            lhs.repr.is_writable(),
+            "left-hand side of an assignment must be writable"
+        );
+        debug_assert!(
+            rhs.repr.is_readable(),
+            "right-hand side of an assignment must be readable"
+        );
 
         self.stmts.push(
             Expr::from(CallExpr {
@@ -1687,9 +1681,7 @@ impl<T> TaggedExpr<T> {
 
 fn get_global_var_repr(is_mut: bool) -> TypeRepr {
     TypeRepr::Ref(if is_mut {
-        // TODO(spinda): This should really be `VarRefKind::Mut`, but that's not
-        // a thing quite yet.
-        VarRefKind::Out
+        VarRefKind::Mut
     } else {
         VarRefKind::In
     })
@@ -1700,8 +1692,7 @@ fn get_var_param_repr(var_param: &normalizer::VarParam) -> TypeRepr {
         VarParamKind::Value { is_mut } => match var_param.type_ {
             normalizer::TypeIndex::BuiltIn(_) => TypeRepr::Value,
             normalizer::TypeIndex::Enum(_) | normalizer::TypeIndex::Struct(_) => if is_mut {
-                // TODO(spinda): Should be `VarRefKind::Mut`.
-                VarRefKind::Out
+                VarRefKind::Mut
             } else {
                 VarRefKind::In
             }

@@ -14,10 +14,43 @@ pub enum VarParamKind {
     Ref(VarRefKind),
 }
 
+impl VarParamKind {
+    pub const fn is_readable(self) -> bool {
+        match self {
+            Self::Value { .. } => true,
+            Self::Ref(var_ref_kind) => var_ref_kind.is_readable(),
+        }
+    }
+
+    pub const fn is_writable(self) -> bool {
+        match self {
+            Self::Value { is_mut } => is_mut,
+            Self::Ref(var_ref_kind) => var_ref_kind.is_writable(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum VarRefKind {
     In,
+    Mut,
     Out,
+}
+
+impl VarRefKind {
+    pub const fn is_readable(self) -> bool {
+        match self {
+            Self::In | Self::Mut => true,
+            Self::Out => false,
+        }
+    }
+
+    pub const fn is_writable(self) -> bool {
+        match self {
+            Self::In => false,
+            Self::Mut | Self::Out => true,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

@@ -128,6 +128,7 @@ ParamTags: ParamTags =
 
 ParamTag: ParamTag = {
     "in" => ParamTag::In,
+    "ref" => ParamTag::Ref,
     "out" => ParamTag::Out,
     <var_tag:VarTag> => var_tag.into(),
 };
@@ -137,6 +138,8 @@ VarParam: VarParam =
     {
         let kind = if tags.in_tag.is_some() {
             VarRefKind::In.into()
+        } else if tags.ref_tag.is_some() {
+            VarRefKind::Mut.into()
         } else if tags.out_tag.is_some() {
             VarRefKind::Out.into()
         } else {
@@ -177,7 +180,8 @@ Arg: Arg = {
         }
     },
     "out" <path:Spanned<Path>> => FreeVarOrLabelArg { path, is_out_ref: true }.into(),
-    "in" <path:Spanned<Path>> => Arg::FreeVarInRef(path),
+    "in" <path:Spanned<Path>> => FreeVarRefArg { path, kind: VarRefKind::In }.into(),
+    "ref" <path:Spanned<Path>> => FreeVarRefArg { path, kind: VarRefKind::Mut }.into(),
     "out" <local_var:LocalVar> => local_var.into(),
     "out" <local_label:LocalLabel> => local_label.into(),
 };

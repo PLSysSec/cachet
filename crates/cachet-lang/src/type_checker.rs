@@ -653,35 +653,59 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         // Casting may be needed to convert from the type of the variable
         // argument to the type of the reference parameter.
-        let (cast_kind, supertype_index, subtype_index) = match arg.value.kind() {
-            // In-references are covariant.
-            VarRefKind::In => (CastKind::Upcast, param_type_index, arg_type_index),
-            // Out-references are contravariant.
-            VarRefKind::Out => (CastKind::Downcast, arg_type_index, param_type_index),
-        };
-        let cast_route = match self.try_match_types(supertype_index, subtype_index) {
-            Some(cast_route) => cast_route,
-            None => {
-                self.type_checker
-                    .errors
-                    .push(TypeCheckError::ArgTypeMismatch {
-                        expected_type: self.get_type_ident(param_type_index),
-                        found_type: self.get_type_ident(arg_type_index),
-                        arg_span: arg.span,
-                        target,
-                        param: param_summary.unwrap().ident,
-                    });
-                Vec::new()
+        let cast_route = match arg.value.kind() {
+            // In-references are covariant, so we try upcasting the argument to
+            // the parameter type.
+            VarRefKind::In => {
+                self.try_match_types(param_type_index, arg_type_index)
+                    .map(|cast_route| {
+                        cast_route
+                            .into_iter()
+                            .map(|type_index| (CastKind::Upcast, type_index))
+                            .collect()
+                    })
+            }
+            // Mutable references are invariant, so the parameter and argument
+            // types must be the same.
+            VarRefKind::Mut => {
+                if self.is_same_type(param_type_index, arg_type_index) {
+                    Some(Vec::new())
+                } else {
+                    None
+                }
+            }
+            // Out-references are contravariant, so we try downcasting the
+            // argument to the parameter type.
+            VarRefKind::Out => {
+                self.try_match_types(arg_type_index, param_type_index)
+                    .map(|cast_route| {
+                        cast_route
+                            .into_iter()
+                            .map(|type_index| (CastKind::Downcast, type_index))
+                            .collect()
+                    })
             }
         };
+
+        // Raise an error if we failed to build an auto-cast route between the
+        // parameter and argument types.
+        let cast_route = cast_route.unwrap_or_else(|| {
+            self.type_checker
+                .errors
+                .push(TypeCheckError::ArgTypeMismatch {
+                    expected_type: self.get_type_ident(param_type_index),
+                    found_type: self.get_type_ident(arg_type_index),
+                    arg_span: arg.span,
+                    target,
+                    param: param_summary.unwrap().ident,
+                });
+            Vec::new()
+        });
 
         VarRefArg {
             var_ref: arg.value.clone(),
             type_: param_type_index,
-            cast_route: cast_route
-                .into_iter()
-                .map(|target_type_index| (cast_kind, target_type_index))
-                .collect(),
+            cast_route,
         }
     }
 

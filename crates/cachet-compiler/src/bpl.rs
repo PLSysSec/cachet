@@ -1128,8 +1128,8 @@ impl<'a> Compiler<'a> {
         // of delegating to unique unintepreted functions.
 
         // The value of each output depends on the observable (readable) inputs
-        // to the function, i.e., the variable value and in-reference
-        // parameters.
+        // to the function, i.e., the variable value, in-reference, and mutable
+        // reference parameters.
         let (helper_param_vars, helper_arg_exprs): (TypedVars, Vec<_>) = callable_item
             .param_order
             .iter()
@@ -1144,6 +1144,7 @@ impl<'a> Compiler<'a> {
                 VarParamKind::Value { .. } => true,
                 VarParamKind::Ref(var_ref_kind) => match var_ref_kind {
                     VarRefKind::In => true,
+                    VarRefKind::Mut => true,
                     VarRefKind::Out => false,
                 },
             })
@@ -1678,8 +1679,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let next_ref_index = var_tmp_refs.len();
         let tmp_ref_info = var_tmp_refs.entry(var_index).or_insert_with(|| TmpRefInfo {
             ref_index: next_ref_index,
-            used_for_in_ref: false,
-            used_for_out_ref: false,
+            has_saved_value: false,
+            has_restored_value: false,
         });
         let tmp_ref_expr: Expr = generate_local_ref_ctor_expr(
             self.get_type_ident(var_ref_arg.type_),
@@ -1687,36 +1688,46 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         )
         .into();
 
+        let mut must_save_value = false;
+        let mut must_restore_value = false;
         match var_ref_kind {
             VarRefKind::In => {
-                if !tmp_ref_info.used_for_in_ref {
-                    // Before the call, populate the reference table slot with
-                    // the value of the variable referenced by the argument.
-                    self.stmts.push(
-                        AssignStmt {
-                            lhs: self.generate_deref_expr(var_ref_arg.type_, tmp_ref_expr.clone()),
-                            rhs: self.compile_var_read(var_index),
-                        }
-                        .into(),
-                    );
-                    tmp_ref_info.used_for_in_ref = true;
-                }
+                must_save_value = true;
+            }
+            VarRefKind::Mut => {
+                must_save_value = true;
+                must_restore_value = true;
             }
             VarRefKind::Out => {
-                if !tmp_ref_info.used_for_out_ref {
-                    // After the call, retrieve the new value from the reference
-                    // table and write it to the variable referenced by the
-                    // argument.
-                    post_call_stmts.push(
-                        AssignStmt {
-                            lhs: self.compile_var_access(var_index),
-                            rhs: self.generate_deref_expr(var_ref_arg.type_, tmp_ref_expr.clone()),
-                        }
-                        .into(),
-                    );
-                    tmp_ref_info.used_for_out_ref = true;
-                }
+                must_restore_value = true;
             }
+        }
+
+        if must_save_value && !tmp_ref_info.has_saved_value {
+            // Before the call, populate the reference table slot with
+            // the value of the variable referenced by the argument.
+            self.stmts.push(
+                AssignStmt {
+                    lhs: self.generate_deref_expr(var_ref_arg.type_, tmp_ref_expr.clone()),
+                    rhs: self.compile_var_read(var_index),
+                }
+                .into(),
+            );
+            tmp_ref_info.has_saved_value = true;
+        }
+
+        if must_restore_value && !tmp_ref_info.has_restored_value {
+            // After the call, retrieve the new value from the reference
+            // table and write it to the variable referenced by the
+            // argument.
+            post_call_stmts.push(
+                AssignStmt {
+                    lhs: self.compile_var_access(var_index),
+                    rhs: self.generate_deref_expr(var_ref_arg.type_, tmp_ref_expr.clone()),
+                }
+                .into(),
+            );
+            tmp_ref_info.has_restored_value = true;
         }
 
         tmp_ref_expr
@@ -2364,8 +2375,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
 struct TmpRefInfo {
     ref_index: usize,
-    used_for_in_ref: bool,
-    used_for_out_ref: bool,
+    has_saved_value: bool,
+    has_restored_value: bool,
 }
 
 fn compile_literal(literal: flattener::Literal) -> Literal {

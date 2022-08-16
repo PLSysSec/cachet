@@ -559,14 +559,15 @@ impl fmt::Display for ArgKind {
             ArgKind::Expr => write!(f, "expression"),
             ArgKind::VarRef(var_ref_kind) => write!(
                 f,
-                "variable {}-reference parameter",
+                "variable {}reference argument",
                 match var_ref_kind {
-                    VarRefKind::In => "in",
-                    VarRefKind::Out => "out",
+                    VarRefKind::In => "in-",
+                    VarRefKind::Mut => "mutable ",
+                    VarRefKind::Out => "out-",
                 }
             ),
             ArgKind::Label => write!(f, "label"),
-            ArgKind::LabelOutRef => write!(f, "label out-reference parameter"),
+            ArgKind::LabelOutRef => write!(f, "label out-reference argument"),
         }
     }
 }

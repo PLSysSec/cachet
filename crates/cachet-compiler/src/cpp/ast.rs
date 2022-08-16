@@ -137,23 +137,6 @@ pub enum TypeRepr {
     Ref(VarRefKind),
 }
 
-impl Display for TypeRepr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                TypeRepr::Value => "Value",
-                TypeRepr::Local => "Local",
-                TypeRepr::Ref(var_ref_kind) => match var_ref_kind {
-                    VarRefKind::In => "InRef",
-                    VarRefKind::Out => "OutRef",
-                },
-            }
-        )
-    }
-}
-
 impl TypeRepr {
     pub fn can_convert_to(self, repr: TypeRepr) -> bool {
         match self {
@@ -165,13 +148,47 @@ impl TypeRepr {
             TypeRepr::Local => match repr {
                 TypeRepr::Value | TypeRepr::Local | TypeRepr::Ref(_) => true,
             },
-            TypeRepr::Ref(_source_var_ref_kind) => match repr {
+            TypeRepr::Ref(source_var_ref_kind) => match repr {
                 TypeRepr::Value | TypeRepr::Local => true,
-                // TODO(spinda): Temporary, until `VarRefKind::Mut` is in.
-                TypeRepr::Ref(_target_var_ref_kind) => true,
-                /* source_var_ref_kind == target_var_ref_kind, */
+                TypeRepr::Ref(target_var_ref_kind) => {
+                    source_var_ref_kind == target_var_ref_kind
+                        || source_var_ref_kind == VarRefKind::Mut
+                }
             },
         }
+    }
+
+    pub fn is_readable(self) -> bool {
+        match self {
+            Self::Value | Self::Local => true,
+            Self::Ref(var_ref_kind) => var_ref_kind.is_readable(),
+        }
+    }
+
+    pub fn is_writable(self) -> bool {
+        match self {
+            Self::Value => false,
+            Self::Local => true,
+            Self::Ref(var_ref_kind) => var_ref_kind.is_writable(),
+        }
+    }
+}
+
+impl Display for TypeRepr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self {
+                TypeRepr::Value => "Value",
+                TypeRepr::Local => "Local",
+                TypeRepr::Ref(var_ref_kind) => match var_ref_kind {
+                    VarRefKind::In => "InRef",
+                    VarRefKind::Mut => "MutRef",
+                    VarRefKind::Out => "OutRef",
+                },
+            }
+        )
     }
 }
 

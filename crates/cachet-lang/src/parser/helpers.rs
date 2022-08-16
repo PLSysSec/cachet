@@ -52,6 +52,7 @@ impl VarTags {
 #[derive(Default)]
 pub struct ParamTags {
     pub in_tag: Option<Span>,
+    pub ref_tag: Option<Span>,
     pub out_tag: Option<Span>,
     pub var_tags: VarTags,
 }
@@ -59,6 +60,7 @@ pub struct ParamTags {
 #[derive(From)]
 pub enum ParamTag {
     In,
+    Ref,
     Out,
     Var(VarTag),
 }
@@ -78,6 +80,17 @@ impl ParamTags {
                             error: Spanned {
                                 span: tag.span,
                                 value: "duplicate `in` tag",
+                            },
+                        });
+                    }
+                    true
+                }
+                ParamTag::Ref => {
+                    if accum.ref_tag.replace(tag.span).is_some() {
+                        return Err(RawParseError::User {
+                            error: Spanned {
+                                span: tag.span,
+                                value: "duplicate `ref` tag",
                             },
                         });
                     }
@@ -113,7 +126,7 @@ impl ParamTags {
                     return Err(RawParseError::User {
                         error: Spanned {
                             span: tag.span,
-                            value: "`in` and `out` tags are mutually exclusive",
+                            value: "`in`, `ref`, and `out` tags are mutually exclusive",
                         },
                     });
                 }

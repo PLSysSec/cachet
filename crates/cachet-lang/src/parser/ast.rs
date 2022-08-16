@@ -6,7 +6,7 @@ use typed_index_collections::TiVec;
 use cachet_util::{box_from, deref_from, typed_field_index};
 
 use crate::ast::{
-    BinOper, BlockKind, CheckKind, Ident, NegateKind, Path, Spanned, VarParamKind,
+    BinOper, BlockKind, CheckKind, Ident, NegateKind, Path, Spanned, VarParamKind, VarRefKind,
 };
 
 #[derive(Clone, Debug)]
@@ -130,11 +130,18 @@ pub enum Arg {
     /// during name resolution.
     #[from]
     FreeVarOrLabel(FreeVarOrLabelArg),
-    FreeVarInRef(Spanned<Path>),
+    #[from]
+    FreeVarRef(FreeVarRefArg),
     #[from]
     FreshVarOutRef(LocalVar),
     #[from]
     FreshLabelOutRef(LocalLabel),
+}
+
+#[derive(Clone, Debug)]
+pub struct FreeVarRefArg {
+    pub path: Spanned<Path>,
+    pub kind: VarRefKind,
 }
 
 #[derive(Clone, Debug)]
