@@ -834,23 +834,81 @@ ir CacheIR emits MASM {
     fn allocateValueReg() -> ValueReg;
     fn releaseValueReg(valueReg: ValueReg);
 
+    fn defineReg(typedId: TypedId) -> Reg;
     fn defineValueReg(valueId: ValueId) -> ValueReg;
-    fn defineObjectReg(id: ObjectId) -> Reg;
-    fn defineInt32Reg(id: Int32Id) -> Reg;
-    fn defineNumberReg(id: NumberId) -> ValueReg;
-    fn defineBooleanReg(id: BooleanId) -> Reg;
-    fn defineStringReg(id: StringId) -> Reg;
-    fn defineSymbolReg(id: SymbolId) -> Reg;
-    fn defineBigIntReg(id: BigIntId) -> Reg;
 
+    fn defineObjectReg(id: ObjectId) -> Reg {
+        let typedId = TypedId::fromObjectId(id);
+        CacheIR::defineReg(typedId)
+    }
+
+    fn defineInt32Reg(id: Int32Id) -> Reg {
+        let typedId = TypedId::fromInt32Id(id);
+        CacheIR::defineReg(typedId)
+    }
+
+    fn defineNumberReg(id: NumberId) -> ValueReg {
+        let valueId = id as ValueId;
+        CacheIR::defineValueReg(valueId)
+    }
+        
+    fn defineBooleanReg(id: BooleanId) -> Reg {
+        let typedId = TypedId::fromBooleanId(id);
+        CacheIR::defineReg(typedId)
+    }
+
+    fn defineStringReg(id: StringId) -> Reg {
+        let typedId = TypedId::fromStringId(id);
+        CacheIR::defineReg(typedId)
+    }
+
+    fn defineSymbolReg(id: SymbolId) -> Reg {
+        let typedId = TypedId::fromSymbolId(id);
+        CacheIR::defineReg(typedId)
+    }
+    
+    fn defineBigIntReg(id: BigIntId) -> Reg {
+        let typedId = TypedId::fromBigIntId(id);
+        CacheIR::defineReg(typedId)
+    }
+
+    fn useReg(id: TypedId) -> Reg;
     fn useValueReg(valueId: ValueId) -> ValueReg;
-    fn useObjectReg(id: ObjectId) -> Reg;
-    fn useInt32Reg(id: Int32Id) -> Reg;
-    fn useNumberReg(id: NumberId) -> ValueReg;
-    fn useBooleanReg(id: BooleanId) -> Reg;
-    fn useStringReg(id: StringId) -> Reg;
-    fn useSymbolReg(id: SymbolId) -> Reg;
-    fn useBigIntReg(id: BigIntId) -> Reg;
+
+    fn useObjectReg(id: ObjectId) -> Reg {
+        let typedId = TypedId::fromObjectId(id);
+        CacheIR::useReg(typedId)
+    }
+
+    fn useInt32Reg(id: Int32Id) -> Reg {
+        let typedId = TypedId::fromInt32Id(id);
+        CacheIR::useReg(typedId)
+    }
+
+    fn useNumberReg(id: NumberId) -> ValueReg {
+        let valueId = id as ValueId;
+        CacheIR::useValueReg(valueId)
+    }
+
+    fn useBooleanReg(id: BooleanId) -> Reg {
+        let typedId = TypedId::fromBooleanId(id);
+        CacheIR::useReg(typedId)
+    }
+
+    fn useStringReg(id: StringId) -> Reg {
+        let typedId = TypedId::fromStringId(id);
+        CacheIR::useReg(typedId)
+    }
+
+    fn useSymbolReg(id: SymbolId) -> Reg {
+        let typedId = TypedId::fromSymbolId(id);
+        CacheIR::useReg(typedId)
+    }
+
+    fn useBigIntReg(id: BigIntId) -> Reg {
+        let typedId = TypedId::fromBigIntId(id);
+        CacheIR::useReg(typedId)
+    }
 
     var outputReg: ValueReg;
 
@@ -861,14 +919,44 @@ ir CacheIR emits MASM {
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
 
+    fn initInput(typedId: TypedId);
     fn initValueInput(valueId: ValueId);
-    fn initObjectInput(id: ObjectId);
-    fn initInt32Input(id: Int32Id);
-    fn initNumberInput(id: NumberId);
-    fn initBooleanInput(id: BooleanId);
-    fn initStringInput(id: StringId);
-    fn initSymbolInput(id: SymbolId);
-    fn initBigIntInput(id: BigIntId);
+
+    fn initObjectInput(id: ObjectId) {
+        let typedId = TypedId::fromObjectId(id);
+        CacheIR::initInput(typedId);
+    }
+
+    fn initInt32Input(id: Int32Id) {
+        let typedId = TypedId::fromInt32Id(id);
+        CacheIR::initInput(typedId);
+    }
+
+    fn initNumberInput(id: NumberId) {
+        let valueId = id as ValueId;
+        CacheIR::initValueInput(valueId);
+    }
+
+    fn initBooleanInput(id: BooleanId) {
+        let typedId = TypedId::fromBooleanId(id);
+        CacheIR::initInput(typedId);
+    }
+
+    fn initStringInput(id: StringId) {
+        let typedId = TypedId::fromStringId(id);
+        CacheIR::initInput(typedId);
+    }
+
+    fn initSymbolInput(id: SymbolId) {
+        let typedId = TypedId::fromSymbolId(id);
+        CacheIR::initInput(typedId);
+    }
+
+    fn initBigIntInput(id: BigIntId) {
+        let typedId = TypedId::fromBigIntId(id);
+        CacheIR::initInput(typedId);
+    }
+
 }
 
 

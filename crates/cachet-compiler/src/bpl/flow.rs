@@ -400,19 +400,29 @@ impl<'a> FlowTracer<'a> {
     }
 
     fn trace_invoke_stmt(&mut self, invoke_stmt: &flattener::InvokeStmt) {
-        // TODO(spinda): Handle non-external functions with label
-        // out-parameters.
-        debug_assert!(self.env[invoke_stmt.call.target].body.is_none());
-
-        let exit_emit_node_index = self.graph.exit_emit_node_index();
-        for arg in &invoke_stmt.call.args {
-            if let flattener::Arg::Label(label_arg) = arg {
-                if label_arg.is_out && label_arg.ir == self.bottom_ir_index {
-                    let label_node_index = self.label_scope[&label_arg.label];
-                    self.graph
-                        .link_label_to_emit(label_node_index, exit_emit_node_index);
+        if self.env[invoke_stmt.call.target].body.is_none() {
+            let exit_emit_node_index = self.graph.exit_emit_node_index();
+            for arg in &invoke_stmt.call.args {
+                if let flattener::Arg::Label(label_arg) = arg {
+                    if label_arg.is_out && label_arg.ir == self.bottom_ir_index {
+                        let label_node_index = self.label_scope[&label_arg.label];
+                        self.graph
+                            .link_label_to_emit(label_node_index, exit_emit_node_index);
+                    }
                 }
             }
+        } else {
+            // TODO(spinda): Handle non-external functions with label
+            // out-parameters.
+
+            debug_assert!(!invoke_stmt.call.args.iter().any(|arg| {
+                match arg {
+                    flattener::Arg::Label(label_arg) => {
+                        label_arg.is_out && label_arg.ir == self.bottom_ir_index
+                    }
+                    _ => false,
+                }
+            }));
         }
     }
 
