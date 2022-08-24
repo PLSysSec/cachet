@@ -89,20 +89,21 @@ VarTag: VarTag =
 CallableItem: Item =
     <attrs:Attrs>
     <tags:CallableTags> <kind:CallableKind> <ident:Spanned<Ident>>
-    "(" <params:Comma<Param>> ")" <ret:("->" <Spanned<Path>>)?>
-    <body:Spanned<CallableBody>> => {
+    "(" <params:Comma<Param>> ")" <emits:("emits" <Spanned<Path>>)?> <ret:("->" <Spanned<Path>>)?> 
+    <body:Spanned<CallableBody>> =>? {
         let callable_item = CallableItem {
             ident,
             attrs,
             is_unsafe: tags.unsafe_tag.is_some(),
             params,
             ret,
+            emits,
             body,
         };
 
         match kind {
-            CallableKind::Fn => Item::Fn(callable_item),
-            CallableKind::Op => Item::Op(callable_item),
+            CallableKind::Fn => Ok(Item::Fn(callable_item)),
+            CallableKind::Op => Ok(Item::Op(callable_item)),
         }
     };
 

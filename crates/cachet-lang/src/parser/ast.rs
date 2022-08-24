@@ -88,6 +88,7 @@ pub struct CallableItem {
     pub attrs: Vec<Attr>,
     pub is_unsafe: bool,
     pub params: Vec<Param>,
+    pub emits: Option<Spanned<Path>>,
     pub ret: Option<Spanned<Path>>,
     pub body: Spanned<Option<Block>>,
 }
