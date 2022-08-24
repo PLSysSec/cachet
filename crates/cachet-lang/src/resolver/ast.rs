@@ -309,6 +309,7 @@ pub struct CallableItem {
     pub is_unsafe: bool,
     pub params: Params,
     pub param_order: Vec<ParamIndex>,
+    pub emits: Option<Spanned<IrIndex>>,
     pub ret: Option<Spanned<TypeIndex>>,
     pub body: Spanned<Option<Body>>,
 }

@@ -540,6 +540,14 @@ impl<'a> Resolver<'a> {
 
         let attrs = self.resolve_attrs(callable_item.item.attrs);
 
+        let emits = match callable_item.item.emits {
+            Some(emits) => map_spanned(emits, |emits| {
+                self.lookup_ir_global(emits).found(&mut self.errors)
+            })
+            .map(Some),
+            None => Some(None),
+        };
+
         let ret = match callable_item.item.ret {
             Some(ret) => map_spanned(ret, |ret| {
                 self.lookup_type_global(ret).found(&mut self.errors)
@@ -570,6 +578,7 @@ impl<'a> Resolver<'a> {
             is_unsafe: callable_item.item.is_unsafe,
             params,
             param_order,
+            emits: emits?,
             ret: ret?,
             body: body?,
         })
