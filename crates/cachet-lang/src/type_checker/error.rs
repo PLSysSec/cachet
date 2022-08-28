@@ -24,10 +24,14 @@ pub enum TypeCheckError {
     },
     #[error("op `{op}` can't have out-parameter `{out_param}`")]
     OpHasOutParam { op: Path, out_param: Spanned<Ident> },
+    #[error("op `{op}` can't have explicit emits annotation")]
+    OpHasExplicitEmits { op: Spanned<Path> },
     #[error("op `{op}` can't return a value")]
     OpReturnsValue { op: Path, ret_span: Span },
     #[error("op `{op}` is missing a body")]
     MissingOpBody { op: Path, body_span: Span },
+    #[error("function `{fn_}` with explicit emits is missing a body")]
+    MissingEmitsFnBody { fn_: Spanned<Path> },
     #[error("can't jump to label `{label}`")]
     GotoIrMismatch {
         label: Spanned<Ident>,
@@ -45,6 +49,13 @@ pub enum TypeCheckError {
     #[error("can't emit op `{op}`")]
     EmitIrMismatch {
         op: Spanned<Path>,
+        callable: Option<Path>,
+        expected_ir: Option<Spanned<Ident>>,
+        found_ir: Ident,
+    },
+    #[error("can't call function `{fn_}`")]
+    EmitsFnIrMismatch {
+        fn_: Spanned<Path>,
         callable: Option<Path>,
         expected_ir: Option<Spanned<Ident>>,
         found_ir: Ident,
@@ -165,11 +176,14 @@ impl FrontendError for TypeCheckError {
                 ..
             } => first_cycle_callable.span,
             TypeCheckError::OpHasOutParam { out_param, .. } => out_param.span,
+            TypeCheckError::OpHasExplicitEmits { op, .. } => op.span,
             TypeCheckError::OpReturnsValue { ret_span, .. } => *ret_span,
             TypeCheckError::MissingOpBody { body_span, .. } => *body_span,
+            TypeCheckError::MissingEmitsFnBody { fn_, .. } => fn_.span,
             TypeCheckError::GotoIrMismatch { label, .. } => label.span,
             TypeCheckError::BindIrMismatch { label, .. } => label.span,
             TypeCheckError::EmitIrMismatch { op, .. } => op.span,
+            TypeCheckError::EmitsFnIrMismatch { fn_, .. } => fn_.span,
             TypeCheckError::TypeMismatch {
                 span: expr_span, ..
             } => *expr_span,
@@ -224,9 +238,13 @@ impl FrontendError for TypeCheckError {
                 )
             }
             TypeCheckError::OpHasOutParam { .. }
+            | TypeCheckError::OpHasExplicitEmits { .. }
             | TypeCheckError::OpReturnsValue { .. }
             | TypeCheckError::MissingOpBody { .. } => {
                 "allowed for functions but not for ops".to_owned()
+            }
+            TypeCheckError::MissingEmitsFnBody { .. } => {
+                "allowed for functions without explicit emits annotation".to_owned()
             }
             TypeCheckError::GotoIrMismatch {
                 callable,
@@ -286,6 +304,29 @@ impl FrontendError for TypeCheckError {
                         found_ir, path
                     ),
                     None => format!("unexpected emit of `{}` label inside non-emitter", found_ir),
+                },
+            },
+            TypeCheckError::EmitsFnIrMismatch {
+                callable,
+                expected_ir,
+                found_ir,
+                ..
+            } => match expected_ir {
+                Some(expected_ir) => {
+                    format!(
+                        "expected function that emits `{}` , found `{}`",
+                        expected_ir, found_ir
+                    )
+                }
+                None => match callable {
+                    Some(path) => format!(
+                        "unexpected call to function that emits `{}` inside non-emitter `{}`",
+                        found_ir, path
+                    ),
+                    None => format!(
+                        "unexpected call to function that emits `{}` inside non-emitter",
+                        found_ir
+                    ),
                 },
             },
             TypeCheckError::TypeMismatch {
@@ -409,9 +450,11 @@ impl FrontendError for TypeCheckError {
                 ));
             }
             TypeCheckError::OpHasOutParam { .. } => (),
+            TypeCheckError::OpHasExplicitEmits { .. } => (),
             TypeCheckError::OpReturnsValue { .. } => (),
             TypeCheckError::ReturnOutsideCallable { .. } => (),
             TypeCheckError::MissingOpBody { .. } => (),
+            TypeCheckError::MissingEmitsFnBody { .. } => (),
             TypeCheckError::MutGlobalVarWithValue { .. } => (),
             TypeCheckError::GotoIrMismatch {
                 callable,
@@ -434,6 +477,11 @@ impl FrontendError for TypeCheckError {
                 ..
             }
             | TypeCheckError::EmitIrMismatch {
+                callable,
+                expected_ir,
+                ..
+            }
+            | TypeCheckError::EmitsFnIrMismatch {
                 callable,
                 expected_ir,
                 ..

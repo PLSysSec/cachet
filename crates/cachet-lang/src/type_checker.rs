@@ -252,8 +252,15 @@ impl<'a> TypeChecker<'a> {
 
         let ret = callable_item.type_();
 
-        let (interprets, emits) = match (callable_index, callable_item.parent) {
-            (CallableIndex::Op(_), Some(ParentIndex::Ir(ir_index))) => {
+        let (interprets, emits) = match (callable_index, callable_item.parent, callable_item.emits)
+        {
+            (CallableIndex::Op(_), Some(ParentIndex::Ir(ir_index)), explicit_emits) => {
+                if explicit_emits.is_some() {
+                    self.errors.push(TypeCheckError::OpHasExplicitEmits {
+                        op: callable_item.path,
+                    });
+                }
+
                 let ir_item = &self.env[ir_index];
                 let emits = ir_item.emits;
                 let interprets = match emits {
@@ -261,6 +268,15 @@ impl<'a> TypeChecker<'a> {
                     None => Some(Spanned::new(ir_item.ident.span, ir_index)),
                 };
                 (interprets, emits)
+            }
+            (CallableIndex::Fn(_), _, Some(ir_index)) => {
+                if callable_item.body.value.is_none() {
+                    self.errors.push(TypeCheckError::MissingEmitsFnBody {
+                        fn_: callable_item.path,
+                    });
+                }
+
+                (None, Some(ir_index))
             }
             _ => (None, None),
         };
@@ -1261,6 +1277,35 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
     fn type_check_invoke_expr(&mut self, call: &resolver::Call) -> InvokeExpr {
         let ret = self.env[call.target.value].type_();
+
+        // if the function being called has an emits annotation then
+        // the emitted IR should match the one being emitted in the
+        // current callable context.
+        let callable_item = &self.env[call.target.value];
+        match callable_item.emits {
+            Some(ir_index) => {
+                if !self
+                    .emits
+                    .is_some_and(|emits| self.is_same_ir(emits.value, ir_index.value))
+                {
+                    self.type_checker
+                        .errors
+                        .push(TypeCheckError::EmitsFnIrMismatch {
+                            fn_: Spanned::new(call.target.span, callable_item.path.value),
+                            callable: match self.context {
+                                ItemContext::Callable { item, .. } => Some(item.path.value),
+                                ItemContext::Var { .. } => None,
+                            },
+                            expected_ir: self
+                                .emits
+                                .map(|emits| emits.map(|emits| self.env[emits].ident.value)),
+                            found_ir: self.env[ir_index.value].ident.value,
+                        });
+                }
+            }
+            None => (),
+        }
+
         let call = self.type_check_call(call);
         InvokeExpr { call, ret }
     }
