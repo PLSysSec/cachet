@@ -598,14 +598,14 @@ impl<'a> Compiler<'a> {
                     .into(),
                 );
             }
+        }
 
-            // Add an extea `emit_path` parameter to compiler ops.
-            if let Some(_) = callable_item.emits {
-                param_vars.push(TypedVar {
-                    ident: ParamVarIdent::EmitPath.into(),
-                    type_: PreludeTypeIdent::EmitPath.into(),
-                });
-            }
+        // Add an extra `emit_path` parameter to ops and emitting functions.
+        if let Some(_) = callable_item.emits {
+            param_vars.push(TypedVar {
+                ident: ParamVarIdent::EmitPath.into(),
+                type_: PreludeTypeIdent::EmitPath.into(),
+            });
         }
 
         let body = callable_item
@@ -1544,7 +1544,24 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
         .into();
 
-        let (arg_exprs, mut ret_var_idents) = self.compile_args(&invoke_expr.call.args);
+        let (mut arg_exprs, mut ret_var_idents) = self.compile_args(&invoke_expr.call.args);
+
+        if callable_item.emits.is_some() {
+            let local_emit_index = *self.next_local_emit_index;
+            *self.next_local_emit_index = LocalEmitIndex::from(usize::from(local_emit_index) + 1);
+
+            let emit_path_expr = CallExpr {
+                target: PreludeFnIdent::ConsEmitPathCtor.into(),
+                arg_exprs: vec![
+                    ParamVarIdent::EmitPath.into(),
+                    Literal::Int(local_emit_index.into()).into(),
+                ],
+            }
+            .into();
+
+            arg_exprs.push(emit_path_expr);
+        }
+
         let call_expr = CallExpr { target, arg_exprs };
 
         match CallableRepr::for_callable(callable_item) {
@@ -2198,6 +2215,7 @@ lazy_static! {
         use CallableRepr::*;
         HashMap::from([
             (Ident::from("ValueReg").into(), Proc),
+            (Ident::from("ValueReg").nest("scratchReg".into()), Proc),
             (Ident::from("MASM").nest("getValue".into()), Proc),
             (Ident::from("MASM").nest("setValue".into()), Proc),
             (Ident::from("MASM").nest("getInt32".into()), Proc),
@@ -2215,11 +2233,12 @@ lazy_static! {
             (Ident::from("CacheIR").nest("allocateValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("releaseValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("allocateReg".into()), Proc),
+            (Ident::from("CacheIR").nest("allocateKnownReg".into()), Proc),
             (Ident::from("CacheIR").nest("releaseReg".into()), Proc),
             (Ident::from("CacheIR").nest("defineReg".into()), Proc),
             (Ident::from("CacheIR").nest("defineValueReg".into()), Proc),
-            (Ident::from("CacheIR").nest("useReg".into()), Proc),
-            (Ident::from("CacheIR").nest("useValueReg".into()), Proc),
+            (Ident::from("CacheIR").nest("getOperandLocation".into()), Proc),
+            (Ident::from("CacheIR").nest("setOperandLocation".into()), Proc),
             (Ident::from("CacheIR").nest("initInput".into()), Proc),
             (Ident::from("CacheIR").nest("initValueInput".into()), Proc),
         ])

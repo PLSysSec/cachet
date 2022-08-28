@@ -477,11 +477,28 @@ impl FromIterator<EmitLabelSegment> for EmitLabelIdent {
 }
 
 #[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "{}{}{}", local_emit_index, ir_ident, op_selector)]
+#[display(fmt = "{}{}", local_emit_index, ident)]
 pub struct EmitLabelSegment {
     pub local_emit_index: LocalEmitIndex,
+    pub ident: EmitLabelSegmentIdent,
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+pub enum EmitLabelSegmentIdent {
+    Op(EmitOpLabelSegment),
+    Fn(EmitFnLabelSegment),
+}
+
+#[derive(Clone, Copy, Debug, Display)]
+#[display(fmt = "{}{}", ir_ident, op_selector)]
+pub struct EmitOpLabelSegment {
     pub ir_ident: IrIdent,
     pub op_selector: OpSelector,
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+pub struct EmitFnLabelSegment {
+    pub user_fn_ident: UserFnIdent,
 }
 
 typed_index!(pub LocalEmitIndex);
