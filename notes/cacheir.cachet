@@ -66,6 +66,13 @@ impl OperandLocation {
 struct OperandId;
 
 struct ValueId <: OperandId;
+
+impl ValueId {
+    fn toInt32Id(id: ValueId) -> Int32Id {
+        unsafe { (id as OperandId) as Int32Id }
+    }
+}
+
 struct ObjectId <: OperandId;
 struct Int32Id <: OperandId;
 struct NumberId <: ValueId;
@@ -406,14 +413,12 @@ ir CacheIR emits MASM {
         emit MASM::UnboxSymbol(valueReg, symbolReg);
     }
 
-    op GuardToInt32(valueId: ValueId, int32Id: Int32Id) {
+    op GuardToInt32(valueId: ValueId) {
         let valueReg = CacheIR::useValueReg(valueId);
-        let int32Reg = CacheIR::useInt32Reg(int32Id);
 
         CacheIR::addFailurePath(out label failure);
 
         emit MASM::BranchTestInt32(Condition::NotEqual, valueReg, failure);
-        emit MASM::UnboxInt32(valueReg, int32Reg);
     }
 
     op GuardToBoolean(valueId: ValueId, booleanId: BooleanId) {
@@ -829,6 +834,7 @@ ir CacheIR emits MASM {
     fn addFailurePath(out label failure: MASM);
 
     fn allocateReg() -> Reg;
+    fn allocateKnownReg(reg: Reg);
     fn releaseReg(reg: Reg);
 
     fn allocateValueReg() -> ValueReg;
@@ -872,40 +878,83 @@ ir CacheIR emits MASM {
         CacheIR::defineReg(typedId)
     }
 
-    fn useReg(id: TypedId) -> Reg;
-    fn useValueReg(valueId: ValueId) -> ValueReg;
+    fn getOperandLocation(id: OperandId) -> OperandLocation;
+    fn setOperandLocation(id: OperandId, loc: OperandLocation);
 
-    fn useObjectReg(id: ObjectId) -> Reg {
+    fn useReg(id: TypedId) emits MASM -> Reg {
+        let operandId = id as OperandId; 
+        let location = CacheIR::getOperandLocation(operandId);
+        let locationKind = OperandLocation::kind(location);
+
+        if locationKind == OperandLocationKind::PayloadReg {
+            return OperandLocation::getPayloadReg(location);
+        } else if locationKind == OperandLocationKind::ValueReg {
+            let valueReg = OperandLocation::getValueReg(location);
+            CacheIR::releaseValueReg(valueReg);
+            let reg = ValueReg::scratchReg(valueReg);
+            CacheIR::allocateKnownReg(reg);
+            emit MASM::UnboxNonDouble(valueReg, reg, TypedId::type(id));
+            OperandLocation::setPayloadReg(out location, reg, TypedId::type(id));
+            CacheIR::setOperandLocation(operandId, location);
+            return reg;
+        } else {
+            assert false;
+        }
+        return OperandLocation::getPayloadReg(location);
+    }
+
+    fn useValueReg(valueId: ValueId) emits MASM -> ValueReg {
+        let operandId = valueId as OperandId; 
+        let location = CacheIR::getOperandLocation(operandId);
+        let locationKind = OperandLocation::kind(location);
+
+        if locationKind == OperandLocationKind::ValueReg {
+            return OperandLocation::getValueReg(location);
+        } else if locationKind == OperandLocationKind::PayloadReg {
+            let reg = OperandLocation::getPayloadReg(location);
+            let valTy = OperandLocation::getPayloadType(location);
+            let valueReg = CacheIR::allocateValueReg();
+            emit MASM::TagValue(valTy, reg, valueReg);
+            OperandLocation::setValueReg(out location, valueReg);
+            CacheIR::releaseReg(reg);
+            return valueReg;
+        } else {
+            assert false;
+        }
+        return OperandLocation::getValueReg(location);
+    }
+
+    fn useObjectReg(id: ObjectId) emits MASM -> Reg {
         let typedId = TypedId::fromObjectId(id);
         CacheIR::useReg(typedId)
     }
 
-    fn useInt32Reg(id: Int32Id) -> Reg {
+    fn useInt32Reg(id: Int32Id) emits MASM -> Reg {
         let typedId = TypedId::fromInt32Id(id);
         CacheIR::useReg(typedId)
     }
 
-    fn useNumberReg(id: NumberId) -> ValueReg {
+    fn useNumberReg(id: NumberId) emits MASM -> ValueReg {
         let valueId = id as ValueId;
         CacheIR::useValueReg(valueId)
     }
 
-    fn useBooleanReg(id: BooleanId) -> Reg {
+    fn useBooleanReg(id: BooleanId) emits MASM -> Reg {
         let typedId = TypedId::fromBooleanId(id);
         CacheIR::useReg(typedId)
     }
 
-    fn useStringReg(id: StringId) -> Reg {
+    fn useStringReg(id: StringId) emits MASM -> Reg {
         let typedId = TypedId::fromStringId(id);
         CacheIR::useReg(typedId)
     }
 
-    fn useSymbolReg(id: SymbolId) -> Reg {
+    fn useSymbolReg(id: SymbolId) emits MASM -> Reg {
         let typedId = TypedId::fromSymbolId(id);
         CacheIR::useReg(typedId)
     }
 
-    fn useBigIntReg(id: BigIntId) -> Reg {
+    fn useBigIntReg(id: BigIntId) emits MASM -> Reg {
         let typedId = TypedId::fromBigIntId(id);
         CacheIR::useReg(typedId)
     }

@@ -1,5 +1,11 @@
 type #ValueReg = #Reg;
 
+procedure #ValueReg~scratchReg($valueReg: #ValueReg)
+  returns (reg: #Reg)
+{
+  reg := $valueReg;
+}
+
 var #MASM~regs: #Map #Reg #Value;
     
 procedure #MASM~getValue($valueReg: #ValueReg)
@@ -152,44 +158,16 @@ procedure #CacheIR~defineValueReg($valueId: #ValueId)
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId'0, $loc'1);
 }
 
-procedure #CacheIR~useReg($typedId: #TypedId)
-    returns (reg: #Reg)
+procedure #CacheIR~getOperandLocation($operandId: #OperandId)
+    returns (loc: #OperandLocation)
 {
-    var $operandId'0: #OperandId;
-    var $loc'0: #OperandLocation;
-    var $locKind'0: #OperandLocationKind;
-    
-    $operandId'0 := #TypedId^to#OperandId($typedId);
-    $loc'0 := #Map~get(#CacheIR~operandLocations, $operandId'0);
-    $locKind'0 := #OperandLocation~kind($loc'0);
-
-    if ($locKind'0 == #OperandLocationKind^Variant~PayloadReg()) {
-        call reg := #OperandLocation~getPayloadReg($loc'0);
-    } else {
-        assert false;
-    }
+    loc := #Map~get(#CacheIR~operandLocations, $operandId);
 }
 
-procedure #CacheIR~useValueReg($valueId: #ValueId)
-    returns (reg: #ValueReg)
+procedure #CacheIR~setOperandLocation($operandId: #OperandId, $loc: #OperandLocation)
+    modifies #CacheIR~operandLocations;
 {
-    var $operandId'0: #OperandId;
-    var $loc'0: #OperandLocation;
-    var $locKind'0: #OperandLocationKind;
-    
-    $operandId'0 := #ValueId^to#OperandId($valueId);
-    $loc'0 := #Map~get(#CacheIR~operandLocations, $operandId'0);
-    $locKind'0 := #OperandLocation~kind($loc'0);
-
-    if ($locKind'0 == #OperandLocationKind^Variant~ValueReg()) {
-        call reg := #OperandLocation~getValueReg($loc'0);
-    } else if ($locKind'0 == #OperandLocationKind^Variant~Uninitialized()) { 
-        assert false;
-    } else if ($locKind'0 == #OperandLocationKind^Variant~PayloadReg()) {
-        assert false;
-    } else {
-        assert false;
-    }
+    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId, $loc);
 }
 
 procedure #CacheIR~initInput($typedId: #TypedId)
@@ -250,6 +228,15 @@ procedure #CacheIR~allocateReg()
   assume !tmp'0;
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
   ret := $reg;
+}
+
+procedure #CacheIR~allocateKnownReg($reg: #Reg)
+  modifies #CacheIR~allocatedRegs;
+{
+  var tmp'0: #Bool;
+  tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
+  assume !tmp'0;
+  #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
 }
 
 function #CacheIR~allocateRegUnchecked($allocatedRegs: #Set #Reg): #Reg;
