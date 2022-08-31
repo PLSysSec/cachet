@@ -20,7 +20,7 @@ use cachet_lang::flattener::{self, HasAttrs, Typed};
 use cachet_util::MaybeOwned;
 
 use crate::bpl::ast::*;
-use crate::bpl::flow::{trace_entry_point, EmitSucc, FlowGraph};
+use crate::bpl::flow::{trace_entry_point, EmitNode, EmitSucc, FlowGraph};
 
 mod ast;
 mod flow;
@@ -884,8 +884,11 @@ impl<'a> Compiler<'a> {
             arg_exprs: Vec::new(),
         }
         .into();
-        let exit_emit_label_ident = &flow_graph[flow_graph.exit_emit_node_index()].label_ident;
-        let exit_emit_path_expr: Expr = generate_emit_path_expr(&exit_emit_label_ident).into();
+        let exit_emit_label_ident = &flow_graph[flow_graph.exit_emit_node_index()]
+            .label_ident
+            .as_ref()
+            .unwrap(); // exit emit node always has label_ident
+        let exit_emit_path_expr: Expr = generate_emit_path_expr(exit_emit_label_ident).into();
         let leading_exit_emit_stmt = CallExpr {
             target: IrMemberFnIdent {
                 ir_ident: bottom_ir_ident,
@@ -951,6 +954,14 @@ impl<'a> Compiler<'a> {
             init_interpret_pc_stmt,
         ]);
 
+        // The successors of the artifically-inserted "entry" emit node gives
+        // us all the possible ops at PC 1 from which the program execution can
+        // begin. We emit a jump to all the labels corresponding to all the ops.
+        let entry_emit_node = &flow_graph[flow_graph.entry_emit_node_index()];
+        let entry_emit_node_goto_succs_stmt =
+            generate_emit_node_goto_succs_stmt(entry_emit_node, flow_graph);
+        stmts.extend([entry_emit_node_goto_succs_stmt]);
+
         // For each emit node in the control-flow graph, emit a labeled section
         // which interprets the corresponding op and jumps to labels
         // corresponding to the possible subsequent emits. We do this for all
@@ -960,12 +971,15 @@ impl<'a> Compiler<'a> {
             ..flow_graph
                 .emit_nodes
                 .iter()
-                .filter(|emit_node| !emit_node.is_exit()),
+                .filter(|emit_node| !emit_node.is_entry() && !emit_node.is_exit()),
             &flow_graph[flow_graph.exit_emit_node_index()],
         ];
         for emit_node in emit_nodes {
+            // all nodes other than entry node have a label ident
+            debug_assert!(emit_node.label_ident.is_some());
+
             let emit_label_stmt = LabelStmt {
-                label_ident: emit_node.label_ident.clone().into(),
+                label_ident: emit_node.label_ident.as_ref().unwrap().clone().into(),
             }
             .into();
 
@@ -980,7 +994,7 @@ impl<'a> Compiler<'a> {
                         value: None,
                     }
                     .into(),
-                    rhs: generate_emit_path_expr(&emit_node.label_ident).into(),
+                    rhs: generate_emit_path_expr(emit_node.label_ident.as_ref().unwrap()).into(),
                 }
                 .into(),
             }
@@ -1051,34 +1065,7 @@ impl<'a> Compiler<'a> {
                 }
                 .into();
 
-                // Use a `BTreeSet` (as opposed to a `HashSet`) so the order of
-                // the indexes is consistent for the same input every time the
-                // compiler is run. The order of the indexes determines the
-                // order of the labels in the goto statement generated below.
-                let mut succ_emit_node_indexes = BTreeSet::new();
-                for succ in &emit_node.succs {
-                    match succ {
-                        EmitSucc::Emit(emit_node_index) => {
-                            succ_emit_node_indexes.insert(*emit_node_index);
-                        }
-                        EmitSucc::Label(label_node_index) => {
-                            succ_emit_node_indexes
-                                .extend(flow_graph[label_node_index].bound_to.iter().copied());
-                        }
-                    }
-                }
-                debug_assert!(!succ_emit_node_indexes.is_empty());
-
-                // TODO(spinda): Elide goto on fallthrough.
-                let goto_succs_stmt = GotoStmt {
-                    labels: succ_emit_node_indexes
-                        .iter()
-                        .map(|succ_emit_node_index| {
-                            flow_graph[succ_emit_node_index].label_ident.clone().into()
-                        })
-                        .collect(),
-                }
-                .into();
+                let goto_succs_stmt = generate_emit_node_goto_succs_stmt(emit_node, flow_graph);
 
                 stmts.extend([assign_op_stmt, call_op_fn_stmt, goto_succs_stmt]);
             }
@@ -1352,6 +1339,42 @@ fn generate_emit_path_expr(emit_label_ident: &EmitLabelIdent) -> CallExpr {
                 ],
             }
         })
+}
+
+fn generate_emit_node_goto_succs_stmt(emit_node: &EmitNode, flow_graph: &FlowGraph) -> Stmt {
+    // Use a `BTreeSet` (as opposed to a `HashSet`) so the order of
+    // the indexes is consistent for the same input every time the
+    // compiler is run. The order of the indexes determines the
+    // order of the labels in the goto statement generated below.
+    let mut succ_emit_node_indexes = BTreeSet::new();
+    for succ in &emit_node.succs {
+        match succ {
+            EmitSucc::Emit(emit_node_index) => {
+                succ_emit_node_indexes.insert(*emit_node_index);
+            }
+            EmitSucc::Label(label_node_index) => {
+                succ_emit_node_indexes
+                    .extend(flow_graph[label_node_index].bound_to.iter().copied());
+            }
+        }
+    }
+    debug_assert!(!succ_emit_node_indexes.is_empty());
+
+    // TODO(spinda): Elide goto on fallthrough.
+    GotoStmt {
+        labels: succ_emit_node_indexes
+            .iter()
+            .map(|succ_emit_node_index| {
+                flow_graph[succ_emit_node_index]
+                    .label_ident
+                    .as_ref()
+                    .unwrap()
+                    .clone()
+                    .into()
+            })
+            .collect(),
+    }
+    .into()
 }
 
 #[derive(Clone, Copy)]

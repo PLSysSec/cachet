@@ -28,6 +28,18 @@ impl FlowGraph {
         exit_emit_node_index
     }
 
+    pub fn entry_emit_node_index(&self) -> EmitNodeIndex {
+        let entry_emit_node_index: EmitNodeIndex = 1.into();
+        self.emit_nodes
+            .get(entry_emit_node_index)
+            .expect("missing exit exit node");
+        debug_assert!(
+            self[entry_emit_node_index].is_entry(),
+            "second emit node does not correspond to an entry point"
+        );
+        entry_emit_node_index
+    }
+
     fn link_label_to_emit(
         &mut self,
         label_node_index: LabelNodeIndex,
@@ -42,14 +54,18 @@ typed_field_index!(FlowGraph:label_nodes[pub LabelNodeIndex] => LabelNode);
 
 #[derive(Clone, Debug)]
 pub struct EmitNode {
-    pub label_ident: EmitLabelIdent,
+    pub label_ident: Option<EmitLabelIdent>,
     pub succs: HashSet<EmitSucc>,
     pub target: Option<flattener::CallableIndex>,
 }
 
 impl EmitNode {
     pub fn is_exit(&self) -> bool {
-        self.target.is_none()
+        self.label_ident.is_some() && self.target.is_none()
+    }
+
+    pub fn is_entry(&self) -> bool {
+        self.label_ident.is_none()
     }
 }
 
@@ -73,6 +89,7 @@ pub fn trace_entry_point(
 ) -> FlowGraph {
     let mut flow_tracer = FlowTracer::new(env, bottom_ir_index);
     flow_tracer.insert_exit_emit_node();
+    flow_tracer.insert_entry_emit_node();
     flow_tracer.init_top_label_params(&top_op_item.params, &top_op_item.param_order);
     flow_tracer.trace_callable_item(top_op_item);
     flow_tracer.link_exit_emit_node();
@@ -86,6 +103,15 @@ pub fn trace_entry_point(
             .count(),
         1,
         "wrong number of exit emit nodes"
+    );
+    debug_assert_eq!(
+        flow_graph
+            .emit_nodes
+            .iter()
+            .filter(|emit_node| emit_node.is_entry())
+            .count(),
+        1,
+        "wrong number of entry emit nodes"
     );
     debug_assert_eq!(
         flow_graph
@@ -373,7 +399,7 @@ impl<'a> FlowTracer<'a> {
         // corresponding emit node and set it as the new predecessor on-deck.
         if ir_item.emits.is_none() {
             self.insert_and_link_emit_node(
-                new_emit_label_ident.clone(),
+                Some(new_emit_label_ident.clone()),
                 Some(emit_stmt.call.target),
             );
         }
@@ -505,10 +531,14 @@ impl<'a> FlowTracer<'a> {
         }
     }
 
+    fn insert_entry_emit_node(&mut self) {
+        self.insert_and_link_emit_node(None, None);
+    }
+
     fn insert_exit_emit_node(&mut self) {
         debug_assert!(self.graph.emit_nodes.is_empty());
         debug_assert!(self.curr_state.pred_emits.is_empty());
-        self.insert_emit_node(EmitLabelIdent::default(), None);
+        self.insert_emit_node(Some(EmitLabelIdent::default()), None);
     }
 
     fn link_exit_emit_node(&mut self) {
@@ -517,7 +547,7 @@ impl<'a> FlowTracer<'a> {
 
     fn insert_emit_node(
         &mut self,
-        label_ident: EmitLabelIdent,
+        label_ident: Option<EmitLabelIdent>,
         target: Option<flattener::CallableIndex>,
     ) -> EmitNodeIndex {
         self.graph.emit_nodes.push_and_get_key(EmitNode {
@@ -529,7 +559,7 @@ impl<'a> FlowTracer<'a> {
 
     fn insert_and_link_emit_node(
         &mut self,
-        label_ident: EmitLabelIdent,
+        label_ident: Option<EmitLabelIdent>,
         target: Option<flattener::CallableIndex>,
     ) {
         let emit_node_index = self.insert_emit_node(label_ident, target);
