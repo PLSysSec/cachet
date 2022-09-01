@@ -4,20 +4,16 @@ ir CacheStub emits CacheIR {
     op Rsh(
         lhsValueId: ValueId,
         rhsValueId: ValueId,
-        lhsInt32Id: Int32Id,
-        rhsInt32Id: Int32Id,
     ) {
         CacheIR::initValueInput(lhsValueId);
         CacheIR::defineValueReg(lhsValueId);
         CacheIR::initValueInput(rhsValueId);
         CacheIR::defineValueReg(rhsValueId);
-        CacheIR::initInt32Input(lhsInt32Id);
-        CacheIR::defineInt32Reg(lhsInt32Id);
-        CacheIR::initInt32Input(rhsInt32Id);
-        CacheIR::defineInt32Reg(rhsInt32Id);
 
-        emit CacheIR::GuardToInt32(lhsValueId, lhsInt32Id);
-        emit CacheIR::GuardToInt32(rhsValueId, rhsInt32Id);
+        emit CacheIR::GuardToInt32(lhsValueId);
+        let lhsInt32Id = ValueId::toInt32Id(lhsValueId);
+        emit CacheIR::GuardToInt32(rhsValueId);
+        let rhsInt32Id = ValueId::toInt32Id(rhsValueId);
         emit CacheIR::Int32RightShiftResult(lhsInt32Id, rhsInt32Id);
     }
 }

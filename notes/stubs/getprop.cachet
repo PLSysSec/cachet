@@ -3,14 +3,11 @@ import "../cacheir.cachet"
 ir CacheStub emits CacheIR {
     op GetProp(
         valueId: ValueId,
-        objectId: ObjectId,
         shapeField: ShapeField,
         slotField: Int32Field,
     ) {
         CacheIR::initValueInput(valueId);
         CacheIR::defineValueReg(valueId);
-        CacheIR::initObjectInput(objectId);
-        CacheIR::defineObjectReg(objectId);
 
         let shape = CacheIR::readShapeField(shapeField);
 
@@ -23,7 +20,8 @@ ir CacheStub emits CacheIR {
         let slot = CacheIR::readInt32Field(slotField);
         assume slot == 1_i32;
 
-        emit CacheIR::GuardToObject(valueId, objectId);
+        emit CacheIR::GuardToObject(valueId);
+        let objectId = ValueId::toObjectId(valueId);
         emit CacheIR::GuardShape(objectId, shapeField);
         emit CacheIR::LoadFixedSlotResult(objectId, slotField);
     }

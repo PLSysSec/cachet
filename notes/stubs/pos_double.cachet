@@ -3,14 +3,12 @@ import "../cacheir.cachet"
 ir CacheStub emits CacheIR {
     op Pos(
         inputId: ValueId,
-        valId: NumberId,
     ) {
         CacheIR::initValueInput(inputId);
         CacheIR::defineValueReg(inputId);
-        CacheIR::initNumberInput(valId);
-        CacheIR::defineNumberReg(valId);
 
-        emit CacheIR::GuardIsNumber(inputId, valId);
+        emit CacheIR::GuardIsNumber(inputId);
+        let valId = ValueId::toNumberId(inputId);
         emit CacheIR::LoadDoubleResult(valId);
     }
 }
