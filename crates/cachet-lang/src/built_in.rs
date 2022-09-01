@@ -218,6 +218,9 @@ impl BuiltInVar {
 pub enum BuiltInAttr {
     #[display(fmt = "prelude")]
     Prelude,
+
+    #[display(fmt = "refined")]
+    Refined,
 }
 
 impl_ordered_ident_enum!(BuiltInAttr);

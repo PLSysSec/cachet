@@ -561,6 +561,16 @@ impl<'a> Compiler<'a> {
             }
         };
 
+        if let normalizer::CallableIndex::Fn(_) = callable_index {
+            if callable_item.is_refined() {
+                self.external_decls
+                    .bucket_for(item_bucket_index)
+                    .push(fn_decl.into());
+
+                return;
+            }
+        }
+
         match &callable_item.body {
             None => {
                 self.external_decls

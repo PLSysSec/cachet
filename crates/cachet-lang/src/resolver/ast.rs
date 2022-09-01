@@ -144,6 +144,10 @@ pub trait HasAttrs {
     fn is_prelude(&self) -> bool {
         self.attrs().contains(BuiltInAttr::Prelude)
     }
+
+    fn is_refined(&self) -> bool {
+        self.attrs().contains(BuiltInAttr::Refined)
+    }
 }
 
 pub trait Typed {

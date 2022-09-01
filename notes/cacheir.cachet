@@ -843,36 +843,43 @@ ir CacheIR emits MASM {
     fn defineReg(typedId: TypedId) -> Reg;
     fn defineValueReg(valueId: ValueId) -> ValueReg;
 
+    #[refined]
     fn defineObjectReg(id: ObjectId) -> Reg {
         let typedId = TypedId::fromObjectId(id);
         CacheIR::defineReg(typedId)
     }
 
+    #[refined]
     fn defineInt32Reg(id: Int32Id) -> Reg {
         let typedId = TypedId::fromInt32Id(id);
         CacheIR::defineReg(typedId)
     }
 
+    #[refined]
     fn defineNumberReg(id: NumberId) -> ValueReg {
         let valueId = id as ValueId;
         CacheIR::defineValueReg(valueId)
     }
         
+    #[refined]
     fn defineBooleanReg(id: BooleanId) -> Reg {
         let typedId = TypedId::fromBooleanId(id);
         CacheIR::defineReg(typedId)
     }
 
+    #[refined]
     fn defineStringReg(id: StringId) -> Reg {
         let typedId = TypedId::fromStringId(id);
         CacheIR::defineReg(typedId)
     }
 
+    #[refined]
     fn defineSymbolReg(id: SymbolId) -> Reg {
         let typedId = TypedId::fromSymbolId(id);
         CacheIR::defineReg(typedId)
     }
     
+    #[refined]
     fn defineBigIntReg(id: BigIntId) -> Reg {
         let typedId = TypedId::fromBigIntId(id);
         CacheIR::defineReg(typedId)
@@ -881,6 +888,7 @@ ir CacheIR emits MASM {
     fn getOperandLocation(id: OperandId) -> OperandLocation;
     fn setOperandLocation(id: OperandId, loc: OperandLocation);
 
+    #[refined]
     fn useReg(id: TypedId) emits MASM -> Reg {
         let operandId = id as OperandId; 
         let location = CacheIR::getOperandLocation(operandId);
@@ -903,6 +911,7 @@ ir CacheIR emits MASM {
         return OperandLocation::getPayloadReg(location);
     }
 
+    #[refined]
     fn useValueReg(valueId: ValueId) emits MASM -> ValueReg {
         let operandId = valueId as OperandId; 
         let location = CacheIR::getOperandLocation(operandId);
@@ -924,36 +933,43 @@ ir CacheIR emits MASM {
         return OperandLocation::getValueReg(location);
     }
 
+    #[refined]
     fn useObjectReg(id: ObjectId) emits MASM -> Reg {
         let typedId = TypedId::fromObjectId(id);
         CacheIR::useReg(typedId)
     }
 
+    #[refined]
     fn useInt32Reg(id: Int32Id) emits MASM -> Reg {
         let typedId = TypedId::fromInt32Id(id);
         CacheIR::useReg(typedId)
     }
 
+    #[refined]
     fn useNumberReg(id: NumberId) emits MASM -> ValueReg {
         let valueId = id as ValueId;
         CacheIR::useValueReg(valueId)
     }
 
+    #[refined]
     fn useBooleanReg(id: BooleanId) emits MASM -> Reg {
         let typedId = TypedId::fromBooleanId(id);
         CacheIR::useReg(typedId)
     }
 
+    #[refined]
     fn useStringReg(id: StringId) emits MASM -> Reg {
         let typedId = TypedId::fromStringId(id);
         CacheIR::useReg(typedId)
     }
 
+    #[refined]
     fn useSymbolReg(id: SymbolId) emits MASM -> Reg {
         let typedId = TypedId::fromSymbolId(id);
         CacheIR::useReg(typedId)
     }
 
+    #[refined]
     fn useBigIntReg(id: BigIntId) emits MASM -> Reg {
         let typedId = TypedId::fromBigIntId(id);
         CacheIR::useReg(typedId)
