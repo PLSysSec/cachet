@@ -1,14 +1,13 @@
 import "../cacheir.cachet"
+import "../utils.cachet"
 
 ir CacheStub emits CacheIR {
     op BitXor(
         lhsValueId: ValueId,
         rhsValueId: ValueId,
     ) {
-        CacheIR::initValueInput(lhsValueId);
-        CacheIR::defineValueReg(lhsValueId);
-        CacheIR::initValueInput(rhsValueId);
-        CacheIR::defineValueReg(rhsValueId);
+        initValueInput(lhsValueId);
+        initValueInput(rhsValueId);
 
         emit CacheIR::GuardToInt32(lhsValueId);
         let lhsInt32Id = ValueId::toInt32Id(lhsValueId);

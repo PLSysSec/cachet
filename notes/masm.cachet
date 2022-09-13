@@ -25,6 +25,96 @@ enum Condition {
     LessThan,
 }
 
+struct Address {
+    base: Reg,
+    offset: Int32,
+}
+
+impl Address {
+    fn new(base: Reg, offset: Int32) -> Address {
+        let address = (unsafe { Address::newUnchecked(base, offset) } );
+        assume address.base == base;
+        assume address.offset == offset;
+        address
+    }
+
+    unsafe fn newUnchecked(base: Reg, offset: Int32) -> Address;
+}
+
+enum Scale {
+    TimesOne,
+    TimesTwo,
+    TimesFour,
+    TimesEight,
+}
+
+var ValueScale: Scale = Scale::TimesEight;
+
+struct BaseIndex {
+    base: Reg,
+    index: Reg,
+    scale: Scale,
+    offset: UInt32,
+}
+
+impl BaseIndex {
+    fn new(base: Reg, index: Reg, scale: Scale, offset: UInt32) -> BaseIndex {
+        let baseIndex = (unsafe { BaseIndex::newUnchecked(base, index, scale, offset) } );
+        assume baseIndex.base == base;
+        assume baseIndex.index == index;
+        assume baseIndex.scale == scale;
+        assume baseIndex.offset == offset;
+        baseIndex
+    }    
+
+    unsafe fn newUnchecked(base: Reg, index: Reg, scale: Scale, offset: UInt32) -> BaseIndex;
+}
+
+struct BaseValueIndex {
+    inner: BaseIndex,
+}
+
+impl BaseValueIndex {
+    fn new(base: Reg, index: Reg, offset: UInt32) -> BaseValueIndex {
+        let inner = BaseIndex::new(base, index, ValueScale, offset);
+        let baseValueIndex = (unsafe { BaseValueIndex::newUnchecked(inner) } );
+        assume baseValueIndex.inner == inner;
+        baseValueIndex
+    }
+
+    unsafe fn newUnchecked(inner: BaseIndex) -> BaseValueIndex;
+}
+
+struct BaseObjectElementIndex {
+    inner: BaseValueIndex,
+}
+
+impl BaseObjectElementIndex {
+    fn new(base: Reg, index: Reg, offset: UInt32) -> BaseObjectElementIndex {
+        let inner = BaseValueIndex::new(base, index, offset);
+        let baseObjectElementIndex = (unsafe { BaseObjectElementIndex::newUnchecked(inner) } );
+        assume baseObjectElementIndex.inner == inner;
+        baseObjectElementIndex
+    }
+
+    unsafe fn newUnchecked(inner: BaseValueIndex) -> BaseObjectElementIndex;
+}
+
+struct BaseObjectSlotIndex {
+    inner: BaseValueIndex,
+}
+
+impl BaseObjectSlotIndex {
+    fn new(base: Reg, index: Reg) -> BaseObjectSlotIndex {
+        let inner = BaseValueIndex::new(base, index, 0_u32);
+        let baseObjectSlotIndex = (unsafe { BaseObjectSlotIndex::newUnchecked(inner) } );
+        assume baseObjectSlotIndex.inner == inner;
+        baseObjectSlotIndex
+    }
+
+    unsafe fn newUnchecked(inner: BaseValueIndex) -> BaseObjectSlotIndex;
+}
+
 ir MASM {
     // NOTE: Needs to be implemented to call the equivalent
     // op with string as argument.
@@ -74,6 +164,19 @@ ir MASM {
 
     op Load32(int32: Int32, dstReg: Reg) {
         MASM::setInt32(dstReg, int32);
+    }
+
+    op LoadValueAddress(address: Address, dstReg: ValueReg) {
+        let baseData = MASM::getData(address.base);    
+        let data = RegData::readData(baseData, address.offset);
+        let value = RegData::toValue(data);
+        MASM::setValue(dstReg, value);
+    }
+
+    op LoadPtrAddress(address: Address, dstReg: Reg) {
+        let baseData = MASM::getData(address.base);
+        let data = RegData::readData(baseData, address.offset);
+        MASM::setData(dstReg, data);
     }
 
     op TagValue(valTy: ValueType, payload: Reg, dest: ValueReg) {
@@ -465,6 +568,13 @@ ir MASM {
         }
     }
 
+    op BranchTestObjIsFunction(
+        condition: Condition, objectReg: Reg, scratchReg: Reg,
+        spectreRegToZero: Reg, label branch: MASM
+    ) {
+        
+    }
+
     op BranchIfNonNativeObj(objectReg: Reg, scratchReg: Reg, label branch: MASM) {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
@@ -778,7 +888,7 @@ ir MASM {
 
     op LoadObjectFixedSlot(objectReg: Reg, slot: Int32, outputReg: ValueReg) {
         let object = MASM::getObject(objectReg);
-        MASM::setValue(outputReg, Object::getFixedSlot(object, slot));
+        MASM::setValue(outputReg, Object::getFixedSlot(object, slot as UInt32));
     }
 
     op LoadArgumentsObjectLength(
@@ -797,6 +907,9 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         MASM::setValue(protoReg, Object::protoOf(object));
     }
+
+    fn getData(reg: Reg) -> RegData;
+    fn setData(reg: Reg, data: RegData);
 
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);

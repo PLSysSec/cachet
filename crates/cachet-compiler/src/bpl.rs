@@ -2239,6 +2239,8 @@ lazy_static! {
         HashMap::from([
             (Ident::from("ValueReg").into(), Proc),
             (Ident::from("ValueReg").nest("scratchReg".into()), Proc),
+            (Ident::from("MASM").nest("getData".into()), Proc),
+            (Ident::from("MASM").nest("setData".into()), Proc),
             (Ident::from("MASM").nest("getValue".into()), Proc),
             (Ident::from("MASM").nest("setValue".into()), Proc),
             (Ident::from("MASM").nest("getInt32".into()), Proc),
@@ -2262,8 +2264,9 @@ lazy_static! {
             (Ident::from("CacheIR").nest("defineValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("getOperandLocation".into()), Proc),
             (Ident::from("CacheIR").nest("setOperandLocation".into()), Proc),
-            (Ident::from("CacheIR").nest("initInput".into()), Proc),
-            (Ident::from("CacheIR").nest("initValueInput".into()), Proc),
+            (Ident::from("initInputOperandLocation").into(), Proc),
+            (Ident::from("initValueInputOperandLocation").into(), Proc),
+            (Ident::from("initValueReg").into(), Proc),
         ])
     };
 

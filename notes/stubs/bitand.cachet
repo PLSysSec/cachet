@@ -1,4 +1,5 @@
 import "../cacheir.cachet"
+import "../utils.cachet"
 
 ir CacheStub emits CacheIR {
     op BitAnd(
@@ -6,11 +7,9 @@ ir CacheStub emits CacheIR {
         rhsValueId: ValueId,
         rhsInt32Id: Int32Id,
     ) {
-        CacheIR::initValueInput(lhsValueId);
-        CacheIR::defineValueReg(lhsValueId);
-        CacheIR::initValueInput(rhsValueId);
-        CacheIR::defineValueReg(rhsValueId);
-        CacheIR::initInt32Input(rhsInt32Id);
+        initValueInput(lhsValueId);
+        initValueInput(rhsValueId);
+        initInt32InputOperandLocation(rhsInt32Id);
 
         emit CacheIR::GuardToInt32(lhsValueId);
         let lhsInt32Id = ValueId::toInt32Id(lhsValueId);

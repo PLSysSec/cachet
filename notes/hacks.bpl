@@ -6,18 +6,34 @@ procedure #ValueReg~scratchReg($valueReg: #ValueReg)
   reg := $valueReg;
 }
 
-var #MASM~regs: #Map #Reg #Value;
+var #MASM~regs: #Map #Reg #RegData;
+
+procedure #MASM~getData($reg: #Reg)
+  returns (ret: #RegData)
+{
+  ret := #Map~get(#MASM~regs, $reg);
+}
+
+procedure #MASM~setData($reg: #Reg, $data: #RegData)
+  modifies #MASM~regs;
+{
+  #MASM~regs := #Map~set(#MASM~regs, $reg, $data);
+}
     
 procedure #MASM~getValue($valueReg: #ValueReg)
   returns (ret: #Value)
 {
-  ret := #Map~get(#MASM~regs, $valueReg);
+  var tmp'0: #RegData;
+  call tmp'0 := #MASM~getData($valueReg);
+  call ret := #RegData~toValue(tmp'0);
 }
 
 procedure #MASM~setValue($valueReg: #ValueReg, $value: #Value)
   modifies #MASM~regs;
 {
-  #MASM~regs := #Map~set(#MASM~regs, $valueReg, $value);
+  var tmp'0: #RegData;
+  call tmp'0 := #RegData~fromValue($value);
+  call #MASM~setData($valueReg, tmp'0);
 }
 
 procedure #MASM~getInt32($reg: #Reg)
@@ -170,7 +186,7 @@ procedure #CacheIR~setOperandLocation($operandId: #OperandId, $loc: #OperandLoca
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId, $loc);
 }
 
-procedure #CacheIR~initInput($typedId: #TypedId)
+procedure #initInputOperandLocation($typedId: #TypedId)
     modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
     var $operandId'0: #OperandId;
@@ -186,7 +202,7 @@ procedure #CacheIR~initInput($typedId: #TypedId)
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId'0, $loc'0);
 }
 
-procedure #CacheIR~initValueInput($valueId: #ValueId)
+procedure #initValueInputOperandLocation($valueId: #ValueId)
     modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
     var $operandId'0: #OperandId;
@@ -200,6 +216,15 @@ procedure #CacheIR~initValueInput($valueId: #ValueId)
 
     call $loc'0 := #OperandLocation~newUninitialized();
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId'0, $loc'0);
+}
+
+procedure #initValueReg($valueReg: #ValueReg)
+    modifies #MASM~regs;
+{
+    var $value'0: #Value;
+
+    havoc $value'0;
+    call #MASM~setValue($valueReg, $value'0);
 }
 
 var #CacheIR~allocatedRegs: #Set #Reg;

@@ -1,11 +1,11 @@
 import "../cacheir.cachet"
+import "../utils.cachet"
 
 ir CacheStub emits CacheIR {
     op Inc(
         inputValueId: ValueId,
     ) {
-        CacheIR::initValueInput(inputValueId);
-        CacheIR::defineValueReg(inputValueId);
+        initValueInput(inputValueId);
 
         emit CacheIR::GuardToInt32(inputValueId);
         let inputInt32Id = ValueId::toInt32Id(inputValueId);

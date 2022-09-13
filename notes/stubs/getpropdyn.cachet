@@ -2,7 +2,7 @@ import "../cacheir.cachet"
 import "../utils.cachet"
 
 ir CacheStub emits CacheIR {
-    op GetProp(
+    op GetPropDyn(
         valueId: ValueId,
         shapeField: ShapeField,
         slotField: Int32Field,
@@ -13,16 +13,15 @@ ir CacheStub emits CacheIR {
 
         assume Class::isNativeObject(Shape::classOf(shape));
 
-        assume Shape::hasFixedSlot(shape, 0_u32);
-        assume Shape::hasFixedSlot(shape, 1_u32);
-        assume Shape::hasFixedSlot(shape, 2_u32);
+        assume Shape::numFixedSlots(shape) == 2_u32;
+        assume Shape::slotSpan(shape) == 4_u32;
 
         let slotOffset = CacheIR::readInt32Field(slotField);
-        assume slotOffset == 32_i32;
+        assume slotOffset == 8_i32;
 
         emit CacheIR::GuardToObject(valueId);
         let objectId = ValueId::toObjectId(valueId);
         emit CacheIR::GuardShape(objectId, shapeField);
-        emit CacheIR::LoadFixedSlotResult(objectId, slotField);
+        emit CacheIR::LoadDynamicSlotResult(objectId, slotField);
     }
 }

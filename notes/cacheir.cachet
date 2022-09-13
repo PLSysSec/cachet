@@ -249,6 +249,20 @@ struct Int32Field;
 struct ShapeField;
 struct ClassField;
 
+enum GuardClassKind {
+    Array,
+    PlainObject,
+    ArrayBuffer,
+    SharedArrayBuffer,
+    DataView,
+    MappedArguments,
+    UnmappedArguments,
+    WindowProxy,
+    JSFunction,
+    Set,
+    Map,
+}
+
 ir CacheIR emits MASM {
     op GuardIsNumber(valueId: ValueId) {
         let valueReg = CacheIR::useValueReg(valueId);
@@ -336,6 +350,27 @@ ir CacheIR emits MASM {
             assert false;
         }
     }
+
+    /*op GuardClass(objId: ObjectId, kind: GuardClassKind) {
+        let objReg = CacheIR::useObjectReg(objId);
+        let scratchReg = CacheIR::allocateReg();
+    
+        CacheIR::addFailurePath(out label failure);
+
+        if kind == GuardClassKind::JSFunction {
+            if CacheIR::objectGuardNeedsSpectreMitigations(objId) {
+                emit MASM::BranchTestObjIsFunction(Condition::NotEqual, objReg, scratchReg, objReg,
+                                                    failure);
+            } else {
+                emit MASM::BranchTestObjIsFunctionNoSpectreMitigations(Condition::NotEqual, objReg,
+                                                                        scratchReg, failure);
+            }
+
+            return;
+        }
+
+        CacheIR::releaseReg(scratchReg);
+    }*/
 
     op GuardBooleanToInt32(valueId: ValueId, int32Id: Int32Id) {
         let int32Reg = CacheIR::defineInt32Reg(int32Id);
@@ -447,8 +482,28 @@ ir CacheIR emits MASM {
 
     op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
         let objectReg = CacheIR::useObjectReg(objectId);
-        let slot = CacheIR::readInt32Field(slotField);
-        emit MASM::LoadObjectFixedSlot(objectReg, slot, CacheIR::outputReg);
+        let slotOffset = CacheIR::readInt32Field(slotField);
+
+        // Note: this uses TypedOrValueRegister but assuming here
+        // that CacheIR::outputReg is always a Value
+        emit MASM::LoadValueAddress(Address::new(objectReg, slotOffset), CacheIR::outputReg);
+    }
+
+    op LoadDynamicSlotResult(objectId: ObjectId, slotField: Int32Field) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let slotOffset = CacheIR::readInt32Field(slotField);
+
+        let scratchReg = CacheIR::allocateReg();
+        emit MASM::LoadPtrAddress(
+            Address::new(objectReg, NativeObject::offsetOfSlots as Int32), scratchReg
+        );
+        // Note: this uses TypedOrValueRegister but assuming here
+        // that CacheIR::outputReg is always a Value
+        emit MASM::LoadValueAddress(
+            Address::new(scratchReg, slotOffset), CacheIR::outputReg
+        );
+
+        CacheIR::releaseReg(scratchReg);
     }
 
     op LoadArgumentsObjectLengthResult(objectId: ObjectId) {
@@ -979,45 +1034,6 @@ ir CacheIR emits MASM {
     fn readClassField(classField: ClassField) -> Class;
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
-
-    fn initInput(typedId: TypedId);
-    fn initValueInput(valueId: ValueId);
-
-    fn initObjectInput(id: ObjectId) {
-        let typedId = TypedId::fromObjectId(id);
-        CacheIR::initInput(typedId);
-    }
-
-    fn initInt32Input(id: Int32Id) {
-        let typedId = TypedId::fromInt32Id(id);
-        CacheIR::initInput(typedId);
-    }
-
-    fn initNumberInput(id: NumberId) {
-        let valueId = id as ValueId;
-        CacheIR::initValueInput(valueId);
-    }
-
-    fn initBooleanInput(id: BooleanId) {
-        let typedId = TypedId::fromBooleanId(id);
-        CacheIR::initInput(typedId);
-    }
-
-    fn initStringInput(id: StringId) {
-        let typedId = TypedId::fromStringId(id);
-        CacheIR::initInput(typedId);
-    }
-
-    fn initSymbolInput(id: SymbolId) {
-        let typedId = TypedId::fromSymbolId(id);
-        CacheIR::initInput(typedId);
-    }
-
-    fn initBigIntInput(id: BigIntId) {
-        let typedId = TypedId::fromBigIntId(id);
-        CacheIR::initInput(typedId);
-    }
-
 }
 
 
