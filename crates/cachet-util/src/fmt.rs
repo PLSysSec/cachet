@@ -78,7 +78,7 @@ pub struct AffixWriter<'a, W> {
     has_started_line: bool,
 }
 
-impl<'a, W: Write> AffixWriter<'a, W> {
+impl<'a, W> AffixWriter<'a, W> {
     pub fn new(inner: W, line_prefix: &'a str, line_suffix: &'a str) -> Self {
         Self {
             inner,
@@ -91,7 +91,9 @@ impl<'a, W: Write> AffixWriter<'a, W> {
     pub fn into_inner(self) -> W {
         self.inner
     }
+}
 
+impl<'a, W: Write> AffixWriter<'a, W> {
     fn ensure_line_started(&mut self) -> Result<(), fmt::Error> {
         if !self.has_started_line {
             self.inner.write_str(self.line_prefix)?;

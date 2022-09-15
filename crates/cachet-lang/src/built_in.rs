@@ -38,6 +38,7 @@ macro_rules! impl_ordered_ident_enum {
 
 pub trait IdentEnum: 'static + Sized + Copy + Hash + Eq + IntoEnumIterator {
     const COUNT: usize = Self::ITEM_COUNT;
+
     fn idents() -> &'static HashMap<Self, Ident>;
     fn ident_reverse_map() -> &'static HashMap<Ident, Self>;
 
@@ -65,6 +66,7 @@ pub trait IdentEnum: 'static + Sized + Copy + Hash + Eq + IntoEnumIterator {
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, IntoEnumIterator, PartialEq, Eq)]
 pub enum Width {
+    W8 = 8,
     W16 = 16,
     W32 = 32,
     W64 = 64,
@@ -85,13 +87,15 @@ pub enum BuiltInType {
 }
 
 impl BuiltInType {
+    pub const INT8: Self = BuiltInType::Integral(Signedness::Signed, Width::W8);
+    pub const INT16: Self = BuiltInType::Integral(Signedness::Signed, Width::W16);
     pub const INT32: Self = BuiltInType::Integral(Signedness::Signed, Width::W32);
     pub const INT64: Self = BuiltInType::Integral(Signedness::Signed, Width::W64);
-    pub const INT16: Self = BuiltInType::Integral(Signedness::Signed, Width::W16);
 
+    pub const UINT8: Self = BuiltInType::Integral(Signedness::Unsigned, Width::W8);
+    pub const UINT16: Self = BuiltInType::Integral(Signedness::Unsigned, Width::W16);
     pub const UINT32: Self = BuiltInType::Integral(Signedness::Unsigned, Width::W32);
     pub const UINT64: Self = BuiltInType::Integral(Signedness::Unsigned, Width::W64);
-    pub const UINT16: Self = BuiltInType::Integral(Signedness::Unsigned, Width::W16);
 }
 
 impl Display for BuiltInType {
@@ -102,12 +106,14 @@ impl Display for BuiltInType {
             match self {
                 Self::Unit => "Unit",
                 Self::Bool => "Bool",
+                &Self::INT8 => "Int8",
                 &Self::INT16 => "Int16",
                 &Self::INT32 => "Int32",
                 &Self::INT64 => "Int64",
-                &Self::UINT64 => "UInt64",
-                &Self::UINT32 => "UInt32",
+                &Self::UINT8 => "UInt8",
                 &Self::UINT16 => "UInt16",
+                &Self::UINT32 => "UInt32",
+                &Self::UINT64 => "UInt64",
                 Self::Double => "Double",
             }
         )

@@ -2,10 +2,15 @@
 members = [
    "crates/cachet-lang",
    "crates/cachet-compiler",
+   "crates/cachet-cacheir-translator",
    "crates/cachet-util",
 ]
 
 
-# LALRPOP is really slow when built as debug, so let's just always opt it
+# LALRPOP is really slow when built as debug, so let's just always opt it.
 [profile.dev.package.lalrpop]
+opt-level=3
+
+# Same thing for nom.
+[profile.dev.package.nom]
 opt-level=3

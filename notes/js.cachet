@@ -438,8 +438,7 @@ impl NativeObject {
 
     // #[reads(heap)]
     // unsafe fn getFixedSlotUnchecked(nativeObject: NativeObject, slot: UInt32) -> Value;
-    unsafe fn getFixedSlotUnchecked(heap: Heap, nativeObject: NativeObject, slot: UInt32) ->
-    Value;
+    unsafe fn getFixedSlotUnchecked(heap: Heap, nativeObject: NativeObject, slot: UInt32) -> Value;
 
     fn getSlots(nativeObject: NativeObject) -> NativeObjectSlots {
         let slots = (unsafe { NativeObject::getSlotsUnchecked(heap, nativeObject) } );
@@ -668,11 +667,12 @@ impl BaseShape {
 struct Shape;
 
 impl Shape {
+    fn fromAddr(addr: UInt64) -> Shape;
+
     fn baseShapeOf(shape: Shape) -> BaseShape;
 
     fn classOf(shape: Shape) -> Class {
-        let baseShape = Shape::baseShapeOf(shape);
-        BaseShape::classOf(baseShape)
+        BaseShape::classOf(Shape::baseShapeOf(shape))
     }
 
     fn hasFixedSlot(shape: Shape, slot: UInt32) -> Bool;
@@ -685,6 +685,8 @@ impl Shape {
 struct Class;
 
 impl Class {
+    fn fromAddr(addr: UInt64) -> Class;
+
     var rawFunctionClass: Class;
     var rawExtendedFunctionClass: Class;
 

@@ -1,0 +1,61 @@
+// vim: set tw=99 ts=4 sts=4 sw=4 et:
+
+use crate::ast::*;
+
+grammar();
+
+pub Stub: Stub =
+    <kind:Ident> <engine:Ident> <ops:Op*> <field:Field*> <facts:Fact*> =>
+        Stub { kind, engine, ops, facts };
+
+Op: Op =
+    <ident:Ident> <args:Comma<Arg>> => Op { iden, args };
+
+Arg: Arg =
+    "[" <type_:Type> <param:Ident> "]" <value:Value> => Arg { type_, param, value };
+
+Value: Value = {
+    <b:Bool> => b.into(),
+    <n:Num> => n.into(),
+};
+
+Bool: bool = {
+    "true" => true,
+    "false" => false,
+};
+
+Num: usize =
+    <digits:r"[0-9]+"> =>?
+        usize::from_str(&digits.value)
+            .map_err(|_| ParseError::User {
+                error: "number too large",
+            });
+
+Type: Type = {
+    <field_type:FieldType> => field_type.into(),
+    <ident:Ident> => Type::Other(ident),
+};
+
+Fact: Fact = {
+    "ShapeNumFixedSlots" <address:Num> "," <num_slots: Num> => Fact::ShapeNumFixedSlots { address, num_slots },
+    "ShapeSlotSpan" <address:Num> "," <span: Num> => Fact::ShapeSlotSpan { address, span },
+    <kind: FieldKind> <offset: Num> "," <address:Num> => Fact::Field { kind, offset, address }
+};
+
+#[inline]
+FieldKind: FieldKind = {
+    "ShapeField" => FieldKind::Shape,
+    "RawInt32Field" => FieldKind::RawInt32,
+    "StringField" => FieldKind::String,
+    "JSObjectField" => FieldKind::JSObject
+};
+
+Ident: String = Word;
+
+
+Comma<Rule>: Vec<Rule> =
+    <mut xs:(<Rule> ",")*> <x:Rule> => {
+        xs.push(x);
+        xs
+    }
+;

@@ -1036,6 +1036,8 @@ pub enum Literal {
     Bool(bool),
     #[display(fmt = "{:?}", _0)]
     Int(usize),
+    #[display(fmt = "{:?}bv8", _0)]
+    Bv8(u8),
     #[display(fmt = "{:?}bv16", _0)]
     Bv16(u16),
     #[display(fmt = "{:?}bv32", _0)]

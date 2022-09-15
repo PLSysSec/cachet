@@ -65,191 +65,335 @@ impl OperandLocation {
 
 struct OperandId;
 
-// Corresponds to a ValOperandId
-struct ValueId <: OperandId;
+impl OperandId {
+    fn id(operandId: OperandId) -> UInt16;
 
-impl ValueId {
-    fn toInt32Id(id: ValueId) -> Int32Id {
-        unsafe { (id as OperandId) as Int32Id }
+    fn toValueId(operandId: OperandId) -> ValueId {
+        ValueId::fromId(OperandId::id(operandId))
     }
 
-    fn toObjectId(id: ValueId) -> ObjectId {
-        unsafe { (id as OperandId) as ObjectId }
+    fn toObjectId(operandId: OperandId) -> ObjectId {
+        ObjectId::fromId(OperandId::id(operandId))
     }
 
-    fn toNumberId(id: ValueId) -> NumberId {
-        unsafe { id as NumberId }
+    fn toStringId(operandId: OperandId) -> StringId {
+        StringId::fromId(OperandId::id(operandId))
+    }
+
+    fn toSymbolId(operandId: OperandId) -> SymbolId {
+        SymbolId::fromId(OperandId::id(operandId))
+    }
+
+    fn toBoolId(operandId: OperandId) -> BoolId {
+        BoolId::fromId(OperandId::id(operandId))
+    }
+
+    fn toInt32Id(operandId: OperandId) -> Int32Id {
+        Int32Id::fromId(OperandId::id(operandId))
+    }
+
+    fn toNumberId(operandId: OperandId) -> NumberId {
+        NumberId::fromId(OperandId::id(operandId))
+    }
+
+    fn toBigIntId(operandId: OperandId) -> BigIntId {
+        BigIntId::fromId(OperandId::id(operandId))
+    }
+
+    fn toValueTagId(operandId: OperandId) -> ValueTagId {
+        ValueTagId::fromId(OperandId::id(operandId))
+    }
+
+    fn toIntPtrId(operandId: OperandId) -> IntPtrId {
+        IntPtrId::fromId(OperandId::id(operandId))
+    }
+
+    fn toRawId(operandId: OperandId) -> RawId {
+        RawId::fromId(OperandId::id(operandId))
     }
 }
 
+struct ValueId <: OperandId;
+
+impl ValueId {
+    fn fromId(id: UInt16) -> ValueId {
+        let valueId = unsafe { ValueId::fromIdUnchecked(id) };
+        assume OperandId::id(valueId) == id;
+        valueId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> ValueId;
+}
+
 struct ObjectId <: OperandId;
-struct Int32Id <: OperandId;
-struct NumberId <: ValueId;
-struct BooleanId <: OperandId;
+
+impl ObjectId {
+    fn fromId(id: UInt16) -> ObjectId {
+        let objectId = unsafe { ObjectId::fromIdUnchecked(id) };
+        assume OperandId::id(objectId) == id;
+        objectId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> ObjectId;
+}
+
 struct StringId <: OperandId;
+
+impl StringId {
+    fn fromId(id: UInt16) -> StringId {
+        let stringId = unsafe { StringId::fromIdUnchecked(id) };
+        assume OperandId::id(stringId) == id;
+        stringId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> StringId;
+}
+
 struct SymbolId <: OperandId;
+
+impl SymbolId {
+    fn fromId(id: UInt16) -> SymbolId {
+        let symbolId = unsafe { SymbolId::fromIdUnchecked(id) };
+        assume OperandId::id(symbolId) == id;
+        symbolId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> SymbolId;
+}
+
+struct BoolId <: OperandId;
+
+impl BoolId {
+    fn fromId(id: UInt16) -> BoolId {
+        let boolId = unsafe { BoolId::fromIdUnchecked(id) };
+        assume OperandId::id(boolId) == id;
+        boolId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> BoolId;
+}
+
+struct Int32Id <: OperandId;
+
+impl Int32Id {
+    fn fromId(id: UInt16) -> Int32Id {
+        let int32Id = unsafe { Int32Id::fromIdUnchecked(id) };
+        assume OperandId::id(int32Id) == id;
+        int32Id
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> Int32Id;
+}
+
+struct NumberId <: ValueId;
+
+impl NumberId {
+    fn fromId(id: UInt16) -> NumberId {
+        let numberId = unsafe { NumberId::fromIdUnchecked(id) };
+        assume OperandId::id(numberId) == id;
+        numberId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> NumberId;
+}
+
 struct BigIntId <: OperandId;
+
+impl BigIntId {
+    fn fromId(id: UInt16) -> BigIntId {
+        let bigIntId = unsafe { BigIntId::fromIdUnchecked(id) };
+        assume OperandId::id(bigIntId) == id;
+        bigIntId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> BigIntId;
+}
+
+struct ValueTagId <: OperandId;
+
+impl ValueTagId {
+    fn fromId(id: UInt16) -> ValueTagId {
+        let valueTagId = unsafe { ValueTagId::fromIdUnchecked(id) };
+        assume OperandId::id(valueTagId) == id;
+        valueTagId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> ValueTagId;
+}
+
+struct IntPtrId <: OperandId;
+
+impl IntPtrId {
+    fn fromId(id: UInt16) -> IntPtrId {
+        let intPtrId = unsafe { IntPtrId::fromIdUnchecked(id) };
+        assume OperandId::id(intPtrId) == id;
+        intPtrId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> IntPtrId;
+}
+
+// TODO(spinda): This isn't an actual `OperandId` subtype on the C++ side.
+// Figure out what this maps to.
+struct RawId <: OperandId;
+
+impl RawId {
+    fn fromId(id: UInt16) -> RawId {
+        let rawId = unsafe { RawId::fromIdUnchecked(id) };
+        assume OperandId::id(rawId) == id;
+        rawId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> RawId;
+}
 
 struct TypedId <: OperandId;
 
 impl TypedId {
     fn type(typedId: TypedId) -> ValueType;
 
-    fn isValueId(typedId: TypedId) -> Bool;
-
-    fn fromValueId(valueId: ValueId, type: ValueType) -> TypedId {
-        let typedId = (unsafe { TypedId::fromValueIdUnchecked(valueId, type) });
-        assume TypedId::isValueId(typedId);
+    fn new(id: UInt16, type: ValueType) -> TypedId {
+        let typedId = unsafe { TypedId::newUnchecked(id, type) };
+        assume OperandId::id(typedId) == id;
         assume TypedId::type(typedId) == type;
-        assume (unsafe { TypedId::toValueIdUnchecked(typedId) }) == valueId;
-        assume (valueId as OperandId) == (typedId as OperandId);
         typedId
     }
 
-    unsafe fn fromValueIdUnchecked(valueId: ValueId, type: ValueType) -> TypedId; 
-
-    fn toValueId(typedId: TypedId) -> ValueId {
-        assert TypedId::isValueId(typedId);
-        let type = TypedId::type(typedId);
-        let valueId = (unsafe { TypedId::toValueIdUnchecked(typedId) });
-        assume (unsafe { TypedId::fromValueIdUnchecked(valueId, type) }) == typedId; 
-        valueId
-    }
-
-    unsafe fn toValueIdUnchecked(typedId: TypedId) -> ValueId;
+    unsafe fn newUnchecked(id: UInt16, type: ValueType) -> TypedId;
 
     fn fromObjectId(objectId: ObjectId) -> TypedId {
-        let typedId = (unsafe { TypedId::fromObjectIdUnchecked(objectId) });
-        assume !TypedId::isValueId(typedId);
-        assume TypedId::type(typedId) == ValueType::Object;
-        assume (unsafe { TypedId::toObjectIdUnchecked(typedId) }) == objectId;
-        assume (objectId as OperandId) == (typedId as OperandId);
-        typedId
+        TypedId::new(OperandId::id(objectId), ValueType::Object)
     }
-
-    unsafe fn fromObjectIdUnchecked(objectId: ObjectId) -> TypedId;
 
     fn toObjectId(typedId: TypedId) -> ObjectId {
-        assert !TypedId::isValueId(typedId);
         assert TypedId::type(typedId) == ValueType::Object;
-        let objectId = (unsafe { TypedId::toObjectIdUnchecked(typedId) });
-        assume (unsafe { TypedId::fromObjectIdUnchecked(objectId) }) == typedId;
-        objectId
+        OperandId::toObjectId(typedId)
     }
-
-    unsafe fn toObjectIdUnchecked(typedId: TypedId) -> ObjectId;
-
-    fn fromInt32Id(int32Id: Int32Id) -> TypedId {
-        let typedId = (unsafe { TypedId::fromInt32IdUnchecked(int32Id) });
-        assume !TypedId::isValueId(typedId);
-        assume TypedId::type(typedId) == ValueType::Int32;
-        assume (unsafe { TypedId::toInt32IdUnchecked(typedId) }) == int32Id;
-        assume (int32Id as OperandId) == (typedId as OperandId);
-        typedId
-    }
-
-    unsafe fn fromInt32IdUnchecked(int32Id: Int32Id) -> TypedId;
-
-    fn toInt32Id(typedId: TypedId) -> Int32Id {
-        assert !TypedId::isValueId(typedId);
-        assert TypedId::type(typedId) == ValueType::Int32;
-        let int32Id = (unsafe { TypedId::toInt32IdUnchecked(typedId) });
-        assume (unsafe { TypedId::fromInt32IdUnchecked(int32Id) }) == typedId;
-        int32Id
-    }
-
-    unsafe fn toInt32IdUnchecked(typedId: TypedId) -> Int32Id;
-
-    fn fromBooleanId(booleanId: BooleanId) -> TypedId {
-        let typedId = (unsafe { TypedId::fromBooleanIdUnchecked(booleanId) });
-        assume !TypedId::isValueId(typedId);
-        assume TypedId::type(typedId) == ValueType::Bool;
-        assume (unsafe { TypedId::toBooleanIdUnchecked(typedId) }) == booleanId;
-        assume (booleanId as OperandId) == (typedId as OperandId);
-        typedId
-    }
-
-    unsafe fn fromBooleanIdUnchecked(booleanId: BooleanId) -> TypedId;
-
-    fn toBooleanId(typedId: TypedId) -> BooleanId {
-        assert !TypedId::isValueId(typedId);
-        assert TypedId::type(typedId) == ValueType::Bool;
-        let booleanId = (unsafe { TypedId::toBooleanIdUnchecked(typedId) });
-        assume (unsafe { TypedId::fromBooleanIdUnchecked(booleanId) }) == typedId;
-        booleanId
-    }
-
-    unsafe fn toBooleanIdUnchecked(typedId: TypedId) -> BooleanId;
 
     fn fromStringId(stringId: StringId) -> TypedId {
-        let typedId = (unsafe { TypedId::fromStringIdUnchecked(stringId) });
-        assume !TypedId::isValueId(typedId);
-        assume TypedId::type(typedId) == ValueType::String;
-        assume (unsafe { TypedId::toStringIdUnchecked(typedId) }) == stringId;
-        assume (stringId as OperandId) == (typedId as OperandId);
-        typedId
+        TypedId::new(OperandId::id(stringId), ValueType::String)
     }
-
-    unsafe fn fromStringIdUnchecked(stringId: StringId) -> TypedId;
 
     fn toStringId(typedId: TypedId) -> StringId {
-        assert !TypedId::isValueId(typedId);
         assert TypedId::type(typedId) == ValueType::String;
-        let stringId = (unsafe { TypedId::toStringIdUnchecked(typedId) });
-        assume (unsafe { TypedId::fromStringIdUnchecked(stringId) }) == typedId;
-        stringId
+        OperandId::toStringId(typedId)
     }
-
-    unsafe fn toStringIdUnchecked(typedId: TypedId) -> StringId;
 
     fn fromSymbolId(symbolId: SymbolId) -> TypedId {
-        let typedId = (unsafe { TypedId::fromSymbolIdUnchecked(symbolId) });
-        assume !TypedId::isValueId(typedId);
-        assume TypedId::type(typedId) == ValueType::Symbol;
-        assume (unsafe { TypedId::toSymbolIdUnchecked(typedId) }) == symbolId;
-        assume (symbolId as OperandId) == (typedId as OperandId);
-        typedId
+        TypedId::new(OperandId::id(symbolId), ValueType::Symbol)
     }
-
-    unsafe fn fromSymbolIdUnchecked(symbolId: SymbolId) -> TypedId;
 
     fn toSymbolId(typedId: TypedId) -> SymbolId {
-        assert !TypedId::isValueId(typedId);
         assert TypedId::type(typedId) == ValueType::Symbol;
-        let symbolId = (unsafe { TypedId::toSymbolIdUnchecked(typedId) });
-        assume (unsafe { TypedId::fromSymbolIdUnchecked(symbolId) }) == typedId;
-        symbolId
+        OperandId::toSymbolId(typedId)
     }
 
-    unsafe fn toSymbolIdUnchecked(typedId: TypedId) -> SymbolId;
+    fn fromBoolId(boolId: BoolId) -> TypedId {
+        TypedId::new(OperandId::id(boolId), ValueType::Bool)
+    }
+
+    fn toBoolId(typedId: TypedId) -> BoolId {
+        assert TypedId::type(typedId) == ValueType::Bool;
+        OperandId::toBoolId(typedId)
+    }
+
+    fn fromInt32Id(int32Id: Int32Id) -> TypedId {
+        TypedId::new(OperandId::id(int32Id), ValueType::Int32)
+    }
+
+    fn toInt32Id(typedId: TypedId) -> Int32Id {
+        assert TypedId::type(typedId) == ValueType::Int32;
+        OperandId::toInt32Id(typedId)
+    }
 
     fn fromBigIntId(bigIntId: BigIntId) -> TypedId {
-        let typedId = (unsafe { TypedId::fromBigIntIdUnchecked(bigIntId) });
-        assume !TypedId::isValueId(typedId);
-        assume TypedId::type(typedId) == ValueType::BigInt;
-        assume (unsafe { TypedId::toBigIntIdUnchecked(typedId) }) == bigIntId;
-        assume (bigIntId as OperandId) == (typedId as OperandId);
-        typedId
+        TypedId::new(OperandId::id(bigIntId), ValueType::BigInt)
     }
-
-    unsafe fn fromBigIntIdUnchecked(bigIntId: BigIntId) -> TypedId;
 
     fn toBigIntId(typedId: TypedId) -> BigIntId {
-        assert !TypedId::isValueId(typedId);
         assert TypedId::type(typedId) == ValueType::BigInt;
-        let bigIntId = (unsafe { TypedId::toBigIntIdUnchecked(typedId) });
-        assume (unsafe { TypedId::fromBigIntIdUnchecked(bigIntId) }) == typedId;
-        bigIntId
+        OperandId::toBigIntId(typedId)
     }
+}
 
-    unsafe fn toBigIntIdUnchecked(typedId: TypedId) -> BigIntId;
+struct Int32Field;
+
+impl Int32Field {
+    fn fromOffset(offset: UInt32) -> Int32Field;
+}
+
+struct IntPtrField;
+
+impl IntPtrField {
+    fn fromOffset(offset: UInt32) -> IntPtrField;
+}
+
+struct ShapeField;
+
+impl ShapeField {
+    fn fromOffset(offset: UInt32) -> ShapeField;
+}
+
+// FIXME(spinda): Not a real field type.
+struct ClassField;
+
+impl ClassField {
+    fn fromOffset(offset: UInt32) -> ClassField;
+}
+
+struct GetterSetterField;
+
+impl GetterSetterField {
+    fn fromOffset(offset: UInt32) -> GetterSetterField;
+}
+
+struct ObjectField;
+
+impl ObjectField {
+    fn fromOffset(offset: UInt32) -> ObjectField;
+}
+
+struct SymbolField;
+
+impl SymbolField {
+    fn fromOffset(offset: UInt32) -> SymbolField;
+}
+
+struct StringField;
+
+impl StringField {
+    fn fromOffset(offset: UInt32) -> StringField;
+}
+
+struct BaseScriptField;
+
+impl BaseScriptField {
+    fn fromOffset(offset: UInt32) -> BaseScriptField;
+}
+
+struct IdField;
+
+impl IdField {
+    fn fromOffset(offset: UInt32) -> IdField;
+}
+
+struct AllocSiteField;
+
+impl AllocSiteField {
+    fn fromOffset(offset: UInt32) -> AllocSiteField;
+}
+
+struct Int64Field;
+
+impl Int64Field {
+    fn fromOffset(offset: UInt32) -> Int64Field;
 }
 
 struct ValueField;
-struct ObjectField;
-struct Int32Field;
-struct ShapeField;
-struct ClassField;
+
+impl ValueField {
+    fn fromOffset(offset: UInt32) -> ValueField;
+}
 
 enum GuardClassKind {
     Array,
@@ -266,14 +410,16 @@ enum GuardClassKind {
 }
 
 ir CacheIR emits MASM {
+    op ReturnFromIC() {}
+
     op GuardIsNumber(valueId: ValueId) {
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
         CacheIR::addFailurePath(out label failure);
         emit MASM::BranchTestNumber(Condition::NotEqual, valueReg, failure);
     }
 
     op GuardIsNullOrUndefined(valueId: ValueId) {
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
         CacheIR::addFailurePath(out label failure);
 
         label success: MASM;
@@ -284,19 +430,19 @@ ir CacheIR emits MASM {
     }
 
     op GuardIsNull(valueId: ValueId){
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
         CacheIR::addFailurePath(out label failure);
         emit MASM::BranchTestNull(Condition::NotEqual, valueReg, failure);
     }
 
     op GuardIsUndefined(valueId: ValueId) {
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
         CacheIR::addFailurePath(out label failure);
         emit MASM::BranchTestUndefined(Condition::NotEqual, valueReg, failure);
     }
 
     op GuardIsNativeObject(objectId: ObjectId) {
-        let objectReg = CacheIR::useObjectReg(objectId);
+        let objectReg = CacheIR::useObjectId(objectId);
         let scratchReg = CacheIR::allocateReg();
         CacheIR::addFailurePath(out label failure);
 
@@ -306,7 +452,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardIsProxy(objectId: ObjectId) {
-        let objectReg = CacheIR::useObjectReg(objectId);
+        let objectReg = CacheIR::useObjectId(objectId);
         let scratchReg = CacheIR::allocateReg();
         CacheIR::addFailurePath(out label failure);
 
@@ -316,14 +462,14 @@ ir CacheIR emits MASM {
     }
 
     op GuardInt32IsNonNegative(indexId: Int32Id) {
-        let indexReg = CacheIR::useInt32Reg(indexId);
+        let indexReg = CacheIR::useInt32Id(indexId);
         CacheIR::addFailurePath(out label failure);
         emit MASM::Branch32Imm(Condition::LessThan, indexReg, 0_i32, failure);
     }
 
     op IsObjectResult(inputId: ValueId) {
         let scratchReg = CacheIR::allocateReg();
-        let valueReg = CacheIR::useValueReg(inputId);
+        let valueReg = CacheIR::useValueId(inputId);
 
         emit MASM::TestObjectSet(Condition::Equal, valueReg, scratchReg);
         emit MASM::TagValue(ValueType::Bool, scratchReg, CacheIR::outputReg);
@@ -332,7 +478,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardNonDoubleType(valueId: ValueId, type: ValueType) {
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
 
         CacheIR::addFailurePath(out label failure);
 
@@ -354,7 +500,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardClass(objId: ObjectId, kind: GuardClassKind) {
-        let objReg = CacheIR::useObjectReg(objId);
+        let objReg = CacheIR::useObjectId(objId);
         let scratchReg = CacheIR::allocateReg();
     
         CacheIR::addFailurePath(out label failure);
@@ -409,8 +555,8 @@ ir CacheIR emits MASM {
     }
 
     op GuardBooleanToInt32(valueId: ValueId, int32Id: Int32Id) {
-        let int32Reg = CacheIR::defineInt32Reg(int32Id);
-        let valueReg = CacheIR::useValueReg(valueId);
+        let int32Reg = CacheIR::defineInt32Id(int32Id);
+        let valueReg = CacheIR::useValueId(valueId);
 
         CacheIR::addFailurePath(out label failure);
         emit MASM::FallibleUnboxBoolean(valueReg, int32Reg, failure);
@@ -418,7 +564,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardToObject(valueId: ValueId) {
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
 
         CacheIR::addFailurePath(out label failure);
 
@@ -426,7 +572,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardShape(objectId: ObjectId, shapeField: ShapeField) {
-      let objectReg = CacheIR::useObjectReg(objectId);
+      let objectReg = CacheIR::useObjectId(objectId);
       let shape = CacheIR::readShapeField(shapeField);
 
       CacheIR::addFailurePath(out label failure);
@@ -447,7 +593,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardAnyClass(objectId: ObjectId, classField: ClassField) {
-        let objectReg = CacheIR::useObjectReg(objectId);
+        let objectReg = CacheIR::useObjectId(objectId);
         let scratchReg = CacheIR::allocateReg();
         let class = CacheIR::readClassField(classField);
 
@@ -471,7 +617,7 @@ ir CacheIR emits MASM {
     op GuardFixedSlotValue(objId: ObjectId,
                            offsetOffset: Int32Field,
                            valOffset: ValueField) {
-        let obj = CacheIR::useObjectReg(objId);
+        let obj = CacheIR::useObjectId(objId);
         let offset = CacheIR::allocateReg();
         let scratchVal = CacheIR::allocateValueReg();
 
@@ -492,7 +638,7 @@ ir CacheIR emits MASM {
     op GuardDynamicSlotValue(objId: ObjectId,
                            offsetOffset: Int32Field,
                            valOffset: ValueField) {
-        let obj = CacheIR::useObjectReg(objId);
+        let obj = CacheIR::useObjectId(objId);
         let objSlots = CacheIR::allocateReg();
         let offset = CacheIR::allocateReg();
         let scratchVal = CacheIR::allocateValueReg();
@@ -516,7 +662,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardToString(valueId: ValueId) {
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
 
         CacheIR::addFailurePath(out label failure);
 
@@ -524,7 +670,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardToSymbol(valueId: ValueId) {
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
 
         CacheIR::addFailurePath(out label failure);
 
@@ -532,7 +678,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardToInt32(valueId: ValueId) {
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
 
         CacheIR::addFailurePath(out label failure);
 
@@ -540,7 +686,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardToBoolean(valueId: ValueId) {
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
 
         CacheIR::addFailurePath(out label failure);
 
@@ -548,7 +694,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardToBigInt(valueId: ValueId) {
-        let valueReg = CacheIR::useValueReg(valueId);
+        let valueReg = CacheIR::useValueId(valueId);
 
         CacheIR::addFailurePath(out label failure);
 
@@ -556,7 +702,7 @@ ir CacheIR emits MASM {
     }
 
     op GuardNoDenseElements(objectId: ObjectId) {
-        let objectReg = CacheIR::useObjectReg(objectId);
+        let objectReg = CacheIR::useObjectId(objectId);
         let scratchReg = CacheIR::allocateReg();
 
         CacheIR::addFailurePath(out label failure);
@@ -572,12 +718,12 @@ ir CacheIR emits MASM {
         CacheIR::releaseReg(scratchReg);
     }
 
-    op BooleanToNumber(booleanId: BooleanId, numberId: NumberId) {
-        let booleanReg = CacheIR::useBooleanReg(booleanId);
-        let numberReg = CacheIR::defineNumberReg(numberId);
+    op BooleanToNumber(boolId: BoolId, numberId: NumberId) {
+        let boolReg = CacheIR::useBoolId(boolId);
+        let numberReg = CacheIR::useNumberId(numberId);
 
-        emit MASM::CastBoolToInt32(booleanReg);
-        emit MASM::TagValue(ValueType::Int32, booleanReg, numberReg);
+        emit MASM::CastBoolToInt32(boolReg);
+        emit MASM::TagValue(ValueType::Int32, boolReg, numberReg);
     }
 
     op LoadObject(resultId: ObjectId, objField: ObjectField) {
@@ -586,7 +732,7 @@ ir CacheIR emits MASM {
     }
 
     op LoadProto(objectId: ObjectId, resultId: ObjectId) {
-        let objectReg = CacheIR::useObjectReg(objectId);
+        let objectReg = CacheIR::useObjectId(objectId);
         let resultReg = CacheIR::defineObjectReg(resultId);
 
         emit MASM::LoadObjectProto(objectReg, resultReg);
@@ -594,7 +740,7 @@ ir CacheIR emits MASM {
     }
 
     op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
-        let objectReg = CacheIR::useObjectReg(objectId);
+        let objectReg = CacheIR::useObjectId(objectId);
         let slotOffset = CacheIR::readInt32Field(slotField);
 
         // Note: this uses TypedOrValueRegister but assuming here
@@ -603,7 +749,7 @@ ir CacheIR emits MASM {
     }
 
     op LoadDynamicSlotResult(objectId: ObjectId, slotField: Int32Field) {
-        let objectReg = CacheIR::useObjectReg(objectId);
+        let objectReg = CacheIR::useObjectId(objectId);
         let slotOffset = CacheIR::readInt32Field(slotField);
 
         let scratchReg = CacheIR::allocateReg();
@@ -620,7 +766,7 @@ ir CacheIR emits MASM {
     }
 
     op LoadInt32ArrayLengthResult(objectId: ObjectId) {
-        let objectReg = CacheIR::useObjectReg(objectId);
+        let objectReg = CacheIR::useObjectId(objectId);
         let scratchReg = CacheIR::allocateReg();
 
         CacheIR::addFailurePath(out label failure);
@@ -639,7 +785,7 @@ ir CacheIR emits MASM {
     }
 
     op LoadArgumentsObjectLengthResult(objectId: ObjectId) {
-        let objectReg = CacheIR::useObjectReg(objectId);
+        let objectReg = CacheIR::useObjectId(objectId);
         let argObjLengthReg = CacheIR::allocateReg();
 
         CacheIR::addFailurePath(out label failure);
@@ -651,8 +797,8 @@ ir CacheIR emits MASM {
     }
 
     op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId) {
-        let lhsReg = CacheIR::useValueReg(lhsId);
-        let protoReg = CacheIR::useObjectReg(protoId);
+        let lhsReg = CacheIR::useValueId(lhsId);
+        let protoReg = CacheIR::useObjectId(protoId);
         let scratchReg = CacheIR::allocateReg();
 
         CacheIR::addFailurePath(out label failure);
@@ -689,17 +835,17 @@ ir CacheIR emits MASM {
     }
 
     op LoadStringResult(stringId: StringId) {
-        let stringReg = CacheIR::useStringReg(stringId);
+        let stringReg = CacheIR::useStringId(stringId);
         emit MASM::TagValue(ValueType::String, stringReg, CacheIR::outputReg);
     }
 
     op LoadSymbolResult(symbolId: SymbolId) {
-        let symbolReg = CacheIR::useSymbolReg(symbolId);
+        let symbolReg = CacheIR::useSymbolId(symbolId);
         emit MASM::TagValue(ValueType::Symbol, symbolReg, CacheIR::outputReg);
     }
 
     op LoadInt32Result(int32Id: Int32Id) {
-        let int32Reg = CacheIR::useInt32Reg(int32Id);
+        let int32Reg = CacheIR::useInt32Id(int32Id);
         emit MASM::TagValue(ValueType::Int32, int32Reg, CacheIR::outputReg);
     }
 
@@ -714,12 +860,12 @@ ir CacheIR emits MASM {
     }
 
     op LoadBigIntResult(bigIntId: BigIntId) {
-        let bigIntReg = CacheIR::useBigIntReg(bigIntId);
+        let bigIntReg = CacheIR::useBigIntId(bigIntId);
         emit MASM::TagValue(ValueType::BigInt, bigIntReg, CacheIR::outputReg);
     }
 
     op LoadDoubleResult(numberId: NumberId) {
-        let numberReg = CacheIR::useNumberReg(numberId);
+        let numberReg = CacheIR::useNumberId(numberId);
 
         // ifdef DEBUG
         // label ok: MASM;
@@ -734,13 +880,13 @@ ir CacheIR emits MASM {
     }
 
     op LoadInt32Constant(valField: Int32Field, resultId: Int32Id) {
-        let resultReg = CacheIR::defineInt32Reg(resultId);
+        let resultReg = CacheIR::defineInt32Id(resultId);
 
         CacheIR::emitLoadInt32StubField(valField, resultReg);
     }
 
     op LoadInt32TruthyResult(inputId: ValueId) {
-        let valueReg = CacheIR::useValueReg(inputId);
+        let valueReg = CacheIR::useValueId(inputId);
 
         label ifFalse: MASM;
         label done: MASM;
@@ -755,8 +901,8 @@ ir CacheIR emits MASM {
     }
 
     op Int32AddResult(lhsId: Int32Id, rhsId: Int32Id) {
-      let lhsReg = CacheIR::useInt32Reg(lhsId);
-      let rhsReg = CacheIR::useInt32Reg(rhsId);
+      let lhsReg = CacheIR::useInt32Id(lhsId);
+      let rhsReg = CacheIR::useInt32Id(rhsId);
       let scratchReg = CacheIR::allocateReg();
 
       CacheIR::addFailurePath(out label failure);
@@ -769,8 +915,8 @@ ir CacheIR emits MASM {
     }
 
     op Int32SubResult(lhsId: Int32Id, rhsId: Int32Id) {
-      let lhsReg = CacheIR::useInt32Reg(lhsId);
-      let rhsReg = CacheIR::useInt32Reg(rhsId);
+      let lhsReg = CacheIR::useInt32Id(lhsId);
+      let rhsReg = CacheIR::useInt32Id(rhsId);
       let scratchReg = CacheIR::allocateReg();
 
       CacheIR::addFailurePath(out label failure);
@@ -783,8 +929,8 @@ ir CacheIR emits MASM {
     }
 
     op Int32MulResult(lhsId: Int32Id, rhsId: Int32Id) {
-      let lhsReg = CacheIR::useInt32Reg(lhsId);
-      let rhsReg = CacheIR::useInt32Reg(rhsId);
+      let lhsReg = CacheIR::useInt32Id(lhsId);
+      let rhsReg = CacheIR::useInt32Id(rhsId);
 
       let scratchReg = CacheIR::allocateReg();
       let scratch2Reg = CacheIR::allocateReg();
@@ -811,8 +957,8 @@ ir CacheIR emits MASM {
     }
 
     op Int32DivResult(lhsId: Int32Id, rhsId: Int32Id) {
-        let lhsReg = CacheIR::useInt32Reg(lhsId);
-        let rhsReg = CacheIR::useInt32Reg(rhsId);
+        let lhsReg = CacheIR::useInt32Id(lhsId);
+        let rhsReg = CacheIR::useInt32Id(rhsId);
 
         let remReg = CacheIR::allocateReg();
         let scratchReg = CacheIR::allocateReg();
@@ -848,8 +994,8 @@ ir CacheIR emits MASM {
     }
 
     op Int32ModResult(lhsId: Int32Id, rhsId: Int32Id) {
-        let lhsReg = CacheIR::useInt32Reg(lhsId);
-        let rhsReg = CacheIR::useInt32Reg(rhsId);
+        let lhsReg = CacheIR::useInt32Id(lhsId);
+        let rhsReg = CacheIR::useInt32Id(rhsId);
 
         let scratchReg = CacheIR::allocateReg();
 
@@ -880,8 +1026,8 @@ ir CacheIR emits MASM {
     }
 
     op Int32BitOrResult(lhsId: Int32Id, rhsId: Int32Id) {
-      let lhsReg = CacheIR::useInt32Reg(lhsId);
-      let rhsReg = CacheIR::useInt32Reg(rhsId);
+      let lhsReg = CacheIR::useInt32Id(lhsId);
+      let rhsReg = CacheIR::useInt32Id(rhsId);
 
       let scratchReg = CacheIR::allocateReg();
       emit MASM::Mov(rhsReg, scratchReg);
@@ -892,8 +1038,8 @@ ir CacheIR emits MASM {
     }
 
     op Int32BitXorResult(lhsId: Int32Id, rhsId: Int32Id) {
-      let lhsReg = CacheIR::useInt32Reg(lhsId);
-      let rhsReg = CacheIR::useInt32Reg(rhsId);
+      let lhsReg = CacheIR::useInt32Id(lhsId);
+      let rhsReg = CacheIR::useInt32Id(rhsId);
 
       let scratchReg = CacheIR::allocateReg();
       emit MASM::Mov(rhsReg, scratchReg);
@@ -904,8 +1050,8 @@ ir CacheIR emits MASM {
     }
 
     op Int32BitAndResult(lhsId: Int32Id, rhsId: Int32Id) {
-      let lhsReg = CacheIR::useInt32Reg(lhsId);
-      let rhsReg = CacheIR::useInt32Reg(rhsId);
+      let lhsReg = CacheIR::useInt32Id(lhsId);
+      let rhsReg = CacheIR::useInt32Id(rhsId);
 
       let scratchReg = CacheIR::allocateReg();
       emit MASM::Mov(rhsReg, scratchReg);
@@ -916,8 +1062,8 @@ ir CacheIR emits MASM {
     }
 
     op Int32LeftShiftResult(lhsId: Int32Id, rhsId: Int32Id) {
-      let lhsReg = CacheIR::useInt32Reg(lhsId);
-      let rhsReg = CacheIR::useInt32Reg(rhsId);
+      let lhsReg = CacheIR::useInt32Id(lhsId);
+      let rhsReg = CacheIR::useInt32Id(rhsId);
 
       let scratchReg = CacheIR::allocateReg();
       emit MASM::Mov(lhsReg, scratchReg);
@@ -928,8 +1074,8 @@ ir CacheIR emits MASM {
     }
 
     op Int32RightShiftResult(lhsId: Int32Id, rhsId: Int32Id) {
-        let lhsReg = CacheIR::useInt32Reg(lhsId);
-        let rhsReg = CacheIR::useInt32Reg(rhsId);
+        let lhsReg = CacheIR::useInt32Id(lhsId);
+        let rhsReg = CacheIR::useInt32Id(rhsId);
 
         let scratchReg = CacheIR::allocateReg();
         emit MASM::Mov(lhsReg, scratchReg);
@@ -941,8 +1087,8 @@ ir CacheIR emits MASM {
 
     // TODO(abhishekc-sharma): handle forceDouble.
     op Int32URightShiftResult(lhsId: Int32Id, rhsId: Int32Id) {
-        let lhsReg = CacheIR::useInt32Reg(lhsId);
-        let rhsReg = CacheIR::useInt32Reg(rhsId);
+        let lhsReg = CacheIR::useInt32Id(lhsId);
+        let rhsReg = CacheIR::useInt32Id(rhsId);
         let scratchReg = CacheIR::allocateReg();
 
         CacheIR::addFailurePath(out label failure);
@@ -956,7 +1102,7 @@ ir CacheIR emits MASM {
     }
 
     op Int32NegationResult(inputId: Int32Id) {
-      let inputReg = CacheIR::useInt32Reg(inputId);
+      let inputReg = CacheIR::useInt32Id(inputId);
       let scratchReg = CacheIR::allocateReg();
 
       CacheIR::addFailurePath(out label failure);
@@ -970,7 +1116,7 @@ ir CacheIR emits MASM {
     }
 
     op Int32IncResult(inputId: Int32Id) {
-        let inputReg = CacheIR::useInt32Reg(inputId);
+        let inputReg = CacheIR::useInt32Id(inputId);
         let scratchReg = CacheIR::allocateReg();
 
         CacheIR::addFailurePath(out label failure);
@@ -983,7 +1129,7 @@ ir CacheIR emits MASM {
     }
 
     op Int32DecResult(inputId: Int32Id) {
-        let inputReg = CacheIR::useInt32Reg(inputId);
+        let inputReg = CacheIR::useInt32Id(inputId);
         let scratchReg = CacheIR::allocateReg();
 
         CacheIR::addFailurePath(out label failure);
@@ -996,7 +1142,7 @@ ir CacheIR emits MASM {
     }
 
     op Int32NotResult(inputId: Int32Id) {
-        let inputReg = CacheIR::useInt32Reg(inputId);
+        let inputReg = CacheIR::useInt32Id(inputId);
         let scratchReg = CacheIR::allocateReg();
 
         emit MASM::Mov(inputReg, scratchReg);
@@ -1007,9 +1153,9 @@ ir CacheIR emits MASM {
     }
 
     op Int32MinMax(isMax: Bool, firstId: Int32Id, secondId: Int32Id, resultId: Int32Id) {
-        let firstReg = CacheIR::useInt32Reg(firstId);
-        let secondReg = CacheIR::useInt32Reg(secondId);
-        let resultReg = CacheIR::defineInt32Reg(resultId);
+        let firstReg = CacheIR::useInt32Id(firstId);
+        let secondReg = CacheIR::useInt32Id(secondId);
+        let resultReg = CacheIR::defineInt32Id(resultId);
 
         emit MASM::Mov(firstReg, resultReg);
         if isMax {
@@ -1030,56 +1176,56 @@ ir CacheIR emits MASM {
     fn allocateValueReg() -> ValueReg;
     fn releaseValueReg(valueReg: ValueReg);
 
-    fn defineReg(typedId: TypedId) -> Reg;
-    fn defineValueReg(valueId: ValueId) -> ValueReg;
+    fn defineTypedId(typedId: TypedId) -> Reg;
+    fn defineValueId(valueId: ValueId) -> ValueReg;
 
     #[refined]
-    fn defineObjectReg(id: ObjectId) -> Reg {
+    fn defineObjectId(id: ObjectId) -> Reg {
         let typedId = TypedId::fromObjectId(id);
-        CacheIR::defineReg(typedId)
+        CacheIR::defineTypedId(typedId)
     }
 
     #[refined]
-    fn defineInt32Reg(id: Int32Id) -> Reg {
+    fn defineInt32Id(id: Int32Id) -> Reg {
         let typedId = TypedId::fromInt32Id(id);
-        CacheIR::defineReg(typedId)
+        CacheIR::defineTypedId(typedId)
     }
 
     #[refined]
-    fn defineNumberReg(id: NumberId) -> ValueReg {
+    fn defineNumberId(id: NumberId) -> ValueReg {
         let valueId = id as ValueId;
-        CacheIR::defineValueReg(valueId)
+        CacheIR::defineValueId(valueId)
     }
         
     #[refined]
-    fn defineBooleanReg(id: BooleanId) -> Reg {
-        let typedId = TypedId::fromBooleanId(id);
-        CacheIR::defineReg(typedId)
+    fn defineBoolId(id: BoolId) -> Reg {
+        let typedId = TypedId::fromBoolId(id);
+        CacheIR::defineTypedId(typedId)
     }
 
     #[refined]
-    fn defineStringReg(id: StringId) -> Reg {
+    fn defineStringId(id: StringId) -> Reg {
         let typedId = TypedId::fromStringId(id);
-        CacheIR::defineReg(typedId)
+        CacheIR::defineTypedId(typedId)
     }
 
     #[refined]
-    fn defineSymbolReg(id: SymbolId) -> Reg {
+    fn defineSymbolId(id: SymbolId) -> Reg {
         let typedId = TypedId::fromSymbolId(id);
-        CacheIR::defineReg(typedId)
+        CacheIR::defineTypedId(typedId)
     }
     
     #[refined]
-    fn defineBigIntReg(id: BigIntId) -> Reg {
+    fn defineBigIntId(id: BigIntId) -> Reg {
         let typedId = TypedId::fromBigIntId(id);
-        CacheIR::defineReg(typedId)
+        CacheIR::defineTypedId(typedId)
     }
 
     fn getOperandLocation(id: OperandId) -> OperandLocation;
     fn setOperandLocation(id: OperandId, loc: OperandLocation);
 
     #[refined]
-    fn useReg(id: TypedId) emits MASM -> Reg {
+    fn useTypedId(id: TypedId) emits MASM -> Reg {
         let operandId = id as OperandId; 
         let location = CacheIR::getOperandLocation(operandId);
         let locationKind = OperandLocation::kind(location);
@@ -1102,7 +1248,7 @@ ir CacheIR emits MASM {
     }
 
     #[refined]
-    fn useValueReg(valueId: ValueId) emits MASM -> ValueReg {
+    fn useValueId(valueId: ValueId) emits MASM -> ValueReg {
         let operandId = valueId as OperandId; 
         let location = CacheIR::getOperandLocation(operandId);
         let locationKind = OperandLocation::kind(location);
@@ -1124,45 +1270,45 @@ ir CacheIR emits MASM {
     }
 
     #[refined]
-    fn useObjectReg(id: ObjectId) emits MASM -> Reg {
+    fn useObjectId(id: ObjectId) emits MASM -> Reg {
         let typedId = TypedId::fromObjectId(id);
-        CacheIR::useReg(typedId)
+        CacheIR::useTypedId(typedId)
     }
 
     #[refined]
-    fn useInt32Reg(id: Int32Id) emits MASM -> Reg {
+    fn useInt32Id(id: Int32Id) emits MASM -> Reg {
         let typedId = TypedId::fromInt32Id(id);
-        CacheIR::useReg(typedId)
+        CacheIR::useTypedId(typedId)
     }
 
     #[refined]
-    fn useNumberReg(id: NumberId) emits MASM -> ValueReg {
+    fn useNumberId(id: NumberId) emits MASM -> ValueReg {
         let valueId = id as ValueId;
-        CacheIR::useValueReg(valueId)
+        CacheIR::useValueId(valueId)
     }
 
     #[refined]
-    fn useBooleanReg(id: BooleanId) emits MASM -> Reg {
-        let typedId = TypedId::fromBooleanId(id);
-        CacheIR::useReg(typedId)
+    fn useBoolId(id: BoolId) emits MASM -> Reg {
+        let typedId = TypedId::fromBoolId(id);
+        CacheIR::useTypedId(typedId)
     }
 
     #[refined]
-    fn useStringReg(id: StringId) emits MASM -> Reg {
+    fn useStringId(id: StringId) emits MASM -> Reg {
         let typedId = TypedId::fromStringId(id);
-        CacheIR::useReg(typedId)
+        CacheIR::useTypedId(typedId)
     }
 
     #[refined]
-    fn useSymbolReg(id: SymbolId) emits MASM -> Reg {
+    fn useSymbolId(id: SymbolId) emits MASM -> Reg {
         let typedId = TypedId::fromSymbolId(id);
-        CacheIR::useReg(typedId)
+        CacheIR::useTypedId(typedId)
     }
 
     #[refined]
-    fn useBigIntReg(id: BigIntId) emits MASM -> Reg {
+    fn useBigIntId(id: BigIntId) emits MASM -> Reg {
         let typedId = TypedId::fromBigIntId(id);
-        CacheIR::useReg(typedId)
+        CacheIR::useTypedId(typedId)
     }
 
     var outputReg: ValueReg;
@@ -1187,6 +1333,8 @@ ir CacheIR emits MASM {
     fn readInt32Field(int32Field: Int32Field) -> Int32;
     fn readShapeField(shapeField: ShapeField) -> Shape;
     fn readClassField(classField: ClassField) -> Class;
+    fn readInt64Field(int64Field: Int64Field) -> Int64;
+    fn readValueField(valueField: ValueField) -> Value;
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
 }

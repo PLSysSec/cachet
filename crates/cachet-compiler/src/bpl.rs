@@ -2193,12 +2193,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
 fn compile_literal(literal: flattener::Literal) -> Literal {
     match literal {
+        flattener::Literal::Int8(n) => Literal::Bv8(n as u8),
         flattener::Literal::Int16(n) => Literal::Bv16(n as u16),
         flattener::Literal::Int32(n) => Literal::Bv32(n as u32),
         flattener::Literal::Int64(n) => Literal::Bv64(n as u64),
-        flattener::Literal::UInt64(n) => Literal::Bv64(n),
-        flattener::Literal::UInt32(n) => Literal::Bv32(n),
+        flattener::Literal::UInt8(n) => Literal::Bv8(n),
         flattener::Literal::UInt16(n) => Literal::Bv16(n),
+        flattener::Literal::UInt32(n) => Literal::Bv32(n),
+        flattener::Literal::UInt64(n) => Literal::Bv64(n),
         flattener::Literal::Double(n) => Literal::Float64(n),
     }
 }
@@ -2260,12 +2262,12 @@ lazy_static! {
             (Ident::from("CacheIR").nest("allocateReg".into()), Proc),
             (Ident::from("CacheIR").nest("allocateKnownReg".into()), Proc),
             (Ident::from("CacheIR").nest("releaseReg".into()), Proc),
-            (Ident::from("CacheIR").nest("defineReg".into()), Proc),
-            (Ident::from("CacheIR").nest("defineValueReg".into()), Proc),
+            (Ident::from("CacheIR").nest("defineTypedId".into()), Proc),
+            (Ident::from("CacheIR").nest("defineValueId".into()), Proc),
             (Ident::from("CacheIR").nest("getOperandLocation".into()), Proc),
             (Ident::from("CacheIR").nest("setOperandLocation".into()), Proc),
-            (Ident::from("initInputOperandLocation").into(), Proc),
-            (Ident::from("initValueInputOperandLocation").into(), Proc),
+            (Ident::from("initInputTypedIdOperandLocation").into(), Proc),
+            (Ident::from("initInputValueIdOperandLocation").into(), Proc),
             (Ident::from("initValueReg").into(), Proc),
         ])
     };

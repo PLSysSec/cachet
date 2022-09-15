@@ -82,6 +82,10 @@ impl<T> Spanned<T> {
         Self { span, value }
     }
 
+    pub const fn internal(value: T) -> Self {
+        Self { span: Span::Internal, value }
+    }
+
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Spanned<U> {
         Spanned {
             span: self.span,
@@ -119,7 +123,10 @@ impl<T: Copy> Spanned<&T> {
 impl<T: Debug> Debug for Spanned<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         Debug::fmt(&self.value, f)?;
-        write!(f, " @ {}", self.span)
+        if let Span::External(external_span) = self.span {
+            write!(f, " @ {}", external_span)?;
+        }
+        Ok(())
     }
 }
 

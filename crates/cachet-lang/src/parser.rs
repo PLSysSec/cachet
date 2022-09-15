@@ -27,14 +27,14 @@ use self::helpers::RawParseError;
 
 // * Parsing Entry Point
 
-pub fn parse<'a>(file_id: FileId, src: &str) -> Result<Vec<Spanned<Item>>, ParseError> {
+pub fn parse<'a>(file_id: FileId, src: &str) -> Result<Mod, ParseError> {
     PARSER
         .parse(file_id, src)
         .map_err(|error| ParseError::new(file_id, error))
 }
 
 lazy_static! {
-    static ref PARSER: grammar::ItemsParser = grammar::ItemsParser::new();
+    static ref PARSER: grammar::ModParser = grammar::ModParser::new();
 }
 
 // * Multi-File Parsing
@@ -44,7 +44,7 @@ pub type Files = codespan::Files<String>;
 pub struct Parser {
     pub files: Files,
     pub file_paths: HashSet<PathBuf>,
-    pub items: Vec<Spanned<Item>>,
+    pub mod_: Mod,
 }
 
 impl Parser {
@@ -52,7 +52,7 @@ impl Parser {
         Self {
             files: Files::new(),
             file_paths: HashSet::new(),
-            items: vec![],
+            mod_: Mod::default(),
         }
     }
 
@@ -87,8 +87,8 @@ impl Parser {
 
     pub fn parse_str(&mut self, name: impl Into<OsString>, src: &str) -> Result<(), ParseError> {
         let file_id = self.files.add(name.into(), src.into());
-        let items = parse(file_id, src)?;
-        let imports = items.iter().filter_map(|item| match &item.value {
+        let mod_ = parse(file_id, src)?;
+        let imports = mod_.items.iter().filter_map(|item| match &item.value {
             Item::Import(item) => Some(&item.file_path),
             _ => None,
         });
@@ -97,7 +97,7 @@ impl Parser {
             self.import(file_id, import.as_ref().map(|pb| pb.as_path()))?
         }
 
-        self.items.extend(items);
+        self.mod_.items.extend(mod_.items);
         Ok(())
     }
 

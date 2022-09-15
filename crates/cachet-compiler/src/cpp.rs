@@ -1189,6 +1189,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_literal(&self, literal: &normalizer::Literal) -> TaggedExpr<Literal> {
         match literal {
+            normalizer::Literal::Int8(n) => TaggedExpr {
+                expr: Literal::Int8(*n),
+                type_: BuiltInType::INT8.into(),
+                tags: ExprTag::Val.into(),
+            },
             normalizer::Literal::Int16(n) => TaggedExpr {
                 expr: Literal::Int16(*n),
                 type_: BuiltInType::INT16.into(),
@@ -1202,6 +1207,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Literal::Int64(n) => TaggedExpr {
                 expr: Literal::Int64(*n),
                 type_: BuiltInType::INT64.into(),
+                tags: ExprTag::Val.into(),
+            },
+            normalizer::Literal::UInt8(n) => TaggedExpr {
+                expr: Literal::UInt8(*n),
+                type_: BuiltInType::UINT8.into(),
                 tags: ExprTag::Val.into(),
             },
             normalizer::Literal::UInt16(n) => TaggedExpr {

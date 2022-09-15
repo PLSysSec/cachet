@@ -27,9 +27,9 @@ use crate::resolver::registry::{LookupError, LookupResult, Registrable, Registry
 
 // * Name Resolution Entry Point
 
-pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> {
+pub fn resolve(mod_: parser::Mod) -> Result<Env, ResolveErrors> {
     let mut item_catalog = ItemCatalog::new();
-    item_catalog.catalog_items(items);
+    item_catalog.catalog_items(mod_.items);
 
     let mut resolver = Resolver::new(
         item_catalog.errors,

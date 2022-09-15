@@ -28,7 +28,8 @@ Attrs: Vec<Attr> =
 Attr: Attr =
     "#" "[" <path:Spanned<Path>> "]" => Attr { path };
 
-pub Items: Vec<Spanned<Item>> = Spanned<Item>*;
+pub Mod: Mod =
+    <items:Spanned<Item>*> => items.into();
 
 Item: Item = {
     <import_item:ImportItem> => Item::from(import_item).into(),
@@ -491,49 +492,30 @@ NumericCompareBinOper: NumericCompareBinOper = {
 // TODO(spinda): Support NaN literals and scientific notation.
 
 Literal: Literal = {
-    <n:UInt16Literal> => Literal::UInt16(n),
-    <n:UInt32Literal> => Literal::UInt32(n),
-    <n:UInt64Literal> => Literal::UInt64(n),
+    <n:Int8Literal> => Literal::Int8(n),
     <n:Int16Literal> => Literal::Int16(n),
     <n:Int32Literal> => Literal::Int32(n),
     <n:Int64Literal> => Literal::Int64(n),
-    <n:HexLiteral> => n,
+    <n:UInt8Literal> => Literal::UInt8(n),
+    <n:UInt16Literal> => Literal::UInt16(n),
+    <n:UInt32Literal> => Literal::UInt32(n),
+    <n:UInt64Literal> => Literal::UInt64(n),
     <n:DoubleLiteral> => Literal::Double(n),
+    <n:HexLiteral> => n,
 };
 
-HexLiteral: Literal =
-    <digits:Spanned<r"0x[0-9A-Fa-f]+">> =>? {
-        let radix = &digits.value[2..];
-        match radix.len() {
-            // Safety: The regex and length checks ensure the radix can be successfully parsed
-            1..=4 => Ok(Literal::UInt16(u16::from_str_radix(radix, 16).unwrap())),
-            5..=8 => Ok(Literal::UInt32(u32::from_str_radix(radix, 16).unwrap())),
-            9..=16 => Ok(Literal::UInt64(u64::from_str_radix(radix, 16).unwrap()).into()),
-            _ => Err(RawParseError::User {
-                error: Spanned::new(digits.span, "number too large to fit in any numeric type"),
-            })
-        }
-    };
-
-UInt16Literal: u16 =
-    <digits:Spanned<r"[0-9]+_u16">> =>?
-        u16::from_str(&digits.value[..digits.value.len() - 4])
+Int8Literal: i8 =
+    <digits:Spanned<r"[0-9]+_i8">> =>?
+        i8::from_str(&digits.value[..digits.value.len() - 4])
             .map_err(|error| RawParseError::User {
-                error: Spanned::new(digits.span, "number too large to fit in UInt16"),
-            });
-
-UInt64Literal: u64 =
-    <digits:Spanned<r"[0-9]+_u64">> =>?
-        u64::from_str(&digits.value[..digits.value.len() - 4])
-            .map_err(|error| RawParseError::User {
-                error: Spanned::new(digits.span, "number too large to fit in UInt16"),
+                error: Spanned::new(digits.span, "number too large to fit in Int8"),
             });
 
 Int16Literal: i16 =
     <digits:Spanned<r"[0-9]+_i16">> =>?
         i16::from_str(&digits.value[..digits.value.len() - 4])
             .map_err(|error| RawParseError::User {
-                error: Spanned::new(digits.span, "number too large to fit in Int32"),
+                error: Spanned::new(digits.span, "number too large to fit in Int16"),
             });
 
 Int32Literal: i32 =
@@ -543,26 +525,62 @@ Int32Literal: i32 =
                 error: Spanned::new(digits.span, "number too large to fit in Int32"),
             });
 
-UInt32Literal: u32 =
-    <digits:Spanned<r"[0-9]+_u32">> =>?
-        u32::from_str(&digits.value[..digits.value.len() - 4])
-            .map_err(|error| RawParseError::User {
-                error: Spanned::new(digits.span, "number too large to fit in Int32"),
-            });
-
-DoubleLiteral : f64 =
-    <digits:Spanned<r"[0-9]+\.[0-9]+">> =>?
-        f64::from_str(digits.value)
-            .map_err(|error| RawParseError::User {
-                error: Spanned::new(digits.span, "number is not a valid double"),
-            });
-
 Int64Literal: i64 =
     <digits:Spanned<r"[0-9]+_i64">> =>?
         i64::from_str(&digits.value[..digits.value.len() - 4])
             .map_err(|error| RawParseError::User {
                 error: Spanned::new(digits.span, "number too large to fit in Int64"),
             });
+
+UInt8Literal: u8 =
+    <digits:Spanned<r"[0-9]+_u8">> =>?
+        u8::from_str(&digits.value[..digits.value.len() - 4])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in UInt8"),
+            });
+
+UInt16Literal: u16 =
+    <digits:Spanned<r"[0-9]+_u16">> =>?
+        u16::from_str(&digits.value[..digits.value.len() - 4])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in UInt16"),
+            });
+
+UInt32Literal: u32 =
+    <digits:Spanned<r"[0-9]+_u32">> =>?
+        u32::from_str(&digits.value[..digits.value.len() - 4])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in UInt32"),
+            });
+
+UInt64Literal: u64 =
+    <digits:Spanned<r"[0-9]+_u64">> =>?
+        u64::from_str(&digits.value[..digits.value.len() - 4])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in UInt16"),
+            });
+
+DoubleLiteral : f64 =
+    <digits:Spanned<r"[0-9]+\.[0-9]+">> =>?
+        f64::from_str(digits.value)
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number is not a valid Double"),
+            });
+
+HexLiteral: Literal =
+    <digits:Spanned<r"0x[0-9A-Fa-f]+">> =>? {
+        let radix = &digits.value[2..];
+        match radix.len() {
+            // Safety: The regex and length checks ensure the radix can be successfully parsed
+            1..=2 => Ok(Literal::UInt8(u8::from_str_radix(radix, 16).unwrap())),
+            3..=4 => Ok(Literal::UInt16(u16::from_str_radix(radix, 16).unwrap())),
+            5..=8 => Ok(Literal::UInt32(u32::from_str_radix(radix, 16).unwrap())),
+            9..=16 => Ok(Literal::UInt64(u64::from_str_radix(radix, 16).unwrap()).into()),
+            _ => Err(RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in any numeric type"),
+            })
+        }
+    };
 
 StringLiteral: String =
     <s:r#""(?:[^"\\]|\\.)*""#> => s[1..s.len()-1].into();

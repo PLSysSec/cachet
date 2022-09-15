@@ -15,14 +15,17 @@ pub enum VarParamKind {
     Out,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum CheckKind {
+    #[display(fmt = "assert")]
     Assert,
+    #[display(fmt = "assume")]
     Assume,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum BlockKind {
+    #[display(fmt = "unsafe")]
     Unsafe,
 }
 

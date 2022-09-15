@@ -96,8 +96,12 @@ struct PathNode {
 }
 
 impl Path {
-    pub fn new(parent: Option<Path>, ident: Ident) -> Self {
-        Path(Intern::new(PathNode { parent, ident }))
+    pub fn new<T: Into<Ident>>(parent: Option<Path>, ident: T) -> Self {
+        Path(Intern::new(PathNode { parent, ident: ident.into() }))
+    }
+
+    pub fn from_ident<T: Into<Ident>>(ident: T) -> Self {
+        Path::new(None, ident.into())
     }
 
     pub fn parent(self) -> Option<Path> {
@@ -112,12 +116,12 @@ impl Path {
         self.0.ident
     }
 
-    pub fn nest(self, ident: Ident) -> Path {
-        Path::new(Some(self), ident)
+    pub fn nest<T: Into<Ident>>(self, ident: T) -> Path {
+        Path::new(Some(self), ident.into())
     }
 
-    pub fn push(&mut self, ident: Ident) {
-        *self = self.nest(ident);
+    pub fn push<T: Into<Ident>>(&mut self, ident: T) {
+        *self = self.nest(ident.into());
     }
 
     pub fn len(mut self) -> usize {
@@ -158,7 +162,7 @@ impl Display for Path {
 
 impl From<Ident> for Path {
     fn from(ident: Ident) -> Self {
-        Path::new(None, ident)
+        Path::from_ident(ident)
     }
 }
 

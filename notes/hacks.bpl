@@ -148,90 +148,91 @@ procedure #MASM~setBigInt($reg: #Reg, $bigInt: #BigInt)
   call #MASM~setUnboxedValue($reg, tmp'0);
 }
 
-var #CacheIR~knownOperandIds: #Set #OperandId;
+var #CacheIR~knownOperandIds: #Set #UInt16;
 
-var #CacheIR~operandLocations: #Map #OperandId #OperandLocation;
+var #CacheIR~operandLocations: #Map #UInt16 #OperandLocation;
 
-procedure #CacheIR~defineReg($typedId: #TypedId)
+procedure #CacheIR~defineTypedId($typedId: #TypedId)
     returns (reg: #Reg)
     modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
 {
-    var $operandId'0: #OperandId;
+    var $id'0: #UInt16;
     var $loc'0: #OperandLocation;
     var $loc'1: #OperandLocation;
     var $locKind'0: #OperandLocationKind;
     
-    $operandId'0 := #TypedId^to#OperandId($typedId);
-    $loc'0 := #Map~get(#CacheIR~operandLocations, $operandId'0);
+    $id'0 := #OperandId~id(#TypedId^to#OperandId($typedId));
+    $loc'0 := #Map~get(#CacheIR~operandLocations, $id'0);
     $locKind'0 := #OperandLocation~kind($loc'0);
     assert $locKind'0 == #OperandLocationKind^Variant~Uninitialized();
     
     call reg := #CacheIR~allocateReg();
     call $loc'1 := #OperandLocation~setPayloadReg(reg, #TypedId~type($typedId));
-    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId'0, $loc'1);
+    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'1);
 }
 
-procedure #CacheIR~defineValueReg($valueId: #ValueId)
+procedure #CacheIR~defineValueId($valueId: #ValueId)
     returns (reg: #ValueReg)
     modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
 {
-    var $operandId'0: #OperandId;
+    var $id'0: #UInt16;
     var $loc'0: #OperandLocation;
     var $loc'1: #OperandLocation;
     var $locKind'0: #OperandLocationKind;
     
-    $operandId'0 := #ValueId^to#OperandId($valueId);
-    $loc'0 := #Map~get(#CacheIR~operandLocations, $operandId'0);
+    $id'0 := #OperandId~id(#ValueId^to#OperandId($valueId));
+    $loc'0 := #Map~get(#CacheIR~operandLocations, $id'0);
     $locKind'0 := #OperandLocation~kind($loc'0);
     assert $locKind'0 == #OperandLocationKind^Variant~Uninitialized();
     
     call reg := #CacheIR~allocateValueReg();
     call $loc'1 := #OperandLocation~setValueReg(reg);
-    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId'0, $loc'1);
+    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'1);
 }
 
 procedure #CacheIR~getOperandLocation($operandId: #OperandId)
     returns (loc: #OperandLocation)
 {
-    loc := #Map~get(#CacheIR~operandLocations, $operandId);
+    loc := #Map~get(#CacheIR~operandLocations, #OperandId~id($operandId));
 }
 
 procedure #CacheIR~setOperandLocation($operandId: #OperandId, $loc: #OperandLocation)
     modifies #CacheIR~operandLocations;
 {
-    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId, $loc);
+    #CacheIR~operandLocations :=
+        #Map~set(#CacheIR~operandLocations, #OperandId~id($operandId), $loc);
 }
 
-procedure #initInputOperandLocation($typedId: #TypedId)
+procedure #initInputTypedIdOperandLocation($typedId: #TypedId)
     modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
-    var $operandId'0: #OperandId;
+    var $id'0: #UInt16;
     var tmp'0: #Bool;
     var $loc'0: #OperandLocation;
 
-    $operandId'0 := #TypedId^to#OperandId($typedId);
-    tmp'0 := #Set~contains(#CacheIR~knownOperandIds, $operandId'0);
+    $id'0 := #OperandId~id(#TypedId^to#OperandId($typedId));
+    tmp'0 := #Set~contains(#CacheIR~knownOperandIds, $id'0);
     assume !tmp'0;
-    #CacheIR~knownOperandIds := #Set~add(#CacheIR~knownOperandIds, $operandId'0);
+    #CacheIR~knownOperandIds := #Set~add(#CacheIR~knownOperandIds, $id'0);
 
     call $loc'0 := #OperandLocation~newUninitialized();
-    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId'0, $loc'0);
+    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'0);
 }
 
-procedure #initValueInputOperandLocation($valueId: #ValueId)
+procedure #initInputValueIdOperandLocation($valueId: #ValueId)
     modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
-    var $operandId'0: #OperandId;
+    var $id'0: #UInt16;
     var tmp'0: #Bool;
     var $loc'0: #OperandLocation;
 
-    $operandId'0 := #ValueId^to#OperandId($valueId);
-    tmp'0 := #Set~contains(#CacheIR~knownOperandIds, $operandId'0);
+    $id'0 := #OperandId~id(#ValueId^to#OperandId($valueId));
+    tmp'0 := #Set~contains(#CacheIR~knownOperandIds, $id'0);
     assume !tmp'0;
-    #CacheIR~knownOperandIds := #Set~add(#CacheIR~knownOperandIds, $operandId'0);
+    #CacheIR~knownOperandIds := #Set~add(#CacheIR~knownOperandIds, $id'0);
 
     call $loc'0 := #OperandLocation~newUninitialized();
-    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $operandId'0, $loc'0);
+    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'0);
 }
 
 procedure #initValueReg($valueReg: #ValueReg)

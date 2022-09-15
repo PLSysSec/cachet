@@ -9,9 +9,8 @@ endif
 syn keyword cachetTypeItem enum struct impl ir emits nextgroup=cachetIdent skipwhite skipempty
 syn keyword cachetFnItem fn op nextgroup=cachetFnIdent skipwhite skipempty
 syn keyword cachetUnsafe unsafe
-syn keyword cachetImpure impure
 syn keyword cachetCheck assert assume
-syn keyword cachetKeyword var let out label bind
+syn keyword cachetKeyword var let out label bind return
 syn keyword cachetStorage mut
 syn keyword cachetConditional if else
 syn keyword cachetControlFlow goto
@@ -49,7 +48,6 @@ syn keyword cachetTodo contained TODO FIXME XXX NB NOTE SAFETY
 hi def link cachetTypeItem Keyword
 hi def link cachetFnItem Keyword
 hi def link cachetUnsafe Exception
-hi def link cachetImpure Exception
 hi def link cachetCheck Exception
 hi def link cachetKeyword Keyword
 hi def link cachetStorage StorageClass

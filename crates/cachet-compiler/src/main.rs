@@ -34,23 +34,15 @@ struct Opt {
     /// Input source file (typically ending in .cachet).
     #[structopt(parse(from_os_str))]
     input: PathBuf,
-    /// Output file for declarations (typically ending in .h or .hpp).
-    #[structopt(
-        parse(from_os_str),
-        required_unless("dry-run"),
-        requires("defs-output")
-    )]
-    decls_output: Option<PathBuf>,
-    /// Output file for definitions (typically ending in .inc or .cpp).
-    #[structopt(
-        parse(from_os_str),
-        required_unless("dry-run"),
-        requires("decls-output")
-    )]
-    defs_output: Option<PathBuf>,
-    /// Output file for specification (typically ending in .bpl).
-    #[structopt(parse(from_os_str), required_unless("dry-run"))]
-    spec_output: Option<PathBuf>,
+    /// Output file for C++ declarations (typically ending in .h or .hpp).
+    #[structopt(long, parse(from_os_str))]
+    cpp_decls: Option<PathBuf>,
+    /// Output file for C++ definitions (typically ending in .inc or .cpp).
+    #[structopt(long, parse(from_os_str))]
+    cpp_defs: Option<PathBuf>,
+    /// Output file for Boogie verification code (typically ending in .bpl).
+    #[structopt(long, parse(from_os_str))]
+    bpl: Option<PathBuf>,
 
     /// Skip writing output files.
     #[structopt(long)]
@@ -98,12 +90,12 @@ fn main() -> Result<(), Error> {
         )));
     }
 
-    let items = parser.items;
+    let mod_ = parser.mod_;
     if opt.dump_parser {
-        println!("=== PARSER ===\n\n{:#?}\n\n", items);
+        println!("=== PARSER ===\n\n{:#?}\n\n", mod_);
     }
 
-    let env = match resolve(items) {
+    let env = match resolve(mod_) {
         Ok(env) => env,
         Err(ResolveErrors(errors)) => {
             report_all(&parser.files, errors.iter());
@@ -136,26 +128,30 @@ fn main() -> Result<(), Error> {
         println!("=== NORMALIZER ===\n\n{:#?}\n\n", env);
     }
 
-    let cpp_compiler_output = compile_cpp(&env);
+    if opt.cpp_decls.is_some() || opt.cpp_defs.is_some() {
+        let cpp_compiler_output = compile_cpp(&env);
 
-    if !opt.dry_run {
-        let decls_output = opt.decls_output.unwrap();
-        write!(
-            File::create(&decls_output)
-                .with_context(|| format!("Failed to open {}", decls_output.display()))?,
-            "{}",
-            cpp_compiler_output.decls
-        )
-        .with_context(|| format!("Failed to write {}", decls_output.display()))?;
+        if !opt.dry_run {
+            if let Some(cpp_decls_path) = opt.cpp_decls {
+                write!(
+                    File::create(&cpp_decls_path)
+                        .with_context(|| format!("Failed to open {}", cpp_decls_path.display()))?,
+                    "{}",
+                    cpp_compiler_output.decls
+                )
+                .with_context(|| format!("Failed to write {}", cpp_decls_path.display()))?;
+            }
 
-        let defs_output = opt.defs_output.unwrap();
-        write!(
-            File::create(&defs_output)
-                .with_context(|| format!("Failed to open {}", defs_output.display()))?,
-            "{}",
-            cpp_compiler_output.defs
-        )
-        .with_context(|| format!("Failed to write {}", defs_output.display()))?;
+            if let Some(cpp_defs_path) = opt.cpp_defs {
+                write!(
+                    File::create(&cpp_defs_path)
+                        .with_context(|| format!("Failed to open {}", cpp_defs_path.display()))?,
+                    "{}",
+                    cpp_compiler_output.defs
+                )
+                .with_context(|| format!("Failed to write {}", cpp_defs_path.display()))?;
+            }
+        }
     }
 
     let env = flatten(env);
@@ -163,17 +159,18 @@ fn main() -> Result<(), Error> {
         println!("=== FLATTENER ===\n\n{:#?}\n\n", env);
     }
 
-    let bpl_code = compile_bpl(&env);
+    if let Some(bpl_path) = opt.bpl {
+        let bpl_code = compile_bpl(&env);
 
-    if !opt.dry_run {
-        let spec_output = opt.spec_output.unwrap();
-        write!(
-            File::create(&spec_output)
-                .with_context(|| format!("Failed to open {}", spec_output.display()))?,
-            "{}",
-            bpl_code
-        )
-        .with_context(|| format!("Failed to write {}", spec_output.display()))?;
+        if !opt.dry_run {
+            write!(
+                File::create(&bpl_path)
+                    .with_context(|| format!("Failed to open {}", bpl_path.display()))?,
+                "{}",
+                bpl_code
+            )
+            .with_context(|| format!("Failed to write {}", bpl_path.display()))?;
+        }
     }
 
     Ok(())
