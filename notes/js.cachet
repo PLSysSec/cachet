@@ -6,6 +6,7 @@ var mut heap: Heap;
 enum RegDataType {
     Value,
     NativeObjectSlots,
+    NativeObjectElements,
     TypeTag,
 }
 
@@ -58,6 +59,28 @@ impl RegData {
 
     unsafe fn toNativeObjectSlotsUnchecked(data: RegData) -> NativeObjectSlots;
 
+    fn isNativeObjectElements(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::NativeObjectElements
+    }
+
+    fn fromNativeObjectElements(elements: NativeObjectElements) -> RegData {
+        let data = (unsafe { RegData::fromNativeObjectElementsUnchecked(elements) });
+        assume RegData::isNativeObjectElements(data);
+        assume (unsafe { RegData::toNativeObjectElementsUnchecked(data) }) == elements;
+        data
+    }
+
+    unsafe fn fromNativeObjectElementsUnchecked(slots: NativeObjectElements) -> RegData;
+
+    fn toNativeObjectElements(data: RegData) -> NativeObjectElements {
+        assert RegData::isNativeObjectElements(data);
+        let elements = (unsafe { RegData::toNativeObjectElementsUnchecked(data) });
+        assume (unsafe { RegData::fromNativeObjectElementsUnchecked(elements) }) == data;
+        elements
+    }
+
+    unsafe fn toNativeObjectElementsUnchecked(data: RegData) -> NativeObjectElements;
+
     fn isTypeTag(data: RegData) -> Bool {
         RegData::typeOf(data) == RegDataType::TypeTag
     }
@@ -80,13 +103,16 @@ impl RegData {
 
     unsafe fn toValueTypeUnchecked(data: RegData) -> ValueType;
 
-    fn readData(data: RegData, offset: UInt64) -> RegData {
+    fn readData(data: RegData, offset: Int64) -> RegData {
         if RegData::isValue(data) {
             let value = RegData::toValue(data);
             return Value::readData(value, offset);
         } else if RegData::isNativeObjectSlots(data) {
             let slots = RegData::toNativeObjectSlots(data);
             return NativeObjectSlots::readData(slots, offset);
+        } else if RegData::isNativeObjectElements(data) {
+            let elements = RegData::toNativeObjectElements(data);
+            return NativeObjectElements::readData(elements, offset);
         }
 
         assert false;
@@ -284,7 +310,7 @@ impl Value {
 
     unsafe fn toBigIntUnchecked(value: Value) -> BigInt;
 
-    fn readData(value: Value, offset: UInt64) -> RegData {
+    fn readData(value: Value, offset: Int64) -> RegData {
         if Value::isObject(value) {
             let object = Value::toObject(value);
             return Object::readData(object, offset);
@@ -334,7 +360,7 @@ impl Object {
     }
 
     // read RegData at the specified memory offset of the Object
-    fn readData(object: Object, offset: UInt64) -> RegData {
+    fn readData(object: Object, offset: Int64) -> RegData {
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);   
 
@@ -354,6 +380,7 @@ impl NativeObject {
     var maxFixedSlots: UInt64 = 16_u64;
     var sizeOf: UInt64 = 24_u64;
     var offsetOfSlots: UInt64 = 8_u64;
+    var offsetOfElements: UInt64 = 16_u64;
 
     fn getFixedSlot(nativeObject: NativeObject, slot: UInt32) -> Value {
         let shape = Object::shapeOf(nativeObject);
@@ -375,14 +402,25 @@ impl NativeObject {
     unsafe fn getDynamicSlotUnchecked(heap: Heap, nativeObject: NativeObject, slot: UInt32) ->
     Value;
 
-    fn readData(nativeObject: NativeObject, offset: UInt64) -> RegData {
-        if offset == NativeObject::offsetOfSlots {
+    fn getElementsHeader(nativeObject: NativeObject) -> NativeObjectElements {
+        (unsafe { NativeObject::getElementsHeaderUnchecked(heap, nativeObject) } )
+    }
+
+    unsafe fn getElementsHeaderUnchecked(heap: Heap, nativeObject: NativeObject) ->
+    NativeObjectElements;
+
+    fn readData(nativeObject: NativeObject, offset: Int64) -> RegData {
+        if offset == NativeObject::offsetOfSlots as Int64 {
             // dynamic slots array
             let slots = NativeObjectSlots::new(nativeObject);
             return RegData::fromNativeObjectSlots(slots);
-        } else if offset >= NativeObject::sizeOf {
+        } else if offset == NativeObject::offsetOfElements as Int64 {
+            // object elements
+            let elements = NativeObject::getElementsHeader(nativeObject); 
+            return RegData::fromNativeObjectElements(elements);
+        } else if offset >= NativeObject::sizeOf as Int64 {
             // fixed slots
-            let slotOffset = offset - NativeObject::sizeOf;
+            let slotOffset = offset as UInt64 - NativeObject::sizeOf;
             assert slotOffset % Value::sizeOf == 0_u64;
             assert slotOffset / Value::sizeOf < NativeObject::maxFixedSlots;
             let slot = (slotOffset / Value::sizeOf) as UInt32;
@@ -408,13 +446,95 @@ impl NativeObjectSlots {
 
     unsafe fn newUnchecked(parent: NativeObject) -> NativeObjectSlots;
 
-    fn readData(slots: NativeObjectSlots, offset: UInt64) -> RegData {
+    fn readData(slots: NativeObjectSlots, offset: Int64) -> RegData {
         let nativeObject = slots.parent;
 
-        assert offset % Value::sizeOf == 0_u64;
-        let slot = (offset / Value::sizeOf) as UInt32;
+        assert offset % Value::sizeOf as Int64 == 0_i64;
+        let slot = (offset / Value::sizeOf as Int64) as UInt32;
         let value = NativeObject::getDynamicSlot(nativeObject, slot);
         RegData::fromValue(value)
+    }
+}
+
+struct NativeObjectElements;
+
+impl NativeObjectElements {
+    var offsetOfLength: Int32 = -4_i32;
+
+    fn getLength(elements: NativeObjectElements) -> UInt32 {
+        ( unsafe { NativeObjectElements::getLengthUnchecked(heap, elements) } )
+    }
+
+    unsafe fn getLengthUnchecked(heap: Heap, elements: NativeObjectElements) -> UInt32;
+
+    fn readData(elements: NativeObjectElements, offset: Int64) -> RegData {
+        if offset == NativeObjectElements::offsetOfLength {
+            let length = NativeObjectElements::getLength(elements);
+            let value = Value::fromInt32(length as Int32);
+            return RegData::fromValue(value);
+        }
+
+        assert false;
+        RegData::fromNativeObjectElements(elements)
+    }
+}
+
+struct ArrayObject <: NativeObject;
+
+impl ArrayObject {
+    var rawClass : Class;
+
+    fn class() -> Class {
+        assume Class::isNativeObject(ArrayObject::rawClass);
+        ArrayObject::rawClass
+    }
+}
+
+struct PlainObject <: NativeObject;
+
+impl PlainObject {
+    var rawClass : Class;
+
+    fn class() -> Class {
+        assume Class::isNativeObject(PlainObject::rawClass);
+        PlainObject::rawClass
+    }
+}
+
+struct ArrayBufferObjectMaybeShared <: NativeObject;
+
+struct ArrayBufferObject <: ArrayBufferObjectMaybeShared;
+
+impl ArrayBufferObject {
+    var rawClass : Class;
+
+    fn class() -> Class {
+        assume Class::isNativeObject(ArrayBufferObject::rawClass);
+        ArrayBufferObject::rawClass
+    }
+}
+
+struct SharedArrayBufferObject <: ArrayBufferObjectMaybeShared;
+
+impl SharedArrayBufferObject {
+    var rawClass : Class;
+
+    fn class() -> Class {
+        assume Class::isNativeObject(SharedArrayBufferObject::rawClass);
+        SharedArrayBufferObject::rawClass
+    }
+}
+
+struct ArrayBufferViewObject <: NativeObject;
+
+struct DataViewObject <: ArrayBufferViewObject;
+
+impl DataViewObject {
+    var rawClass : Class;
+
+    fn class() -> Class {
+        assume Class::isNativeObject(DataViewObject::rawClass);
+        DataViewObject::rawClass
     }
 }
 
@@ -425,10 +545,65 @@ impl ArgumentsObject {
     fn hasOverriddenLength(obj: ArgumentsObject) -> Bool;
 }
 
+struct UnmappedArgumentsObject <: ArgumentsObject;
+
+impl UnmappedArgumentsObject {
+    var rawClass : Class;
+
+    fn class() -> Class {
+        assume Class::isNativeObject(UnmappedArgumentsObject::rawClass);
+        UnmappedArgumentsObject::rawClass
+    }
+}
+
+struct MappedArgumentsObject <: ArgumentsObject;
+
+impl MappedArgumentsObject {
+    var rawClass: Class;
+
+    fn class() -> Class {
+        assume Class::isNativeObject(MappedArgumentsObject::rawClass);
+        MappedArgumentsObject::rawClass
+    }
+}
+
+struct SetObject <: NativeObject;
+
+impl SetObject {
+    var rawClass: Class;
+
+    fn class() -> Class {
+        assume Class::isNativeObject(SetObject::rawClass);
+        SetObject::rawClass
+    }
+}
+
+struct MapObject <: NativeObject;
+
+impl MapObject {
+    var rawClass: Class;
+
+    fn class() -> Class {
+        assume Class::isNativeObject(MapObject::rawClass);
+        MapObject::rawClass
+    }
+}
+
+struct BaseShape;
+
+impl BaseShape {
+    fn classOf(baseShape: BaseShape) -> Class;
+}
+
 struct Shape;
 
 impl Shape {
-    fn classOf(shape: Shape) -> Class;
+    fn baseShapeOf(shape: Shape) -> BaseShape;
+
+    fn classOf(shape: Shape) -> Class {
+        let baseShape = Shape::baseShapeOf(shape);
+        BaseShape::classOf(baseShape)
+    }
 
     fn hasFixedSlot(shape: Shape, slot: UInt32) -> Bool;
 
@@ -440,9 +615,14 @@ impl Shape {
 struct Class;
 
 impl Class {
+    fn windowProxyClass() -> Class;
+    fn functionClass() -> Class;
+    fn extendedFunctionClass() -> Class;
+
     fn isNativeObject(class: Class) -> Bool;
     fn isArgumentsObject(class: Class) -> Bool;
     fn isProxyObject(class: Class) -> Bool;
+
 }
 
 struct String;

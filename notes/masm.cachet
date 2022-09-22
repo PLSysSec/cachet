@@ -166,6 +166,14 @@ ir MASM {
         MASM::setInt32(dstReg, int32);
     }
 
+    op Load32Address(address: Address, dstReg: Reg) {
+        let baseData = MASM::getData(address.base);
+        let data = RegData::readData(baseData, address.offset);
+        let value = RegData::toValue(data);
+        let int32 = Value::toInt32(value);
+        MASM::setInt32(dstReg, int32);
+    }
+
     op LoadValueAddress(address: Address, dstReg: ValueReg) {
         let baseData = MASM::getData(address.base);    
         let data = RegData::readData(baseData, address.offset);
@@ -490,6 +498,48 @@ ir MASM {
         }
     }
 
+    op BranchTestObjIsFunction(
+        condition: Condition, objectReg: Reg, scratchReg: Reg,
+        spectreRegToZero: Reg, label branch: MASM
+    ) {
+
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+        let object = MASM::getObject(objectReg);
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+
+        let isClass = class == Class::functionClass() || class == Class::extendedFunctionClass();
+
+        if condition == Condition::Equal && isClass {
+            goto branch;
+        }
+
+        if condition == Condition::NotEqual && !isClass {
+            goto branch;
+        }
+
+        MASM::setInt32(scratchReg, 0_i32);
+    }
+
+    op BranchTestObjIsFunctionNoSpectreMitigations(
+        condition: Condition, objectReg: Reg, scratchReg: Reg, label branch: MASM
+    ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+        let object = MASM::getObject(objectReg);
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+
+        let isClass = class == Class::functionClass() || class == Class::extendedFunctionClass();
+        
+        if condition == Condition::Equal && isClass {
+            goto branch;
+        } else if condition == Condition::NotEqual && !isClass {
+            goto branch;
+        }
+    }
+
     op BranchTestObjectShape(
         condition: Condition, objectReg: Reg, shape: Shape, scratchReg: Reg, spectreRegToZero: Reg,
         label branch: MASM
@@ -499,18 +549,10 @@ ir MASM {
 
         MASM::setInt32(scratchReg, 0_i32);
 
-        if condition == Condition::Equal {
-            if objectHasShape {
-                MASM::setInt32(spectreRegToZero, MASM::getInt32(scratchReg));
-                goto branch;
-            }
-        }
-
-        if condition == Condition::NotEqual {
-            if !objectHasShape {
-                MASM::setInt32(spectreRegToZero, MASM::getInt32(scratchReg));
-                goto branch;
-            }
+        if condition == Condition::Equal && objectHasShape {
+            goto branch;
+        } else if condition == Condition::NotEqual && !objectHasShape {
+            goto branch;
         }
     }
 
@@ -520,16 +562,10 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let objectHasShape = Object::shapeOf(object) == shape;
 
-        if condition == Condition::Equal {
-            if objectHasShape {
-                goto branch;
-            }
-        }
-
-        if condition == Condition::NotEqual {
-            if !objectHasShape {
-                goto branch;
-            }
+        if condition == Condition::Equal && objectHasShape {
+            goto branch;
+        } else if condition == Condition::NotEqual && !objectHasShape {
+            goto branch;
         }
     }
 
@@ -543,14 +579,12 @@ ir MASM {
         let objectHasClass = Shape::classOf(shape) == class;
 
         if condition == Condition::Equal && objectHasClass {
-            MASM::setInt32(scratchReg, 0_i32);
-            MASM::setInt32(spectreRegToZero, MASM::getInt32(scratchReg));
             goto branch;
         } else if condition == Condition::NotEqual && !objectHasClass {
-            MASM::setInt32(scratchReg, 0_i32);
-            MASM::setInt32(spectreRegToZero, MASM::getInt32(scratchReg));
             goto branch;
         }
+
+        MASM::setInt32(scratchReg, 0_i32);
     }
 
     op BranchTestObjectClassNoSpectreMitigations(
@@ -566,13 +600,6 @@ ir MASM {
         } else if condition == Condition::NotEqual && !objectHasClass {
             goto branch;
         }
-    }
-
-    op BranchTestObjIsFunction(
-        condition: Condition, objectReg: Reg, scratchReg: Reg,
-        spectreRegToZero: Reg, label branch: MASM
-    ) {
-        
     }
 
     op BranchIfNonNativeObj(objectReg: Reg, scratchReg: Reg, label branch: MASM) {

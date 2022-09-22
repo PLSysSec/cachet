@@ -351,7 +351,7 @@ ir CacheIR emits MASM {
         }
     }
 
-    /*op GuardClass(objId: ObjectId, kind: GuardClassKind) {
+    op GuardClass(objId: ObjectId, kind: GuardClassKind) {
         let objReg = CacheIR::useObjectReg(objId);
         let scratchReg = CacheIR::allocateReg();
     
@@ -369,8 +369,42 @@ ir CacheIR emits MASM {
             return;
         }
 
+        let class = ArrayObject::class();
+
+        if kind == GuardClassKind::Array {
+            class = ArrayObject::class();
+        } else if kind == GuardClassKind::PlainObject {
+            class = PlainObject::class();
+        } else if kind == GuardClassKind::ArrayBuffer {
+            class = ArrayBufferObject::class();
+        } else if kind == GuardClassKind::SharedArrayBuffer {
+            class = SharedArrayBufferObject::class();
+        } else if kind == GuardClassKind::DataView {
+            class = DataViewObject::class();
+        } else if kind == GuardClassKind::MappedArguments {
+            class = MappedArgumentsObject::class();
+        } else if kind == GuardClassKind::UnmappedArguments {
+            class = UnmappedArgumentsObject::class();
+        } else if kind == GuardClassKind::WindowProxy {
+            class = Class::windowProxyClass();
+        } else if kind == GuardClassKind::Set {
+            class = SetObject::class();
+        } else if kind == GuardClassKind::Map {
+            class = MapObject::class();
+        } else if kind == GuardClassKind::JSFunction {
+            assert false; // this case was handled before
+        }
+
+        if CacheIR::objectGuardNeedsSpectreMitigations(objId) {
+            emit MASM::BranchTestObjectClass(Condition::NotEqual, objReg, class, scratchReg, objReg,
+                    failure);
+        } else {
+            emit MASM::BranchTestObjectClassNoSpectreMitigations(Condition::NotEqual, objReg, class,
+                    scratchReg, failure);
+        }
+
         CacheIR::releaseReg(scratchReg);
-    }*/
+    }
 
     op GuardBooleanToInt32(valueId: ValueId, int32Id: Int32Id) {
         let int32Reg = CacheIR::defineInt32Reg(int32Id);
@@ -502,6 +536,25 @@ ir CacheIR emits MASM {
         emit MASM::LoadValueAddress(
             Address::new(scratchReg, slotOffset), CacheIR::outputReg
         );
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
+    op LoadInt32ArrayLengthResult(objectId: ObjectId) {
+        let objectReg = CacheIR::useObjectReg(objectId);
+        let scratchReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::LoadPtrAddress(
+            Address::new(objectReg, NativeObject::offsetOfElements as Int32), scratchReg
+        );
+        emit MASM::Load32Address(
+            Address::new(scratchReg, NativeObjectElements::offsetOfLength), scratchReg
+        );
+
+        emit MASM::BranchTest32(Condition::Signed, scratchReg, scratchReg, failure);
+        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
 
         CacheIR::releaseReg(scratchReg);
     }
