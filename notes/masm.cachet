@@ -259,7 +259,10 @@ ir MASM {
 
         let value = MASM::getValue(valueReg);
 
-        if valTy == ValueType::Int32 {
+        if valTy == ValueType::Object {
+            let o = Value::toObject(value);
+            MASM::setObject(dstReg, o);
+        } else if valTy == ValueType::Int32 {
             let i = Value::toInt32(value);
             MASM::setInt32(dstReg, i);
         } else if valTy == ValueType::Bool {

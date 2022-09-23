@@ -36,11 +36,27 @@ procedure #MASM~setValue($valueReg: #ValueReg, $value: #Value)
   call #MASM~setData($valueReg, tmp'0);
 }
 
+procedure #MASM~getUnboxedValue($reg: #Reg)
+  returns (ret: #Value)
+{
+  var tmp'0: #RegData;
+  call tmp'0 := #MASM~getData($reg);
+  call ret := #RegData~toUnboxedValue(tmp'0);
+}
+
+procedure #MASM~setUnboxedValue($reg: #Reg, $value: #Value)
+  modifies #MASM~regs;
+{
+  var tmp'0: #RegData;
+  call tmp'0 := #RegData~fromUnboxedValue($value);
+  call #MASM~setData($reg, tmp'0);
+}
+
 procedure #MASM~getInt32($reg: #Reg)
   returns (ret: #Int32)
 {
   var tmp'0: #Value;
-  call tmp'0 := #MASM~getValue($reg);
+  call tmp'0 := #MASM~getUnboxedValue($reg);
   call ret := #Value~toInt32(tmp'0);
 }
 
@@ -49,14 +65,14 @@ procedure #MASM~setInt32($reg: #Reg, $int32: #Int32)
 {
   var tmp'0: #Value;
   call tmp'0 := #Value~fromInt32($int32);
-  call #MASM~setValue($reg, tmp'0);
+  call #MASM~setUnboxedValue($reg, tmp'0);
 }
 
 procedure #MASM~getBool($reg: #Reg)
   returns (ret: #Bool)
 {
   var tmp'0: #Value;
-  call tmp'0 := #MASM~getValue($reg);
+  call tmp'0 := #MASM~getUnboxedValue($reg);
   call ret := #Value~toBool(tmp'0);
 }
 
@@ -65,14 +81,14 @@ procedure #MASM~setBool($reg: #Reg, $bool: #Bool)
 {
   var tmp'0: #Value;
   call tmp'0 := #Value~fromBool($bool);
-  call #MASM~setValue($reg, tmp'0);
+  call #MASM~setUnboxedValue($reg, tmp'0);
 }
 
 procedure #MASM~getObject($reg: #Reg)
   returns (ret: #Object)
 {
   var tmp'0: #Value;
-  call tmp'0 := #MASM~getValue($reg);
+  call tmp'0 := #MASM~getUnboxedValue($reg);
   call ret := #Value~toObject(tmp'0);
 }
 
@@ -81,14 +97,14 @@ procedure #MASM~setObject($reg: #Reg, $object: #Object)
 {
   var tmp'0: #Value;
   call tmp'0 := #Value~fromObject($object);
-  call #MASM~setValue($reg, tmp'0);
+  call #MASM~setUnboxedValue($reg, tmp'0);
 }
 
 procedure #MASM~getString($reg: #Reg)
   returns (ret: #String)
 {
   var tmp'0: #Value;
-  call tmp'0 := #MASM~getValue($reg);
+  call tmp'0 := #MASM~getUnboxedValue($reg);
   call ret := #Value~toString(tmp'0);
 }
 
@@ -97,14 +113,14 @@ procedure #MASM~setString($reg: #Reg, $string: #String)
 {
   var tmp'0: #Value;
   call tmp'0 := #Value~fromString($string);
-  call #MASM~setValue($reg, tmp'0);
+  call #MASM~setUnboxedValue($reg, tmp'0);
 }
 
 procedure #MASM~getSymbol($reg: #Reg)
   returns (ret: #Symbol)
 {
   var tmp'0: #Value;
-  call tmp'0 := #MASM~getValue($reg);
+  call tmp'0 := #MASM~getUnboxedValue($reg);
   call ret := #Value~toSymbol(tmp'0);
 }
 
@@ -113,14 +129,14 @@ procedure #MASM~setSymbol($reg: #Reg, $symbol: #Symbol)
 {
   var tmp'0: #Value;
   call tmp'0 := #Value~fromSymbol($symbol);
-  call #MASM~setValue($reg, tmp'0);
+  call #MASM~setUnboxedValue($reg, tmp'0);
 }
 
 procedure #MASM~getBigInt($reg: #Reg)
   returns (ret: #BigInt)
 {
   var tmp'0: #Value;
-  call tmp'0 := #MASM~getValue($reg);
+  call tmp'0 := #MASM~getUnboxedValue($reg);
   call ret := #Value~toBigInt(tmp'0);
 }
 
@@ -129,7 +145,7 @@ procedure #MASM~setBigInt($reg: #Reg, $bigInt: #BigInt)
 {
   var tmp'0: #Value;
   call tmp'0 := #Value~fromBigInt($bigInt);
-  call #MASM~setValue($reg, tmp'0);
+  call #MASM~setUnboxedValue($reg, tmp'0);
 }
 
 var #CacheIR~knownOperandIds: #Set #OperandId;
@@ -221,10 +237,12 @@ procedure #initValueInputOperandLocation($valueId: #ValueId)
 procedure #initValueReg($valueReg: #ValueReg)
     modifies #MASM~regs;
 {
-    var $value'0: #Value;
+    var $data'0: #RegData;
+    var tmp'0: #Bool;
 
-    havoc $value'0;
-    call #MASM~setValue($valueReg, $value'0);
+    call $data'0 := #MASM~getData($valueReg);
+    call tmp'0 := #RegData~isValue($data'0);
+    assume tmp'0;
 }
 
 var #CacheIR~allocatedRegs: #Set #Reg;
