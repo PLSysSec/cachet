@@ -648,9 +648,8 @@ ir CacheIR emits MASM {
 
     op LoadInt32Constant(valField: Int32Field, resultId: Int32Id) {
         let resultReg = CacheIR::defineInt32Reg(resultId);
-        let val = CacheIR::readInt32Field(valField);
 
-        emit MASM::Load32(val, resultReg);
+        CacheIR::emitLoadInt32StubField(valField, resultReg);
     }
 
     op LoadInt32TruthyResult(inputId: ValueId) {
@@ -1080,6 +1079,11 @@ ir CacheIR emits MASM {
     }
 
     var outputReg: ValueReg;
+
+    #[refined]
+    fn emitLoadInt32StubField(int32Field: Int32Field, dstReg: Reg) emits MASM {
+       emit MASM::Move32Imm32(CacheIR::readInt32Field(int32Field), dstReg);
+    }
 
     fn readValueField(valueField: ValueField) -> Value;
     fn readInt32Field(int32Field: Int32Field) -> Int32;
