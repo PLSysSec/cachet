@@ -148,6 +148,24 @@ procedure #MASM~setBigInt($reg: #Reg, $bigInt: #BigInt)
   call #MASM~setUnboxedValue($reg, tmp'0);
 }
 
+var #MASM~stackPtr: #UInt64;
+var #MASM~stack: #Map #UInt64 #RegData;
+
+procedure #MASM~stackPush($data: #RegData)
+  modifies #MASM~stackPtr, #MASM~stack;
+{
+    #MASM~stack := #Map~set(#MASM~stack, #MASM~stackPtr, $data);
+    #MASM~stackPtr := #MASM~stackPtr + 8;
+}
+
+procedure #MASM~stackPop()
+  returns (data: #RegData)
+  modifies #MASM~stackPtr, #MASM~stack;
+{
+    data := #Map~get(#MASM~stack, #MASM~stackPtr);
+    #MASM~stackPtr := #MASM~stackPtr - 8;
+}
+
 var #CacheIR~knownOperandIds: #Set #OperandId;
 
 var #CacheIR~operandLocations: #Map #OperandId #OperandLocation;
@@ -245,7 +263,7 @@ procedure #initValueReg($valueReg: #ValueReg)
     assume tmp'0;
 }
 
-var #CacheIR~allocatedRegs: #Set #Reg;
+var #CacheIR~allocatedRegs: #Set #Encoding;
 
 procedure #CacheIR~allocateValueReg()
   returns (ret: #ValueReg)
@@ -264,29 +282,35 @@ procedure #CacheIR~allocateReg()
   returns (ret: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
-  var $reg: #Reg;
+  var $enc: #Encoding;
   var tmp'0: #Bool;
-  $reg := #CacheIR~allocateRegUnchecked(#CacheIR~allocatedRegs);
-  tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
+  $enc := #CacheIR~allocateRegUnchecked(#CacheIR~allocatedRegs);
+  assume !($enc == #Encoding^Variant~Rsp());
+  assume !($enc == #Encoding^Variant~Rbp());
+  tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $enc);
   assume !tmp'0;
-  #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
-  ret := $reg;
+  #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $enc);
+  ret := #Encoding^to#Reg($enc);
 }
 
 procedure #CacheIR~allocateKnownReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
+  var $enc: #Encoding;
   var tmp'0: #Bool;
-  tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
+  $enc := #Reg^to#Encoding($reg);
+  tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $enc);
   assume !tmp'0;
-  #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
+  #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $enc);
 }
 
-function #CacheIR~allocateRegUnchecked($allocatedRegs: #Set #Reg): #Reg;
+function #CacheIR~allocateRegUnchecked($allocatedRegs: #Set #Encoding): #Encoding;
 
 procedure #CacheIR~releaseReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
-  #CacheIR~allocatedRegs := #Set~remove(#CacheIR~allocatedRegs, $reg);
+  var $enc: #Encoding;
+  $enc := #Reg^to#Encoding($reg);
+  #CacheIR~allocatedRegs := #Set~remove(#CacheIR~allocatedRegs, $enc);
 }
 
