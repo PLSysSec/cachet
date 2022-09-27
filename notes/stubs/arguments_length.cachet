@@ -1,0 +1,15 @@
+import "../cacheir.cachet"
+import "../utils.cachet"
+
+ir CacheStub emits CacheIR {
+    op GetArgumentsLength(
+        valueId: ValueId,
+    ) {
+        initValueInput(valueId);
+
+        emit CacheIR::GuardToObject(valueId);
+        let objectId = ValueId::toObjectId(valueId);
+        emit CacheIR::GuardClass(objectId, GuardClassKind::MappedArguments);
+        emit CacheIR::LoadArgumentsObjectLengthResult(objectId);
+    }
+}
