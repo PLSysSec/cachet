@@ -1034,10 +1034,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             self.compile_internal_label_arg(bind_stmt.label, true),
         ];
 
-        self.stmts.extend([
-            Expr::from(CallExpr { target, args }).into(),
-            RetStmt { value: None }.into(),
-        ]);
+        self.stmts
+            .push(Expr::from(CallExpr { target, args }).into());
     }
 
     fn compile_emit_stmt(&mut self, emit_stmt: &normalizer::EmitStmt) {
