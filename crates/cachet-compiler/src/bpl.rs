@@ -2264,6 +2264,7 @@ lazy_static! {
             (Ident::from("CacheIR").nest("defineValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("getOperandLocation".into()), Proc),
             (Ident::from("CacheIR").nest("setOperandLocation".into()), Proc),
+            (Ident::from("initAllocatedRegs").into(), Proc),
             (Ident::from("initInputOperandLocation").into(), Proc),
             (Ident::from("initValueInputOperandLocation").into(), Proc),
             (Ident::from("initValueReg").into(), Proc),
