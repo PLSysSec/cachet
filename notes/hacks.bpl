@@ -265,6 +265,30 @@ procedure #initValueReg($valueReg: #ValueReg)
 
 var #CacheIR~allocatedRegs: #Set #Reg;
 
+procedure #initAllocatedRegs()
+  modifies #CacheIR~allocatedRegs;
+{
+  // initially all registers are unallocated
+  assume (
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsp()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbp()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R11()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
+  );
+}
+
 procedure #CacheIR~allocateValueReg()
   returns (ret: #ValueReg)
   modifies #CacheIR~allocatedRegs;
@@ -284,9 +308,38 @@ procedure #CacheIR~allocateReg()
 {
   var $reg: #Reg;
   var tmp'0: #Bool;
+
+  // ensure that we have enough registers by
+  // asserting that there is atleast one allocatable
+  // register that is not already allocated
+  assert (
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R11()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
+  );
+
   $reg := #CacheIR~allocateRegUnchecked(#CacheIR~allocatedRegs);
+
+  // rsp and rbp are not allocatable registers
+  assume (
+    $reg != #Reg^Variant~Rsp() &&
+    $reg != #Reg^Variant~Rbp()
+  );
+
   tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
   assume !tmp'0;
+
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
   ret := $reg;
 }
