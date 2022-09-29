@@ -348,8 +348,16 @@ procedure #CacheIR~allocateKnownReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
   var tmp'0: #Bool;
-  tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
-  assume !tmp'0;
+  
+  // rsp and rbp are not allocatable registers
+  assert (
+    $reg != #Reg^Variant~Rsp() &&
+    $reg != #Reg^Variant~Rbp()
+  );
+
+  // register should not already be allocated
+  assert !#Set~contains(#CacheIR~allocatedRegs, $reg);
+
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
 }
 
@@ -358,6 +366,9 @@ function #CacheIR~allocateRegUnchecked($allocatedRegs: #Set #Reg): #Reg;
 procedure #CacheIR~releaseReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
+  // register should be allocated
+  assert #Set~contains(#CacheIR~allocatedRegs, $reg);
+
   #CacheIR~allocatedRegs := #Set~remove(#CacheIR~allocatedRegs, $reg);
 }
 
