@@ -1,0 +1,19 @@
+import "../cacheir.cachet"
+import "../utils.cachet"
+
+ir CacheStub emits CacheIR {
+    op DoubleAdd(
+        lhsValueId: ValueId,
+        rhsValueId: ValueId,
+    ) {
+        initRegAllocator();
+        initValueInput(lhsValueId);
+        initValueInput(rhsValueId);
+
+        emit CacheIR::GuardIsNumber(lhsValueId);
+        let lhsNumberId = ValueId::toNumberId(lhsValueId);
+        emit CacheIR::GuardIsNumber(rhsValueId);
+        let rhsNumberId = ValueId::toNumberId(rhsValueId);
+        emit CacheIR::DoubleAddResult(lhsNumberId, rhsNumberId);
+    }
+}

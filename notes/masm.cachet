@@ -30,6 +30,25 @@ impl ValueReg {
     fn scratchReg(valueReg: ValueReg) -> Reg;
 }
 
+enum FloatReg {
+    Xmm0,
+    Xmm1,
+    Xmm2,
+    Xmm3,
+    Xmm4,
+    Xmm5,
+    Xmm6,
+    Xmm7,
+    Xmm8,
+    Xmm9,
+    Xmm10,
+    Xmm11,
+    Xmm12,
+    Xmm13,
+    Xmm14,
+    Xmm15,
+}
+
 enum Condition {
     Equal,
     NotEqual,
@@ -151,6 +170,10 @@ ir MASM {
         MASM::setValue(dstReg, MASM::getValue(srcReg));
     }
 
+    op MoveDouble(srcReg: FloatReg, dstReg: FloatReg) {
+        MASM::setDouble(dstReg, MASM::getDouble(srcReg));
+    }
+
     // this op corresponds to an overload of the MoveValue op
     // that takes an immediate Value operand
     op MoveValueImm(value: Value, dstReg: ValueReg) {
@@ -235,6 +258,28 @@ ir MASM {
             let val = Value::fromBigInt(b);
             MASM::setValue(dest, val);
         }
+    }
+
+    op EnsureDouble(srcReg: ValueReg, destReg: FloatReg, label failure: MASM) {
+        let value = MASM::getValue(srcReg);
+        let valTy = Value::typeOf(value);
+
+        if valTy == ValueType::Double {
+            let double = Value::toDouble(value);
+            MASM::setDouble(destReg, double);
+        } else if valTy == ValueType::Int32 {
+            let int32 = Value::toInt32(value);
+            let double = int32 as Double;
+            MASM::setDouble(destReg, double);
+        } else {
+            goto failure;
+        }
+    }
+
+    op BoxDouble(srcReg: FloatReg, valueReg: ValueReg, scratchReg: FloatReg) {
+        let double = MASM::getDouble(srcReg);
+        let value = Value::fromDouble(double);
+        MASM::setValue(valueReg, value);
     }
 
     op UnboxInt32(valueReg: ValueReg, int32Reg: Reg) {
@@ -349,6 +394,12 @@ ir MASM {
         let int32 = Value::toInt32(value);
         let double = int32 as Double;
         MASM::setValue(valueReg, Value::fromDouble(double));
+    }
+
+    op ConvertInt32ToDouble(srcReg: Reg, destReg: FloatReg) {
+        let int32 = MASM::getInt32(srcReg);
+        let double = int32 as Double;
+        MASM::setDouble(destReg, double);
     }
 
     op BranchTestNumber(
@@ -1047,6 +1098,14 @@ ir MASM {
         MASM::setData(protoReg, data);
     }
 
+    op AddDouble(srcReg: FloatReg, destReg: FloatReg) {
+        let lhs = MASM::getDouble(destReg);
+        let rhs = MASM::getDouble(srcReg);
+
+        let result = lhs + rhs;
+        MASM::setDouble(destReg, result);
+    }
+
     fn getData(reg: Reg) -> RegData;
     fn setData(reg: Reg, data: RegData);
 
@@ -1070,6 +1129,9 @@ ir MASM {
 
     fn getBigInt(reg: Reg) -> BigInt;
     fn setBigInt(reg: Reg, bigInt: BigInt);
+
+    fn getDouble(floatReg: FloatReg) -> Double;
+    fn setDouble(floatReg: FloatReg, double: Double);
 }
 
 //impl MASM {
