@@ -199,18 +199,25 @@ function {:inline} #Map~set<k, v>(map: #Map k v, key: k, value: v): #Map k v {
   map[key := value]
 }
 
-type #Set a = #Map a #Bool;
+//function lessThan<T>(T, T) returns (bool);
+
+//axiom (forall <T> x:T :: lessThan(x, x));
+
+type #Set a = [a]bool;
 
 function {:inline} #Set~contains<a>(set: #Set a, value: a): #Bool {
-  #Map~get(set, value)
+  set[value]
 }
 
+//function #Set~card<a>(#Set a): int;
+//axiom (forall <T> set: #Set T :: { #Set~card(set) } 0 <= #Set~card(set));
+
 function {:inline} #Set~add<a>(set: #Set a, value: a): #Set a {
-  #Map~set(set, value, true)
+    set[value := true]
 }
 
 function {:inline} #Set~remove<a>(set: #Set a, value: a): #Set a {
-  #Map~set(set, value, false)
+    set[value := false]
 }
 
 // Impls for cachet's prelude...

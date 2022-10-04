@@ -28,6 +28,8 @@ struct ValueReg;
 
 impl ValueReg {
     fn scratchReg(valueReg: ValueReg) -> Reg;
+
+    fn fromReg(reg: Reg) -> ValueReg;
 }
 
 enum FloatReg {
@@ -47,6 +49,26 @@ enum FloatReg {
     Xmm13,
     Xmm14,
     Xmm15,
+}
+
+struct LiveRegisterSet;
+
+impl LiveRegisterSet {
+    fn contains(set: LiveRegisterSet, reg: Reg) -> Bool;
+    fn add(set: LiveRegisterSet, reg: Reg) -> LiveRegisterSet;
+    fn remove(set: LiveRegisterSet, reg: Reg) -> LiveRegisterSet;
+
+    //fn toSet(set: LiveRegisterSet) -> Set<Reg>;
+    //fn fromSet(set: Set<Reg>) -> LiveRegisterSet;
+
+    //fn contains(set: LiveRegisterSet, reg: Reg) -> bool {
+    //    Set::contains(LiveRegisterSet::toSet(set), reg)
+    //}
+
+    //fn add(set: LiveRegisterSet, reg: Reg) -> LiveRegisterSet {
+    //    LiveRegisterSet::fromSet(Set::add(LiveRegisterSet::toSet(set), reg))
+    //}
+
 }
 
 enum Condition {

@@ -6,9 +6,14 @@ ir CacheStub emits CacheIR {
         lhsValueId: ValueId,
         rhsValueId: ValueId,
     ) {
-        initRegAllocator();
-        initValueInput(lhsValueId);
-        initValueInput(rhsValueId);
+        initRegState();
+        addAvailableReg(Reg::Rcx);
+        addAvailableFloatReg(FloatReg::Xmm0);
+        addAvailableFloatReg(FloatReg::Xmm1);
+
+        initValueInput(lhsValueId, ValueReg::fromReg(Reg::Rax));
+        initValueInput(rhsValueId, ValueReg::fromReg(Reg::Rdx));
+        assume CacheIR::outputReg == ValueReg::fromReg(Reg::Rcx);
 
         emit CacheIR::GuardToInt32(lhsValueId);
         let lhsInt32Id = ValueId::toInt32Id(lhsValueId);
