@@ -4,9 +4,9 @@ import "./js.cachet"
 
 enum Reg {
     Rax,
-    Rbx,
     Rcx,
     Rdx,
+    Rbx,
     Rsp,
     Rbp,
     Rsi,
@@ -28,6 +28,7 @@ struct ValueReg;
 
 impl ValueReg {
     fn scratchReg(valueReg: ValueReg) -> Reg;
+    fn payloadOrValueReg(valueReg: ValueReg) -> Reg;
 }
 
 enum FloatReg {
@@ -47,6 +48,19 @@ enum FloatReg {
     Xmm13,
     Xmm14,
     Xmm15,
+}
+
+struct LiveRegisterSet;
+
+impl LiveRegisterSet {
+    fn containsReg(set: LiveRegisterSet, reg: Reg) -> Bool;
+    fn addReg(out newSet: LiveRegisterSet, set: LiveRegisterSet, reg: Reg);
+    fn takeReg(out newSet: LiveRegisterSet, set: LiveRegisterSet, reg: Reg);
+
+    fn containsFloatReg(set: LiveRegisterSet, floatReg: FloatReg) -> Bool;
+        
+    fn newEmpty() -> LiveRegisterSet;
+    fn newVolatile() -> LiveRegisterSet;
 }
 
 enum Condition {
@@ -151,6 +165,10 @@ impl BaseObjectSlotIndex {
     unsafe fn newUnchecked(inner: BaseValueIndex) -> BaseObjectSlotIndex;
 }
 
+enum ABIFunction {
+    StringToNumberPure
+}
+
 ir MASM {
     // NOTE: Needs to be implemented to call the equivalent
     // op with string as argument.
@@ -198,6 +216,407 @@ ir MASM {
         }
     }
 
+    op ReserveStack(amount: UInt32) {
+        let stackPointer = MASM::getStackIndex(Reg::Rsp);
+
+        let newStackPointer = stackPointer - amount;
+        assert newStackPointer >= 0_u64;
+
+        MASM::setStackIndex(Reg::Rsp, newStackPointer);
+    }
+
+    op AddToStackPtrImm32(amount: Int32) {
+        let stackPointer = MASM::getStackIndex(Reg::Rsp);
+
+        let newStackPointer = stackPointer + (amount as UInt64);
+        assert newStackPointer >= 0_u64;
+
+        MASM::setStackIndex(Reg::Rsp, newStackPointer);
+    }
+
+    op FreeStack(amount: UInt32) {
+        let stackPointer = MASM::getStackIndex(Reg::Rsp);
+
+        let newStackPointer = stackPointer + amount;
+        assert newStackPointer >= 0_u64;
+
+        MASM::setStackIndex(Reg::Rsp, newStackPointer);
+
+    }
+
+    op MoveStackPtrTo(destReg: Reg) {
+        MASM::setStackIndex(destReg, MASM::getStackIndex(Reg::Rsp));
+    }
+
+    op PushRegsInMask(set: LiveRegisterSet) {
+        // push all the general purpose registers in reverse order
+        if LiveRegisterSet::containsReg(set, Reg::R15) {
+            MASM::stackPushReg(Reg::R15);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R14) {
+            MASM::stackPushReg(Reg::R14);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R13) {
+            MASM::stackPushReg(Reg::R13);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R12) {
+            MASM::stackPushReg(Reg::R12);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R11) {
+            MASM::stackPushReg(Reg::R11);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R10) {
+            MASM::stackPushReg(Reg::R10);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R9) {
+            MASM::stackPushReg(Reg::R9);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R8) {
+            MASM::stackPushReg(Reg::R8);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rdi) {
+            MASM::stackPushReg(Reg::Rdi);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rsi) {
+            MASM::stackPushReg(Reg::Rsi);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rbp) {
+            MASM::stackPushReg(Reg::Rbp);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rsp) {
+            MASM::stackPushReg(Reg::Rsp);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rbx) {
+            MASM::stackPushReg(Reg::Rbx);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rdx) {
+            MASM::stackPushReg(Reg::Rdx);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rcx) {
+            MASM::stackPushReg(Reg::Rcx);
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rax) {
+            MASM::stackPushReg(Reg::Rax);
+        }
+
+        // push all the floating-point registers in reverse order
+        // TODO: assumes all to be double
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm15) {
+            MASM::stackPushFloatReg(FloatReg::Xmm15);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm14) {
+            MASM::stackPushFloatReg(FloatReg::Xmm14);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm13) {
+            MASM::stackPushFloatReg(FloatReg::Xmm13);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm12) {
+            MASM::stackPushFloatReg(FloatReg::Xmm12);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm11) {
+            MASM::stackPushFloatReg(FloatReg::Xmm11);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm10) {
+            MASM::stackPushFloatReg(FloatReg::Xmm10);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm9) {
+            MASM::stackPushFloatReg(FloatReg::Xmm9)
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm8) {
+            MASM::stackPushFloatReg(FloatReg::Xmm8);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm7) {
+            MASM::stackPushFloatReg(FloatReg::Xmm7);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm6) {
+            MASM::stackPushFloatReg(FloatReg::Xmm6);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm5) {
+            MASM::stackPushFloatReg(FloatReg::Xmm5);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm4) {
+            MASM::stackPushFloatReg(FloatReg::Xmm4);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm3) {
+            MASM::stackPushFloatReg(FloatReg::Xmm3);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm2) {
+            MASM::stackPushFloatReg(FloatReg::Xmm2);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm1) {
+            MASM::stackPushFloatReg(FloatReg::Xmm1);
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm0) {
+            MASM::stackPushFloatReg(FloatReg::Xmm0);
+        }
+    }
+
+    op PopRegsInMaskIgnore(set: LiveRegisterSet, ignore: LiveRegisterSet) {
+
+        // pop all the floating-point registers in proper order
+        // TODO: assumes all to be double
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm0) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm0) {
+                MASM::stackPopFloatReg(FloatReg::Xmm0);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm1) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm1) {
+                MASM::stackPopFloatReg(FloatReg::Xmm1);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm2) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm2) {
+                MASM::stackPopFloatReg(FloatReg::Xmm2);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm3) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm3) {
+                MASM::stackPopFloatReg(FloatReg::Xmm3);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm4) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm4) {
+                MASM::stackPopFloatReg(FloatReg::Xmm4);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm5) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm5) {
+                MASM::stackPopFloatReg(FloatReg::Xmm5);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm6) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm6) {
+                MASM::stackPopFloatReg(FloatReg::Xmm6);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm7) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm7) {
+                MASM::stackPopFloatReg(FloatReg::Xmm7);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm8) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm8) {
+                MASM::stackPopFloatReg(FloatReg::Xmm8);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm9) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm9) {
+                MASM::stackPopFloatReg(FloatReg::Xmm9);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm10) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm10) {
+                MASM::stackPopFloatReg(FloatReg::Xmm10);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm11) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm11) {
+                MASM::stackPopFloatReg(FloatReg::Xmm11);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm12) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm12) {
+                MASM::stackPopFloatReg(FloatReg::Xmm12);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm13) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm13) {
+                MASM::stackPopFloatReg(FloatReg::Xmm13);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm14) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm14) {
+                MASM::stackPopFloatReg(FloatReg::Xmm14);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm15) {
+            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm15) {
+                MASM::stackPopFloatReg(FloatReg::Xmm15);
+            } else {
+                MASM::stackPop();
+            }
+        }
+
+        // pop all the general purpose registers
+        if LiveRegisterSet::containsReg(set, Reg::Rax) {
+            if LiveRegisterSet::containsReg(ignore, Reg::Rax) {
+                MASM::stackPopReg(Reg::Rax);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rcx) {
+            if LiveRegisterSet::containsReg(ignore, Reg::Rcx) {
+                MASM::stackPopReg(Reg::Rcx);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rdx) {
+            if LiveRegisterSet::containsReg(ignore, Reg::Rdx) {
+                MASM::stackPopReg(Reg::Rdx);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rbx) {
+            if LiveRegisterSet::containsReg(ignore, Reg::Rbx) {
+                MASM::stackPopReg(Reg::Rbx);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rsp) {
+            if LiveRegisterSet::containsReg(ignore, Reg::Rsp) {
+                MASM::stackPopReg(Reg::Rsp);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rbp) {
+            if LiveRegisterSet::containsReg(ignore, Reg::Rbp) {
+                MASM::stackPopReg(Reg::Rbp);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rsi) {
+            if LiveRegisterSet::containsReg(ignore, Reg::Rsi) {
+                MASM::stackPopReg(Reg::Rsi);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::Rdi) {
+            if LiveRegisterSet::containsReg(ignore, Reg::Rdi) {
+                MASM::stackPopReg(Reg::Rdi);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R8) {
+            if LiveRegisterSet::containsReg(ignore, Reg::R8) {
+                MASM::stackPopReg(Reg::R8);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R9) {
+            if LiveRegisterSet::containsReg(ignore, Reg::R9) {
+                MASM::stackPopReg(Reg::R9);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R10) {
+            if LiveRegisterSet::containsReg(ignore, Reg::R10) {
+                MASM::stackPopReg(Reg::R10);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R11) {
+            if LiveRegisterSet::containsReg(ignore, Reg::R11) {
+                MASM::stackPopReg(Reg::R11);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R12) {
+            if LiveRegisterSet::containsReg(ignore, Reg::R12) {
+                MASM::stackPopReg(Reg::R12);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R13) {
+            if LiveRegisterSet::containsReg(ignore, Reg::R13) {
+                MASM::stackPopReg(Reg::R13);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R14) {
+            if LiveRegisterSet::containsReg(ignore, Reg::R14) {
+                MASM::stackPopReg(Reg::R14);
+            } else {
+                MASM::stackPop();
+            }
+        }
+        if LiveRegisterSet::containsReg(set, Reg::R15) {
+            if LiveRegisterSet::containsReg(ignore, Reg::R15) {
+                MASM::stackPopReg(Reg::R15);
+            } else {
+                MASM::stackPop();
+            }
+        }
+    }
+
+    op SetupUnalignedABICall(scratchReg: Reg) {
+        let stackPtr = MASM::getStackIndex(Reg::Rsp);
+        MASM::setStackIndex(scratchReg, stackPtr);
+        stackPtr = ~15_u64 & stackPtr;
+        MASM::setStackIndex(Reg::Rsp, stackPtr);
+    }
+
+    op LoadJSContext(destReg: Reg) {
+        MASM::setData(destReg, runtimeMainContextPtr());
+    }
+
+    op PassABIArgReg(reg: Reg, argIdx: UInt16) {
+        if argIdx == 0_u16 {
+            MASM::setData(Reg::Rcx, MASM::getData(reg));
+        } else if argIdx == 1_u16 {
+            MASM::setData(Reg::Rdx, MASM::getData(reg));
+        } else if argIdx == 2_u16 {
+            MASM::setData(Reg::R8, MASM::getData(reg));
+        } else if argIdx == 3_u16 {
+            MASM::setData(Reg::R9, MASM::getData(reg));
+        }
+
+        // TODO: handle this case by pushing arg to stack
+        assert false;
+    }
+
+    op CallWithABI(function: ABIFunction) {
+
+    }
+
+    op StoreCallPointerResult(reg: Reg) {
+        
+    }
+
     op StoreBool(bool: Bool, reg: Reg) {
         MASM::setBool(reg, bool);
     }
@@ -216,23 +635,45 @@ ir MASM {
 
     op Load32Address(address: Address, dstReg: Reg) {
         let baseData = MASM::getData(address.base);
-        let data = RegData::readData(baseData, address.offset);
-        let value = RegData::toValue(data);
+        let data = Data::readData(baseData, address.offset);
+        let value = Data::toValue(data);
         let int32 = Value::toInt32(value);
         MASM::setInt32(dstReg, int32);
     }
 
+    op LoadDoubleAddress(address: Address, dstReg: FloatReg) {
+       let baseData = MASM::getData(address.base);
+       let data = Data::readData(baseData, address.offset);
+       let value = Data::toValue(data);
+       let double = Value::toDouble(value);
+       MASM::setDouble(dstReg, double);
+    }
+
     op LoadValueAddress(address: Address, dstReg: ValueReg) {
         let baseData = MASM::getData(address.base);    
-        let data = RegData::readData(baseData, address.offset);
-        let value = RegData::toValue(data);
+        let data = Data::readData(baseData, address.offset);
+        let value = Data::toValue(data);
         MASM::setValue(dstReg, value);
     }
 
     op LoadPtrAddress(address: Address, dstReg: Reg) {
         let baseData = MASM::getData(address.base);
-        let data = RegData::readData(baseData, address.offset);
+        let data = Data::readData(baseData, address.offset);
         MASM::setData(dstReg, data);
+    }
+
+    op LoadStringIndexValue(strReg: Reg, destReg: Reg, label failure: MASM) {
+        assert strReg != destReg;
+
+        let string = MASM::getString(strReg);
+
+        if !String::hasIndexValue(string) {
+            goto failure;
+        }
+
+        let index = String::getIndexValue(string);
+        // TODO: may need some assumes to ensure length is positive after cast
+        MASM::setInt32(destReg, index as Int32);
     }
 
     op TagValue(valTy: ValueType, payload: Reg, dest: ValueReg) {
@@ -302,7 +743,7 @@ ir MASM {
     // unboxing.
     op UnboxObjectProto(srcReg: Reg, destReg: Reg) {
         let data = MASM::getData(srcReg);
-        let proto = RegData::toTaggedProto(data);
+        let proto = Data::toTaggedProto(data);
         let object = TaggedProto::toObject(proto);
         MASM::setObject(destReg, object);
     } 
@@ -492,6 +933,13 @@ ir MASM {
         }
     }
 
+    op BranchIfTrueBool(reg: Reg, label branch: MASM) {
+        let bool = MASM::getBool(reg);
+        if bool {
+            goto branch;
+        }
+    }
+
     op BranchTestString(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         assert condition == Condition::Equal || condition == Condition::NotEqual;
         let value = MASM::getValue(valueReg);
@@ -546,7 +994,7 @@ ir MASM {
     // the register contains a TaggedProto
     op BranchTestNullProto(reg: Reg, label branch: MASM) {
         let data = MASM::getData(reg);
-        let proto = RegData::toTaggedProto(data);
+        let proto = Data::toTaggedProto(data);
 
         if TaggedProto::isNull(proto) {
             goto branch;
@@ -557,7 +1005,7 @@ ir MASM {
     // the register contains a TaggedProto
     op BranchTestLazyProto(reg: Reg, label branch: MASM) {
         let data = MASM::getData(reg);
-        let proto = RegData::toTaggedProto(data);
+        let proto = Data::toTaggedProto(data);
 
         if TaggedProto::isLazy(proto) {
             goto branch;
@@ -624,7 +1072,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
-        MASM::setData(scratchReg, RegData::fromClass(class));
+        MASM::setData(scratchReg, Data::fromClass(class));
 
         let isClass = class == Class::functionClass() || class == Class::extendedFunctionClass();
 
@@ -647,7 +1095,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
-        MASM::setData(scratchReg, RegData::fromClass(class));
+        MASM::setData(scratchReg, Data::fromClass(class));
 
         let isClass = class == Class::functionClass() || class == Class::extendedFunctionClass();
         
@@ -702,7 +1150,7 @@ ir MASM {
 
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
-        MASM::setData(scratchReg, RegData::fromClass(class));
+        MASM::setData(scratchReg, Data::fromClass(class));
 
         let objectHasClass = Shape::classOf(shape) == class;
 
@@ -722,7 +1170,7 @@ ir MASM {
 
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
-        MASM::setData(scratchReg, RegData::fromClass(class));
+        MASM::setData(scratchReg, Data::fromClass(class));
 
         let objectHasClass = Shape::classOf(shape) == class;
 
@@ -737,7 +1185,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
-        MASM::setData(scratchReg, RegData::fromClass(class));
+        MASM::setData(scratchReg, Data::fromClass(class));
         let objectIsNative = Class::isNativeObject(class);
 
         if !objectIsNative {
@@ -749,7 +1197,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
-        MASM::setData(scratchReg, RegData::fromClass(class));
+        MASM::setData(scratchReg, Data::fromClass(class));
         let objectIsProxy = Class::isProxyObject(class);
 
         if !proxy && !objectIsProxy {
@@ -790,8 +1238,8 @@ ir MASM {
 
 
         let baseData = MASM::getData(address.base);
-        let data = RegData::readData(baseData, address.offset);
-        let lhsInt32 = Value::toInt32(RegData::toUnboxedValue(data));
+        let data = Data::readData(baseData, address.offset);
+        let lhsInt32 = Value::toInt32(Data::toUnboxedValue(data));
 
         if condition == Condition::Equal && lhsInt32 == rhsInt32 {
             goto branch;
@@ -1093,7 +1541,7 @@ ir MASM {
         let shape = Object::shapeOf(object);
         let baseShape = Shape::baseShapeOf(shape);
         let proto = BaseShape::protoOf(baseShape);
-        let data = RegData::fromTaggedProto(proto);
+        let data = Data::fromTaggedProto(proto);
 
         MASM::setData(protoReg, data);
     }
@@ -1106,8 +1554,11 @@ ir MASM {
         MASM::setDouble(destReg, result);
     }
 
-    fn getData(reg: Reg) -> RegData;
-    fn setData(reg: Reg, data: RegData);
+    fn getData(reg: Reg) -> Data;
+    fn setData(reg: Reg, data: Data);
+
+    fn getStackIndex(reg: Reg) -> UInt64;
+    fn setStackIndex(reg: Reg, index: UInt64);
 
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);
@@ -1132,6 +1583,31 @@ ir MASM {
 
     fn getDouble(floatReg: FloatReg) -> Double;
     fn setDouble(floatReg: FloatReg, double: Double);
+
+    fn stackPush(data: Data);
+    fn stackPop() -> Data;
+
+    fn stackPushReg(reg: Reg) {
+        let data = MASM::getData(reg);
+        MASM::stackPush(data);
+    }
+
+    fn stackPopReg(reg: Reg) {
+        let data = MASM::stackPop();
+        MASM::setData(reg, data);
+    }
+
+    fn stackPushFloatReg(floatReg: FloatReg) {
+        let double = MASM::getDouble(floatReg);
+        let data = Data::fromUnboxedValue(Value::fromDouble(double));
+        MASM::stackPush(data);
+    }
+
+    fn stackPopFloatReg(floatReg: FloatReg) {
+        let data = MASM::stackPop();
+        let double = Value::toDouble(Data::toUnboxedValue(data));
+        MASM::setDouble(floatReg, double);
+    }
 }
 
 //impl MASM {

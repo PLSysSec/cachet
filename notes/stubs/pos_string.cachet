@@ -1,0 +1,18 @@
+import "../cacheir.cachet"
+import "../utils.cachet"
+
+ir CacheStub emits CacheIR {
+    op Pos(
+        inputId: ValueId,
+        numberId: NumberId,
+    ) {
+        initRegAllocator();
+        initValueInput(inputId);
+        initNumberInputOperandLocation(numberId);
+
+        emit CacheIR::GuardToString(inputId);
+        let strId = ValueId::toStringId(inputId);
+        emit CacheIR::GuardStringToNumber(strId, numberId);
+        emit CacheIR::LoadDoubleResult(numberId);
+    }
+}

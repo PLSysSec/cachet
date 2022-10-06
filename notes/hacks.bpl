@@ -6,49 +6,71 @@ procedure #ValueReg~scratchReg($valueReg: #ValueReg)
   reg := $valueReg;
 }
 
-var #MASM~regs: #Map #Reg #RegData;
+procedure #ValueReg~payloadOrValueReg($valueReg: #ValueReg)
+  returns (reg: #Reg)
+{
+  reg := $valueReg;
+}
+
+var #MASM~regs: #Map #Reg #Data;
 
 procedure #MASM~getData($reg: #Reg)
-  returns (ret: #RegData)
+  returns (ret: #Data)
 {
   ret := #Map~get(#MASM~regs, $reg);
 }
 
-procedure #MASM~setData($reg: #Reg, $data: #RegData)
+procedure #MASM~setData($reg: #Reg, $data: #Data)
   modifies #MASM~regs;
 {
   #MASM~regs := #Map~set(#MASM~regs, $reg, $data);
+}
+
+procedure #MASM~getStackIndex($reg: #Reg)
+  returns (ret: #UInt64)
+{
+  var tmp'0: #Data;
+  call tmp'0 := #MASM~getData($reg);
+  call ret := #Data~toStackIndex(tmp'0);
+}
+
+procedure #MASM~setStackIndex($reg: #Reg, $index: #UInt64)
+  modifies #MASM~regs;
+{
+  var tmp'0: #Data;
+  call tmp'0 := #Data~fromStackIndex($index);
+  call #MASM~setData($reg, tmp'0);
 }
     
 procedure #MASM~getValue($valueReg: #ValueReg)
   returns (ret: #Value)
 {
-  var tmp'0: #RegData;
+  var tmp'0: #Data;
   call tmp'0 := #MASM~getData($valueReg);
-  call ret := #RegData~toValue(tmp'0);
+  call ret := #Data~toValue(tmp'0);
 }
 
 procedure #MASM~setValue($valueReg: #ValueReg, $value: #Value)
   modifies #MASM~regs;
 {
-  var tmp'0: #RegData;
-  call tmp'0 := #RegData~fromValue($value);
+  var tmp'0: #Data;
+  call tmp'0 := #Data~fromValue($value);
   call #MASM~setData($valueReg, tmp'0);
 }
 
 procedure #MASM~getUnboxedValue($reg: #Reg)
   returns (ret: #Value)
 {
-  var tmp'0: #RegData;
+  var tmp'0: #Data;
   call tmp'0 := #MASM~getData($reg);
-  call ret := #RegData~toUnboxedValue(tmp'0);
+  call ret := #Data~toUnboxedValue(tmp'0);
 }
 
 procedure #MASM~setUnboxedValue($reg: #Reg, $value: #Value)
   modifies #MASM~regs;
 {
-  var tmp'0: #RegData;
-  call tmp'0 := #RegData~fromUnboxedValue($value);
+  var tmp'0: #Data;
+  call tmp'0 := #Data~fromUnboxedValue($value);
   call #MASM~setData($reg, tmp'0);
 }
 
@@ -162,23 +184,118 @@ procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double)
     #MASM~floatRegs := #Map~set(#MASM~floatRegs, $floatReg, $double);
 }
 
-var #MASM~stackPtr: #UInt64;
-var #MASM~stack: #Map #UInt64 #RegData;
+var #MASM~stack: #Map #UInt64 #Data;
 
-procedure #MASM~stackPush($data: #RegData)
-  modifies #MASM~stackPtr, #MASM~stack;
+procedure #MASM~stackPush($data: #Data)
+    modifies #MASM~regs, #MASM~stack;
 {
-    #MASM~stack := #Map~set(#MASM~stack, #MASM~stackPtr, $data);
-    #MASM~stackPtr := #MASM~stackPtr + 8;
+    var $stackPtr: #UInt64;
+
+    call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
+    assert #UInt64^gte($stackPtr, 8bv64); 
+    $stackPtr := #UInt64^sub($stackPtr, 8bv64);
+    call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
+    #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $data);
 }
 
 procedure #MASM~stackPop()
-  returns (data: #RegData)
-  modifies #MASM~stackPtr, #MASM~stack;
+    returns (data: #Data)
+    modifies #MASM~regs, #MASM~stack;
 {
-    data := #Map~get(#MASM~stack, #MASM~stackPtr);
-    #MASM~stackPtr := #MASM~stackPtr - 8;
+    var $newData: #Data;
+    var $stackPtr: #UInt64;
+
+    call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
+    data := #Map~get(#MASM~stack, $stackPtr);
+    havoc $newData;
+    #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $newData);
+    $stackPtr := #UInt64^add($stackPtr, 8bv64);
+    call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
 }
+
+//var #MASM~moves: #Map 
+
+procedure #LiveRegisterSet~addReg($set: #LiveRegisterSet, $reg: #Reg)
+    returns (newSet: #LiveRegisterSet)
+{
+    var $regSet: #Set #Reg;
+    var $newRegSet: #Set #Reg;
+    var $floatRegSet: #Set #FloatReg;
+
+    $newRegSet := #Set~add($regSet, $reg);
+    $floatRegSet := #LiveRegisterSet~getFloatRegSet($set);
+    call newSet := #LiveRegisterSet~new($newRegSet, $floatRegSet);
+}
+
+procedure #LiveRegisterSet~takeReg($set: #LiveRegisterSet, $reg: #Reg)
+    returns (newSet: #LiveRegisterSet)
+{
+    var $regSet: #Set #Reg;
+    var $newRegSet: #Set #Reg;
+    var $floatRegSet: #Set #FloatReg;
+
+    $newRegSet := #Set~remove($regSet, $reg);
+    $floatRegSet := #LiveRegisterSet~getFloatRegSet($set);
+    call newSet := #LiveRegisterSet~new($newRegSet, $floatRegSet);
+}
+
+function #LiveRegisterSet~containsReg($set: #LiveRegisterSet, $reg: #Reg): #Bool
+{
+    #Set~contains(#LiveRegisterSet~getRegSet($set), $reg)    
+}
+
+function #LiveRegisterSet~containsFloatReg($set: #LiveRegisterSet, $floatReg: #FloatReg): #Bool
+{
+    #Set~contains(#LiveRegisterSet~getFloatRegSet($set), $floatReg)    
+}
+
+procedure #LiveRegisterSet~newVolatile()
+    returns (set: #LiveRegisterSet)
+{
+    set := #LiveRegisterSet~newVolatileUnchecked(#CacheIR~liveFloatRegs); 
+    assume #LiveRegisterSet~getFloatRegSet(set) == #CacheIR~liveFloatRegs;
+    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rax());
+    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rbx());
+    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rcx());
+    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rdx());
+    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rsp());
+    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rbp());
+    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rsi());
+    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rdi());
+    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R8());
+    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R9());
+    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R10());
+    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R11());
+    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R12());
+    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R13());
+    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R14());
+    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R15());
+}
+
+function #LiveRegisterSet~newVolatileUnchecked($liveFloatRegs: #Set #FloatReg): #LiveRegisterSet;
+
+procedure #LiveRegisterSet~newEmpty()
+    returns (set: #LiveRegisterSet)
+{
+    set := #LiveRegisterSet~newEmptyUnchecked();
+    assume (forall reg: #Reg :: !#Set~contains(#LiveRegisterSet~getRegSet(set), reg)); 
+    assume (forall floatReg: #FloatReg :: !#Set~contains(#LiveRegisterSet~getFloatRegSet(set), floatReg));
+}
+
+function #LiveRegisterSet~newEmptyUnchecked(): #LiveRegisterSet;
+
+procedure #LiveRegisterSet~new($regSet: #Set #Reg, $floatRegSet: #Set #FloatReg)
+    returns (set: #LiveRegisterSet)
+{
+    set := #LiveRegisterSet~newUnchecked($regSet, $floatRegSet);
+    assume #LiveRegisterSet~getRegSet(set) == $regSet;
+    assume #LiveRegisterSet~getFloatRegSet(set) == $floatRegSet;
+}
+
+function #LiveRegisterSet~newUnchecked($regSet: #Set #Reg, $floatRegSet: #Set #FloatReg): #LiveRegisterSet;
+
+function #LiveRegisterSet~getRegSet($set: #LiveRegisterSet): #Set #Reg;
+function #LiveRegisterSet~getFloatRegSet($set: #LiveRegisterSet): #Set #FloatReg;
 
 var #CacheIR~knownOperandIds: #Set #OperandId;
 
@@ -269,11 +386,11 @@ procedure #initValueInputOperandLocation($valueId: #ValueId)
 procedure #initValueReg($valueReg: #ValueReg)
     modifies #MASM~regs;
 {
-    var $data'0: #RegData;
+    var $data'0: #Data;
     var tmp'0: #Bool;
 
     call $data'0 := #MASM~getData($valueReg);
-    call tmp'0 := #RegData~isValue($data'0);
+    call tmp'0 := #Data~isValue($data'0);
     assume tmp'0;
 }
 
@@ -345,6 +462,7 @@ procedure #CacheIR~allocateReg()
   $reg := #CacheIR~allocateRegUnchecked(#CacheIR~allocatedRegs);
 
   // rsp, rbp and r11 are not allocatable registers
+  // TODO: rbp is allocatable in newer versions of firefox
   assume (
     $reg != #Reg^Variant~Rsp() &&
     $reg != #Reg^Variant~Rbp() &&
@@ -352,21 +470,7 @@ procedure #CacheIR~allocateReg()
   );
 
   tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
-  assume (
-    (!tmp'0 && $reg == #Reg^Variant~Rax()) ||
-    (!tmp'0 && $reg == #Reg^Variant~Rbx()) ||
-    (!tmp'0 && $reg == #Reg^Variant~Rcx()) ||
-    (!tmp'0 && $reg == #Reg^Variant~Rdx()) ||
-    (!tmp'0 && $reg == #Reg^Variant~Rsi()) ||
-    (!tmp'0 && $reg == #Reg^Variant~Rdi()) ||
-    (!tmp'0 && $reg == #Reg^Variant~R8()) ||
-    (!tmp'0 && $reg == #Reg^Variant~R9()) ||
-    (!tmp'0 && $reg == #Reg^Variant~R10()) ||
-    (!tmp'0 && $reg == #Reg^Variant~R12()) ||
-    (!tmp'0 && $reg == #Reg^Variant~R13()) ||
-    (!tmp'0 && $reg == #Reg^Variant~R14()) ||
-    (!tmp'0 && $reg == #Reg^Variant~R15())
-  );
+  assume !tmp'0;
 
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
   ret := $reg;
@@ -376,6 +480,7 @@ procedure #CacheIR~allocateKnownReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
   // rsp, rbp and r11 are not allocatable registers
+  // TODO: rbp is allocatable in newer versions of firefox
   assert (
     $reg != #Reg^Variant~Rsp() &&
     $reg != #Reg^Variant~Rbp() &&
@@ -398,6 +503,8 @@ procedure #CacheIR~releaseReg($reg: #Reg)
 
   #CacheIR~allocatedRegs := #Set~remove(#CacheIR~allocatedRegs, $reg);
 }
+
+const #CacheIR~liveFloatRegs: #Set #FloatReg;
 
 var #CacheIR~allocatedFloatRegs: #Set #FloatReg;
 
@@ -469,4 +576,5 @@ procedure #initRegAllocator()
 {
     call #initAllocatedRegs();
     call #initAllocatedFloatRegs();
+    call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
 }
