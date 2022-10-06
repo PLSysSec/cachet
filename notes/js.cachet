@@ -499,6 +499,7 @@ struct NativeObjectElements;
 
 impl NativeObjectElements {
     var offsetOfLength: Int32 = -4_i32;
+    var offsetOfInitializedLength: Int32 = -12_i32;
 
     fn getLength(elements: NativeObjectElements) -> UInt32 {
         ( unsafe { NativeObjectElements::getLengthUnchecked(heap, elements) } )
@@ -506,10 +507,22 @@ impl NativeObjectElements {
 
     unsafe fn getLengthUnchecked(heap: Heap, elements: NativeObjectElements) -> UInt32;
 
+    fn getInitializedLength(elements: NativeObjectElements) -> UInt32 {
+        ( unsafe { NativeObjectElements::getInitializedLengthUnchecked(heap, elements) } )
+    }
+
+    // TODO: can initializedLength be changed ?
+    unsafe fn getInitializedLengthUnchecked(heap: Heap, elements: NativeObjectElements) -> UInt32;
+
+
     fn readData(elements: NativeObjectElements, offset: Int64) -> RegData {
         if offset == NativeObjectElements::offsetOfLength {
             let length = NativeObjectElements::getLength(elements);
             let value = Value::fromInt32(length as Int32);
+            return RegData::fromValue(value);
+        } else if offset == NativeObjectElements::offsetOfInitializedLength {
+            let initializedLength = NativeObjectElements::getInitializedLength(elements);
+            let value = Value::fromInt32(initializedLength as Int32);
             return RegData::fromValue(value);
         }
 

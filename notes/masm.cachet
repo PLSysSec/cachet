@@ -135,9 +135,13 @@ ir MASM {
     }
 
     // this op corresponds to an overload of the MoveValue op
-    // that takes an immediate boolean value
-    op MoveBooleanValueImm(bool: Bool, dstReg: ValueReg) {
-        MASM::setValue(dstReg, Value::fromBool(bool));
+    // that takes an immediate Value operand
+    op MoveValueImm(value: Value, dstReg: ValueReg) {
+        MASM::setValue(dstReg, value);
+    }
+
+    op MovePtrImmGCPtrObject(object: Object, dstReg: Reg) {
+        MASM::setObject(dstReg, object);
     }
 
     op Cmp32Move32(condition: Condition, lhsReg: Reg, rhsReg: Reg, srcReg: Reg, dstReg: Reg) {
@@ -687,6 +691,29 @@ ir MASM {
         );
 
         let lhsInt32 = MASM::getInt32(lhsReg);
+
+        if condition == Condition::Equal && lhsInt32 == rhsInt32 {
+            goto branch;
+        } else if condition == Condition::NotEqual && lhsInt32 != rhsInt32 {
+            goto branch;
+        } else if condition == Condition::LessThan && lhsInt32 < rhsInt32 {
+            goto branch;
+        }
+    }
+
+    op Branch32AddressImm32(
+        condition: Condition, address: Address, rhsInt32: Int32, label branch:MASM
+    ) {
+        assert (
+            condition == Condition::Equal ||
+            condition == Condition::NotEqual ||
+            condition == Condition::LessThan
+        );
+
+
+        let baseData = MASM::getData(address.base);
+        let data = RegData::readData(baseData, address.offset);
+        let lhsInt32 = Value::toInt32(RegData::toUnboxedValue(data));
 
         if condition == Condition::Equal && lhsInt32 == rhsInt32 {
             goto branch;
