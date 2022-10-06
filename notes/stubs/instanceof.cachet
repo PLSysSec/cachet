@@ -1,11 +1,10 @@
 import "../cacheir.cachet"
+import "../utils.cachet"
 
 ir CacheStub emits CacheIR {
     op InstanceOf(lhsId: ValueId, rhsId: ValueId) {
-        CacheIR::initValueInput(lhsId);
-        CacheIR::defineValueReg(lhsId);
-        CacheIR::initValueInput(rhsId);
-        CacheIR::defineValueReg(rhsId);
+        initValueInput(lhsId);
+        initValueInput(rhsId);
 
         emit CacheIR::GuardToObject(rhsId);
         let protoId = ValueId::toObjectId(rhsId);

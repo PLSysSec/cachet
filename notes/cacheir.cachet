@@ -578,24 +578,22 @@ ir CacheIR emits MASM {
 
         CacheIR::addFailurePath(out label failure);
 
-        label loopHead: MASM;
         label returnFalse: MASM;
         label returnTrue: MASM;
         label done: MASM;
 
-        emit MASM::BranchTestObject(Condition::NotEqual, lhsReg, returnFalse);
-        emit MASM::UnboxObject(lhsReg, scratchReg);
-        emit MASM::LoadObjectProto(scratchReg, lhsReg);
+        emit MASM::FallibleUnboxObject(lhsReg, scratchReg, failure);
+        emit MASM::LoadObjectProto(scratchReg, scratchReg);
 
+        label loopHead: MASM;
         bind loopHead;
-        emit MASM::BranchTestNull(Condition::Equal, lhsReg, returnFalse);
-        emit MASM::BranchTestMagic(Condition::Equal, lhsReg, failure);
 
-        emit MASM::BranchTestObject(Condition::NotEqual, lhsReg, returnFalse);
-        emit MASM::UnboxObject(lhsReg, scratchReg);
+        emit MASM::BranchTestNullProto(scratchReg, returnFalse);
+        emit MASM::BranchTestLazyProto(scratchReg, failure);
+        emit MASM::UnboxObjectProto(scratchReg, scratchReg);
         emit MASM::BranchObject(Condition::Equal, scratchReg, protoReg, returnTrue);
 
-        emit MASM::LoadObjectProto(scratchReg, lhsReg);
+        emit MASM::LoadObjectProto(scratchReg, scratchReg);
         //emit MASM::StoreBool(true, protoReg); <-- uncomment to induce error
         emit MASM::Jump(loopHead);
 

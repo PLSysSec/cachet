@@ -9,6 +9,7 @@ enum RegDataType {
     NativeObjectSlots,
     NativeObjectElements,
     TypeTag,
+    TaggedProto,
 }
 
 struct RegData;
@@ -125,6 +126,28 @@ impl RegData {
     }
 
     unsafe fn toValueTypeUnchecked(data: RegData) -> ValueType;
+
+    fn isTaggedProto(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::TaggedProto
+    }
+
+    fn fromTaggedProto(proto: TaggedProto) -> RegData {
+        let data = (unsafe { RegData::fromTaggedProtoUnchecked(proto) });
+        assume RegData::isTaggedProto(data);
+        assume (unsafe { RegData::toTaggedProtoUnchecked(data) }) == proto;
+        data
+    }
+
+    unsafe fn fromTaggedProtoUnchecked(proto: TaggedProto) -> RegData;
+
+    fn toTaggedProto(data: RegData) -> TaggedProto {
+        assert RegData::isTaggedProto(data);
+        let proto = (unsafe { RegData::toTaggedProtoUnchecked(data) });
+        assume (unsafe { RegData::fromTaggedProtoUnchecked(proto) }) == data;
+        proto
+    }
+
+    unsafe fn toTaggedProtoUnchecked(data: RegData) -> TaggedProto;
 
     fn readData(data: RegData, offset: Int64) -> RegData {
         if RegData::isUnboxedValue(data) {
@@ -355,13 +378,7 @@ impl Object {
 
     unsafe fn shapeOfUnchecked(heap: Heap, object: Object) -> Shape;
 
-    // #[reads(heap)]
-    // fn protoOf(object: Object) -> Value;
-    fn protoOf(object: Object) -> Value {
-        (unsafe { Object::protoOfUnchecked(heap, object) })
-    }
-
-    unsafe fn protoOfUnchecked(heap: Heap, object: Object) -> Value;
+    
 
     fn toNativeObject(object: Object) -> NativeObject {
         let shape = Object::shapeOf(object);
@@ -617,6 +634,14 @@ struct BaseShape;
 
 impl BaseShape {
     fn classOf(baseShape: BaseShape) -> Class;
+
+    // #[reads(heap)]
+    // fn protoOf(object: Object) -> TaggedProto;
+    fn protoOf(baseShape: BaseShape) -> TaggedProto {
+        (unsafe { BaseShape::protoOfUnchecked(heap, baseShape) })
+    }
+
+    unsafe fn protoOfUnchecked(heap: Heap, baseShape: BaseShape) -> TaggedProto;
 }
 
 struct Shape;
@@ -668,3 +693,34 @@ struct String;
 struct Symbol;
 
 struct BigInt;
+
+enum ProtoTag {
+    Null,
+    Lazy,
+    Object,
+}
+
+struct TaggedProto;
+
+impl TaggedProto {
+    fn tag(proto: TaggedProto) -> ProtoTag;
+
+    fn isNull(proto: TaggedProto) -> Bool {
+        TaggedProto::tag(proto) == ProtoTag::Null
+    }
+
+    fn isLazy(proto: TaggedProto) -> Bool {
+        TaggedProto::tag(proto) == ProtoTag::Lazy
+    }
+
+    fn isObject(proto: TaggedProto) -> Bool {
+        TaggedProto::tag(proto) == ProtoTag::Object
+    }
+
+    fn toObject(proto: TaggedProto) -> Object {
+        assert TaggedProto::isObject(proto);
+        (unsafe { TaggedProto::toObjectUnchecked(proto) })
+    }
+
+    unsafe fn toObjectUnchecked(proto: TaggedProto) -> Object;
+}

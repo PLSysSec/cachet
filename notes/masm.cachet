@@ -231,6 +231,28 @@ ir MASM {
         MASM::setObject(objectReg, Value::toObject(value));
     }
 
+    // Note: this is a no-op in Firefox since TaggedProtos
+    // can be directly treated as Objects without explicit
+    // unboxing.
+    op UnboxObjectProto(srcReg: Reg, destReg: Reg) {
+        let data = MASM::getData(srcReg);
+        let proto = RegData::toTaggedProto(data);
+        let object = TaggedProto::toObject(proto);
+        MASM::setObject(destReg, object);
+    } 
+
+    op FallibleUnboxObject(valueReg: ValueReg, objectReg: Reg, label failure: MASM) {
+        let value = MASM::getValue(valueReg);
+        let valueIsObject = Value::isObject(value);
+
+        if !valueIsObject {
+            goto failure;
+        }
+
+        let object = Value::toObject(value);
+        MASM::setObject(objectReg, object);
+    }
+
     op FallibleUnboxBoolean(valueReg: ValueReg, boolReg: Reg, label failure: MASM) {
         let value = MASM::getValue(valueReg);
         let valueIsBool = Value::isBool(value);
@@ -454,6 +476,28 @@ ir MASM {
           goto branch;
         }
       }
+    }
+
+    // Note: this is a wrapper around branchTestPtr for when
+    // the register contains a TaggedProto
+    op BranchTestNullProto(reg: Reg, label branch: MASM) {
+        let data = MASM::getData(reg);
+        let proto = RegData::toTaggedProto(data);
+
+        if TaggedProto::isNull(proto) {
+            goto branch;
+        }
+    }
+
+    // Note: this is a wrapper around branchPtr for when
+    // the register contains a TaggedProto
+    op BranchTestLazyProto(reg: Reg, label branch: MASM) {
+        let data = MASM::getData(reg);
+        let proto = RegData::toTaggedProto(data);
+
+        if TaggedProto::isLazy(proto) {
+            goto branch;
+        }
     }
 
     op BranchTestNull(condition: Condition, valueReg: ValueReg, label branch: MASM) {
@@ -937,9 +981,15 @@ ir MASM {
         MASM::setInt32(outputReg, length)
     }
 
-    op LoadObjectProto(objectReg: Reg, protoReg: ValueReg) {
+    op LoadObjectProto(objectReg: Reg, protoReg: Reg) {
         let object = MASM::getObject(objectReg);
-        MASM::setValue(protoReg, Object::protoOf(object));
+
+        let shape = Object::shapeOf(object);
+        let baseShape = Shape::baseShapeOf(shape);
+        let proto = BaseShape::protoOf(baseShape);
+        let data = RegData::fromTaggedProto(proto);
+
+        MASM::setData(protoReg, data);
     }
 
     fn getData(reg: Reg) -> RegData;
