@@ -392,20 +392,15 @@ ir MASM {
     }
 
     op BranchTestInt32(condition: Condition, valueReg: ValueReg, label branch: MASM) {
-      let value = MASM::getValue(valueReg);
-      let valueIsInt32 = Value::isInt32(value);
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let value = MASM::getValue(valueReg);
+        let valueIsInt32 = Value::isInt32(value);
 
-      if condition == Condition::Equal {
-        if valueIsInt32 {
-          goto branch;
+        if condition == Condition::Equal && valueIsInt32 {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsInt32 {
+            goto branch;
         }
-      } else if condition == Condition::NotEqual {
-        if !valueIsInt32 {
-          goto branch;
-        }
-      } else {
-        assert false;
-      }
     }
 
     op BranchTestInt32Truthy(truthy: Bool, valueReg: ValueReg, label branch: MASM) {
@@ -466,19 +461,16 @@ ir MASM {
     }
 
     op BranchTestObject(condition: Condition, valueReg: ValueReg, label branch: MASM) {
+      assert condition == Condition::Equal || condition == Condition::NotEqual;
       let value = MASM::getValue(valueReg);
       let valueIsObject = Value::isObject(value);
 
-      if condition == Condition::Equal {
-        if valueIsObject {
+      if condition == Condition::Equal && valueIsObject {
           goto branch;
-        }
       }
 
-      if condition == Condition::NotEqual {
-        if !valueIsObject {
+      if condition == Condition::NotEqual && !valueIsObject {
           goto branch;
-        }
       }
     }
 
@@ -558,11 +550,13 @@ ir MASM {
         spectreRegToZero: Reg, label branch: MASM
     ) {
 
+        assert scratchReg != spectreRegToZero;
         assert condition == Condition::Equal || condition == Condition::NotEqual;
 
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
+        MASM::setData(scratchReg, RegData::fromClass(class));
 
         let isClass = class == Class::functionClass() || class == Class::extendedFunctionClass();
 
@@ -585,6 +579,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
+        MASM::setData(scratchReg, RegData::fromClass(class));
 
         let isClass = class == Class::functionClass() || class == Class::extendedFunctionClass();
         
@@ -599,6 +594,10 @@ ir MASM {
         condition: Condition, objectReg: Reg, shape: Shape, scratchReg: Reg, spectreRegToZero: Reg,
         label branch: MASM
     ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        assert objectReg != scratchReg;
+        assert spectreRegToZero != scratchReg;
+
         let object = MASM::getObject(objectReg);
         let objectHasShape = Object::shapeOf(object) == shape;
 
@@ -614,6 +613,8 @@ ir MASM {
     op BranchTestObjectShapeNoSpectreMitigations(
         condition: Condition, objectReg: Reg, shape: Shape, label branch: MASM
     ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
         let object = MASM::getObject(objectReg);
         let objectHasShape = Object::shapeOf(object) == shape;
 
@@ -628,8 +629,12 @@ ir MASM {
         condition: Condition, objectReg: Reg, class: Class, scratchReg: Reg, spectreRegToZero: Reg,
         label branch: MASM
     ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        assert scratchReg != spectreRegToZero;
+
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
+        MASM::setData(scratchReg, RegData::fromClass(class));
 
         let objectHasClass = Shape::classOf(shape) == class;
 
@@ -645,8 +650,11 @@ ir MASM {
     op BranchTestObjectClassNoSpectreMitigations(
         condition: Condition, objectReg: Reg, class: Class, scratchReg: Reg, label branch: MASM
     ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
+        MASM::setData(scratchReg, RegData::fromClass(class));
 
         let objectHasClass = Shape::classOf(shape) == class;
 
@@ -661,6 +669,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
+        MASM::setData(scratchReg, RegData::fromClass(class));
         let objectIsNative = Class::isNativeObject(class);
 
         if !objectIsNative {
@@ -672,6 +681,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
+        MASM::setData(scratchReg, RegData::fromClass(class));
         let objectIsProxy = Class::isProxyObject(class);
 
         if !proxy && !objectIsProxy {
@@ -1001,11 +1011,12 @@ ir MASM {
     ) {
         let obj = MASM::getObject(objectReg);
         let argObj = Object::toArgumentsObject(obj);
-        if ArgumentsObject::hasOverriddenLength(argObj) {
+        let length = ArgumentsObject::getInitialLength(argObj);
+        MASM::setInt32(outputReg, length as Int32);
+        if length & ArgumentsObject::lengthOverridenBit != 0_u32 {
             goto failure;
         }
-        let length = ArgumentsObject::getInitialLength(argObj);
-        MASM::setInt32(outputReg, length)
+        MASM::setInt32(outputReg, (length >> ArgumentsObject::packedBitsCount) as Int32)
     }
 
     op LoadObjectProto(objectReg: Reg, protoReg: Reg) {

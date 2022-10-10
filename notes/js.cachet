@@ -10,6 +10,7 @@ enum RegDataType {
     NativeObjectElements,
     TypeTag,
     TaggedProto,
+    Class,
 }
 
 struct RegData;
@@ -148,6 +149,29 @@ impl RegData {
     }
 
     unsafe fn toTaggedProtoUnchecked(data: RegData) -> TaggedProto;
+
+    fn isClass(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::Class
+    }
+
+    fn fromClass(class: Class) -> RegData {
+        let data = (unsafe { RegData::fromClassUnchecked(class) });
+        assume RegData::isClass(data);
+        assume (unsafe { RegData::toClassUnchecked(data) }) == class;
+        data
+    }
+
+    unsafe fn fromClassUnchecked(class: Class) -> RegData;
+
+    fn toClass(data: RegData) -> Class {
+        assert RegData::isClass(data);
+        let class = (unsafe { RegData::toClassUnchecked(data) });
+        assume (unsafe { RegData::fromClassUnchecked(class) }) == data;
+        class
+    }
+
+    unsafe fn toClassUnchecked(data: RegData) -> Class;
+
 
     fn readData(data: RegData, offset: Int64) -> RegData {
         if RegData::isUnboxedValue(data) {
@@ -595,8 +619,10 @@ impl DataViewObject {
 struct ArgumentsObject <: NativeObject;
 
 impl ArgumentsObject {
-    fn getInitialLength(obj: ArgumentsObject) -> Int32;
-    fn hasOverriddenLength(obj: ArgumentsObject) -> Bool;
+    var lengthOverridenBit : UInt32 = 1_u32;
+    var packedBitsCount: UInt32 = 5_u32;
+
+    fn getInitialLength(obj: ArgumentsObject) -> UInt32;
 }
 
 struct UnmappedArgumentsObject <: ArgumentsObject;
