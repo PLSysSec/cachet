@@ -6,26 +6,31 @@ scripts_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 source "${scripts_dir}/common.sh"
 
 if [[ "${#}" = 0 ]]; then
-  stub_files_glob=*/*
+  stub_files_glob="${default_glob}"
   rm -rf -- "${cachet_dir}"
 else
   stub_files_glob="${1}"
   shift
 
-  rm -f -- "${cachet_dir}/${allowed_engines_glob}/"${stub_files_glob}.cachet
+  rm -f -- "${cachet_dir}/"${stub_files_glob}.cachet
 fi
 
 cargo build -p cachet-cacheir-translator
 echo
 
-for stub_file in "${stubs_dir}/${allowed_engines_glob}/"${stub_files_glob}.cacheir; do
+selectors=()
+for stub_file in "${stubs_dir}/"${stub_files_glob}.cacheir; do
   stub_file_rel="${stub_file#"${stubs_dir}/"}"
-  cachet_file_rel="${stub_file_rel%.cacheir}.cachet"
-  cachet_file="${cachet_dir}/${cachet_file_rel}"
-  mk_parent_dir "${cachet_file}"
-  echo "${stub_file} -> ${cachet_file}"
-  "${bin_dir}/cachet-cacheir-translator" < "${stub_file}" > "${cachet_file}"
+  selector="${stub_file_rel%.cacheir}"
+  selectors+=("${selector}")
 done
+
+if [[ "${#selectors[@]}" = 0 ]]; then
+  >&2 echo "Error: Nothing matched \"${stub_files_glob}\""
+  exit 1
+else
+  parallel "${scripts_dir}/translate-stub.sh" ::: "${selectors[@]}"
+fi
 
 #for engine_stubs_dir in "${stubs_dir}"/*; do
 #  engine="$(basename "${engine_stubs_dir}")"

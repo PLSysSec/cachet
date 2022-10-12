@@ -24,11 +24,11 @@ corral_exe="${repo_dir}/vendor/corral/source/Corral/bin/Release/net5.0/corral"
 notes_dir="${repo_dir}/notes"
 hacks_bpl_file="${notes_dir}/hacks.bpl"
 
-allowed_engines_glob=IonIC
+default_glob='IonIC/*/*'
 
 function mk_parent_dir {
   local path="${1}"
   shift
 
-  mkdir -p "$(dirname "${path}")"
+  mkdir -p -- "$(dirname "${path}")"
 }

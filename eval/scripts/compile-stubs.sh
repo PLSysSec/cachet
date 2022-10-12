@@ -6,45 +6,33 @@ scripts_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 source "${scripts_dir}/common.sh"
 
 if [[ "${#}" = 0 ]]; then
-  cachet_files_glob=*/*
+  cachet_files_glob="${default_glob}"
   rm -rf -- "${bpl_dir}"
   rm -rf -- "${compile_logs_dir}"
 else
   cachet_files_glob="${1}"
   shift
 
-  rm -f -- "${bpl_dir}/${allowed_engines_glob}/"${cachet_files_glob}.bpl
-  rm -f -- "${compile_logs_dir}"/*/"${allowed_engines_glob}/"${cachet_files_glob}.log
+  rm -f -- "${bpl_dir}/"${cachet_files_glob}.bpl
+  rm -f -- "${compile_logs_dir}"/*/${cachet_files_glob}.log
 fi
 
 cargo build -p cachet-compiler
 echo
 
-for cachet_file in "${cachet_dir}/${allowed_engines_glob}/"${cachet_files_glob}.cachet; do
+selectors=()
+for cachet_file in "${cachet_dir}/"${cachet_files_glob}.cachet; do
   cachet_file_rel="${cachet_file#"${cachet_dir}/"}"
-  bpl_file_rel="${cachet_file_rel%.cachet}.bpl"
-  bpl_file="${bpl_dir}/${bpl_file_rel}"
-  mk_parent_dir "${bpl_file}"
-  echo "${cachet_file} -> ${bpl_file}"
-
-  compile_log_file_rel="${cachet_file_rel%.cachet}.log"
-  compile_log_file="${all_compile_logs_dir}/${compile_log_file_rel}"
-  mk_parent_dir "${compile_log_file}"
-  if "${bin_dir}/cachet-compiler" "${cachet_file}" --bpl "${bpl_file}" 2>&1 \
-      | tee "${compile_log_file}"; then
-    successful_compile_log_link="${successful_compile_logs_dir}/${compile_log_file_rel}"
-    mk_parent_dir "${successful_compile_log_link}"
-    ln -s "${compile_log_file}" "${successful_compile_log_link}"
-
-    cat "${hacks_bpl_file}" "${bpl_file}" | sponge "${bpl_file}"
-  else
-    failed_compile_log_link="${failed_compile_logs_dir}/${compile_log_file_rel}"
-    mk_parent_dir "${failed_compile_log_link}"
-    ln -s "${compile_log_file}" "${failed_compile_log_link}"
-
-    echo
-  fi
+  selector="${cachet_file_rel%.cachet}"
+  selectors+=("${selector}")
 done
+
+if [[ "${#selectors[@]}" = 0 ]]; then
+  >&2 echo "Error: Nothing matched \"${cachet_files_glob}\""
+  exit 1
+else
+  parallel "${scripts_dir}/compile-stub.sh" ::: "${selectors[@]}"
+fi
 
 #for engine_cachet_dir in "${cachet_dir}"/*; do
 #  engine="$(basename "${engine_cachet_dir}")"
