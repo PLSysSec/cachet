@@ -904,6 +904,9 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             parser::Stmt::Let(let_stmt) => self.resolve_let_stmt(let_stmt).map(Stmt::from),
             parser::Stmt::Label(label_stmt) => self.resolve_label_stmt(label_stmt).map(Stmt::from),
             parser::Stmt::If(if_stmt) => self.resolve_if_stmt(if_stmt).map(Stmt::from),
+            parser::Stmt::ForIn(for_in_stmt) => {
+                self.resolve_for_in_stmt(for_in_stmt).map(Stmt::from)
+            }
             parser::Stmt::Check(check_stmt) => self.resolve_check_stmt(check_stmt).map(Stmt::from),
             parser::Stmt::Goto(goto_stmt) => self.resolve_goto_stmt(goto_stmt).map(Stmt::from),
             parser::Stmt::Bind(bind_stmt) => self.resolve_bind_stmt(bind_stmt).map(Stmt::from),
@@ -965,6 +968,41 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             cond: cond?,
             then: then?,
             else_: else_?,
+        })
+    }
+
+    fn resolve_for_in_stmt(&mut self, for_in_stmt: parser::ForInStmt) -> Option<ForInStmt> {
+        self.recurse().resolve_for_in_stmt_impl(for_in_stmt)
+    }
+
+    /// This function should not be called directly. It is currently called only
+    /// from within `resolve_for_in_stmt` which does the required setup of
+    /// creating a nested scope for the body of the for-in loop.
+    fn resolve_for_in_stmt_impl(&mut self, for_in_stmt: parser::ForInStmt) -> Option<ForInStmt> {
+        // lookup the target type that we are iterating over
+        let target = self
+            .lookup_type_scoped(for_in_stmt.target)
+            .found(&mut self.errors);
+
+        // create a local variable with the type of the target type
+        // that we are iterating over scoped to the loop body
+        let loop_var = LocalVar {
+            ident: for_in_stmt.var,
+            type_: target,
+            is_mut: false,
+        };
+
+        let loop_var_ident = loop_var.ident;
+        let loop_var_index = self.locals.local_vars.push_and_get_key(loop_var);
+        self.register_scoped(loop_var_ident, loop_var_index.into());
+
+        let body = self.resolve_body_block(for_in_stmt.body);
+
+        Some(ForInStmt {
+            var: loop_var_index,
+            target: target?,
+            order: for_in_stmt.order,
+            body: body?,
         })
     }
 

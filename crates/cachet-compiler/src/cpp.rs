@@ -12,7 +12,7 @@ use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
-use cachet_lang::ast::{BinOper, Ident, NegateKind, Path, VarParamKind};
+use cachet_lang::ast::{BinOper, ForInOrder, Ident, NegateKind, Path, VarParamKind};
 use cachet_lang::built_in::{BuiltInType, IdentEnum};
 use cachet_lang::normalizer::{self, HasAttrs, Typed};
 
@@ -896,6 +896,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Stmt::Let(let_stmt) => self.compile_let_stmt(let_stmt),
             normalizer::Stmt::Label(label_stmt) => self.compile_label_stmt(label_stmt),
             normalizer::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
+            normalizer::Stmt::ForIn(for_in_stmt) => self.compile_for_in_stmt(for_in_stmt),
             normalizer::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
             normalizer::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
             normalizer::Stmt::Bind(bind_stmt) => self.compile_bind_stmt(bind_stmt),
@@ -984,6 +985,66 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_if_stmt(&mut self, if_stmt: &normalizer::IfStmt) {
         let if_ = self.compile_if_stmt_recurse(if_stmt);
         self.stmts.push(if_.into());
+    }
+
+    fn compile_for_in_stmt(&mut self, for_in_stmt: &normalizer::ForInStmt) {
+        let body = self.compile_block(&for_in_stmt.body);
+
+        let enum_item = &self.env[for_in_stmt.target];
+
+        let mut blocks: Vec<Stmt> = vec![];
+
+        for variant_path in &enum_item.variants {
+            let loop_var_index = for_in_stmt.var;
+            let loop_var = &self.scope.local(loop_var_index);
+
+            let loop_var_expr = self.use_expr(
+                TaggedExpr {
+                    expr: LocalVarIdent {
+                        ident: loop_var.ident.value,
+                        index: loop_var_index,
+                    }
+                    .into(),
+                    type_: loop_var.type_,
+                    tags: ExprTag::Local.into(),
+                },
+                ExprTag::MutRef.into(),
+            );
+
+            let variant_expr = self.use_expr(
+                TaggedExpr {
+                    expr: CallExpr {
+                        target: TypeMemberFnPath {
+                            parent: enum_item.ident.value,
+                            ident: VariantTypeMemberFnIdent::from(variant_path.value.ident())
+                                .into(),
+                        }
+                        .into(),
+                        args: vec![CONTEXT_ARG],
+                    }
+                    .into(),
+                    type_: for_in_stmt.target.into(),
+                    tags: ExprTag::Ref.into(),
+                },
+                ExprTag::MutRef | ExprTag::Ref | ExprTag::Local | ExprTag::Val,
+            );
+
+            let mut b = vec![
+                Expr::from(AssignExpr {
+                    lhs: loop_var_expr,
+                    rhs: variant_expr,
+                })
+                .into(),
+            ];
+
+            b.extend(body.clone().stmts.into_iter());
+            blocks.push(b.into());
+        }
+
+        match for_in_stmt.order {
+            ForInOrder::Ascending => self.stmts.extend(blocks.into_iter()),
+            ForInOrder::Descending => self.stmts.extend(blocks.into_iter().rev()),
+        };
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &normalizer::CheckStmt) {

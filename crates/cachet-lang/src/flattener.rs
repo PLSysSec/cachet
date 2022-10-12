@@ -122,6 +122,9 @@ impl Flattener {
             normalizer::Stmt::If(if_stmt) => {
                 self.flatten_if_stmt(if_stmt);
             }
+            normalizer::Stmt::ForIn(for_in_stmt) => {
+                self.flatten_for_in_stmt(for_in_stmt);
+            }
             normalizer::Stmt::Check(check_stmt) => {
                 self.flatten_check_stmt(check_stmt);
             }
@@ -178,6 +181,19 @@ impl Flattener {
     fn flatten_if_stmt(&mut self, if_stmt: normalizer::IfStmt) {
         let if_ = self.flatten_if_stmt_recurse(if_stmt);
         self.stmts.push(if_.into());
+    }
+
+    fn flatten_for_in_stmt(&mut self, for_in_stmt: normalizer::ForInStmt) {
+        let body = flatten_block(for_in_stmt.body);
+        self.stmts.push(
+            ForInStmt {
+                var: for_in_stmt.var,
+                target: for_in_stmt.target,
+                order: for_in_stmt.order,
+                body,
+            }
+            .into(),
+        );
     }
 
     fn flatten_check_stmt(&mut self, check_stmt: normalizer::CheckStmt) {

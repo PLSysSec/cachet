@@ -36,6 +36,11 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
         fields: TiVec::new(),
     });
 
+    let unknown_enum_index = env.enum_items.push_and_get_key(EnumItem {
+        ident: Spanned::new(Span::Internal, *UNKNOWN_IDENT),
+        variants: TiVec::new(),
+    });
+
     let unknown_ir_index = env
         .ir_items
         .push_and_get_key(IrItem {
@@ -44,7 +49,12 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
         })
         .into();
 
-    let mut type_checker = TypeChecker::new(&env, unknown_struct_index, unknown_ir_index);
+    let mut type_checker = TypeChecker::new(
+        &env,
+        unknown_struct_index,
+        unknown_enum_index,
+        unknown_ir_index,
+    );
 
     // TODO(spinda): Forbid subtyping built-in types.
 
@@ -60,11 +70,16 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
         .struct_items
         .pop_key_value()
         .map(|(struct_index, _)| struct_index);
+    let popped_enum_index = env
+        .enum_items
+        .pop_key_value()
+        .map(|(enum_index, _)| enum_index);
     let popped_ir_index = env
         .ir_items
         .pop_key_value()
         .map(|(ir_index, _)| ir_index.into());
     debug_assert_eq!(popped_type_index, Some(unknown_struct_index));
+    debug_assert_eq!(popped_enum_index, Some(unknown_enum_index));
     debug_assert_eq!(popped_ir_index, Some(unknown_ir_index));
 
     Ok(Env {
@@ -90,6 +105,7 @@ struct TypeChecker<'a> {
     call_graph: CallGraph,
     var_graph: VarGraph,
     unknown_struct: StructIndex,
+    unknown_enum: EnumIndex,
     unknown_ir: IrIndex,
 }
 
@@ -97,6 +113,7 @@ impl<'a> TypeChecker<'a> {
     fn new(
         env: &'a resolver::Env,
         unknown_struct_index: StructIndex,
+        unknown_enum_index: EnumIndex,
         unknown_ir_index: IrIndex,
     ) -> Self {
         TypeChecker {
@@ -105,6 +122,7 @@ impl<'a> TypeChecker<'a> {
             call_graph: CallGraph::new(env.fn_items.len(), env.op_items.len()),
             var_graph: VarGraph::new(env.global_var_items.len()),
             unknown_struct: unknown_struct_index,
+            unknown_enum: unknown_enum_index,
             unknown_ir: unknown_ir_index,
         }
     }
@@ -468,6 +486,10 @@ impl<'a> TypeChecker<'a> {
 
     const fn unknown_type(&self) -> TypeIndex {
         TypeIndex::Struct(self.unknown_struct)
+    }
+
+    const fn unknown_enum_type(&self) -> TypeIndex {
+        TypeIndex::Enum(self.unknown_enum)
     }
 
     fn is_unknown_type(&self, type_index: TypeIndex) -> bool {
@@ -1012,6 +1034,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             resolver::Stmt::Let(let_stmt) => Some(self.type_check_let_stmt(let_stmt).into()),
             resolver::Stmt::Label(LabelStmt { label }) => Some(LabelStmt { label: *label }.into()),
             resolver::Stmt::If(if_stmt) => Some(self.type_check_if_stmt(if_stmt).into()),
+            resolver::Stmt::ForIn(for_in_stmt) => {
+                Some(self.type_check_for_in_stmt(for_in_stmt).into())
+            }
             resolver::Stmt::Check(check_stmt) => {
                 Some(self.type_check_check_stmt(check_stmt).into())
             }
@@ -1093,6 +1118,25 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         });
 
         IfStmt { cond, then, else_ }
+    }
+
+    fn type_check_for_in_stmt(&mut self, for_in_stmt: &resolver::ForInStmt) -> ForInStmt {
+        let enum_index = match for_in_stmt.target {
+            TypeIndex::BuiltIn(_) | TypeIndex::Struct(_) => {
+                //TODO: push an error
+                self.unknown_enum
+            }
+            TypeIndex::Enum(enum_index) => enum_index,
+        };
+
+        let body = self.type_check_block(&for_in_stmt.body);
+
+        ForInStmt {
+            var: for_in_stmt.var,
+            target: enum_index,
+            order: for_in_stmt.order,
+            body,
+        }
     }
 
     fn type_check_check_stmt(&mut self, check_stmt: &resolver::CheckStmt) -> CheckStmt {
@@ -1661,6 +1705,7 @@ fn does_stmt_exit_early(stmt: &Stmt) -> bool {
     match stmt {
         Stmt::Let(LetStmt { rhs: expr, .. }) | Stmt::Expr(expr) => does_expr_exit_early(expr),
         Stmt::If(if_stmt) => does_if_stmt_exit_early(if_stmt),
+        Stmt::ForIn(for_in_stmt) => for_in_stmt.body.exits_early,
         Stmt::Ret(_) => true,
         Stmt::Label(_) | Stmt::Check(_) | Stmt::Goto(_) | Stmt::Bind(_) | Stmt::Emit(_) => false,
     }

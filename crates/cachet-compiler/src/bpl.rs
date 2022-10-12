@@ -13,7 +13,8 @@ use typed_index_collections::TiSlice;
 use void::unreachable;
 
 use cachet_lang::ast::{
-    ArithBinOper, BinOper, CheckKind, CompareBinOper, Ident, NegateKind, Path, VarParamKind,
+    ArithBinOper, BinOper, CheckKind, CompareBinOper, ForInOrder, Ident, NegateKind, Path,
+    VarParamKind,
 };
 use cachet_lang::built_in::{BuiltInVar, IdentEnum};
 use cachet_lang::flattener::{self, HasAttrs, Typed};
@@ -1630,6 +1631,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Stmt::Let(let_stmt) => self.compile_let_stmt(let_stmt),
             flattener::Stmt::Label(label_stmt) => self.compile_label_stmt(label_stmt),
             flattener::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
+            flattener::Stmt::ForIn(for_in_stmt) => self.compile_for_in_stmt(for_in_stmt),
             flattener::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
             flattener::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
             flattener::Stmt::Bind(bind_stmt) => self.compile_bind_stmt(bind_stmt),
@@ -1702,6 +1704,44 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_if_stmt(&mut self, if_stmt: &flattener::IfStmt) {
         let if_ = self.compile_if_stmt_recurse(if_stmt);
         self.stmts.push(if_.into());
+    }
+
+    fn compile_for_in_stmt(&mut self, for_in_stmt: &flattener::ForInStmt) {
+        let enum_item = &self.env[for_in_stmt.target];
+
+        let body = self.compile_block(&for_in_stmt.body);
+        let mut blocks = vec![];
+        for variant_path in &enum_item.variants {
+            let mut block = vec![];
+
+            let loop_var: Expr = self.get_var_ident(for_in_stmt.var.into()).unwrap().into();
+            let variant_expr: Expr = CallExpr {
+                target: TypeMemberFnIdent {
+                    type_ident: enum_item.ident.value.into(),
+                    selector: VariantCtorTypeMemberFnSelector::from(variant_path.value.ident())
+                        .into(),
+                }
+                .into(),
+                arg_exprs: vec![],
+            }
+            .into();
+
+            let loop_var_update: Stmt = AssignStmt {
+                lhs: loop_var,
+                rhs: variant_expr,
+            }
+            .into();
+
+            block.push(loop_var_update);
+            block.extend(body.stmts.clone());
+
+            blocks.push(block);
+        }
+
+        match for_in_stmt.order {
+            ForInOrder::Ascending => self.stmts.extend(blocks.into_iter().flatten()),
+            ForInOrder::Descending => self.stmts.extend(blocks.into_iter().rev().flatten()),
+        };
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &flattener::CheckStmt) {

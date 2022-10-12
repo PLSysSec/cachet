@@ -26,6 +26,12 @@ pub enum BlockKind {
     Unsafe,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ForInOrder {
+    Ascending,
+    Descending,
+}
+
 #[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum NegateKind {
     #[display(fmt = "-")]

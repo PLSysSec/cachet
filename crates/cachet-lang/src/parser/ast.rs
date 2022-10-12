@@ -7,7 +7,9 @@ use typed_index_collections::TiVec;
 
 use cachet_util::{box_from, deref_from, typed_field_index};
 
-use crate::ast::{BinOper, BlockKind, CheckKind, Ident, NegateKind, Path, Spanned, VarParamKind};
+use crate::ast::{
+    BinOper, BlockKind, CheckKind, ForInOrder, Ident, NegateKind, Path, Spanned, VarParamKind,
+};
 
 #[derive(Clone, Debug)]
 pub struct Attr {
@@ -212,6 +214,8 @@ pub enum Stmt {
     #[from]
     If(IfStmt),
     #[from]
+    ForIn(ForInStmt),
+    #[from]
     Check(CheckStmt),
     #[from]
     Goto(GotoStmt),
@@ -233,6 +237,14 @@ pub struct LetStmt {
 #[derive(Clone, Debug)]
 pub struct LabelStmt {
     pub label: Label,
+}
+
+#[derive(Clone, Debug)]
+pub struct ForInStmt {
+    pub var: Spanned<Ident>,
+    pub target: Spanned<Path>,
+    pub order: ForInOrder,
+    pub body: Block,
 }
 
 #[derive(Clone, Debug)]
