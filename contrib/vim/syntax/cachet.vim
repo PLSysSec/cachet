@@ -10,7 +10,7 @@ syn keyword cachetTypeItem enum struct impl ir emits nextgroup=cachetIdent skipw
 syn keyword cachetFnItem fn op nextgroup=cachetFnIdent skipwhite skipempty
 syn keyword cachetUnsafe unsafe
 syn keyword cachetCheck assert assume
-syn keyword cachetKeyword var let out label bind return
+syn keyword cachetKeyword import var let out label bind return
 syn keyword cachetStorage mut
 syn keyword cachetConditional if else
 syn keyword cachetControlFlow goto
@@ -19,7 +19,11 @@ syn keyword cachetEmit emit
 syn match cachetIdent "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match cachetFnIdent "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
-syn match cachetNumber display "\<[0-9][0-9_]*"
+syn region cachetString start=+"+ skip=+\\"+ end=+"+ contains=cachetStringEscape,@Spell
+syn match cachetStringEscape display contained /\\./
+
+syn match cachetInt display "\<[0-9]\+_[iu]\(8\|16\|32\|64\)"
+syn match cachetFloat display "\<[0-9]\+\.[0-9]\+"
 
 syn keyword cachetBuiltInType Unit Bool Int32 Double
 syn keyword cachetUnitVar unit
@@ -58,7 +62,11 @@ hi def link cachetEmit Keyword
 hi def link cachetIdent Identifier
 hi def link cachetFnIdent Function
 
-hi def link cachetNumber Number
+hi def link cachetString String
+hi def link cachetStringEscape Special
+
+hi def link cachetInt Number
+hi def link cachetFloat Number
 
 hi def link cachetBuiltInType Type
 hi def link cachetUnitVar Constant
