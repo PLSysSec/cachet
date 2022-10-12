@@ -45,7 +45,8 @@ EnumItem: EnumItem =
     "enum" <ident:Spanned<Ident>> "{" <variants:EnumVariants> "}" => EnumItem { ident, variants };
 
 ImportItem: ImportItem =
-    "import" <file_path:Spanned<StringLiteral>> => ImportItem { file_path: file_path.map(|path| path.into()) };
+    "import" <file_path:Spanned<StringLiteral>> ";" =>
+        ImportItem { file_path: file_path.map(|path| path.into()) };
 
 EnumVariants: TiVec<VariantIndex, Spanned<Ident>> =
     <variants:Comma<Spanned<Ident>>> => variants.into();

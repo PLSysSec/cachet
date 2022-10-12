@@ -79,7 +79,7 @@ impl Display for EnumItem {
 }
 
 #[derive(Clone, Debug, Display)]
-#[display(fmt = "import {:?}", "self.file_path.value")]
+#[display(fmt = "import {:?};", "self.file_path.value")]
 pub struct ImportItem {
     pub file_path: Spanned<PathBuf>,
 }
