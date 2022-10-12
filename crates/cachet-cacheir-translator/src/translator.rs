@@ -163,26 +163,6 @@ pub fn translate(stub: &stub::Stub) -> Mod {
                     }
                     .into(),
                 ));
-
-                stmts.extend((0..fact.num_fixed_slots).map(|fixed_slot_index| {
-                    Spanned::internal(
-                        CheckStmt {
-                            kind: CheckKind::Assume,
-                            cond: Spanned::internal(Expr::Invoke(Call {
-                                target: Spanned::internal(SHAPE_PATH.nest("hasFixedSlot")),
-                                args: Spanned::internal(vec![
-                                    Spanned::internal(
-                                        generate_from_addr_call(*SHAPE_PATH, fact.shape).into(),
-                                    ),
-                                    Spanned::internal(
-                                        Expr::from(Literal::UInt32(fixed_slot_index)).into(),
-                                    ),
-                                ]),
-                            })),
-                        }
-                        .into(),
-                    )
-                }));
             }
             stub::Fact::ShapeSlotSpan(fact) => {
                 stmts.push(Spanned::internal(
