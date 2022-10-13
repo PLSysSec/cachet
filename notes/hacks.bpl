@@ -170,18 +170,37 @@ procedure #MASM~setBigInt($reg: #Reg, $bigInt: #BigInt)
   call #MASM~setUnboxedValue($reg, tmp'0);
 }
 
-var #MASM~floatRegs: #Map #FloatReg #Double;
+var #MASM~floatRegs: #Map #PhyFloatReg #FloatData;
+
+procedure #MASM~getFloatData($phyReg: #PhyFloatReg)
+  returns (ret: #FloatData)
+{
+  ret := #Map~get(#MASM~floatRegs, $phyReg);
+}
+
+procedure #MASM~setFloatData($phyReg: #PhyFloatReg, $data: #FloatData)
+  modifies #MASM~floatRegs;
+{
+    #MASM~floatRegs := #Map~set(#MASM~floatRegs, $phyReg, $data);
+}
 
 procedure #MASM~getDouble($floatReg: #FloatReg)
   returns (ret: #Double)
 {
-  ret := #Map~get(#MASM~floatRegs, $floatReg);
+    var tmp'0: #FloatData;
+
+    assert #FloatReg^field~type($floatReg) == #FloatContentType^Variant~Double();
+    call tmp'0 := #MASM~getFloatData(#FloatReg^field~reg($floatReg));
+    call ret := #FloatData~toDouble(tmp'0);
 }
 
 procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double)
-  modifies #MASM~regs;
 {
-    #MASM~floatRegs := #Map~set(#MASM~floatRegs, $floatReg, $double);
+    var tmp'0: #FloatData;
+
+    assert #FloatReg^field~type($floatReg) == #FloatContentType^Variant~Double();
+    call tmp'0 := #FloatData~fromDouble($double);
+    call #MASM~setFloatData(#FloatReg^field~reg($floatReg), tmp'0);
 }
 
 var #MASM~stack: #Map #UInt64 #Data;
@@ -212,8 +231,6 @@ procedure #MASM~stackPop()
     $stackPtr := #UInt64^add($stackPtr, 8bv64);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
 }
-
-//var #MASM~moves: #Map 
 
 procedure #LiveRegisterSet~addReg($set: #LiveRegisterSet, $reg: #Reg)
     returns (newSet: #LiveRegisterSet)
@@ -252,8 +269,8 @@ function #LiveRegisterSet~containsFloatReg($set: #LiveRegisterSet, $floatReg: #F
 procedure #LiveRegisterSet~newVolatile()
     returns (set: #LiveRegisterSet)
 {
-    set := #LiveRegisterSet~newVolatileUnchecked(#CacheIR~liveFloatRegs); 
-    assume #LiveRegisterSet~getFloatRegSet(set) == #CacheIR~liveFloatRegs;
+    set := #LiveRegisterSet~newVolatileUnchecked(#LiveRegisterSet~getFloatRegSet(#CacheIR~liveRegs)); 
+    assume #LiveRegisterSet~getFloatRegSet(set) == #LiveRegisterSet~getFloatRegSet(#CacheIR~liveRegs);
     assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rax());
     assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rbx());
     assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rcx());
@@ -504,31 +521,31 @@ procedure #CacheIR~releaseReg($reg: #Reg)
   #CacheIR~allocatedRegs := #Set~remove(#CacheIR~allocatedRegs, $reg);
 }
 
-const #CacheIR~liveFloatRegs: #Set #FloatReg;
+const #CacheIR~liveRegs: #LiveRegisterSet;
 
-var #CacheIR~allocatedFloatRegs: #Set #FloatReg;
+var #CacheIR~allocatedFloatRegs: #Set #PhyFloatReg;
 
 procedure #initAllocatedFloatRegs()
   modifies #CacheIR~allocatedFloatRegs;
 {
   // initially all registers are unallocated
   assume (
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm0()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm1()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm2()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm3()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm4()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm5()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm6()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm7()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm8()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm9()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm10()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm11()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm12()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm13()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm14()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^Variant~Xmm15())
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm0()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm1()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm2()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm3()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm4()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm5()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm6()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm7()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm8()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm9()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm10()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm11()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm12()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm13()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm14()) &&
+    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm15())
   );
 }
 
@@ -538,7 +555,7 @@ procedure #CacheIR~allocateAvailableFloatReg($floatReg: #FloatReg)
 {
   // xmm15 is not an allocatable register
   assert (
-    $floatReg != #FloatReg^Variant~Xmm15()
+    #FloatReg^field~reg($floatReg) != #PhyFloatReg^Variant~Xmm15()
   );
 
   call #CacheIR~allocateAvailableFloatRegUnchecked($floatReg: #FloatReg);
@@ -549,26 +566,26 @@ procedure #CacheIR~allocateAvailableFloatRegUnchecked($floatReg: #FloatReg)
   modifies #CacheIR~allocatedFloatRegs;
 {
   // register should not already be allocated
-  assert !#Set~contains(#CacheIR~allocatedFloatRegs, $floatReg);
+  assert !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
 
-  #CacheIR~allocatedFloatRegs := #Set~add(#CacheIR~allocatedFloatRegs, $floatReg);
+  #CacheIR~allocatedFloatRegs := #Set~add(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
 }
 
 procedure #CacheIR~allocateFloatScratchReg()
   returns (ret: #FloatReg)
   modifies #CacheIR~allocatedFloatRegs;
 {
-  call #CacheIR~allocateAvailableFloatRegUnchecked(#FloatReg^Variant~Xmm15());
-  ret := #FloatReg^Variant~Xmm15(); 
+  call ret := #FloatReg~new(#PhyFloatReg^Variant~Xmm15(), #FloatContentType^Variant~Double()); 
+  call #CacheIR~allocateAvailableFloatRegUnchecked(ret);
 }
 
 procedure #CacheIR~releaseFloatReg($floatReg: #FloatReg)
   modifies #CacheIR~allocatedFloatRegs;
 {
   // register should be allocated
-  assert #Set~contains(#CacheIR~allocatedFloatRegs, $floatReg);
+  assert #Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
 
-  #CacheIR~allocatedFloatRegs := #Set~remove(#CacheIR~allocatedFloatRegs, $floatReg);
+  #CacheIR~allocatedFloatRegs := #Set~remove(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
 }
 
 procedure #initRegAllocator()

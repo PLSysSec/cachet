@@ -1054,8 +1054,8 @@ ir CacheIR emits MASM {
     }
 
     op DoubleAddResult(lhsId: NumberId, rhsId: NumberId) {
-        let floatScratch0 = CacheIR::allocateAvailableFloatReg(FloatReg::Xmm0); 
-        let floatScratch1 = CacheIR::allocateAvailableFloatReg(FloatReg::Xmm1); 
+        let floatScratch0 = CacheIR::allocateAvailableFloatReg(CacheIR::floatReg0()); 
+        let floatScratch1 = CacheIR::allocateAvailableFloatReg(CacheIR::floatReg1()); 
 
         CacheIR::ensureDoubleRegister(lhsId, floatScratch0);
         CacheIR::ensureDoubleRegister(rhsId, floatScratch1);
@@ -1075,6 +1075,14 @@ ir CacheIR emits MASM {
 
     fn allocateValueReg() -> ValueReg;
     fn releaseValueReg(valueReg: ValueReg);
+
+    fn floatReg0() -> FloatReg {
+        FloatReg::newDouble(PhyFloatReg::Xmm0)
+    }
+
+    fn floatReg1() -> FloatReg {
+        FloatReg::newDouble(PhyFloatReg::Xmm1)
+    }
 
     fn allocateAvailableFloatReg(floatReg: FloatReg) -> FloatReg;
     fn allocateFloatScratchReg() -> FloatReg;

@@ -31,7 +31,7 @@ impl ValueReg {
     fn payloadOrValueReg(valueReg: ValueReg) -> Reg;
 }
 
-enum FloatReg {
+enum PhyFloatReg {
     Xmm0,
     Xmm1,
     Xmm2,
@@ -48,6 +48,56 @@ enum FloatReg {
     Xmm13,
     Xmm14,
     Xmm15,
+}
+
+enum FloatContentType {
+    Single,
+    Double,
+    Simd128,
+}
+
+struct FloatData;
+
+impl FloatData {
+    fn contentType(data: FloatData) -> FloatContentType;
+
+    fn fromDouble(double: Double) -> FloatData {
+        let data = (unsafe { FloatData::fromDoubleUnchecked(double) });
+        assume FloatData::contentType(data) == FloatContentType::Double;
+        assume (unsafe { FloatData::toDoubleUnchecked(data) }) == double;
+        data
+    }
+
+    unsafe fn fromDoubleUnchecked(double: Double) -> FloatData;
+
+    fn toDouble(data: FloatData) -> Double {
+        assert FloatData::contentType(data) == FloatContentType::Double;
+        let double = (unsafe { FloatData::toDoubleUnchecked(data) });
+        assume (unsafe { FloatData::fromDoubleUnchecked(double) }) == data;
+        double
+    }
+
+    unsafe fn toDoubleUnchecked(data: FloatData) -> Double;
+}
+
+struct FloatReg {
+   reg: PhyFloatReg,
+   type: FloatContentType,
+}
+
+impl FloatReg {
+    fn new(reg: PhyFloatReg, type: FloatContentType) -> FloatReg {
+        let floatReg = (unsafe { FloatReg::newUnchecked(reg, type) });
+        assume floatReg.reg == reg;
+        assume floatReg.type == type;
+        floatReg
+    }
+
+    fn newDouble(reg: PhyFloatReg) -> FloatReg {
+        FloatReg::new(reg, FloatContentType::Double)
+    }
+
+    unsafe fn newUnchecked(reg: PhyFloatReg, type: FloatContentType) -> FloatReg;
 }
 
 struct LiveRegisterSet;
@@ -248,339 +298,16 @@ ir MASM {
         MASM::setStackIndex(destReg, MASM::getStackIndex(Reg::Rsp));
     }
 
+    // TODO: loop through all the registers and push them onto the stack
+    // if they are in `set`.
     op PushRegsInMask(set: LiveRegisterSet) {
-        // push all the general purpose registers in reverse order
-        if LiveRegisterSet::containsReg(set, Reg::R15) {
-            MASM::stackPushReg(Reg::R15);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R14) {
-            MASM::stackPushReg(Reg::R14);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R13) {
-            MASM::stackPushReg(Reg::R13);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R12) {
-            MASM::stackPushReg(Reg::R12);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R11) {
-            MASM::stackPushReg(Reg::R11);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R10) {
-            MASM::stackPushReg(Reg::R10);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R9) {
-            MASM::stackPushReg(Reg::R9);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R8) {
-            MASM::stackPushReg(Reg::R8);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rdi) {
-            MASM::stackPushReg(Reg::Rdi);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rsi) {
-            MASM::stackPushReg(Reg::Rsi);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rbp) {
-            MASM::stackPushReg(Reg::Rbp);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rsp) {
-            MASM::stackPushReg(Reg::Rsp);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rbx) {
-            MASM::stackPushReg(Reg::Rbx);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rdx) {
-            MASM::stackPushReg(Reg::Rdx);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rcx) {
-            MASM::stackPushReg(Reg::Rcx);
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rax) {
-            MASM::stackPushReg(Reg::Rax);
-        }
-
-        // push all the floating-point registers in reverse order
-        // TODO: assumes all to be double
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm15) {
-            MASM::stackPushFloatReg(FloatReg::Xmm15);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm14) {
-            MASM::stackPushFloatReg(FloatReg::Xmm14);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm13) {
-            MASM::stackPushFloatReg(FloatReg::Xmm13);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm12) {
-            MASM::stackPushFloatReg(FloatReg::Xmm12);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm11) {
-            MASM::stackPushFloatReg(FloatReg::Xmm11);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm10) {
-            MASM::stackPushFloatReg(FloatReg::Xmm10);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm9) {
-            MASM::stackPushFloatReg(FloatReg::Xmm9)
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm8) {
-            MASM::stackPushFloatReg(FloatReg::Xmm8);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm7) {
-            MASM::stackPushFloatReg(FloatReg::Xmm7);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm6) {
-            MASM::stackPushFloatReg(FloatReg::Xmm6);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm5) {
-            MASM::stackPushFloatReg(FloatReg::Xmm5);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm4) {
-            MASM::stackPushFloatReg(FloatReg::Xmm4);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm3) {
-            MASM::stackPushFloatReg(FloatReg::Xmm3);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm2) {
-            MASM::stackPushFloatReg(FloatReg::Xmm2);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm1) {
-            MASM::stackPushFloatReg(FloatReg::Xmm1);
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm0) {
-            MASM::stackPushFloatReg(FloatReg::Xmm0);
-        }
+ 
     }
 
+    // TODO: loop through all the registers and pop them off the stack if
+    // they are in `set` and not in `ignore`.
     op PopRegsInMaskIgnore(set: LiveRegisterSet, ignore: LiveRegisterSet) {
 
-        // pop all the floating-point registers in proper order
-        // TODO: assumes all to be double
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm0) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm0) {
-                MASM::stackPopFloatReg(FloatReg::Xmm0);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm1) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm1) {
-                MASM::stackPopFloatReg(FloatReg::Xmm1);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm2) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm2) {
-                MASM::stackPopFloatReg(FloatReg::Xmm2);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm3) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm3) {
-                MASM::stackPopFloatReg(FloatReg::Xmm3);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm4) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm4) {
-                MASM::stackPopFloatReg(FloatReg::Xmm4);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm5) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm5) {
-                MASM::stackPopFloatReg(FloatReg::Xmm5);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm6) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm6) {
-                MASM::stackPopFloatReg(FloatReg::Xmm6);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm7) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm7) {
-                MASM::stackPopFloatReg(FloatReg::Xmm7);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm8) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm8) {
-                MASM::stackPopFloatReg(FloatReg::Xmm8);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm9) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm9) {
-                MASM::stackPopFloatReg(FloatReg::Xmm9);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm10) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm10) {
-                MASM::stackPopFloatReg(FloatReg::Xmm10);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm11) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm11) {
-                MASM::stackPopFloatReg(FloatReg::Xmm11);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm12) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm12) {
-                MASM::stackPopFloatReg(FloatReg::Xmm12);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm13) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm13) {
-                MASM::stackPopFloatReg(FloatReg::Xmm13);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm14) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm14) {
-                MASM::stackPopFloatReg(FloatReg::Xmm14);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsFloatReg(set, FloatReg::Xmm15) {
-            if LiveRegisterSet::containsFloatReg(ignore, FloatReg::Xmm15) {
-                MASM::stackPopFloatReg(FloatReg::Xmm15);
-            } else {
-                MASM::stackPop();
-            }
-        }
-
-        // pop all the general purpose registers
-        if LiveRegisterSet::containsReg(set, Reg::Rax) {
-            if LiveRegisterSet::containsReg(ignore, Reg::Rax) {
-                MASM::stackPopReg(Reg::Rax);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rcx) {
-            if LiveRegisterSet::containsReg(ignore, Reg::Rcx) {
-                MASM::stackPopReg(Reg::Rcx);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rdx) {
-            if LiveRegisterSet::containsReg(ignore, Reg::Rdx) {
-                MASM::stackPopReg(Reg::Rdx);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rbx) {
-            if LiveRegisterSet::containsReg(ignore, Reg::Rbx) {
-                MASM::stackPopReg(Reg::Rbx);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rsp) {
-            if LiveRegisterSet::containsReg(ignore, Reg::Rsp) {
-                MASM::stackPopReg(Reg::Rsp);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rbp) {
-            if LiveRegisterSet::containsReg(ignore, Reg::Rbp) {
-                MASM::stackPopReg(Reg::Rbp);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rsi) {
-            if LiveRegisterSet::containsReg(ignore, Reg::Rsi) {
-                MASM::stackPopReg(Reg::Rsi);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::Rdi) {
-            if LiveRegisterSet::containsReg(ignore, Reg::Rdi) {
-                MASM::stackPopReg(Reg::Rdi);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R8) {
-            if LiveRegisterSet::containsReg(ignore, Reg::R8) {
-                MASM::stackPopReg(Reg::R8);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R9) {
-            if LiveRegisterSet::containsReg(ignore, Reg::R9) {
-                MASM::stackPopReg(Reg::R9);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R10) {
-            if LiveRegisterSet::containsReg(ignore, Reg::R10) {
-                MASM::stackPopReg(Reg::R10);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R11) {
-            if LiveRegisterSet::containsReg(ignore, Reg::R11) {
-                MASM::stackPopReg(Reg::R11);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R12) {
-            if LiveRegisterSet::containsReg(ignore, Reg::R12) {
-                MASM::stackPopReg(Reg::R12);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R13) {
-            if LiveRegisterSet::containsReg(ignore, Reg::R13) {
-                MASM::stackPopReg(Reg::R13);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R14) {
-            if LiveRegisterSet::containsReg(ignore, Reg::R14) {
-                MASM::stackPopReg(Reg::R14);
-            } else {
-                MASM::stackPop();
-            }
-        }
-        if LiveRegisterSet::containsReg(set, Reg::R15) {
-            if LiveRegisterSet::containsReg(ignore, Reg::R15) {
-                MASM::stackPopReg(Reg::R15);
-            } else {
-                MASM::stackPop();
-            }
-        }
     }
 
     op SetupUnalignedABICall(scratchReg: Reg) {
