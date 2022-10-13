@@ -61,7 +61,7 @@ fn parse_engine(input: &str) -> ParseResult<Engine> {
 
 fn parse_input_operand(input: &str) -> ParseResult<InputOperand> {
     preceded(symbol("Input"), |input| {
-        parse_arg(input, parse_operand_type, |type_| {
+        parse_arg(input, parse_operand_id_type, |type_| {
             move |input| parse_operand_id(input, type_)
         })
     })(input)
@@ -96,9 +96,9 @@ fn parse_op_arg(input: &str) -> ParseResult<OpArg> {
 
 fn parse_op_arg_type(input: &str) -> ParseResult<OpArgType> {
     alt((
-        map(parse_operand_type, Into::into),
+        map(parse_operand_id_type, Into::into),
         map(parse_field_type, Into::into),
-        map(parse_imm_type, Into::into),
+        map(parse_imm_value_type, Into::into),
     ))(input)
 }
 
@@ -116,7 +116,7 @@ fn parse_op_arg_data(input: &str, type_: OpArgType) -> ParseResult<OpArgData> {
     }
 }
 
-fn parse_operand_id(input: &str, type_: OperandType) -> ParseResult<OperandId> {
+fn parse_operand_id(input: &str, type_: OperandIdType) -> ParseResult<OperandId> {
     map(u16, |index| OperandId { id: index, type_ }.into())(input)
 }
 
@@ -124,26 +124,26 @@ fn parse_field_offset(input: &str, type_: FieldType) -> ParseResult<FieldOffset>
     map(u32, |offset| FieldOffset { offset, type_ }.into())(input)
 }
 
-fn parse_imm_value(input: &str, type_: ImmType) -> ParseResult<ImmValue> {
+fn parse_imm_value(input: &str, type_: ImmValueType) -> ParseResult<ImmValue> {
     match type_ {
-        ImmType::JSOp => map(parse_ident, ImmValue::JSOp)(input),
-        ImmType::Bool => map(
+        ImmValueType::JSOpImm => map(parse_ident, ImmValue::JSOp)(input),
+        ImmValueType::BoolImm => map(
             alt((value(true, symbol("true")), value(false, symbol("false")))),
             ImmValue::Bool,
         )(input),
-        ImmType::Byte => map(u8, ImmValue::Byte)(input),
-        ImmType::GuardClassKind => map(parse_ident, ImmValue::GuardClassKind)(input),
-        ImmType::ValueType => map(parse_value_type, ImmValue::ValueType)(input),
-        ImmType::JSWhyMagic => map(parse_ident, ImmValue::JSWhyMagic)(input),
-        ImmType::CallFlags => map(parse_call_flags, ImmValue::CallFlags)(input),
-        ImmType::ScalarType => map(parse_ident, ImmValue::ScalarType)(input),
-        ImmType::UnaryMathFunction => map(parse_ident, ImmValue::UnaryMathFunction)(input),
-        ImmType::WasmValType => map(parse_ident, ImmValue::WasmValType)(input),
-        ImmType::Int32 => map(i32, ImmValue::Int32)(input),
-        ImmType::UInt32 => map(u32, ImmValue::UInt32)(input),
-        ImmType::JSNative => map(addr, ImmValue::JSNative)(input),
+        ImmValueType::ByteImm => map(u8, ImmValue::Byte)(input),
+        ImmValueType::GuardClassKindImm => map(parse_ident, ImmValue::GuardClassKind)(input),
+        ImmValueType::ValueTypeImm => map(parse_value_type, ImmValue::ValueType)(input),
+        ImmValueType::JSWhyMagicImm => map(parse_ident, ImmValue::JSWhyMagic)(input),
+        ImmValueType::CallFlagsImm => map(parse_call_flags, ImmValue::CallFlags)(input),
+        ImmValueType::ScalarTypeImm => map(parse_ident, ImmValue::ScalarType)(input),
+        ImmValueType::UnaryMathFunctionImm => map(parse_ident, ImmValue::UnaryMathFunction)(input),
+        ImmValueType::WasmValTypeImm => map(parse_ident, ImmValue::WasmValType)(input),
+        ImmValueType::Int32Imm => map(i32, ImmValue::Int32)(input),
+        ImmValueType::UInt32Imm => map(u32, ImmValue::UInt32)(input),
+        ImmValueType::JSNativeImm => map(addr, ImmValue::JSNative)(input),
         /*
-        ImmType::StaticString => map(
+        ImmValueType::StaticStringImm => map(
             delimited(
                 char('"'),
                 |input: &str| input.split_at_position_complete(|c| c == '"'),
@@ -152,12 +152,12 @@ fn parse_imm_value(input: &str, type_: ImmType) -> ParseResult<ImmValue> {
             |s| ImmValue::StaticString(s.to_owned()),
         )(input),
         */
-        ImmType::AllocKind => map(parse_ident, ImmValue::AllocKind)(input),
+        ImmValueType::AllocKindImm => map(parse_ident, ImmValue::AllocKind)(input),
     }
 }
 
 fn parse_value_type(input: &str) -> ParseResult<ValueType> {
-    lexeme(alt_enum(enum_tag::<ValueType>))(input)
+    alt_enum(enum_symbol::<ValueType>)(input)
 }
 
 fn parse_call_flags(input: &str) -> ParseResult<CallFlags> {
@@ -190,16 +190,16 @@ fn parse_call_flags(input: &str) -> ParseResult<CallFlags> {
     Ok((input, call_flags))
 }
 
-fn parse_operand_type(input: &str) -> ParseResult<OperandType> {
-    terminated(alt_enum(enum_tag::<OperandType>), symbol("Id"))(input)
+fn parse_operand_id_type(input: &str) -> ParseResult<OperandIdType> {
+    alt_enum(enum_symbol::<OperandIdType>)(input)
 }
 
 fn parse_field_type(input: &str) -> ParseResult<FieldType> {
-    terminated(alt_enum(enum_tag::<FieldType>), symbol("Field"))(input)
+    alt_enum(enum_symbol::<FieldType>)(input)
 }
 
-fn parse_imm_type(input: &str) -> ParseResult<ImmType> {
-    terminated(alt_enum(enum_tag::<ImmType>), symbol("Imm"))(input)
+fn parse_imm_value_type(input: &str) -> ParseResult<ImmValueType> {
+    alt_enum(enum_symbol::<ImmValueType>)(input)
 }
 
 fn parse_field(input: &str) -> ParseResult<Field> {
@@ -211,20 +211,20 @@ fn parse_field(input: &str) -> ParseResult<Field> {
 
 fn parse_field_data(input: &str, type_: FieldType) -> ParseResult<FieldData> {
     match type_ {
-        FieldType::Shape => map(addr, FieldData::Shape)(input),
-        FieldType::GetterSetter => map(addr, FieldData::GetterSetter)(input),
-        FieldType::Object => map(addr, FieldData::Object)(input),
-        FieldType::String => map(addr, FieldData::String)(input),
-        FieldType::Atom => map(addr, FieldData::Atom)(input),
-        FieldType::PropertyName => map(hex_word, FieldData::Atom)(input),
-        FieldType::Symbol => map(addr, FieldData::Symbol)(input),
-        FieldType::BaseScript => map(addr, FieldData::BaseScript)(input),
-        FieldType::RawInt32 => map(i32, FieldData::RawInt32)(input),
-        FieldType::RawPointer => map(addr, FieldData::RawPointer)(input),
-        FieldType::Id => map(hex_word, FieldData::Id)(input),
-        FieldType::Value => map(hex_u64, FieldData::Value)(input),
-        FieldType::RawInt64 => map(i64, FieldData::RawInt64)(input),
-        FieldType::AllocSite => map(addr, FieldData::AllocSite)(input),
+        FieldType::ShapeField => map(addr, FieldData::Shape)(input),
+        FieldType::GetterSetterField => map(addr, FieldData::GetterSetter)(input),
+        FieldType::ObjectField => map(addr, FieldData::Object)(input),
+        FieldType::StringField => map(addr, FieldData::String)(input),
+        FieldType::AtomField => map(addr, FieldData::Atom)(input),
+        FieldType::PropertyNameField => map(hex_word, FieldData::Atom)(input),
+        FieldType::SymbolField => map(addr, FieldData::Symbol)(input),
+        FieldType::BaseScriptField => map(addr, FieldData::BaseScript)(input),
+        FieldType::RawInt32Field => map(i32, FieldData::RawInt32)(input),
+        FieldType::RawPointerField => map(addr, FieldData::RawPointer)(input),
+        FieldType::IdField => map(hex_word, FieldData::Id)(input),
+        FieldType::ValueField => map(hex_u64, FieldData::Value)(input),
+        FieldType::RawInt64Field => map(i64, FieldData::RawInt64)(input),
+        FieldType::AllocSiteField => map(addr, FieldData::AllocSite)(input),
     }
 }
 
@@ -331,7 +331,7 @@ fn symbol<'a>(x: &'static str) -> impl FnMut(&'a str) -> ParseResult<&'a str> {
 
 fn alt_enum<'a, T: IntoEnumIterator, O, P: Parser<'a, O>>(
     mut f: impl FnMut(T) -> P,
-) -> impl Parser<'a, O> {
+) -> impl FnMut(&'a str) -> ParseResult<'a, O> {
     move |input: &'a str| {
         let mut accum_err: Option<ParseError> = None;
         for x in T::iter() {
@@ -352,6 +352,8 @@ fn alt_enum<'a, T: IntoEnumIterator, O, P: Parser<'a, O>>(
     }
 }
 
-fn enum_tag<'a, T: Copy + Into<&'static str>>(x: T) -> impl Parser<'a, T> {
-    value(x, tag(x.into()))
+fn enum_symbol<'a, T: Copy + Into<&'static str>>(
+    x: T,
+) -> impl FnMut(&'a str) -> ParseResult<'a, T> {
+    value(x, symbol(x.into()))
 }

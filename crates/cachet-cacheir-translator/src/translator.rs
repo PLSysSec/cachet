@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use cachet_lang::ast::*;
 use cachet_lang::parser::*;
 
-use crate::ast as stub;
+use crate::ast::{self as stub, Typed};
 
 lazy_static! {
     static ref BOOL_PATH: Path = Path::from_ident("Bool");
@@ -73,23 +73,31 @@ pub fn translate(stub: &stub::Stub) -> Mod {
 
     let mut stmts = Vec::new();
 
-    stmts.extend(stub.input_operands.iter().map(|input_operand| {
-        Spanned::internal(
-            Expr::Invoke(Call {
-                target: Spanned::internal(Path::from_ident(format!(
-                    "initInput{}",
-                    type_path_for_operand_type(input_operand.data.type_)
-                ))),
-                args: Spanned::internal(vec![Spanned::internal(
-                    generate_operand_id_from_id_call(
-                        input_operand.data.id,
-                        input_operand.data.type_,
-                    )
-                    .into(),
-                )]),
-            })
-            .into(),
-        )
+    stmts.extend(stub.input_operands.iter().flat_map(|input_operand| {
+        [
+            Spanned::internal(
+                Comment {
+                    text: format!("Input {input_operand}"),
+                }
+                .into(),
+            ),
+            Spanned::internal(
+                Expr::Invoke(Call {
+                    target: Spanned::internal(Path::from_ident(format!(
+                        "initInput{}",
+                        type_path_for_operand_id_type(input_operand.data.type_)
+                    ))),
+                    args: Spanned::internal(vec![Spanned::internal(
+                        generate_operand_id_from_id_call(
+                            input_operand.data.id,
+                            input_operand.data.type_,
+                        )
+                        .into(),
+                    )]),
+                })
+                .into(),
+            ),
+        ]
     }));
 
     for field in &stub.fields {
@@ -110,24 +118,36 @@ pub fn translate(stub: &stub::Stub) -> Mod {
                 args: Spanned::internal(vec![Spanned::internal(field_expr.into())]),
             });
 
-            stmts.push(Spanned::internal(
-                CheckStmt {
-                    kind: CheckKind::Assume,
-                    cond: Spanned::internal(
-                        BinOperExpr {
-                            oper: Spanned::internal(CompareBinOper::Eq.into()),
-                            lhs: Spanned::internal(read_field_expr),
-                            rhs: Spanned::internal(data_expr),
-                        }
-                        .into(),
-                    ),
-                }
-                .into(),
-            ));
+            stmts.extend([
+                Spanned::internal(Stmt::from(Comment {
+                    text: field.to_string(),
+                })),
+                Spanned::internal(
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        cond: Spanned::internal(
+                            BinOperExpr {
+                                oper: Spanned::internal(CompareBinOper::Eq.into()),
+                                lhs: Spanned::internal(read_field_expr),
+                                rhs: Spanned::internal(data_expr),
+                            }
+                            .into(),
+                        ),
+                    }
+                    .into(),
+                ),
+            ]);
         }
     }
 
     for fact in &stub.facts {
+        stmts.push(Spanned::internal(
+            Comment {
+                text: fact.to_string(),
+            }
+            .into(),
+        ));
+
         match fact {
             stub::Fact::ShapeClass(fact) => {
                 stmts.push(Spanned::internal(
@@ -214,29 +234,37 @@ pub fn translate(stub: &stub::Stub) -> Mod {
         }
     }
 
-    stmts.extend(stub.ops.iter().map(|op| {
-        Spanned::internal(Stmt::Emit(Call {
-            target: Spanned::internal(CACHE_IR_PATH.nest(op.ident)),
-            args: Spanned::internal(
-                op.args
-                    .iter()
-                    .map(|arg| {
-                        Spanned::internal(
-                            match &arg.data {
-                                stub::OpArgData::OperandId(data) => {
-                                    generate_operand_id_from_id_call(data.id, data.type_)
-                                }
-                                stub::OpArgData::FieldOffset(data) => {
-                                    generate_field_from_offset_call(data.offset, data.type_)
-                                }
-                                stub::OpArgData::ImmValue(data) => translate_imm_value(data),
-                            }
-                            .into(),
-                        )
-                    })
-                    .collect(),
+    stmts.extend(stub.ops.iter().flat_map(|op| {
+        [
+            Spanned::internal(
+                Comment {
+                    text: op.to_string(),
+                }
+                .into(),
             ),
-        }))
+            Spanned::internal(Stmt::Emit(Call {
+                target: Spanned::internal(CACHE_IR_PATH.nest(op.ident)),
+                args: Spanned::internal(
+                    op.args
+                        .iter()
+                        .map(|arg| {
+                            Spanned::internal(
+                                match &arg.data {
+                                    stub::OpArgData::OperandId(data) => {
+                                        generate_operand_id_from_id_call(data.id, data.type_)
+                                    }
+                                    stub::OpArgData::FieldOffset(data) => {
+                                        generate_field_from_offset_call(data.offset, data.type_)
+                                    }
+                                    stub::OpArgData::ImmValue(data) => translate_imm_value(data),
+                                }
+                                .into(),
+                            )
+                        })
+                        .collect(),
+                ),
+            })),
+        ]
     }));
 
     let body = Block {
@@ -327,9 +355,9 @@ fn translate_bool(b: bool) -> Expr {
     Spanned::internal(if b { *TRUE_PATH } else { *FALSE_PATH }).into()
 }
 
-fn generate_operand_id_from_id_call(id: u16, type_: stub::OperandType) -> Expr {
+fn generate_operand_id_from_id_call(id: u16, type_: stub::OperandIdType) -> Expr {
     Expr::Invoke(Call {
-        target: Spanned::internal(type_path_for_operand_type(type_).nest("fromId")),
+        target: Spanned::internal(type_path_for_operand_id_type(type_).nest("fromId")),
         args: Spanned::internal(vec![Spanned::internal(
             Expr::from(Literal::UInt16(id)).into(),
         )]),
@@ -354,38 +382,40 @@ fn generate_from_addr_call(type_path: Path, addr: stub::Addr) -> Expr {
     })
 }
 
-fn type_path_for_operand_type(operand_type: stub::OperandType) -> Path {
+fn type_path_for_operand_id_type(operand_type: stub::OperandIdType) -> Path {
     match operand_type {
-        stub::OperandType::Val => *VALUE_ID_PATH,
-        stub::OperandType::Obj => *OBJECT_ID_PATH,
-        stub::OperandType::String => *STRING_ID_PATH,
-        stub::OperandType::Symbol => *SYMBOL_ID_PATH,
-        stub::OperandType::Boolean => *BOOL_ID_PATH,
-        stub::OperandType::Int32 => *INT32_ID_PATH,
-        stub::OperandType::Number => *NUMBER_ID_PATH,
-        stub::OperandType::BigInt => *BIG_INT_ID_PATH,
-        stub::OperandType::ValueTag => *VALUE_TAG_ID_PATH,
-        stub::OperandType::IntPtr => *INT_PTR_ID_PATH,
-        stub::OperandType::Raw => *RAW_ID_PATH,
+        stub::OperandIdType::ValId => *VALUE_ID_PATH,
+        stub::OperandIdType::ObjId => *OBJECT_ID_PATH,
+        stub::OperandIdType::StringId => *STRING_ID_PATH,
+        stub::OperandIdType::SymbolId => *SYMBOL_ID_PATH,
+        stub::OperandIdType::BooleanId => *BOOL_ID_PATH,
+        stub::OperandIdType::Int32Id => *INT32_ID_PATH,
+        stub::OperandIdType::NumberId => *NUMBER_ID_PATH,
+        stub::OperandIdType::BigIntId => *BIG_INT_ID_PATH,
+        stub::OperandIdType::ValueTagId => *VALUE_TAG_ID_PATH,
+        stub::OperandIdType::IntPtrId => *INT_PTR_ID_PATH,
+        stub::OperandIdType::RawId => *RAW_ID_PATH,
     }
 }
 
 fn type_path_for_field_type(field_type: stub::FieldType) -> Path {
     match field_type {
-        stub::FieldType::Shape => *SHAPE_FIELD_PATH,
-        stub::FieldType::GetterSetter => *GETTER_SETTER_FIELD_PATH,
-        stub::FieldType::Object => *OBJECT_FIELD_PATH,
-        stub::FieldType::String => *STRING_FIELD_PATH,
-        stub::FieldType::Atom => type_path_for_field_type(stub::FieldType::String),
-        stub::FieldType::PropertyName => type_path_for_field_type(stub::FieldType::String),
-        stub::FieldType::Symbol => *SYMBOL_FIELD_PATH,
-        stub::FieldType::BaseScript => *BASE_SCRIPT_FIELD_PATH,
-        stub::FieldType::RawInt32 => *INT32_FIELD_PATH,
-        stub::FieldType::RawPointer => *INT_PTR_FIELD_PATH,
-        stub::FieldType::Id => *ID_FIELD_PATH,
-        stub::FieldType::Value => *VALUE_FIELD_PATH,
-        stub::FieldType::RawInt64 => *INT64_FIELD_PATH,
-        stub::FieldType::AllocSite => *ALLOC_SITE_FIELD_PATH,
+        stub::FieldType::ShapeField => *SHAPE_FIELD_PATH,
+        stub::FieldType::GetterSetterField => *GETTER_SETTER_FIELD_PATH,
+        stub::FieldType::ObjectField => *OBJECT_FIELD_PATH,
+        stub::FieldType::StringField => *STRING_FIELD_PATH,
+        stub::FieldType::AtomField => type_path_for_field_type(stub::FieldType::StringField),
+        stub::FieldType::PropertyNameField => {
+            type_path_for_field_type(stub::FieldType::StringField)
+        }
+        stub::FieldType::SymbolField => *SYMBOL_FIELD_PATH,
+        stub::FieldType::BaseScriptField => *BASE_SCRIPT_FIELD_PATH,
+        stub::FieldType::RawInt32Field => *INT32_FIELD_PATH,
+        stub::FieldType::RawPointerField => *INT_PTR_FIELD_PATH,
+        stub::FieldType::IdField => *ID_FIELD_PATH,
+        stub::FieldType::ValueField => *VALUE_FIELD_PATH,
+        stub::FieldType::RawInt64Field => *INT64_FIELD_PATH,
+        stub::FieldType::AllocSiteField => *ALLOC_SITE_FIELD_PATH,
     }
 }
 

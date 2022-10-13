@@ -1,9 +1,12 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::fmt::{self, Display};
+
 use derive_more::{Display, From};
 use strum_macros::{EnumIter, IntoStaticStr};
 
 pub use cachet_lang::ast::Ident;
+use cachet_util::{fmt_join, fmt_join_leading};
 
 pub type Word = u64;
 pub type Addr = Word;
@@ -18,7 +21,24 @@ pub struct Stub {
     pub facts: Vec<Fact>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+impl Display for Stub {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{} {}", self.kind, self.engine)?;
+        fmt_join_leading(f, "\nInput ", self.input_operands.iter())?;
+        write!(f, "\n%\n")?;
+        fmt_join_leading(f, "\n", self.ops.iter())?;
+        write!(f, "\n%\n")?;
+        fmt_join_leading(f, "\n", self.fields.iter())?;
+        write!(f, "\n%")?;
+        if !self.facts.is_empty() {
+            write!(f, "\n")?;
+            fmt_join_leading(f, "\n", self.facts.iter())?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Hash)]
 pub enum Engine {
     Baseline,
     IonIC,
@@ -32,23 +52,67 @@ pub struct Op {
     pub args: Vec<OpArg>,
 }
 
+impl Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.ident)?;
+        if !self.args.is_empty() {
+            write!(f, " ")?;
+            fmt_join(f, ", ", self.args.iter())?;
+        }
+        Ok(())
+    }
+}
+
+pub trait Typed {
+    type Type;
+
+    fn type_(&self) -> Self::Type;
+}
+
 #[derive(Clone, Debug)]
 pub struct Arg<T> {
     pub ident: Ident,
     pub data: T,
 }
 
+impl<T> Display for Arg<T>
+where
+    T: Display + Typed,
+    T::Type: Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "[{} {}] {}", self.data.type_(), self.ident, self.data)
+    }
+}
+
+impl<T: Typed> Typed for Arg<T> {
+    type Type = T::Type;
+
+    fn type_(&self) -> Self::Type {
+        self.data.type_()
+    }
+}
+
 pub type OpArg = Arg<OpArgData>;
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Copy, Debug, Display, Eq, From, Hash, PartialEq)]
+pub enum OpArgType {
+    OperandId(OperandIdType),
+    FieldOffset(FieldType),
+    ImmValue(ImmValueType),
+}
+
+#[derive(Clone, Debug, Display, From)]
 pub enum OpArgData {
     OperandId(OperandId),
     FieldOffset(FieldOffset),
     ImmValue(ImmValue),
 }
 
-impl OpArgData {
-    pub const fn type_(&self) -> OpArgType {
+impl Typed for OpArgData {
+    type Type = OpArgType;
+
+    fn type_(&self) -> Self::Type {
         match self {
             Self::OperandId(data) => OpArgType::OperandId(data.type_),
             Self::FieldOffset(data) => OpArgType::FieldOffset(data.type_),
@@ -57,78 +121,138 @@ impl OpArgData {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+#[display(fmt = "{id}")]
 pub struct OperandId {
     pub id: u16,
-    pub type_: OperandType,
+    pub type_: OperandIdType,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+impl Typed for OperandId {
+    type Type = OperandIdType;
+
+    fn type_(&self) -> Self::Type {
+        self.type_
+    }
+}
+
+#[derive(Clone, Copy, Debug, Display, EnumIter, Eq, Hash, IntoStaticStr, PartialEq)]
+pub enum OperandIdType {
+    ValId,
+    ObjId,
+    StringId,
+    SymbolId,
+    BooleanId,
+    Int32Id,
+    NumberId,
+    BigIntId,
+    ValueTagId,
+    IntPtrId,
+    RawId,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "{} {offset}, {data}", "self.type_()")]
+pub struct Field {
+    pub offset: u32,
+    pub data: FieldData,
+}
+
+impl Typed for Field {
+    type Type = FieldType;
+
+    fn type_(&self) -> Self::Type {
+        self.data.type_()
+    }
+}
+
+#[derive(Clone, Debug, Display)]
+pub enum FieldData {
+    #[display(fmt = "{_0:x}")]
+    Shape(Addr),
+    #[display(fmt = "{_0:x}")]
+    GetterSetter(Addr),
+    #[display(fmt = "{_0:x}")]
+    Object(Addr),
+    #[display(fmt = "{_0:x}")]
+    String(Addr),
+    #[display(fmt = "{_0:x}")]
+    Atom(Addr),
+    #[display(fmt = "{_0:x}")]
+    PropertyName(Word),
+    #[display(fmt = "{_0:x}")]
+    Symbol(Addr),
+    #[display(fmt = "{_0:x}")]
+    BaseScript(Addr),
+    RawInt32(i32),
+    #[display(fmt = "{_0:x}")]
+    RawPointer(Addr),
+    #[display(fmt = "{_0:x}")]
+    Id(Word),
+    #[display(fmt = "{_0:x}")]
+    Value(u64),
+    RawInt64(i64),
+    #[display(fmt = "{_0:x}")]
+    AllocSite(Addr),
+}
+
+impl Typed for FieldData {
+    type Type = FieldType;
+
+    fn type_(&self) -> Self::Type {
+        match self {
+            Self::Shape(_) => FieldType::ShapeField,
+            Self::GetterSetter(_) => FieldType::GetterSetterField,
+            Self::Object(_) => FieldType::ObjectField,
+            Self::String(_) => FieldType::StringField,
+            Self::Atom(_) => FieldType::AtomField,
+            Self::PropertyName(_) => FieldType::PropertyNameField,
+            Self::Symbol(_) => FieldType::SymbolField,
+            Self::BaseScript(_) => FieldType::BaseScriptField,
+            Self::RawInt32(_) => FieldType::RawInt32Field,
+            Self::RawPointer(_) => FieldType::RawPointerField,
+            Self::Id(_) => FieldType::IdField,
+            Self::Value(_) => FieldType::ValueField,
+            Self::RawInt64(_) => FieldType::RawInt64Field,
+            Self::AllocSite(_) => FieldType::AllocSiteField,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Display, EnumIter, Eq, Hash, IntoStaticStr, PartialEq)]
+pub enum FieldType {
+    ShapeField,
+    GetterSetterField,
+    ObjectField,
+    StringField,
+    AtomField,
+    PropertyNameField,
+    SymbolField,
+    BaseScriptField,
+    RawInt32Field,
+    RawPointerField,
+    IdField,
+    ValueField,
+    RawInt64Field,
+    AllocSiteField,
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+#[display(fmt = "{offset}")]
 pub struct FieldOffset {
     pub offset: u32,
     pub type_: FieldType,
 }
 
-#[derive(Clone, Copy, Debug, Eq, From, Hash, PartialEq)]
-pub enum OpArgType {
-    OperandId(OperandType),
-    FieldOffset(FieldType),
-    ImmValue(ImmType),
+impl Typed for FieldOffset {
+    type Type = FieldType;
+
+    fn type_(&self) -> Self::Type {
+        self.type_
+    }
 }
 
-#[derive(Clone, Copy, Debug, Display, EnumIter, Eq, Hash, IntoStaticStr, PartialEq)]
-pub enum OperandType {
-    ValueTag,
-    Val,
-    Obj,
-    String,
-    Symbol,
-    Boolean,
-    Int32,
-    Number,
-    BigInt,
-    IntPtr,
-    Raw,
-}
-
-#[derive(Clone, Copy, Debug, Display, EnumIter, Eq, Hash, IntoStaticStr, PartialEq)]
-pub enum FieldType {
-    Shape,
-    GetterSetter,
-    Object,
-    String,
-    Atom,
-    PropertyName,
-    Symbol,
-    BaseScript,
-    RawInt32,
-    RawPointer,
-    Id,
-    Value,
-    RawInt64,
-    AllocSite,
-}
-
-#[derive(Clone, Copy, Debug, Display, EnumIter, Eq, Hash, IntoStaticStr, PartialEq)]
-pub enum ImmType {
-    JSOp,
-    Bool,
-    Byte,
-    GuardClassKind,
-    ValueType,
-    JSWhyMagic,
-    CallFlags,
-    ScalarType,
-    UnaryMathFunction,
-    WasmValType,
-    Int32,
-    UInt32,
-    JSNative,
-    //StaticString,
-    AllocKind,
-}
-
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, Display, From)]
 pub enum ImmValue {
     JSOp(Ident),
     Bool(bool),
@@ -143,30 +267,52 @@ pub enum ImmValue {
     WasmValType(Ident),
     Int32(i32),
     UInt32(u32),
+    #[display(fmt = "{_0:x}")]
     JSNative(Addr),
     // TODO(spinda): We don't have a string representation in Cachet yet.
     //StaticString(String),
     AllocKind(Ident),
 }
 
-impl ImmValue {
-    pub const fn type_(&self) -> ImmType {
+#[derive(Clone, Copy, Debug, Display, EnumIter, Eq, Hash, IntoStaticStr, PartialEq)]
+pub enum ImmValueType {
+    JSOpImm,
+    BoolImm,
+    ByteImm,
+    GuardClassKindImm,
+    ValueTypeImm,
+    JSWhyMagicImm,
+    CallFlagsImm,
+    ScalarTypeImm,
+    UnaryMathFunctionImm,
+    WasmValTypeImm,
+    Int32Imm,
+    UInt32Imm,
+    JSNativeImm,
+    //StaticStringImm,
+    AllocKindImm,
+}
+
+impl Typed for ImmValue {
+    type Type = ImmValueType;
+
+    fn type_(&self) -> Self::Type {
         match self {
-            Self::JSOp(_) => ImmType::JSOp,
-            Self::Bool(_) => ImmType::Bool,
-            Self::Byte(_) => ImmType::Byte,
-            Self::GuardClassKind(_) => ImmType::GuardClassKind,
-            Self::ValueType(_) => ImmType::ValueType,
-            Self::JSWhyMagic(_) => ImmType::JSWhyMagic,
-            Self::CallFlags(_) => ImmType::CallFlags,
-            Self::ScalarType(_) => ImmType::ScalarType,
-            Self::UnaryMathFunction(_) => ImmType::UnaryMathFunction,
-            Self::WasmValType(_) => ImmType::WasmValType,
-            Self::Int32(_) => ImmType::Int32,
-            Self::UInt32(_) => ImmType::UInt32,
-            Self::JSNative(_) => ImmType::JSNative,
-            //Self::StaticString(_) => ImmType::StaticString,
-            Self::AllocKind(_) => ImmType::AllocKind,
+            Self::JSOp(_) => ImmValueType::JSOpImm,
+            Self::Bool(_) => ImmValueType::BoolImm,
+            Self::Byte(_) => ImmValueType::ByteImm,
+            Self::GuardClassKind(_) => ImmValueType::GuardClassKindImm,
+            Self::ValueType(_) => ImmValueType::ValueTypeImm,
+            Self::JSWhyMagic(_) => ImmValueType::JSWhyMagicImm,
+            Self::CallFlags(_) => ImmValueType::CallFlagsImm,
+            Self::ScalarType(_) => ImmValueType::ScalarTypeImm,
+            Self::UnaryMathFunction(_) => ImmValueType::UnaryMathFunctionImm,
+            Self::WasmValType(_) => ImmValueType::WasmValTypeImm,
+            Self::Int32(_) => ImmValueType::Int32Imm,
+            Self::UInt32(_) => ImmValueType::UInt32Imm,
+            Self::JSNative(_) => ImmValueType::JSNativeImm,
+            //Self::StaticString(_) => ImmValueType::StaticStringImm,
+            Self::AllocKind(_) => ImmValueType::AllocKindImm,
         }
     }
 }
@@ -195,58 +341,23 @@ pub struct CallFlags {
     pub needs_uninitialized_this: bool,
 }
 
-#[derive(Clone, Debug)]
-pub struct Field {
-    pub offset: u32,
-    pub data: FieldData,
-}
-
-impl Field {
-    pub const fn type_(&self) -> FieldType {
-        self.data.type_()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum FieldData {
-    Shape(Addr),
-    GetterSetter(Addr),
-    Object(Addr),
-    String(Addr),
-    Atom(Addr),
-    PropertyName(Word),
-    Symbol(Addr),
-    BaseScript(Addr),
-    RawInt32(i32),
-    RawPointer(Addr),
-    Id(Word),
-    Value(u64),
-    RawInt64(i64),
-    AllocSite(Addr),
-}
-
-impl FieldData {
-    pub const fn type_(&self) -> FieldType {
-        match self {
-            Self::Shape(_) => FieldType::Shape,
-            Self::GetterSetter(_) => FieldType::GetterSetter,
-            Self::Object(_) => FieldType::Object,
-            Self::String(_) => FieldType::String,
-            Self::Atom(_) => FieldType::Atom,
-            Self::PropertyName(_) => FieldType::PropertyName,
-            Self::Symbol(_) => FieldType::Symbol,
-            Self::BaseScript(_) => FieldType::BaseScript,
-            Self::RawInt32(_) => FieldType::RawInt32,
-            Self::RawPointer(_) => FieldType::RawPointer,
-            Self::Id(_) => FieldType::Id,
-            Self::Value(_) => FieldType::Value,
-            Self::RawInt64(_) => FieldType::RawInt64,
-            Self::AllocSite(_) => FieldType::AllocSite,
+impl Display for CallFlags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.arg_format)?;
+        if self.is_constructing {
+            write!(f, "+ isConstructing")?;
         }
+        if self.is_same_realm {
+            write!(f, "+ isSameRealm")?;
+        }
+        if self.needs_uninitialized_this {
+            write!(f, "+ needsUninitializedThis")?;
+        }
+        Ok(())
     }
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, Display, From)]
 pub enum Fact {
     ShapeClass(ShapeClassFact),
     ShapeNumFixedSlots(ShapeNumFixedSlotsFact),
@@ -254,25 +365,29 @@ pub enum Fact {
     ClassIsNativeObjectFact(ClassIsNativeObjectFact),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "ShapeClass {shape:x}, {class:x}")]
 pub struct ShapeClassFact {
     pub shape: Addr,
     pub class: Addr,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "ShapeNumFixedSlots {shape:x}, {num_fixed_slots}")]
 pub struct ShapeNumFixedSlotsFact {
     pub shape: Addr,
     pub num_fixed_slots: u32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "ShapeSlotSpan {shape:x}, {slot_span}")]
 pub struct ShapeSlotSpanFact {
     pub shape: Addr,
     pub slot_span: u32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "ClassIsNativeObject {class:x}")]
 pub struct ClassIsNativeObjectFact {
     pub class: Addr,
 }

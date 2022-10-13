@@ -45,6 +45,8 @@ impl FromIterator<Spanned<Item>> for Mod {
 #[derive(Clone, Debug, Display, From)]
 pub enum Item {
     #[from]
+    Comment(Comment),
+    #[from]
     Enum(EnumItem),
     #[from]
     Import(ImportItem),
@@ -61,6 +63,17 @@ pub enum Item {
 }
 
 #[derive(Clone, Debug)]
+pub struct Comment {
+    pub text: String,
+}
+
+impl Display for Comment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(AffixWriter::new(f, "// ", ""), "{}", self.text)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct EnumItem {
     pub ident: Spanned<Ident>,
     pub variants: TiVec<VariantIndex, Spanned<Ident>>,
@@ -71,7 +84,7 @@ impl Display for EnumItem {
         write!(f, "enum {} ", self.ident)?;
 
         let mut block = BlockWriter::start(f)?;
-        fmt_join(&mut block, "\n", self.variants.iter().map(CommaSeparated))?;
+        fmt_join(&mut block, "\n", self.variants.iter().map(CommaTerminated))?;
         block.end()?;
 
         Ok(())
@@ -101,7 +114,7 @@ impl Display for StructItem {
         }
 
         let mut block = BlockWriter::start(f)?;
-        fmt_join(&mut block, "\n", self.fields.iter().map(CommaSeparated))?;
+        fmt_join(&mut block, "\n", self.fields.iter().map(CommaTerminated))?;
         block.end()?;
 
         Ok(())
@@ -415,6 +428,8 @@ impl From<Block> for KindedBlock {
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Stmt {
+    #[from]
+    Comment(Comment),
     /// Represents a freestanding block in the statement position, *without*
     /// a trailing semicolon. Requires that the block be unit-typed. A trailing
     /// semicolon should cause the block to be parsed as an expression
@@ -667,9 +682,9 @@ impl<W: Write> Write for BlockWriter<W> {
     }
 }
 
-struct CommaSeparated<'a, T>(&'a T);
+struct CommaTerminated<'a, T>(&'a T);
 
-impl<T: Display> Display for CommaSeparated<'_, T> {
+impl<T: Display> Display for CommaTerminated<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{},", self.0)
     }

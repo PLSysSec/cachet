@@ -174,6 +174,7 @@ impl ItemCatalog {
         item: Spanned<parser::Item>,
     ) {
         match item.value {
+            parser::Item::Comment(_) => (),
             parser::Item::Enum(enum_item) => {
                 self.catalog_enum_item(parent, Spanned::new(item.span, enum_item))
             }
@@ -868,12 +869,13 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     /// `resolve_nested_block`. `resolve_block_impl` should not be called
     /// directly.
     fn resolve_block_impl(&mut self, block: parser::Block) -> Option<Block> {
-        let stmts: Option<_> = collect_eager(
-            block
-                .stmts
-                .into_iter()
-                .map(|stmt| map_spanned(stmt, |stmt| self.resolve_stmt(stmt.value))),
-        );
+        let stmts: Option<_> = collect_eager(block.stmts.into_iter().filter_map(|stmt| {
+            let stmt_span = stmt.span;
+            match self.resolve_stmt(stmt.value) {
+                None => Some(None),
+                Some(maybe_stmt) => maybe_stmt.map(|stmt| Some(Spanned::new(stmt_span, stmt))),
+            }
+        }));
 
         let value = Spanned::new(
             block.value.span,
@@ -898,24 +900,42 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         })
     }
 
-    fn resolve_stmt(&mut self, stmt: parser::Stmt) -> Option<Stmt> {
+    fn resolve_stmt(&mut self, stmt: parser::Stmt) -> Option<Option<Stmt>> {
         match stmt {
-            parser::Stmt::Block(block) => self.resolve_kinded_block(block).map(Stmt::from),
-            parser::Stmt::Let(let_stmt) => self.resolve_let_stmt(let_stmt).map(Stmt::from),
-            parser::Stmt::Label(label_stmt) => self.resolve_label_stmt(label_stmt).map(Stmt::from),
-            parser::Stmt::If(if_stmt) => self.resolve_if_stmt(if_stmt).map(Stmt::from),
-            parser::Stmt::Check(check_stmt) => self.resolve_check_stmt(check_stmt).map(Stmt::from),
-            parser::Stmt::Goto(goto_stmt) => self.resolve_goto_stmt(goto_stmt).map(Stmt::from),
-            parser::Stmt::Bind(bind_stmt) => self.resolve_bind_stmt(bind_stmt).map(Stmt::from),
+            parser::Stmt::Comment(_) => Some(None),
+            parser::Stmt::Block(block) => {
+                self.resolve_kinded_block(block).map(Stmt::from).map(Some)
+            }
+            parser::Stmt::Let(let_stmt) => {
+                self.resolve_let_stmt(let_stmt).map(Stmt::from).map(Some)
+            }
+            parser::Stmt::Label(label_stmt) => self
+                .resolve_label_stmt(label_stmt)
+                .map(Stmt::from)
+                .map(Some),
+            parser::Stmt::If(if_stmt) => self.resolve_if_stmt(if_stmt).map(Stmt::from).map(Some),
+            parser::Stmt::Check(check_stmt) => self
+                .resolve_check_stmt(check_stmt)
+                .map(Stmt::from)
+                .map(Some),
+            parser::Stmt::Goto(goto_stmt) => {
+                self.resolve_goto_stmt(goto_stmt).map(Stmt::from).map(Some)
+            }
+            parser::Stmt::Bind(bind_stmt) => {
+                self.resolve_bind_stmt(bind_stmt).map(Stmt::from).map(Some)
+            }
             parser::Stmt::Emit(call) => self
                 .resolve_call(call, |scoped_resolver, target| {
                     scoped_resolver
                         .lookup_op_scoped(target)
                         .map_found(Into::into)
                 })
-                .map(Stmt::Emit),
-            parser::Stmt::Ret(ret_stmt) => self.resolve_ret_stmt(ret_stmt).map(Stmt::from),
-            parser::Stmt::Expr(expr) => self.resolve_expr(expr).map(Stmt::from),
+                .map(Stmt::Emit)
+                .map(Some),
+            parser::Stmt::Ret(ret_stmt) => {
+                self.resolve_ret_stmt(ret_stmt).map(Stmt::from).map(Some)
+            }
+            parser::Stmt::Expr(expr) => self.resolve_expr(expr).map(Stmt::from).map(Some),
         }
     }
 
