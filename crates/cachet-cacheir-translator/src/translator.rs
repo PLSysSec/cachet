@@ -15,7 +15,6 @@ lazy_static! {
     static ref INT64_PATH: Path = Path::from_ident("Int64");
     static ref CACHE_IR_PATH: Path = Path::from_ident("CacheIR");
     static ref VALUE_PATH: Path = Path::from_ident("Value");
-    static ref VALUE_TYPE_PATH: Path = Path::from_ident("ValueType");
     static ref OBJECT_PATH: Path = Path::from_ident("Object");
     static ref SHAPE_PATH: Path = Path::from_ident("Shape");
     static ref CLASS_PATH: Path = Path::from_ident("Class");
@@ -54,6 +53,19 @@ lazy_static! {
     static ref ALLOC_SITE_FIELD_PATH: Path = Path::from_ident("AllocSiteField");
     static ref INT64_FIELD_PATH: Path = Path::from_ident("Int64Field");
     static ref VALUE_FIELD_PATH: Path = Path::from_ident("ValueField");
+    static ref VALUE_TYPE_PATH: Path = Path::from_ident("ValueType");
+    static ref DOUBLE_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Double");
+    static ref INT32_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Int32");
+    static ref BOOL_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Bool");
+    static ref UNDEFINED_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Undefined");
+    static ref NULL_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Null");
+    static ref MAGIC_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Magic");
+    static ref STRING_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("String");
+    static ref SYMBOL_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Symbol");
+    static ref PRIVATE_GC_THING_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("PrivateGCThing");
+    static ref BIG_INT_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("BigInt");
+    static ref OBJECT_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Object");
+    static ref UNKNOWN_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Unknown");
 }
 
 pub fn translate(stub: &stub::Stub) -> Mod {
@@ -275,7 +287,9 @@ fn translate_imm_value(imm_value: &stub::ImmValue) -> Expr {
         stub::ImmValue::GuardClassKind(ident) => {
             Spanned::internal(GUARD_CLASS_KIND_PATH.nest(*ident)).into()
         }
-        stub::ImmValue::ValueType(ident) => Spanned::internal(VALUE_TYPE_PATH.nest(*ident)).into(),
+        stub::ImmValue::ValueType(value_type) => {
+            Spanned::internal(var_path_for_value_type(*value_type)).into()
+        }
         stub::ImmValue::JSWhyMagic(ident) => {
             Spanned::internal(JS_WHY_MAGIC_PATH.nest(*ident)).into()
         }
@@ -372,5 +386,22 @@ fn type_path_for_field_type(field_type: stub::FieldType) -> Path {
         stub::FieldType::Value => *VALUE_FIELD_PATH,
         stub::FieldType::RawInt64 => *INT64_FIELD_PATH,
         stub::FieldType::AllocSite => *ALLOC_SITE_FIELD_PATH,
+    }
+}
+
+fn var_path_for_value_type(value_type: stub::ValueType) -> Path {
+    match value_type {
+        stub::ValueType::Double => *DOUBLE_VALUE_TYPE_PATH,
+        stub::ValueType::Int32 => *INT32_VALUE_TYPE_PATH,
+        stub::ValueType::Boolean => *BOOL_VALUE_TYPE_PATH,
+        stub::ValueType::Undefined => *UNDEFINED_VALUE_TYPE_PATH,
+        stub::ValueType::Null => *NULL_VALUE_TYPE_PATH,
+        stub::ValueType::Magic => *MAGIC_VALUE_TYPE_PATH,
+        stub::ValueType::String => *STRING_VALUE_TYPE_PATH,
+        stub::ValueType::Symbol => *SYMBOL_VALUE_TYPE_PATH,
+        stub::ValueType::PrivateGcThing => *PRIVATE_GC_THING_VALUE_TYPE_PATH,
+        stub::ValueType::BigInt => *BIG_INT_VALUE_TYPE_PATH,
+        stub::ValueType::Object => *OBJECT_VALUE_TYPE_PATH,
+        stub::ValueType::Unknown => *UNKNOWN_VALUE_TYPE_PATH,
     }
 }

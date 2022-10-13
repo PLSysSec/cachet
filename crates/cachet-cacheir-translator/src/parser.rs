@@ -133,7 +133,7 @@ fn parse_imm_value(input: &str, type_: ImmType) -> ParseResult<ImmValue> {
         )(input),
         ImmType::Byte => map(u8, ImmValue::Byte)(input),
         ImmType::GuardClassKind => map(parse_ident, ImmValue::GuardClassKind)(input),
-        ImmType::ValueType => map(parse_ident, ImmValue::ValueType)(input),
+        ImmType::ValueType => map(parse_value_type, ImmValue::ValueType)(input),
         ImmType::JSWhyMagic => map(parse_ident, ImmValue::JSWhyMagic)(input),
         ImmType::CallFlags => map(parse_call_flags, ImmValue::CallFlags)(input),
         ImmType::ScalarType => map(parse_ident, ImmValue::ScalarType)(input),
@@ -154,6 +154,10 @@ fn parse_imm_value(input: &str, type_: ImmType) -> ParseResult<ImmValue> {
         */
         ImmType::AllocKind => map(parse_ident, ImmValue::AllocKind)(input),
     }
+}
+
+fn parse_value_type(input: &str) -> ParseResult<ValueType> {
+    lexeme(alt_enum(enum_tag::<ValueType>))(input)
 }
 
 fn parse_call_flags(input: &str) -> ParseResult<CallFlags> {

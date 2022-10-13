@@ -134,7 +134,7 @@ pub enum ImmValue {
     Bool(bool),
     Byte(u8),
     GuardClassKind(Ident),
-    ValueType(Ident),
+    ValueType(ValueType),
     JSWhyMagic(Ident),
     #[from]
     CallFlags(CallFlags),
@@ -169,6 +169,22 @@ impl ImmValue {
             Self::AllocKind(_) => ImmType::AllocKind,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Display, EnumIter, Eq, Hash, IntoStaticStr, PartialEq)]
+pub enum ValueType {
+    Double,
+    Int32,
+    Boolean,
+    Undefined,
+    Null,
+    Magic,
+    String,
+    Symbol,
+    PrivateGcThing,
+    BigInt,
+    Object,
+    Unknown,
 }
 
 #[derive(Clone, Debug)]
