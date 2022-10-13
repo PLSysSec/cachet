@@ -31,6 +31,8 @@ impl ValueReg {
     fn payloadOrValueReg(valueReg: ValueReg) -> Reg;
 }
 
+struct TypedOrValueReg;
+
 enum PhyFloatReg {
     Xmm0,
     Xmm1,
@@ -98,6 +100,101 @@ impl FloatReg {
     }
 
     unsafe fn newUnchecked(reg: PhyFloatReg, type: FloatContentType) -> FloatReg;
+}
+
+struct AnyReg;
+
+impl AnyReg {
+    fn isFloat(anyReg: AnyReg) -> Bool;
+
+    fn fromReg(reg: Reg) -> AnyReg {
+       let anyReg = (unsafe { AnyReg::fromRegUnchecked(reg) });
+       assume !AnyReg::isFloat(anyReg);
+       assume (unsafe { AnyReg::toRegUnchecked(anyReg) }) == reg;
+       anyReg
+    }
+
+    unsafe fn fromRegUnchecked(reg: Reg) -> AnyReg;
+
+    fn toReg(anyReg: AnyReg) -> Reg {
+        assert !AnyReg::isFloat(anyReg);
+        let reg = (unsafe { AnyReg::toRegUnchecked(anyReg) });
+        assume (unsafe { AnyReg::fromRegUnchecked(reg) }) == anyReg;
+        reg
+    }
+
+    unsafe fn toRegUnchecked(anyReg: AnyReg) -> Reg;
+
+    fn fromFloatReg(floatReg: FloatReg) -> AnyReg {
+        let anyReg = (unsafe { AnyReg::fromFloatRegUnchecked(floatReg) });
+        assume AnyReg::isFloat(anyReg);
+        assume (unsafe { AnyReg::toFloatRegUnchecked(anyReg) }) == floatReg;
+        anyReg
+    }
+
+    unsafe fn fromFloatRegUnchecked(floatReg: FloatReg) -> AnyReg;
+
+    fn toFloatReg(anyReg: AnyReg) -> FloatReg {
+        assert AnyReg::isFloat(anyReg);
+        let floatReg = (unsafe { AnyReg::toFloatRegUnchecked(anyReg) });
+        assume (unsafe { AnyReg::fromFloatRegUnchecked(floatReg) }) == anyReg;
+        floatReg
+    }
+
+    unsafe fn toFloatRegUnchecked(anyReg: AnyReg) -> FloatReg;
+}
+
+impl TypedOrValueReg {
+    fn type(reg: TypedOrValueReg) -> MIRType;
+
+    fn hasTyped(reg: TypedOrValueReg) -> Bool {
+        let type = TypedOrValueReg::type(reg);
+        type != MIRType::Value && type != MIRType::None
+    }
+
+    fn hasValue(reg: TypedOrValueReg) -> Bool {
+        TypedOrValueReg::type(reg) == MIRType::Value
+    }
+
+    fn fromValueReg(valueReg: ValueReg) -> TypedOrValueReg {
+        let reg = (unsafe { TypedOrValueReg::fromValueRegUnchecked(valueReg) });
+        assume TypedOrValueReg::type(reg) == MIRType::Value;
+        assume (unsafe { TypedOrValueReg::toValueRegUnchecked(reg) }) == valueReg;
+        reg
+    }
+
+    unsafe fn fromValueRegUnchecked(valueReg: ValueReg) -> TypedOrValueReg;
+
+    fn toValueReg(reg: TypedOrValueReg) -> ValueReg {
+        assert TypedOrValueReg::hasValue(reg);
+        let valueReg = (unsafe { TypedOrValueReg::toValueRegUnchecked(reg) });
+        assume (unsafe { TypedOrValueReg::fromValueRegUnchecked(valueReg) }) == reg;
+        valueReg
+    }
+
+    unsafe fn toValueRegUnchecked(reg: TypedOrValueReg) -> ValueReg;
+
+    fn fromTypedReg(type: MIRType, typedReg: AnyReg) -> TypedOrValueReg {
+        // NOTE: don't support this currently even though it may be okay
+        assert type != MIRType::Value;
+
+        let reg = (unsafe { TypedOrValueReg::fromTypedRegUnchecked(type, typedReg) });
+        assume TypedOrValueReg::type(reg) == type;
+        assume (unsafe { TypedOrValueReg::toTypedRegUnchecked(reg) }) == typedReg;
+        reg
+    }
+
+    unsafe fn fromTypedRegUnchecked(type: MIRType, reg: AnyReg) -> TypedOrValueReg;
+
+    fn toTypedReg(reg: TypedOrValueReg) -> AnyReg {
+       assert TypedOrValueReg::hasTyped(reg);
+       let typedReg = (unsafe { TypedOrValueReg::toTypedRegUnchecked(reg) });
+       let type = TypedOrValueReg::type(reg);
+       assume (unsafe { TypedOrValueReg::fromTypedRegUnchecked(type, typedReg) }) == reg;
+       typedReg
+    }
+
+    unsafe fn toTypedRegUnchecked(reg: TypedOrValueReg) -> AnyReg;
 }
 
 struct LiveRegisterSet;
@@ -242,6 +339,10 @@ ir MASM {
         MASM::setDouble(dstReg, MASM::getDouble(srcReg));
     }
 
+    op MovePtrBoolImmWord(b: Bool, dstReg: Reg) {
+        MASM::setBool(dstReg, b);
+    }
+
     // this op corresponds to an overload of the MoveValue op
     // that takes an immediate Value operand
     op MoveValueImm(value: Value, dstReg: ValueReg) {
@@ -383,6 +484,19 @@ ir MASM {
         MASM::setValue(dstReg, value);
     }
 
+    op LoadTypedOrValueAddress(address: Address, dstReg: TypedOrValueReg) {
+        let baseData = MASM::getData(address.base);
+        let data = Data::readData(baseData, address.offset);
+        let value = Data::toValue(data);
+        if TypedOrValueReg::hasValue(dstReg) {
+            MASM::setValue(TypedOrValueReg::toValueReg(dstReg), value);
+        } else {
+            assert TypedOrValueReg::hasTyped(dstReg);
+            MASM::loadUnboxedValue(value, TypedOrValueReg::type(dstReg),
+                    TypedOrValueReg::toTypedReg(dstReg))
+        }
+    }
+
     op LoadPtrAddress(address: Address, dstReg: Reg) {
         let baseData = MASM::getData(address.base);
         let data = Data::readData(baseData, address.offset);
@@ -515,29 +629,8 @@ ir MASM {
     }
 
     op UnboxNonDouble(valueReg: ValueReg, dstReg: Reg, valTy: ValueType) {
-        assert valTy != ValueType::Double;
-
         let value = MASM::getValue(valueReg);
-
-        if valTy == ValueType::Object {
-            let o = Value::toObject(value);
-            MASM::setObject(dstReg, o);
-        } else if valTy == ValueType::Int32 {
-            let i = Value::toInt32(value);
-            MASM::setInt32(dstReg, i);
-        } else if valTy == ValueType::Bool {
-            let b = Value::toBool(value);
-            MASM::setBool(dstReg, b);
-        } else if valTy == ValueType::String {
-            let s = Value::toString(value);
-            MASM::setString(dstReg, s);
-        } else if valTy == ValueType::Symbol {
-            let s = Value::toSymbol(value);
-            MASM::setSymbol(dstReg, s);
-        } else if valTy == ValueType::BigInt {
-            let b = Value::toBigInt(value);
-            MASM::setBigInt(dstReg, b);
-        }
+        MASM::unboxNonDouble(value, dstReg, valTy);    
     }
 
     // NOTE: This Op needs to be implemented as a Phantom Op on the
@@ -1279,6 +1372,51 @@ ir MASM {
 
         let result = lhs + rhs;
         MASM::setDouble(destReg, result);
+    }
+
+    fn loadUnboxedValue(value: Value, type: MIRType, dstReg: AnyReg) {
+        if AnyReg::isFloat(dstReg) {
+            MASM::loadInt32OrDouble(value, AnyReg::toFloatReg(dstReg));
+        } else {
+            MASM::unboxNonDouble(value, AnyReg::toReg(dstReg), ValueType::fromMIRType(type));
+        }
+    }
+
+    fn unboxNonDouble(value: Value, dstReg: Reg, valTy: ValueType) {
+        assert valTy != ValueType::Double;
+
+        if valTy == ValueType::Object {
+            let o = Value::toObject(value);
+            MASM::setObject(dstReg, o);
+        } else if valTy == ValueType::Int32 {
+            let i = Value::toInt32(value);
+            MASM::setInt32(dstReg, i);
+        } else if valTy == ValueType::Bool {
+            let b = Value::toBool(value);
+            MASM::setBool(dstReg, b);
+        } else if valTy == ValueType::String {
+            let s = Value::toString(value);
+            MASM::setString(dstReg, s);
+        } else if valTy == ValueType::Symbol {
+            let s = Value::toSymbol(value);
+            MASM::setSymbol(dstReg, s);
+        } else if valTy == ValueType::BigInt {
+            let b = Value::toBigInt(value);
+            MASM::setBigInt(dstReg, b);
+        }
+    }
+
+    fn loadInt32OrDouble(value: Value, dstReg: FloatReg) {
+        if Value::isInt32(value) {
+            let int32 = Value::toInt32(value);
+            let double = int32 as Double;
+            MASM::setDouble(dstReg, double);
+        } else if Value::isDouble(value) {
+            let double = Value::toDouble(value);
+            MASM::setDouble(dstReg, double);
+        }
+
+        assert false;
     }
 
     fn getData(reg: Reg) -> Data;

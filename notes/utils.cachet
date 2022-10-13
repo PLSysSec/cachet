@@ -66,3 +66,18 @@ fn initBigIntInput(id: BigIntId) {
     initInputOperandLocation(typedId);
     let reg = CacheIR::defineReg(typedId);
 }
+
+fn initValueOutput() {
+    // TODO: assume that outputReg is not one of the registers
+    // allocated for the inputs.
+    assume TypedOrValueReg::hasValue(CacheIR::outputReg);
+}
+
+fn initTypedOutput(type: MIRType) {
+    // TODO: assume that outputReg is not one of the registers
+    // allocated for the inputs.
+    assert type != MIRType::Value;
+    assume TypedOrValueReg::type(CacheIR::outputReg) == type;
+    let anyReg = TypedOrValueReg::toTypedReg(CacheIR::outputReg);
+    assume !AnyReg::isFloat(anyReg);
+}

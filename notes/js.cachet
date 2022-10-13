@@ -214,6 +214,37 @@ impl Data {
 
 fn runtimeMainContextPtr() -> Data;
 
+enum MIRType {
+    Undefined,
+    Null,
+    Boolean,
+    Int32,
+    Int64,
+    IntPtr,
+    Double,
+    Float32,
+
+    String,
+    Symbol,
+    BigInt,
+    Simd128,
+
+    Object,
+    MagicOptimizedOut,
+    MagicHole,
+    MagicIsConstructing,
+    MagicUninitializedLexical,
+
+    Value,
+    None,
+    Slots,
+    Elements,
+    Pointer,
+    RefOrNull,
+    StackResults,
+    Shape,
+}
+
 enum ValueType {
   Double,
   Int32,
@@ -227,6 +258,34 @@ enum ValueType {
   BigInt,
   Object,
   Unknown,
+}
+
+impl ValueType {
+    fn fromMIRType(type: MIRType) -> ValueType {
+        if type == MIRType::Undefined {
+            return ValueType::Undefined;
+        } else if type == MIRType::Null {
+            return ValueType::Null;
+        } else if type == MIRType::Boolean {
+            return ValueType::Bool;
+        } else if type == MIRType::Int32 {
+            return ValueType::Int32;
+        } else if type == MIRType::Float32 || type == MIRType::Double {
+            return ValueType::Double;
+        } else if type == MIRType::String {
+            return ValueType::String;
+        } else if type == MIRType::Symbol {
+            return ValueType::Symbol;
+        } else if type == MIRType::BigInt {
+            return ValueType::BigInt;
+        } else if type == MIRType::MagicOptimizedOut || type == MIRType::MagicHole || type ==
+        MIRType::MagicIsConstructing || type == MIRType::MagicUninitializedLexical {
+            return ValueType::Magic;
+        }
+
+        assert type == MIRType::Object;
+        ValueType::Object
+    }
 }
 
 struct Value;
