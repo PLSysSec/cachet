@@ -455,6 +455,7 @@ procedure #CacheIR~allocateReg()
   modifies #CacheIR~allocatedRegs;
 {
   var $reg: #Reg;
+  var $data: #Data;
   var tmp'0: #Bool;
 
   // ensure that we have enough registers by
@@ -491,6 +492,9 @@ procedure #CacheIR~allocateReg()
 
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
   ret := $reg;
+
+  havoc $data;
+  call #MASM~setData($reg, $data);
 }
 
 procedure #CacheIR~allocateKnownReg($reg: #Reg)
@@ -565,10 +569,14 @@ procedure #CacheIR~allocateAvailableFloatReg($floatReg: #FloatReg)
 procedure #CacheIR~allocateAvailableFloatRegUnchecked($floatReg: #FloatReg)
   modifies #CacheIR~allocatedFloatRegs;
 {
+  var $data: #FloatData;
   // register should not already be allocated
   assert !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
 
   #CacheIR~allocatedFloatRegs := #Set~add(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
+
+  havoc $data;
+  call #MASM~setFloatData(#FloatReg^field~reg($floatReg), $data);
 }
 
 procedure #CacheIR~allocateFloatScratchReg()
