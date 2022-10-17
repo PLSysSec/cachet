@@ -547,6 +547,18 @@ ir CacheIR emits MASM {
         CacheIR::releaseReg(scratchReg);
     }
 
+    op PushPopRegs() {
+        let scratchReg = CacheIR::allocateReg();
+        let volatileRegs = LiveRegSet::newVolatile();
+        emit MASM::PushRegsInMask(volatileRegs);
+
+        let ignoreRegs = LiveRegSet::newEmpty();
+        LiveRegSet::addReg(out ignoreRegs, ignoreRegs, scratchReg);
+        emit MASM::PopRegsInMaskIgnore(volatileRegs, ignoreRegs);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
     op GuardStringToNumber(strId: StringId, resultId: NumberId) {
         let strReg = CacheIR::useStringReg(strId);
         let outputReg = CacheIR::defineValueReg(resultId);
@@ -569,19 +581,19 @@ ir CacheIR emits MASM {
             emit MASM::ReserveStack(8_u32);
             emit MASM::MoveStackPtrTo(ValueReg::payloadOrValueReg(outputReg));
 
-            let volatileRegs = LiveRegisterSet::newVolatile();
+            let volatileRegs = LiveRegSet::newVolatile();
             emit MASM::PushRegsInMask(volatileRegs);
 
             emit MASM::SetupUnalignedABICall(scratchReg);
             emit MASM::LoadJSContext(scratchReg);
-            emit MASM::PassABIArgReg(scratchReg, 0_u16);
-            emit MASM::PassABIArgReg(strReg, 1_u16);
-            emit MASM::PassABIArgReg(ValueReg::payloadOrValueReg(outputReg), 2_u16);
+            emit MASM::PassABIArgReg(scratchReg);
+            emit MASM::PassABIArgReg(strReg);
+            emit MASM::PassABIArgReg(ValueReg::payloadOrValueReg(outputReg));
             emit MASM::CallWithABI(ABIFunction::StringToNumberPure);
             emit MASM::StoreCallPointerResult(scratchReg);
 
-            let ignoreRegs = LiveRegisterSet::newEmpty();
-            LiveRegisterSet::addReg(out ignoreRegs, ignoreRegs, scratchReg);
+            let ignoreRegs = LiveRegSet::newEmpty();
+            LiveRegSet::addReg(out ignoreRegs, ignoreRegs, scratchReg);
             emit MASM::PopRegsInMaskIgnore(volatileRegs, ignoreRegs);
 
             label ok: MASM;

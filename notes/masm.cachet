@@ -58,30 +58,6 @@ enum FloatContentType {
     Simd128,
 }
 
-struct FloatData;
-
-impl FloatData {
-    fn contentType(data: FloatData) -> FloatContentType;
-
-    fn fromDouble(double: Double) -> FloatData {
-        let data = (unsafe { FloatData::fromDoubleUnchecked(double) });
-        assume FloatData::contentType(data) == FloatContentType::Double;
-        assume (unsafe { FloatData::toDoubleUnchecked(data) }) == double;
-        data
-    }
-
-    unsafe fn fromDoubleUnchecked(double: Double) -> FloatData;
-
-    fn toDouble(data: FloatData) -> Double {
-        assert FloatData::contentType(data) == FloatContentType::Double;
-        let double = (unsafe { FloatData::toDoubleUnchecked(data) });
-        assume (unsafe { FloatData::fromDoubleUnchecked(double) }) == data;
-        double
-    }
-
-    unsafe fn toDoubleUnchecked(data: FloatData) -> Double;
-}
-
 struct FloatReg {
    reg: PhyFloatReg,
    type: FloatContentType,
@@ -197,17 +173,500 @@ impl TypedOrValueReg {
     unsafe fn toTypedRegUnchecked(reg: TypedOrValueReg) -> AnyReg;
 }
 
-struct LiveRegisterSet;
+struct LiveGeneralRegSet;
 
-impl LiveRegisterSet {
-    fn containsReg(set: LiveRegisterSet, reg: Reg) -> Bool;
-    fn addReg(out newSet: LiveRegisterSet, set: LiveRegisterSet, reg: Reg);
-    fn takeReg(out newSet: LiveRegisterSet, set: LiveRegisterSet, reg: Reg);
+impl LiveGeneralRegSet {
+    fn newEmpty() -> LiveGeneralRegSet;
+    fn newVolatile() -> LiveGeneralRegSet;
 
-    fn containsFloatReg(set: LiveRegisterSet, floatReg: FloatReg) -> Bool;
-        
-    fn newEmpty() -> LiveRegisterSet;
-    fn newVolatile() -> LiveRegisterSet;
+    fn contains(set: LiveGeneralRegSet, reg: Reg) -> Bool;
+    fn add(out newSet: LiveGeneralRegSet, set: LiveGeneralRegSet, reg: Reg);
+    fn take(out newSet: LiveGeneralRegSet, set: LiveGeneralRegSet, reg: Reg);
+
+    #[refined]
+    fn size(set: LiveGeneralRegSet) -> UInt32 {
+        let size = 0_u32;
+        for reg in Reg asc {
+            if LiveGeneralRegSet::contains(set, reg) {
+                size = size + 1_u32;
+            }
+        }
+
+        size
+    }
+}
+
+struct LiveFloatRegSet;
+
+impl LiveFloatRegSet {
+    fn newEmpty() -> LiveFloatRegSet;
+    fn newVolatile() -> LiveFloatRegSet;
+
+    fn contains(set: LiveFloatRegSet, floatReg: FloatReg) -> Bool;
+    fn add(out newSet: LiveFloatRegSet, set: LiveFloatRegSet, floatReg: FloatReg);
+    fn take(out newSet: LiveFloatRegSet, set: LiveFloatRegSet, floatReg: FloatReg);
+
+    #[refined]
+    fn reducedForPush(set: LiveFloatRegSet) -> LiveFloatRegSet {
+        let mut newSet = set;
+        for phyReg in PhyFloatReg asc {
+            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+
+            if LiveFloatRegSet::contains(newSet, simdReg) {
+                LiveFloatRegSet::take(out newSet, newSet, doubleReg);
+                LiveFloatRegSet::take(out newSet, newSet, singleReg);
+            } else if LiveFloatRegSet::contains(newSet, doubleReg) {
+                LiveFloatRegSet::take(out newSet, newSet, singleReg);
+            }
+        }
+
+        newSet
+    }
+
+    #[refined]
+    fn size(set: LiveFloatRegSet) -> UInt32 {
+        // TODO: mut variable ?
+        let size = 0_u32;
+
+        for phyReg in PhyFloatReg asc {
+            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+
+            if LiveFloatRegSet::contains(set, simdReg) {
+                size = size + 1_u32;
+            }
+
+            if LiveFloatRegSet::contains(set, doubleReg) {
+                size = size + 1_u32;
+            }
+
+            if LiveFloatRegSet::contains(set, singleReg) {
+                size = size + 1_u32;
+            }
+        }
+
+        size
+    }
+
+    #[refined]
+    fn pushSizeInBytes(set: LiveFloatRegSet) -> UInt32 {
+        let count32 = 0_u32;
+        let count64 = 0_u32;
+        let count128 = 0_u32;
+
+        for phyReg in PhyFloatReg asc {
+            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+
+            assert (
+              (!LiveFloatRegSet::contains(set, simdReg) && !LiveFloatRegSet::contains(set,
+              doubleReg) && !LiveFloatRegSet::contains(set, singleReg)) ||
+              (LiveFloatRegSet::contains(set, simdReg) && !LiveFloatRegSet::contains(set,
+              doubleReg) && !LiveFloatRegSet::contains(set, singleReg)) || 
+              (!LiveFloatRegSet::contains(set, simdReg) && LiveFloatRegSet::contains(set,
+              doubleReg) && !LiveFloatRegSet::contains(set, singleReg)) || 
+              (!LiveFloatRegSet::contains(set, simdReg) && !LiveFloatRegSet::contains(set,
+              doubleReg) && LiveFloatRegSet::contains(set, singleReg))
+            );
+
+            if LiveFloatRegSet::contains(set, simdReg) {
+                count128 = count128 + 1_u32;
+            } else if LiveFloatRegSet::contains(set, doubleReg) {
+                count64 = count64 + 1_u32;
+            } else if LiveFloatRegSet::contains(set, singleReg) {
+                count32 = count32 + 1_u32;
+            }
+        }
+
+        // adjustment for alignment
+        count32 = count32 + ( count32 & 1_u32 );
+
+        (count32 * 4_u32) + (count64 * 8_u32) + (count128 * 16_u32)
+    }
+}
+
+struct LiveRegSet;
+
+impl LiveRegSet {
+    fn gprs(set: LiveRegSet) -> LiveGeneralRegSet;
+    fn fpus(set: LiveRegSet) -> LiveFloatRegSet;
+
+    fn containsReg(set: LiveRegSet, reg: Reg) -> Bool {
+        let gprs = LiveRegSet::gprs(set);
+        LiveGeneralRegSet::contains(gprs, reg)
+    }
+
+    fn addReg(out newSet: LiveRegSet, set: LiveRegSet, reg: Reg) {
+        let gprs = LiveRegSet::gprs(set);
+        let fpus = LiveRegSet::fpus(set);
+
+        LiveGeneralRegSet::add(out gprs, gprs, reg);
+        newSet = LiveRegSet::new(gprs, fpus);
+    }
+
+    fn takeReg(out newSet: LiveRegSet, set: LiveRegSet, reg: Reg) {
+        let gprs = LiveRegSet::gprs(set);
+        let fpus = LiveRegSet::fpus(set);
+
+        LiveGeneralRegSet::take(out gprs, gprs, reg);
+        newSet = LiveRegSet::new(gprs, fpus);
+    }
+
+    fn containsFloatReg(set: LiveRegSet, floatReg: FloatReg) -> Bool {
+        let fpus = LiveRegSet::fpus(set);
+        LiveFloatRegSet::contains(fpus, floatReg)
+    }
+
+    fn newEmpty() -> LiveRegSet {
+        let gprs = LiveGeneralRegSet::newEmpty();
+        let fpus = LiveFloatRegSet::newEmpty();
+        LiveRegSet::new(gprs, fpus)
+    }
+
+    fn newVolatile() -> LiveRegSet {
+        let gprs = LiveGeneralRegSet::newVolatile();
+        let fpus = LiveFloatRegSet::newVolatile();
+        LiveRegSet::new(gprs, fpus)
+    }
+
+    fn new(gprs: LiveGeneralRegSet, fpus: LiveFloatRegSet) -> LiveRegSet {
+        let set = (unsafe { LiveRegSet::newUnchecked(gprs, fpus) });
+        assume LiveRegSet::gprs(set) == gprs;
+        assume LiveRegSet::fpus(set) == fpus;
+        set
+    }
+
+    unsafe fn newUnchecked(gprs: LiveGeneralRegSet, fpus: LiveFloatRegSet) -> LiveRegSet;
+}
+
+struct MoveResolver;
+
+impl MoveResolver {
+    fn reset();
+    fn addRegMove(data: RegData);
+    fn resolve();
+}
+
+enum RegDataType {
+    Value,
+    UnboxedValue,
+    NativeObjectSlots,
+    NativeObjectElements,
+    TypeTag,
+    TaggedProto,
+    Class,
+    StackIndex,
+    JSContext,
+}
+
+struct RegData;
+
+impl RegData {
+    fn typeOf(data: RegData) -> RegDataType;
+
+    fn isValue(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::Value
+    }
+
+    fn fromValue(value: Value) -> RegData {
+        let data = (unsafe { RegData::fromValueUnchecked(value) });
+        assume RegData::isValue(data);
+        assume (unsafe { RegData::toValueUnchecked(data) }) == value;
+        data
+    }
+
+    unsafe fn fromValueUnchecked(value: Value) -> RegData;
+
+    fn toValue(data: RegData) -> Value {
+        assert RegData::isValue(data);
+        let value = (unsafe { RegData::toValueUnchecked(data) });
+        assume (unsafe { RegData::fromValueUnchecked(value) }) == data;
+        value
+    }
+
+    unsafe fn toValueUnchecked(data: RegData) -> Value;
+
+    fn isUnboxedValue(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::UnboxedValue
+    }
+
+    fn fromUnboxedValue(value: Value) -> RegData {
+        let data = (unsafe { RegData::fromUnboxedValueUnchecked(value) });
+        assume RegData::isUnboxedValue(data);
+        assume (unsafe { RegData::toUnboxedValueUnchecked(data) }) == value;
+        data
+    }
+
+    unsafe fn fromUnboxedValueUnchecked(value: Value) -> RegData;
+
+    fn toUnboxedValue(data: RegData) -> Value {
+        assert RegData::isUnboxedValue(data);
+        let value = (unsafe { RegData::toUnboxedValueUnchecked(data) });
+        assume (unsafe { RegData::fromUnboxedValueUnchecked(value) }) == data;
+        value
+    }
+
+    unsafe fn toUnboxedValueUnchecked(data: RegData) -> Value;
+
+    fn isNativeObjectSlots(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::NativeObjectSlots
+    }
+
+    fn fromNativeObjectSlots(slots: NativeObjectSlots) -> RegData {
+        let data = (unsafe { RegData::fromNativeObjectSlotsUnchecked(slots) });
+        assume RegData::isNativeObjectSlots(data);
+        assume (unsafe { RegData::toNativeObjectSlotsUnchecked(data) }) == slots;
+        data
+    }
+
+    unsafe fn fromNativeObjectSlotsUnchecked(slots: NativeObjectSlots) -> RegData;
+
+    fn toNativeObjectSlots(data: RegData) -> NativeObjectSlots {
+        assert RegData::isNativeObjectSlots(data);
+        let slots = (unsafe { RegData::toNativeObjectSlotsUnchecked(data) });
+        assume (unsafe { RegData::fromNativeObjectSlotsUnchecked(slots) }) == data;
+        slots
+    }
+
+    unsafe fn toNativeObjectSlotsUnchecked(data: RegData) -> NativeObjectSlots;
+
+    fn isNativeObjectElements(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::NativeObjectElements
+    }
+
+    fn fromNativeObjectElements(elements: NativeObjectElements) -> RegData {
+        let data = (unsafe { RegData::fromNativeObjectElementsUnchecked(elements) });
+        assume RegData::isNativeObjectElements(data);
+        assume (unsafe { RegData::toNativeObjectElementsUnchecked(data) }) == elements;
+        data
+    }
+
+    unsafe fn fromNativeObjectElementsUnchecked(slots: NativeObjectElements) -> RegData;
+
+    fn toNativeObjectElements(data: RegData) -> NativeObjectElements {
+        assert RegData::isNativeObjectElements(data);
+        let elements = (unsafe { RegData::toNativeObjectElementsUnchecked(data) });
+        assume (unsafe { RegData::fromNativeObjectElementsUnchecked(elements) }) == data;
+        elements
+    }
+
+    unsafe fn toNativeObjectElementsUnchecked(data: RegData) -> NativeObjectElements;
+
+    fn isTypeTag(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::TypeTag
+    }
+
+    fn fromValueType(valTy: ValueType) -> RegData {
+        let data = (unsafe { RegData::fromValueTypeUnchecked(valTy) });
+        assume RegData::isTypeTag(data);
+        assume (unsafe { RegData::toValueTypeUnchecked(data) }) == valTy;
+        data
+    }
+
+    unsafe fn fromValueTypeUnchecked(valTy: ValueType) -> RegData;
+
+    fn toValueType(data: RegData) -> ValueType {
+        assert RegData::isTypeTag(data);
+        let valTy = (unsafe { RegData::toValueTypeUnchecked(data) });
+        assume (unsafe { RegData::fromValueTypeUnchecked(valTy) }) == data;
+        valTy
+    }
+
+    unsafe fn toValueTypeUnchecked(data: RegData) -> ValueType;
+
+    fn isTaggedProto(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::TaggedProto
+    }
+
+    fn fromTaggedProto(proto: TaggedProto) -> RegData {
+        let data = (unsafe { RegData::fromTaggedProtoUnchecked(proto) });
+        assume RegData::isTaggedProto(data);
+        assume (unsafe { RegData::toTaggedProtoUnchecked(data) }) == proto;
+        data
+    }
+
+    unsafe fn fromTaggedProtoUnchecked(proto: TaggedProto) -> RegData;
+
+    fn toTaggedProto(data: RegData) -> TaggedProto {
+        assert RegData::isTaggedProto(data);
+        let proto = (unsafe { RegData::toTaggedProtoUnchecked(data) });
+        assume (unsafe { RegData::fromTaggedProtoUnchecked(proto) }) == data;
+        proto
+    }
+
+    unsafe fn toTaggedProtoUnchecked(data: RegData) -> TaggedProto;
+
+    fn isClass(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::Class
+    }
+
+    fn fromClass(class: Class) -> RegData {
+        let data = (unsafe { RegData::fromClassUnchecked(class) });
+        assume RegData::isClass(data);
+        assume (unsafe { RegData::toClassUnchecked(data) }) == class;
+        data
+    }
+
+    unsafe fn fromClassUnchecked(class: Class) -> RegData;
+
+    fn toClass(data: RegData) -> Class {
+        assert RegData::isClass(data);
+        let class = (unsafe { RegData::toClassUnchecked(data) });
+        assume (unsafe { RegData::fromClassUnchecked(class) }) == data;
+        class
+    }
+
+    unsafe fn toClassUnchecked(data: RegData) -> Class;
+
+    fn isStackIndex(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::StackIndex
+    }
+
+    fn fromStackIndex(index: UInt64) -> RegData {
+        let data = (unsafe { RegData::fromStackIndexUnchecked(index) });
+        assume RegData::isStackIndex(data);
+        assume (unsafe { RegData::toStackIndexUnchecked(data) }) == index;
+        data
+    }
+
+    unsafe fn fromStackIndexUnchecked(index: UInt64) -> RegData;
+
+    fn toStackIndex(data: RegData) -> UInt64 {
+        assert RegData::isStackIndex(data);
+        let index = (unsafe { RegData::toStackIndexUnchecked(data) });
+        assume (unsafe { RegData::fromStackIndexUnchecked(index) }) == data;
+        index
+    }
+
+    unsafe fn toStackIndexUnchecked(data: RegData) -> UInt64;
+
+    fn isJSContext(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::JSContext
+    }
+
+    fn fromJSContext(ctx: JSContext) -> RegData {
+        let data = (unsafe { RegData::fromJSContextUnchecked(ctx) });
+        assume RegData::isJSContext(data);
+        assume (unsafe { RegData::toJSContextUnchecked(data) }) == ctx;
+        data
+    }
+
+    unsafe fn fromJSContextUnchecked(ctx: JSContext) -> RegData;
+
+    fn toJSContext(data: RegData) -> JSContext {
+        assert RegData::isJSContext(data);
+        let ctx = (unsafe { RegData::toJSContextUnchecked(data) });
+        assume (unsafe { RegData::fromJSContextUnchecked(ctx) }) == data;
+        ctx
+    }
+
+    unsafe fn toJSContextUnchecked(data: RegData) -> JSContext;
+
+    fn readData(data: RegData, offset: Int64) -> RegData {
+        if RegData::isUnboxedValue(data) {
+            let value = RegData::toUnboxedValue(data);
+            return Value::readData(value, offset);
+        } else if RegData::isNativeObjectSlots(data) {
+            let slots = RegData::toNativeObjectSlots(data);
+            return NativeObjectSlots::readData(slots, offset);
+        } else if RegData::isNativeObjectElements(data) {
+            let elements = RegData::toNativeObjectElements(data);
+            return NativeObjectElements::readData(elements, offset);
+        }
+
+        assert false;
+        data // returning to satisfy compiler
+    }
+}
+
+struct FloatData;
+
+impl FloatData {
+    fn contentType(data: FloatData) -> FloatContentType;
+
+    fn fromDouble(double: Double) -> FloatData {
+        let data = (unsafe { FloatData::fromDoubleUnchecked(double) });
+        assume FloatData::contentType(data) == FloatContentType::Double;
+        assume (unsafe { FloatData::toDoubleUnchecked(data) }) == double;
+        data
+    }
+
+    unsafe fn fromDoubleUnchecked(double: Double) -> FloatData;
+
+    fn toDouble(data: FloatData) -> Double {
+        assert FloatData::contentType(data) == FloatContentType::Double;
+        let double = (unsafe { FloatData::toDoubleUnchecked(data) });
+        assume (unsafe { FloatData::fromDoubleUnchecked(double) }) == data;
+        double
+    }
+
+    unsafe fn toDoubleUnchecked(data: FloatData) -> Double;
+}
+
+struct StackData;
+
+impl StackData {
+    fn isFloat(data: StackData) -> Bool;
+
+    fn size(data: StackData) -> UInt64 {
+        if !StackData::isFloat(data) {
+            // RegData is always 8 bytes
+            return 8_u64;
+        } else {
+            let floatData = StackData::toFloatData(data);
+            let contentType = FloatData::contentType(floatData);
+            if contentType == FloatContentType::Single {
+                return 4_u64;
+            } else if contentType == FloatContentType::Double {
+                return 8_u64;
+            } else {
+                return 16_u64;
+            }
+        }
+
+        assert false;
+        return 0_u64;
+    }
+
+    fn fromFloatData(floatData: FloatData) -> StackData {
+        let data = (unsafe { StackData::fromFloatDataUnchecked(floatData) });
+        assume StackData::isFloat(data);
+        assume (unsafe { StackData::toFloatDataUnchecked(data) }) == floatData;
+        data
+    }
+
+    unsafe fn fromFloatDataUnchecked(floatData: FloatData) -> StackData;
+
+    fn toFloatData(data: StackData) -> FloatData {
+        assert StackData::isFloat(data);
+        let floatData = (unsafe { StackData::toFloatDataUnchecked(data) });
+        assume (unsafe { StackData::fromFloatDataUnchecked(floatData) }) == data;
+        floatData
+    }
+
+    unsafe fn toFloatDataUnchecked(data: StackData) -> FloatData;
+
+    fn fromRegData(regData: RegData) -> StackData {
+        let data = (unsafe { StackData::fromRegDataUnchecked(regData) });
+        assume !StackData::isFloat(data);
+        assume (unsafe { StackData::toRegDataUnchecked(data) }) == regData;
+        data
+    }
+
+    unsafe fn fromRegDataUnchecked(regData: RegData) -> StackData;
+
+    fn toRegData(data: StackData) -> RegData {
+        assert !StackData::isFloat(data);
+        let regData = (unsafe { StackData::toRegDataUnchecked(data) });
+        assume (unsafe { StackData::fromRegDataUnchecked(regData) }) == data;
+        regData
+    }
+
+    unsafe fn toRegDataUnchecked(data: StackData) -> RegData;
 }
 
 enum Condition {
@@ -316,6 +775,28 @@ enum ABIFunction {
     StringToNumberPure
 }
 
+impl ABIFunction {
+    fn call(function: ABIFunction) {
+        if function == ABIFunction::StringToNumberPure {
+            let ctx = RegData::toJSContext(MASM::getData(Reg::Rcx));
+            let str = Value::toString(RegData::toUnboxedValue(MASM::getData(Reg::Rdx)));
+            let doublePtr = RegData::toStackIndex(MASM::getData(Reg::R8));
+
+            let double = 0.0;
+            let result = StringToNumberPure(ctx, str, out double);
+
+            MASM::setBool(Reg::Rax, result);
+
+            if result {
+                MASM::stackStore(doublePtr,
+                StackData::fromFloatData(FloatData::fromDouble(double)));
+            }
+        } else {
+            assert false;
+        }
+    }
+}
+
 ir MASM {
     // NOTE: Needs to be implemented to call the equivalent
     // op with string as argument.
@@ -368,31 +849,20 @@ ir MASM {
     }
 
     op ReserveStack(amount: UInt32) {
-        let stackPointer = MASM::getStackIndex(Reg::Rsp);
-
-        let newStackPointer = stackPointer - amount;
-        assert newStackPointer >= 0_u64;
-
-        MASM::setStackIndex(Reg::Rsp, newStackPointer);
+        MASM::reserveStack(amount);
     }
 
     op AddToStackPtrImm32(amount: Int32) {
         let stackPointer = MASM::getStackIndex(Reg::Rsp);
 
         let newStackPointer = stackPointer + (amount as UInt64);
-        assert newStackPointer >= 0_u64;
+        assert (newStackPointer as Int64) >= 0_i64;
 
         MASM::setStackIndex(Reg::Rsp, newStackPointer);
     }
 
     op FreeStack(amount: UInt32) {
-        let stackPointer = MASM::getStackIndex(Reg::Rsp);
-
-        let newStackPointer = stackPointer + amount;
-        assert newStackPointer >= 0_u64;
-
-        MASM::setStackIndex(Reg::Rsp, newStackPointer);
-
+        MASM::freeStack(amount);
     }
 
     op MoveStackPtrTo(destReg: Reg) {
@@ -401,48 +871,156 @@ ir MASM {
 
     // TODO: loop through all the registers and push them onto the stack
     // if they are in `set`.
-    op PushRegsInMask(set: LiveRegisterSet) {
- 
+    op PushRegsInMask(set: LiveRegSet) {
+        let gprs = LiveRegSet::gprs(set);
+        let fpus = LiveFloatRegSet::reducedForPush(LiveRegSet::fpus(set)); 
+
+        let numFpu = LiveFloatRegSet::size(fpus);
+
+        let diffF = LiveFloatRegSet::pushSizeInBytes(fpus) as Int32;
+        let diffG = LiveGeneralRegSet::size(gprs) * 8_u32;
+
+        for reg in Reg desc {
+            if LiveGeneralRegSet::contains(gprs, reg) {
+                diffG = diffG - 8_u32;
+                MASM::stackPushReg(reg);
+            }
+        }
+
+        assert diffG == 0_u32;
+
+        MASM::reserveStack(diffF as UInt32); 
+
+        for phyReg in PhyFloatReg desc {
+            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+
+            if LiveFloatRegSet::contains(fpus, simdReg) {
+                numFpu = numFpu - 1_u32;
+                diffF = diffF - 16_i32;
+                let address = Address::new(Reg::Rsp, diffF);
+                MASM::storeFloatRegAddress(simdReg, address);
+            } else if LiveFloatRegSet::contains(fpus, doubleReg) {
+                numFpu = numFpu - 1_u32;
+                diffF = diffF - 8_i32;
+                let address = Address::new(Reg::Rsp, diffF);
+                MASM::storeFloatRegAddress(doubleReg, address);
+            } else if LiveFloatRegSet::contains(fpus, singleReg) {
+                numFpu = numFpu - 1_u32;
+                diffF = diffF - 4_i32;
+                let address = Address::new(Reg::Rsp, diffF);
+                MASM::storeFloatRegAddress(singleReg, address);
+            }
+        }
+
+        assert numFpu == 0_u32;
+
+        let alignExtra = (diffF as UInt32) % 8_u32;
+
+        assert alignExtra == 0_u32 || alignExtra == 4_u32;
+        diffF = diffF - alignExtra as Int32;
+        
+        assert diffF == 0_i32;
     }
 
     // TODO: loop through all the registers and pop them off the stack if
     // they are in `set` and not in `ignore`.
-    op PopRegsInMaskIgnore(set: LiveRegisterSet, ignore: LiveRegisterSet) {
+    op PopRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
+        let fpus = LiveFloatRegSet::reducedForPush(LiveRegSet::fpus(set)); 
+        let gprs = LiveRegSet::gprs(set);
 
+        let numFpu = LiveFloatRegSet::size(fpus);
+        let diffG = (LiveGeneralRegSet::size(gprs) * 8_u32) as Int32;
+        let diffF = LiveFloatRegSet::pushSizeInBytes(fpus) as Int32;
+        let reservedG = diffG;
+        let reservedF = diffF;
+
+        for phyReg in PhyFloatReg desc {
+            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+        
+            if LiveFloatRegSet::contains(fpus, simdReg) {
+                numFpu = numFpu - 1_u32;
+                diffF = diffF - 16_i32;
+                if !LiveRegSet::containsFloatReg(ignore, simdReg) {
+                    let address = Address::new(Reg::Rsp, diffF);
+                    MASM::loadFloatRegAddress(address, simdReg);
+                }
+            } else if LiveFloatRegSet::contains(fpus, doubleReg) {
+                numFpu = numFpu - 1_u32;
+                diffF = diffF - 8_i32;
+                if !LiveRegSet::containsFloatReg(ignore, doubleReg) {
+                    let address = Address::new(Reg::Rsp, diffF);
+                    MASM::loadFloatRegAddress(address, doubleReg);
+                }
+            } else if LiveFloatRegSet::contains(fpus, singleReg) {
+                numFpu = numFpu - 1_u32;
+                diffF = diffF - 4_i32;
+                if !LiveRegSet::containsFloatReg(ignore, singleReg) {
+                    let address = Address::new(Reg::Rsp, diffF);
+                    MASM::loadFloatRegAddress(address, singleReg);
+                }
+            }
+        }
+
+        MASM::freeStack(reservedF as UInt32);
+        assert numFpu == 0_u32;
+        diffF = diffF - (diffF % 8_i32);
+        assert diffF == 0_i32;
+
+        if LiveGeneralRegSet::size(LiveRegSet::gprs(ignore)) == 0_u32 {
+            for reg in Reg asc {
+                if LiveGeneralRegSet::contains(gprs, reg) {
+                    diffG = diffG - 8_i32;
+                    MASM::stackPopReg(reg);
+                }
+            } 
+        } else {
+            for reg in Reg desc {
+                if LiveGeneralRegSet::contains(gprs, reg) {
+                        diffG = diffG - 8_i32;
+                    if !LiveRegSet::containsReg(ignore, reg) {
+                        let address = Address::new(Reg::Rsp, diffG);
+                        MASM::loadRegAddress(address, reg);
+                    }
+                }
+            }
+            MASM::freeStack(reservedG as UInt32);
+        }
+
+        assert diffG == 0_i32;
     }
 
     op SetupUnalignedABICall(scratchReg: Reg) {
-        let stackPtr = MASM::getStackIndex(Reg::Rsp);
-        MASM::setStackIndex(scratchReg, stackPtr);
-        stackPtr = ~15_u64 & stackPtr;
-        MASM::setStackIndex(Reg::Rsp, stackPtr);
+        //let stackPtr = MASM::getStackIndex(Reg::Rsp);
+        //MASM::setStackIndex(scratchReg, stackPtr);
+        //stackPtr = ~15_u64 & stackPtr;
+        //MASM::setStackIndex(Reg::Rsp, stackPtr);
+        //MASM::stackPushReg(scratchReg);
     }
 
     op LoadJSContext(destReg: Reg) {
-        MASM::setData(destReg, runtimeMainContextPtr());
+        let ctx = runtimeMainContextPtr();
+        let data = RegData::fromJSContext(ctx);
+        MASM::setData(destReg, data);
     }
 
-    op PassABIArgReg(reg: Reg, argIdx: UInt16) {
-        if argIdx == 0_u16 {
-            MASM::setData(Reg::Rcx, MASM::getData(reg));
-        } else if argIdx == 1_u16 {
-            MASM::setData(Reg::Rdx, MASM::getData(reg));
-        } else if argIdx == 2_u16 {
-            MASM::setData(Reg::R8, MASM::getData(reg));
-        } else if argIdx == 3_u16 {
-            MASM::setData(Reg::R9, MASM::getData(reg));
-        }
-
-        // TODO: handle this case by pushing arg to stack
-        assert false;
+    op PassABIArgReg(reg: Reg) {
+        MoveResolver::addRegMove(MASM::getData(reg)); 
     }
 
     op CallWithABI(function: ABIFunction) {
-
+        MoveResolver::resolve();
+        ABIFunction::call(function);
+        //MASM::stackPopReg(Reg::Rsp);
     }
 
     op StoreCallPointerResult(reg: Reg) {
-        
+        if reg != Reg::Rax {
+            MASM::setData(reg, MASM::getData(Reg::Rax));
+        }
     }
 
     op StoreBool(bool: Bool, reg: Reg) {
@@ -463,31 +1041,38 @@ ir MASM {
 
     op Load32Address(address: Address, dstReg: Reg) {
         let baseData = MASM::getData(address.base);
-        let data = Data::readData(baseData, address.offset);
-        let value = Data::toValue(data);
+        let data = RegData::readData(baseData, address.offset);
+        let value = RegData::toValue(data);
         let int32 = Value::toInt32(value);
         MASM::setInt32(dstReg, int32);
     }
 
     op LoadDoubleAddress(address: Address, dstReg: FloatReg) {
-       let baseData = MASM::getData(address.base);
-       let data = Data::readData(baseData, address.offset);
-       let value = Data::toValue(data);
-       let double = Value::toDouble(value);
-       MASM::setDouble(dstReg, double);
+        let baseData = MASM::getData(address.base);
+        if RegData::isStackIndex(baseData) {
+            let stackIndex = RegData::toStackIndex(baseData);
+            let stackIndex = stackIndex + address.offset;
+            let stackData = MASM::stackLoad(stackIndex);
+            MASM::setFloatData(dstReg, StackData::toFloatData(stackData));
+        } else {
+            let data = RegData::readData(baseData, address.offset);
+            let value = RegData::toValue(data);
+            let double = Value::toDouble(value);
+            MASM::setDouble(dstReg, double);
+        }
     }
 
     op LoadValueAddress(address: Address, dstReg: ValueReg) {
         let baseData = MASM::getData(address.base);    
-        let data = Data::readData(baseData, address.offset);
-        let value = Data::toValue(data);
+        let data = RegData::readData(baseData, address.offset);
+        let value = RegData::toValue(data);
         MASM::setValue(dstReg, value);
     }
 
     op LoadTypedOrValueAddress(address: Address, dstReg: TypedOrValueReg) {
         let baseData = MASM::getData(address.base);
-        let data = Data::readData(baseData, address.offset);
-        let value = Data::toValue(data);
+        let data = RegData::readData(baseData, address.offset);
+        let value = RegData::toValue(data);
         if TypedOrValueReg::hasValue(dstReg) {
             MASM::setValue(TypedOrValueReg::toValueReg(dstReg), value);
         } else {
@@ -499,7 +1084,7 @@ ir MASM {
 
     op LoadPtrAddress(address: Address, dstReg: Reg) {
         let baseData = MASM::getData(address.base);
-        let data = Data::readData(baseData, address.offset);
+        let data = RegData::readData(baseData, address.offset);
         MASM::setData(dstReg, data);
     }
 
@@ -584,7 +1169,7 @@ ir MASM {
     // unboxing.
     op UnboxObjectProto(srcReg: Reg, destReg: Reg) {
         let data = MASM::getData(srcReg);
-        let proto = Data::toTaggedProto(data);
+        let proto = RegData::toTaggedProto(data);
         let object = TaggedProto::toObject(proto);
         MASM::setObject(destReg, object);
     } 
@@ -814,7 +1399,7 @@ ir MASM {
     // the register contains a TaggedProto
     op BranchTestNullProto(reg: Reg, label branch: MASM) {
         let data = MASM::getData(reg);
-        let proto = Data::toTaggedProto(data);
+        let proto = RegData::toTaggedProto(data);
 
         if TaggedProto::isNull(proto) {
             goto branch;
@@ -825,7 +1410,7 @@ ir MASM {
     // the register contains a TaggedProto
     op BranchTestLazyProto(reg: Reg, label branch: MASM) {
         let data = MASM::getData(reg);
-        let proto = Data::toTaggedProto(data);
+        let proto = RegData::toTaggedProto(data);
 
         if TaggedProto::isLazy(proto) {
             goto branch;
@@ -892,7 +1477,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
-        MASM::setData(scratchReg, Data::fromClass(class));
+        MASM::setData(scratchReg, RegData::fromClass(class));
 
         let isClass = class == Class::functionClass() || class == Class::extendedFunctionClass();
 
@@ -915,7 +1500,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
-        MASM::setData(scratchReg, Data::fromClass(class));
+        MASM::setData(scratchReg, RegData::fromClass(class));
 
         let isClass = class == Class::functionClass() || class == Class::extendedFunctionClass();
         
@@ -970,7 +1555,7 @@ ir MASM {
 
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
-        MASM::setData(scratchReg, Data::fromClass(class));
+        MASM::setData(scratchReg, RegData::fromClass(class));
 
         let objectHasClass = Shape::classOf(shape) == class;
 
@@ -990,7 +1575,7 @@ ir MASM {
 
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
-        MASM::setData(scratchReg, Data::fromClass(class));
+        MASM::setData(scratchReg, RegData::fromClass(class));
 
         let objectHasClass = Shape::classOf(shape) == class;
 
@@ -1005,7 +1590,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
-        MASM::setData(scratchReg, Data::fromClass(class));
+        MASM::setData(scratchReg, RegData::fromClass(class));
         let objectIsNative = Class::isNativeObject(class);
 
         if !objectIsNative {
@@ -1017,7 +1602,7 @@ ir MASM {
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
-        MASM::setData(scratchReg, Data::fromClass(class));
+        MASM::setData(scratchReg, RegData::fromClass(class));
         let objectIsProxy = Class::isProxyObject(class);
 
         if !proxy && !objectIsProxy {
@@ -1058,8 +1643,8 @@ ir MASM {
 
 
         let baseData = MASM::getData(address.base);
-        let data = Data::readData(baseData, address.offset);
-        let lhsInt32 = Value::toInt32(Data::toUnboxedValue(data));
+        let data = RegData::readData(baseData, address.offset);
+        let lhsInt32 = Value::toInt32(RegData::toUnboxedValue(data));
 
         if condition == Condition::Equal && lhsInt32 == rhsInt32 {
             goto branch;
@@ -1361,7 +1946,7 @@ ir MASM {
         let shape = Object::shapeOf(object);
         let baseShape = Shape::baseShapeOf(shape);
         let proto = BaseShape::protoOf(baseShape);
-        let data = Data::fromTaggedProto(proto);
+        let data = RegData::fromTaggedProto(proto);
 
         MASM::setData(protoReg, data);
     }
@@ -1419,8 +2004,8 @@ ir MASM {
         assert false;
     }
 
-    fn getData(reg: Reg) -> Data;
-    fn setData(reg: Reg, data: Data);
+    fn getData(reg: Reg) -> RegData;
+    fn setData(reg: Reg, data: RegData);
 
     fn getStackIndex(reg: Reg) -> UInt64;
     fn setStackIndex(reg: Reg, index: UInt64);
@@ -1446,32 +2031,86 @@ ir MASM {
     fn getBigInt(reg: Reg) -> BigInt;
     fn setBigInt(reg: Reg, bigInt: BigInt);
 
+    fn getFloatData(floatReg: FloatReg) -> FloatData;
+    fn setFloatData(floatReg: FloatReg, data: FloatData);
+
     fn getDouble(floatReg: FloatReg) -> Double;
     fn setDouble(floatReg: FloatReg, double: Double);
 
-    fn stackPush(data: Data);
-    fn stackPop() -> Data;
+    fn reserveStack(amount: UInt32) {
+        let stackPointer = MASM::getStackIndex(Reg::Rsp);
+
+        let newStackPointer = stackPointer - amount;
+        assert (newStackPointer as Int64) >= 0_i64;
+
+        MASM::setStackIndex(Reg::Rsp, newStackPointer);
+    }
+
+    fn freeStack(amount: UInt32) {
+        let stackPointer = MASM::getStackIndex(Reg::Rsp);
+        let newStackPointer = stackPointer + amount;
+        MASM::setStackIndex(Reg::Rsp, newStackPointer);
+    }
+
+    fn stackPush(data: StackData);
+    fn stackPop() -> StackData;
+
+    fn stackStore(idx: UInt64, data: StackData);
+    fn stackLoad(idx: UInt64) -> StackData;
 
     fn stackPushReg(reg: Reg) {
-        let data = MASM::getData(reg);
+        let regData = MASM::getData(reg);
+        let data = StackData::fromRegData(regData);
         MASM::stackPush(data);
     }
 
     fn stackPopReg(reg: Reg) {
         let data = MASM::stackPop();
-        MASM::setData(reg, data);
+        let regData = StackData::toRegData(data);
+        MASM::setData(reg, regData);
     }
 
-    fn stackPushFloatReg(floatReg: FloatReg) {
-        let double = MASM::getDouble(floatReg);
-        let data = Data::fromUnboxedValue(Value::fromDouble(double));
-        MASM::stackPush(data);
+    fn loadRegAddress(address: Address, reg: Reg) {
+       let baseData = MASM::getData(address.base);
+
+       if RegData::isStackIndex(baseData) {
+            let stackIndex = RegData::toStackIndex(baseData);
+            stackIndex = stackIndex + address.offset;
+            let stackData = MASM::stackLoad(stackIndex);
+            let regData = StackData::toRegData(stackData);
+            MASM::setData(reg, regData);
+       } else {
+            assert false;
+       }
     }
 
-    fn stackPopFloatReg(floatReg: FloatReg) {
-        let data = MASM::stackPop();
-        let double = Value::toDouble(Data::toUnboxedValue(data));
-        MASM::setDouble(floatReg, double);
+    fn storeFloatRegAddress(floatReg: FloatReg, address: Address) {
+        let baseData = MASM::getData(address.base);
+
+        if RegData::isStackIndex(baseData) {
+            let stackIndex = RegData::toStackIndex(baseData);
+            stackIndex = stackIndex + address.offset;
+            let floatData = MASM::getFloatData(floatReg);
+            let stackData = StackData::fromFloatData(floatData);
+            MASM::stackStore(stackIndex, stackData);
+        } else {
+            assert false;
+        }
+    }
+
+    fn loadFloatRegAddress(address: Address, floatReg: FloatReg) {
+       let baseData = MASM::getData(address.base);
+
+       if RegData::isStackIndex(baseData) {
+            let stackIndex = RegData::toStackIndex(baseData);
+            stackIndex = stackIndex + address.offset;
+            let stackData = MASM::stackLoad(stackIndex);
+            let floatData = StackData::toFloatData(stackData);
+            assert FloatData::contentType(floatData) == floatReg.type;
+            MASM::setFloatData(floatReg, floatData);
+       } else {
+            assert false;
+       }
     }
 }
 

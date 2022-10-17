@@ -996,46 +996,40 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         for variant_path in &enum_item.variants {
             let loop_var_index = for_in_stmt.var;
-            let loop_var = &self.scope.local(loop_var_index);
 
-            let loop_var_expr = self.use_expr(
-                TaggedExpr {
-                    expr: LocalVarIdent {
-                        ident: loop_var.ident.value,
-                        index: loop_var_index,
-                    }
-                    .into(),
-                    type_: loop_var.type_,
-                    tags: ExprTag::Local.into(),
-                },
-                ExprTag::MutRef.into(),
-            );
+            let lhs = LocalVarIdent {
+                ident: self.scope.local(loop_var_index).ident.value,
+                index: loop_var_index,
+            }
+            .into();
 
-            let variant_expr = self.use_expr(
-                TaggedExpr {
-                    expr: CallExpr {
-                        target: TypeMemberFnPath {
-                            parent: enum_item.ident.value,
-                            ident: VariantTypeMemberFnIdent::from(variant_path.value.ident())
-                                .into(),
+            let type_ = TypeMemberTypePath {
+                parent: self.get_type_ident(for_in_stmt.target.into()),
+                ident: ExprTag::Local.into(),
+            }
+            .into();
+
+            let rhs = Some(
+                self.use_expr(
+                    TaggedExpr {
+                        expr: CallExpr {
+                            target: TypeMemberFnPath {
+                                parent: enum_item.ident.value,
+                                ident: VariantTypeMemberFnIdent::from(variant_path.value.ident())
+                                    .into(),
+                            }
+                            .into(),
+                            args: vec![CONTEXT_ARG],
                         }
                         .into(),
-                        args: vec![CONTEXT_ARG],
-                    }
-                    .into(),
-                    type_: for_in_stmt.target.into(),
-                    tags: ExprTag::Ref.into(),
-                },
-                ExprTag::MutRef | ExprTag::Ref | ExprTag::Local | ExprTag::Val,
+                        type_: for_in_stmt.target.into(),
+                        tags: ExprTag::Ref.into(),
+                    },
+                    ExprTag::Local.into(),
+                ),
             );
 
-            let mut b = vec![
-                Expr::from(AssignExpr {
-                    lhs: loop_var_expr,
-                    rhs: variant_expr,
-                })
-                .into(),
-            ];
+            let mut b = vec![LetStmt { lhs, type_, rhs }.into()];
 
             b.extend(body.clone().stmts.into_iter());
             blocks.push(b.into());

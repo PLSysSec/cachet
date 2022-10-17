@@ -12,15 +12,15 @@ procedure #ValueReg~payloadOrValueReg($valueReg: #ValueReg)
   reg := $valueReg;
 }
 
-var #MASM~regs: #Map #Reg #Data;
+var #MASM~regs: #Map #Reg #RegData;
 
 procedure #MASM~getData($reg: #Reg)
-  returns (ret: #Data)
+  returns (ret: #RegData)
 {
   ret := #Map~get(#MASM~regs, $reg);
 }
 
-procedure #MASM~setData($reg: #Reg, $data: #Data)
+procedure #MASM~setData($reg: #Reg, $data: #RegData)
   modifies #MASM~regs;
 {
   #MASM~regs := #Map~set(#MASM~regs, $reg, $data);
@@ -29,48 +29,48 @@ procedure #MASM~setData($reg: #Reg, $data: #Data)
 procedure #MASM~getStackIndex($reg: #Reg)
   returns (ret: #UInt64)
 {
-  var tmp'0: #Data;
+  var tmp'0: #RegData;
   call tmp'0 := #MASM~getData($reg);
-  call ret := #Data~toStackIndex(tmp'0);
+  call ret := #RegData~toStackIndex(tmp'0);
 }
 
 procedure #MASM~setStackIndex($reg: #Reg, $index: #UInt64)
   modifies #MASM~regs;
 {
-  var tmp'0: #Data;
-  call tmp'0 := #Data~fromStackIndex($index);
+  var tmp'0: #RegData;
+  call tmp'0 := #RegData~fromStackIndex($index);
   call #MASM~setData($reg, tmp'0);
 }
     
 procedure #MASM~getValue($valueReg: #ValueReg)
   returns (ret: #Value)
 {
-  var tmp'0: #Data;
+  var tmp'0: #RegData;
   call tmp'0 := #MASM~getData($valueReg);
-  call ret := #Data~toValue(tmp'0);
+  call ret := #RegData~toValue(tmp'0);
 }
 
 procedure #MASM~setValue($valueReg: #ValueReg, $value: #Value)
   modifies #MASM~regs;
 {
-  var tmp'0: #Data;
-  call tmp'0 := #Data~fromValue($value);
+  var tmp'0: #RegData;
+  call tmp'0 := #RegData~fromValue($value);
   call #MASM~setData($valueReg, tmp'0);
 }
 
 procedure #MASM~getUnboxedValue($reg: #Reg)
   returns (ret: #Value)
 {
-  var tmp'0: #Data;
+  var tmp'0: #RegData;
   call tmp'0 := #MASM~getData($reg);
-  call ret := #Data~toUnboxedValue(tmp'0);
+  call ret := #RegData~toUnboxedValue(tmp'0);
 }
 
 procedure #MASM~setUnboxedValue($reg: #Reg, $value: #Value)
   modifies #MASM~regs;
 {
-  var tmp'0: #Data;
-  call tmp'0 := #Data~fromUnboxedValue($value);
+  var tmp'0: #RegData;
+  call tmp'0 := #RegData~fromUnboxedValue($value);
   call #MASM~setData($reg, tmp'0);
 }
 
@@ -172,16 +172,16 @@ procedure #MASM~setBigInt($reg: #Reg, $bigInt: #BigInt)
 
 var #MASM~floatRegs: #Map #PhyFloatReg #FloatData;
 
-procedure #MASM~getFloatData($phyReg: #PhyFloatReg)
+procedure #MASM~getFloatData($floatReg: #FloatReg)
   returns (ret: #FloatData)
 {
-  ret := #Map~get(#MASM~floatRegs, $phyReg);
+  ret := #Map~get(#MASM~floatRegs, #FloatReg^field~reg($floatReg));
 }
 
-procedure #MASM~setFloatData($phyReg: #PhyFloatReg, $data: #FloatData)
+procedure #MASM~setFloatData($floatReg: #FloatReg, $data: #FloatData)
   modifies #MASM~floatRegs;
 {
-    #MASM~floatRegs := #Map~set(#MASM~floatRegs, $phyReg, $data);
+    #MASM~floatRegs := #Map~set(#MASM~floatRegs, #FloatReg^field~reg($floatReg), $data);
 }
 
 procedure #MASM~getDouble($floatReg: #FloatReg)
@@ -190,7 +190,7 @@ procedure #MASM~getDouble($floatReg: #FloatReg)
     var tmp'0: #FloatData;
 
     assert #FloatReg^field~type($floatReg) == #FloatContentType^Variant~Double();
-    call tmp'0 := #MASM~getFloatData(#FloatReg^field~reg($floatReg));
+    call tmp'0 := #MASM~getFloatData($floatReg);
     call ret := #FloatData~toDouble(tmp'0);
 }
 
@@ -200,119 +200,237 @@ procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double)
 
     assert #FloatReg^field~type($floatReg) == #FloatContentType^Variant~Double();
     call tmp'0 := #FloatData~fromDouble($double);
-    call #MASM~setFloatData(#FloatReg^field~reg($floatReg), tmp'0);
+    call #MASM~setFloatData($floatReg, tmp'0);
 }
 
-var #MASM~stack: #Map #UInt64 #Data;
+var #MASM~stack: #Map #UInt64 #StackData;
 
-procedure #MASM~stackPush($data: #Data)
+procedure #MASM~stackPush($data: #StackData)
     modifies #MASM~regs, #MASM~stack;
 {
     var $stackPtr: #UInt64;
+    var $dataSize: #UInt64;
 
     call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
-    assert #UInt64^gte($stackPtr, 8bv64); 
-    $stackPtr := #UInt64^sub($stackPtr, 8bv64);
+    call $dataSize := #StackData~size($data);
+    assert #UInt64^gte($stackPtr, $dataSize); 
+    $stackPtr := #UInt64^sub($stackPtr, $dataSize);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
     #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $data);
 }
 
 procedure #MASM~stackPop()
-    returns (data: #Data)
+    returns (data: #StackData)
     modifies #MASM~regs, #MASM~stack;
 {
-    var $newData: #Data;
+    var $newData: #StackData;
     var $stackPtr: #UInt64;
+    var $dataSize: #UInt64;
 
     call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
     data := #Map~get(#MASM~stack, $stackPtr);
+    call $dataSize := #StackData~size(data);
     havoc $newData;
     #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $newData);
-    $stackPtr := #UInt64^add($stackPtr, 8bv64);
+    $stackPtr := #UInt64^add($stackPtr, $dataSize);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
 }
 
-procedure #LiveRegisterSet~addReg($set: #LiveRegisterSet, $reg: #Reg)
-    returns (newSet: #LiveRegisterSet)
+procedure #MASM~stackStore($idx: #UInt64, $data: #StackData)
+    modifies #MASM~stack;
 {
-    var $regSet: #Set #Reg;
-    var $newRegSet: #Set #Reg;
-    var $floatRegSet: #Set #FloatReg;
-
-    $newRegSet := #Set~add($regSet, $reg);
-    $floatRegSet := #LiveRegisterSet~getFloatRegSet($set);
-    call newSet := #LiveRegisterSet~new($newRegSet, $floatRegSet);
+    #MASM~stack := #Map~set(#MASM~stack, $idx, $data);
 }
 
-procedure #LiveRegisterSet~takeReg($set: #LiveRegisterSet, $reg: #Reg)
-    returns (newSet: #LiveRegisterSet)
+procedure #MASM~stackLoad($idx: #UInt64)
+    returns (ret: #StackData)
 {
-    var $regSet: #Set #Reg;
-    var $newRegSet: #Set #Reg;
-    var $floatRegSet: #Set #FloatReg;
-
-    $newRegSet := #Set~remove($regSet, $reg);
-    $floatRegSet := #LiveRegisterSet~getFloatRegSet($set);
-    call newSet := #LiveRegisterSet~new($newRegSet, $floatRegSet);
+    ret := #Map~get(#MASM~stack, $idx);
 }
 
-function #LiveRegisterSet~containsReg($set: #LiveRegisterSet, $reg: #Reg): #Bool
+// LiveGeneralRegSet
+
+function #LiveGeneralRegSet~rawSet($set: #LiveGeneralRegSet): #Set #Reg;
+
+procedure #LiveGeneralRegSet~new($rawSet: #Set #Reg)
+    returns (set: #LiveGeneralRegSet)
 {
-    #Set~contains(#LiveRegisterSet~getRegSet($set), $reg)    
+    set := #LiveGeneralRegSet~newUnchecked($rawSet);
+    assume #LiveGeneralRegSet~rawSet(set) == $rawSet;
 }
 
-function #LiveRegisterSet~containsFloatReg($set: #LiveRegisterSet, $floatReg: #FloatReg): #Bool
+function #LiveGeneralRegSet~newUnchecked($rawSet: #Set #Reg): #LiveGeneralRegSet;
+
+procedure #LiveGeneralRegSet~newEmpty()
+    returns (set: #LiveGeneralRegSet)
 {
-    #Set~contains(#LiveRegisterSet~getFloatRegSet($set), $floatReg)    
+    var $rawSet: #Set #Reg;
+    $rawSet := #LiveGeneralRegSet~emptyRawSet();
+    assume (forall reg: #Reg :: !#Set~contains($rawSet, reg)); 
+
+    call set := #LiveGeneralRegSet~new($rawSet);
 }
 
-procedure #LiveRegisterSet~newVolatile()
-    returns (set: #LiveRegisterSet)
+function #LiveGeneralRegSet~emptyRawSet(): #Set #Reg;
+
+procedure #LiveGeneralRegSet~newVolatile()
+    returns (set: #LiveGeneralRegSet)
 {
-    set := #LiveRegisterSet~newVolatileUnchecked(#LiveRegisterSet~getFloatRegSet(#CacheIR~liveRegs)); 
-    assume #LiveRegisterSet~getFloatRegSet(set) == #LiveRegisterSet~getFloatRegSet(#CacheIR~liveRegs);
-    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rax());
-    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rbx());
-    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rcx());
-    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rdx());
-    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rsp());
-    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rbp());
-    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rsi());
-    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~Rdi());
-    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R8());
-    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R9());
-    assume #Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R10());
-    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R11());
-    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R12());
-    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R13());
-    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R14());
-    assume !#Set~contains(#LiveRegisterSet~getRegSet(set), #Reg^Variant~R15());
+    var $rawSet: #Set #Reg;
+    $rawSet := #LiveGeneralRegSet~volatileRawSet();
+    assume #Set~contains($rawSet, #Reg^Variant~Rax());
+    assume !#Set~contains($rawSet, #Reg^Variant~Rbx());
+    assume #Set~contains($rawSet, #Reg^Variant~Rcx());
+    assume #Set~contains($rawSet, #Reg^Variant~Rdx());
+    assume !#Set~contains($rawSet, #Reg^Variant~Rsp());
+    assume !#Set~contains($rawSet, #Reg^Variant~Rbp());
+    assume #Set~contains($rawSet, #Reg^Variant~Rsi());
+    assume #Set~contains($rawSet, #Reg^Variant~Rdi());
+    assume #Set~contains($rawSet, #Reg^Variant~R8());
+    assume #Set~contains($rawSet, #Reg^Variant~R9());
+    assume #Set~contains($rawSet, #Reg^Variant~R10());
+    assume !#Set~contains($rawSet, #Reg^Variant~R11());
+    assume !#Set~contains($rawSet, #Reg^Variant~R12());
+    assume !#Set~contains($rawSet, #Reg^Variant~R13());
+    assume !#Set~contains($rawSet, #Reg^Variant~R14());
+    assume !#Set~contains($rawSet, #Reg^Variant~R15());
+
+    call set := #LiveGeneralRegSet~new($rawSet);
 }
 
-function #LiveRegisterSet~newVolatileUnchecked($liveFloatRegs: #Set #FloatReg): #LiveRegisterSet;
+function #LiveGeneralRegSet~volatileRawSet(): #Set #Reg;
 
-procedure #LiveRegisterSet~newEmpty()
-    returns (set: #LiveRegisterSet)
+function #LiveGeneralRegSet~contains($set: #LiveGeneralRegSet, $reg: #Reg): #Bool
 {
-    set := #LiveRegisterSet~newEmptyUnchecked();
-    assume (forall reg: #Reg :: !#Set~contains(#LiveRegisterSet~getRegSet(set), reg)); 
-    assume (forall floatReg: #FloatReg :: !#Set~contains(#LiveRegisterSet~getFloatRegSet(set), floatReg));
+    #Set~contains(#LiveGeneralRegSet~rawSet($set), $reg)
 }
 
-function #LiveRegisterSet~newEmptyUnchecked(): #LiveRegisterSet;
-
-procedure #LiveRegisterSet~new($regSet: #Set #Reg, $floatRegSet: #Set #FloatReg)
-    returns (set: #LiveRegisterSet)
+procedure #LiveGeneralRegSet~add($set: #LiveGeneralRegSet, $reg: #Reg)
+    returns (newSet: #LiveGeneralRegSet)
 {
-    set := #LiveRegisterSet~newUnchecked($regSet, $floatRegSet);
-    assume #LiveRegisterSet~getRegSet(set) == $regSet;
-    assume #LiveRegisterSet~getFloatRegSet(set) == $floatRegSet;
+    var $rawSet: #Set #Reg;
+
+    $rawSet := #Set~add(#LiveGeneralRegSet~rawSet($set), $reg);
+    call newSet := #LiveGeneralRegSet~new($rawSet);
 }
 
-function #LiveRegisterSet~newUnchecked($regSet: #Set #Reg, $floatRegSet: #Set #FloatReg): #LiveRegisterSet;
+procedure #LiveGeneralRegSet~take($set: #LiveGeneralRegSet, $reg: #Reg)
+    returns (newSet: #LiveGeneralRegSet)
+{
+    var $rawSet: #Set #Reg;
 
-function #LiveRegisterSet~getRegSet($set: #LiveRegisterSet): #Set #Reg;
-function #LiveRegisterSet~getFloatRegSet($set: #LiveRegisterSet): #Set #FloatReg;
+    $rawSet := #Set~remove(#LiveGeneralRegSet~rawSet($set), $reg);
+    call newSet := #LiveGeneralRegSet~new($rawSet);
+}
+
+// LiveFloatRegSet
+
+function #LiveFloatRegSet~rawSet($set: #LiveFloatRegSet): #Set #FloatReg;
+
+procedure #LiveFloatRegSet~new($rawSet: #Set #FloatReg)
+    returns (set: #LiveFloatRegSet)
+{
+    set := #LiveFloatRegSet~newUnchecked($rawSet);
+    assume #LiveFloatRegSet~rawSet(set) == $rawSet;
+}
+
+function #LiveFloatRegSet~newUnchecked($rawSet: #Set #FloatReg): #LiveFloatRegSet;
+
+procedure #LiveFloatRegSet~newEmpty()
+    returns (set: #LiveFloatRegSet)
+{
+    var $rawSet: #Set #FloatReg;
+    $rawSet := #LiveFloatRegSet~emptyRawSet();
+    assume (forall reg: #FloatReg :: !#Set~contains($rawSet, reg)); 
+
+    call set := #LiveFloatRegSet~new($rawSet);
+}
+
+function #LiveFloatRegSet~emptyRawSet(): #Set #FloatReg;
+
+procedure #LiveFloatRegSet~newVolatile()
+    returns (set: #LiveFloatRegSet)
+{
+    set := #LiveRegSet~fpus(#CacheIR~liveRegs);
+}
+
+function #LiveFloatRegSet~contains($set: #LiveFloatRegSet, $reg: #FloatReg): #Bool
+{
+    #Set~contains(#LiveFloatRegSet~rawSet($set), $reg)
+}
+
+procedure #LiveFloatRegSet~add($set: #LiveFloatRegSet, $reg: #FloatReg)
+    returns (newSet: #LiveFloatRegSet)
+{
+    var $rawSet: #Set #FloatReg;
+
+    $rawSet := #Set~add(#LiveFloatRegSet~rawSet($set), $reg);
+    call newSet := #LiveFloatRegSet~new($rawSet);
+}
+
+procedure #LiveFloatRegSet~take($set: #LiveFloatRegSet, $reg: #FloatReg)
+    returns (newSet: #LiveFloatRegSet)
+{
+    var $rawSet: #Set #FloatReg;
+
+    $rawSet := #Set~remove(#LiveFloatRegSet~rawSet($set), $reg);
+    call newSet := #LiveFloatRegSet~new($rawSet);
+}
+
+var #MASM~moveResolver: #MoveResolver;
+
+function #MoveResolver~moves($resolver: #MoveResolver): #Map #UInt16 #RegData;
+function #MoveResolver~next($resolver: #MoveResolver): #UInt16;
+
+function #MoveResolver~newUnchecked(): #MoveResolver;
+function #MoveResolver~new($next: #UInt16, $moves: #Map #UInt16 #RegData): #MoveResolver;
+
+procedure #MoveResolver~reset()
+{
+    #MASM~moveResolver := #MoveResolver~newUnchecked();
+    assume #MoveResolver~next(#MASM~moveResolver) == 0bv16;
+}
+
+procedure #MoveResolver~addRegMove($data: #RegData)
+{
+    var $moves: #Map #UInt16 #RegData;
+    var $next: #UInt16;
+
+    $moves := #MoveResolver~moves(#MASM~moveResolver);
+    $next := #MoveResolver~next(#MASM~moveResolver); 
+    $moves := #Map~set($moves, $next, $data);
+    $next := #UInt16^add($next, 1bv16);
+
+    #MASM~moveResolver := #MoveResolver~new($next, $moves);
+    assume #MoveResolver~moves(#MASM~moveResolver) == $moves;
+    assume #MoveResolver~next(#MASM~moveResolver) == $next;
+}
+
+procedure #MoveResolver~resolve()
+{
+    var $moves: #Map #UInt16 #RegData;
+    var $next: #UInt16;
+
+    $moves := #MoveResolver~moves(#MASM~moveResolver);
+    $next := #MoveResolver~next(#MASM~moveResolver);
+
+    if (#UInt16^gt($next, 0bv16)) {
+       call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 0bv16)); 
+    }
+
+    if (#UInt16^gt($next, 1bv16)) {
+       call #MASM~setData(#Reg^Variant~Rdx(), #Map~get($moves, 1bv16)); 
+    }
+
+    if (#UInt16^gt($next, 2bv16)) {
+       call #MASM~setData(#Reg^Variant~R8(), #Map~get($moves, 2bv16)); 
+    }
+
+    if (#UInt16^gt($next, 3bv16)) {
+       call #MASM~setData(#Reg^Variant~R9(), #Map~get($moves, 3bv16)); 
+    }
+}
+
 
 var #CacheIR~knownOperandIds: #Set #OperandId;
 
@@ -403,11 +521,11 @@ procedure #initValueInputOperandLocation($valueId: #ValueId)
 procedure #initValueReg($valueReg: #ValueReg)
     modifies #MASM~regs;
 {
-    var $data'0: #Data;
+    var $data'0: #RegData;
     var tmp'0: #Bool;
 
     call $data'0 := #MASM~getData($valueReg);
-    call tmp'0 := #Data~isValue($data'0);
+    call tmp'0 := #RegData~isValue($data'0);
     assume tmp'0;
 }
 
@@ -455,7 +573,7 @@ procedure #CacheIR~allocateReg()
   modifies #CacheIR~allocatedRegs;
 {
   var $reg: #Reg;
-  var $data: #Data;
+  var $data: #RegData;
   var tmp'0: #Bool;
 
   // ensure that we have enough registers by
@@ -525,7 +643,7 @@ procedure #CacheIR~releaseReg($reg: #Reg)
   #CacheIR~allocatedRegs := #Set~remove(#CacheIR~allocatedRegs, $reg);
 }
 
-const #CacheIR~liveRegs: #LiveRegisterSet;
+var #CacheIR~liveRegs: #LiveRegSet;
 
 var #CacheIR~allocatedFloatRegs: #Set #PhyFloatReg;
 
@@ -576,7 +694,7 @@ procedure #CacheIR~allocateAvailableFloatRegUnchecked($floatReg: #FloatReg)
   #CacheIR~allocatedFloatRegs := #Set~add(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
 
   havoc $data;
-  call #MASM~setFloatData(#FloatReg^field~reg($floatReg), $data);
+  call #MASM~setFloatData($floatReg, $data);
 }
 
 procedure #CacheIR~allocateFloatScratchReg()
@@ -601,5 +719,9 @@ procedure #initRegAllocator()
 {
     call #initAllocatedRegs();
     call #initAllocatedFloatRegs();
+
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
+
+    call #CacheIR~liveRegs := #LiveRegSet~newEmpty();
+    call #MoveResolver~reset();
 }
