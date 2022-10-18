@@ -586,9 +586,10 @@ ir CacheIR emits MASM {
 
             emit MASM::SetupUnalignedABICall(scratchReg);
             emit MASM::LoadJSContext(scratchReg);
-            emit MASM::PassABIArgReg(scratchReg);
-            emit MASM::PassABIArgReg(strReg);
-            emit MASM::PassABIArgReg(ValueReg::payloadOrValueReg(outputReg));
+            emit MASM::PassABIArgReg(scratchReg, 1_u16);
+            emit MASM::PassABIArgReg(strReg, 2_u16);
+            emit MASM::PassABIArgReg(ValueReg::payloadOrValueReg(outputReg), 3_u16);
+
             emit MASM::CallWithABI(ABIFunction::StringToNumberPure);
             emit MASM::StoreCallPointerResult(scratchReg);
 

@@ -2315,6 +2315,12 @@ lazy_static! {
             (Ident::from("MASM").nest("setFloatData".into()), Proc),
             (Ident::from("MASM").nest("getDouble".into()), Proc),
             (Ident::from("MASM").nest("setDouble".into()), Proc),
+
+            (Ident::from("MASM").nest("saveReg".into()), Proc),
+            (Ident::from("MASM").nest("saveFloatReg".into()), Proc),
+            (Ident::from("MASM").nest("restoreReg".into()), Proc),
+            (Ident::from("MASM").nest("restoreFloatReg".into()), Proc),
+
             (Ident::from("MASM").nest("stackPush".into()), Proc),
             (Ident::from("MASM").nest("stackPop".into()), Proc),
             (Ident::from("MASM").nest("stackStore".into()), Proc),
