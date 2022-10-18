@@ -65,6 +65,7 @@ impl OperandLocation {
 
 struct OperandId;
 
+// Corresponds to a ValOperandId
 struct ValueId <: OperandId;
 
 impl ValueId {
@@ -467,6 +468,53 @@ ir CacheIR emits MASM {
         CacheIR::releaseReg(scratchReg);
     }
 
+    op GuardFixedSlotValue(objId: ObjectId,
+                           offsetOffset: Int32Field,
+                           valOffset: ValueField) {
+        let obj = CacheIR::useObjectReg(objId);
+        let offset = CacheIR::allocateReg();
+        let scratchVal = CacheIR::allocateValueReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        CacheIR::emitLoadInt32StubField(offsetOffset, offset);
+        CacheIR::emitLoadValueStubField(valOffset, scratchVal);
+
+        let slotVal = BaseIndex::new(obj, offset, Scale::TimesOne, 0_u32);
+        emit MASM::BranchTestValue(
+            Condition::NotEqual, slotVal, scratchVal, failure
+        );
+
+        CacheIR::releaseReg(offset);
+        CacheIR::releaseValueReg(scratchVal);
+    }
+
+    op GuardDynamicSlotValue(objId: ObjectId,
+                           offsetOffset: Int32Field,
+                           valOffset: ValueField) {
+        let obj = CacheIR::useObjectReg(objId);
+        let objSlots = CacheIR::allocateReg();
+        let offset = CacheIR::allocateReg();
+        let scratchVal = CacheIR::allocateValueReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        let objOffsetAddr = Address::new(obj, NativeObject::offsetOfSlots as Int32);
+        emit MASM::LoadPtrAddress(objOffsetAddr, objSlots);
+
+        CacheIR::emitLoadInt32StubField(offsetOffset, offset);
+        CacheIR::emitLoadValueStubField(valOffset, scratchVal);
+
+        let slotVal = BaseIndex::new(objSlots, offset, Scale::TimesOne, 0_u32);
+        emit MASM::BranchTestValue(
+            Condition::NotEqual, slotVal, scratchVal, failure
+        );
+
+        CacheIR::releaseReg(objSlots);
+        CacheIR::releaseReg(offset);
+        CacheIR::releaseValueReg(scratchVal);
+    }
+
     op GuardToString(valueId: ValueId) {
         let valueReg = CacheIR::useValueReg(valueId);
 
@@ -657,6 +705,11 @@ ir CacheIR emits MASM {
 
     op LoadBooleanResult(bool: Bool) {
         let value = Value::fromBool(bool);
+        emit MASM::MoveValueImm(value, CacheIR::outputReg);
+    }
+
+    op LoadUndefinedResult() {
+        let value = Value::getUndefined();
         emit MASM::MoveValueImm(value, CacheIR::outputReg);
     }
 
@@ -1117,6 +1170,11 @@ ir CacheIR emits MASM {
     #[refined]
     fn emitLoadInt32StubField(int32Field: Int32Field, dstReg: Reg) emits MASM {
        emit MASM::Move32Imm32(CacheIR::readInt32Field(int32Field), dstReg);
+    }
+
+    #[refined]
+    fn emitLoadValueStubField(valueField: ValueField, dstReg: ValueReg) emits MASM {
+       emit MASM::MoveValueImm(CacheIR::readValueField(valueField), dstReg);
     }
 
     #[refined]

@@ -260,6 +260,14 @@ impl Value {
         Value::typeOf(value) == ValueType::Null
     }
 
+    fn getUndefined() -> Value {
+        let value = (unsafe { Value::getUndefinedUnchecked() });
+        assume Value::isUndefined(value);
+        value
+    }
+
+    unsafe fn getUndefinedUnchecked() -> Value;
+
     fn isUndefined(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Undefined
     }

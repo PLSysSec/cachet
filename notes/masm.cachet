@@ -4,6 +4,7 @@ import "./js.cachet"
 
 struct Reg;
 
+// Used for ValueOperand as well
 // #[cfg(cpp)]
 struct ValueReg;
 // #[cfg(verify)]
@@ -113,6 +114,13 @@ impl BaseObjectSlotIndex {
     }
 
     unsafe fn newUnchecked(inner: BaseValueIndex) -> BaseObjectSlotIndex;
+}
+
+struct Operand;
+
+impl Operand {
+    fn fromBaseIndex(baseIndex: BaseIndex) -> Operand;
+    fn compareToReg(cond: Condition, operand: Operand, reg: Reg) -> Bool;
 }
 
 ir MASM {
@@ -480,6 +488,18 @@ ir MASM {
           goto branch;
         }
       }
+    }
+
+    op BranchTestValue(cond: Condition,
+                       lhs: BaseIndex,
+                       rhs: ValueReg,
+                       label branch: MASM) {
+        assert cond == Condition::Equal || cond == Condition::NotEqual;
+        let rhsReg = ValueReg::scratchReg(rhs);
+        let lhsOp = Operand::fromBaseIndex(lhs);
+        if Operand::compareToReg(cond, lhsOp, rhsReg) {
+            goto branch;
+        }
     }
 
     // Note: this is a wrapper around branchTestPtr for when
