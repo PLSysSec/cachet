@@ -380,54 +380,57 @@ procedure #LiveFloatRegSet~take($set: #LiveFloatRegSet, $reg: #FloatReg)
 var #MASM~moveResolver: #MoveResolver;
 
 function #MoveResolver~moves($resolver: #MoveResolver): #Map #UInt16 #RegData;
-function #MoveResolver~next($resolver: #MoveResolver): #UInt16;
+function #MoveResolver~count($resolver: #MoveResolver): #UInt16;
 
 function #MoveResolver~newUnchecked(): #MoveResolver;
-function #MoveResolver~new($next: #UInt16, $moves: #Map #UInt16 #RegData): #MoveResolver;
+function #MoveResolver~new($count: #UInt16, $moves: #Map #UInt16 #RegData): #MoveResolver;
 
 procedure #MoveResolver~reset()
 {
     #MASM~moveResolver := #MoveResolver~newUnchecked();
-    assume #MoveResolver~next(#MASM~moveResolver) == 0bv16;
+    assume #MoveResolver~count(#MASM~moveResolver) == 0bv16;
 }
 
-procedure #MoveResolver~addRegMove($data: #RegData)
+procedure #MoveResolver~addRegMove($data: #RegData, $count: #UInt16)
 {
     var $moves: #Map #UInt16 #RegData;
-    var $next: #UInt16;
 
     $moves := #MoveResolver~moves(#MASM~moveResolver);
-    $next := #MoveResolver~next(#MASM~moveResolver); 
-    $moves := #Map~set($moves, $next, $data);
-    $next := #UInt16^add($next, 1bv16);
+    $moves := #Map~set($moves, $count, $data);
 
-    #MASM~moveResolver := #MoveResolver~new($next, $moves);
+    #MASM~moveResolver := #MoveResolver~new($count, $moves);
     assume #MoveResolver~moves(#MASM~moveResolver) == $moves;
-    assume #MoveResolver~next(#MASM~moveResolver) == $next;
+    assume #MoveResolver~count(#MASM~moveResolver) == $count;
 }
 
 procedure #MoveResolver~resolve()
 {
     var $moves: #Map #UInt16 #RegData;
-    var $next: #UInt16;
+    var $count: #UInt16;
 
     $moves := #MoveResolver~moves(#MASM~moveResolver);
-    $next := #MoveResolver~next(#MASM~moveResolver);
+    $count := #MoveResolver~count(#MASM~moveResolver);
 
-    if (#UInt16^gt($next, 0bv16)) {
-       call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 0bv16)); 
+    if ($count == 1bv16) {
+       call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 1bv16)); 
     }
 
-    if (#UInt16^gt($next, 1bv16)) {
-       call #MASM~setData(#Reg^Variant~Rdx(), #Map~get($moves, 1bv16)); 
+    if ($count == 2bv16) {
+       call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 1bv16)); 
+       call #MASM~setData(#Reg^Variant~Rdx(), #Map~get($moves, 2bv16)); 
     }
 
-    if (#UInt16^gt($next, 2bv16)) {
-       call #MASM~setData(#Reg^Variant~R8(), #Map~get($moves, 2bv16)); 
+    if ($count == 3bv16) {
+       call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 1bv16)); 
+       call #MASM~setData(#Reg^Variant~Rdx(), #Map~get($moves, 2bv16)); 
+       call #MASM~setData(#Reg^Variant~R8(), #Map~get($moves, 3bv16)); 
     }
 
-    if (#UInt16^gt($next, 3bv16)) {
-       call #MASM~setData(#Reg^Variant~R9(), #Map~get($moves, 3bv16)); 
+    if ($count == 4bv16) {
+       call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 1bv16)); 
+       call #MASM~setData(#Reg^Variant~Rdx(), #Map~get($moves, 2bv16)); 
+       call #MASM~setData(#Reg^Variant~R8(), #Map~get($moves, 3bv16)); 
+       call #MASM~setData(#Reg^Variant~R9(), #Map~get($moves, 4bv16)); 
     }
 }
 

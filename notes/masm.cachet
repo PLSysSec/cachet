@@ -347,7 +347,7 @@ struct MoveResolver;
 
 impl MoveResolver {
     fn reset();
-    fn addRegMove(data: RegData);
+    fn addRegMove(data: RegData, count: UInt16);
     fn resolve();
 }
 
@@ -875,21 +875,11 @@ ir MASM {
         let gprs = LiveRegSet::gprs(set);
         let fpus = LiveFloatRegSet::reducedForPush(LiveRegSet::fpus(set)); 
 
-        let numFpu = LiveFloatRegSet::size(fpus);
-
-        let diffF = LiveFloatRegSet::pushSizeInBytes(fpus) as Int32;
-        let diffG = LiveGeneralRegSet::size(gprs) * 8_u32;
-
         for reg in Reg desc {
             if LiveGeneralRegSet::contains(gprs, reg) {
-                diffG = diffG - 8_u32;
                 MASM::stackPushReg(reg);
             }
         }
-
-        assert diffG == 0_u32;
-
-        MASM::reserveStack(diffF as UInt32); 
 
         for phyReg in PhyFloatReg desc {
             let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
@@ -897,31 +887,14 @@ ir MASM {
             let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
 
             if LiveFloatRegSet::contains(fpus, simdReg) {
-                numFpu = numFpu - 1_u32;
-                diffF = diffF - 16_i32;
-                let address = Address::new(Reg::Rsp, diffF);
-                MASM::storeFloatRegAddress(simdReg, address);
+                MASM::stackPushFloatReg(simdReg); 
             } else if LiveFloatRegSet::contains(fpus, doubleReg) {
-                numFpu = numFpu - 1_u32;
-                diffF = diffF - 8_i32;
-                let address = Address::new(Reg::Rsp, diffF);
-                MASM::storeFloatRegAddress(doubleReg, address);
+                MASM::stackPushFloatReg(doubleReg); 
             } else if LiveFloatRegSet::contains(fpus, singleReg) {
-                numFpu = numFpu - 1_u32;
-                diffF = diffF - 4_i32;
-                let address = Address::new(Reg::Rsp, diffF);
-                MASM::storeFloatRegAddress(singleReg, address);
+                MASM::stackPushFloatReg(singleReg); 
             }
         }
 
-        assert numFpu == 0_u32;
-
-        let alignExtra = (diffF as UInt32) % 8_u32;
-
-        assert alignExtra == 0_u32 || alignExtra == 4_u32;
-        diffF = diffF - alignExtra as Int32;
-        
-        assert diffF == 0_i32;
     }
 
     // TODO: loop through all the registers and pop them off the stack if
@@ -930,67 +903,42 @@ ir MASM {
         let fpus = LiveFloatRegSet::reducedForPush(LiveRegSet::fpus(set)); 
         let gprs = LiveRegSet::gprs(set);
 
-        let numFpu = LiveFloatRegSet::size(fpus);
-        let diffG = (LiveGeneralRegSet::size(gprs) * 8_u32) as Int32;
-        let diffF = LiveFloatRegSet::pushSizeInBytes(fpus) as Int32;
-        let reservedG = diffG;
-        let reservedF = diffF;
-
-        for phyReg in PhyFloatReg desc {
+        for phyReg in PhyFloatReg asc {
             let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
             let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
             let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
         
             if LiveFloatRegSet::contains(fpus, simdReg) {
-                numFpu = numFpu - 1_u32;
-                diffF = diffF - 16_i32;
                 if !LiveRegSet::containsFloatReg(ignore, simdReg) {
-                    let address = Address::new(Reg::Rsp, diffF);
-                    MASM::loadFloatRegAddress(address, simdReg);
+                    MASM::stackPopFloatReg(simdReg);
+                } else {
+                    MASM::stackPop();
                 }
             } else if LiveFloatRegSet::contains(fpus, doubleReg) {
-                numFpu = numFpu - 1_u32;
-                diffF = diffF - 8_i32;
                 if !LiveRegSet::containsFloatReg(ignore, doubleReg) {
-                    let address = Address::new(Reg::Rsp, diffF);
-                    MASM::loadFloatRegAddress(address, doubleReg);
+                    MASM::stackPopFloatReg(doubleReg);
+                } else {
+                    MASM::stackPop();
                 }
             } else if LiveFloatRegSet::contains(fpus, singleReg) {
-                numFpu = numFpu - 1_u32;
-                diffF = diffF - 4_i32;
                 if !LiveRegSet::containsFloatReg(ignore, singleReg) {
-                    let address = Address::new(Reg::Rsp, diffF);
-                    MASM::loadFloatRegAddress(address, singleReg);
+                    MASM::stackPopFloatReg(singleReg);
+                } else {
+                    MASM::stackPop();
                 }
             }
         }
 
-        MASM::freeStack(reservedF as UInt32);
-        assert numFpu == 0_u32;
-        diffF = diffF - (diffF % 8_i32);
-        assert diffF == 0_i32;
-
-        if LiveGeneralRegSet::size(LiveRegSet::gprs(ignore)) == 0_u32 {
-            for reg in Reg asc {
-                if LiveGeneralRegSet::contains(gprs, reg) {
-                    diffG = diffG - 8_i32;
+        
+        for reg in Reg asc {
+            if LiveGeneralRegSet::contains(gprs, reg) {
+                if !LiveRegSet::containsReg(ignore, reg) {
                     MASM::stackPopReg(reg);
-                }
-            } 
-        } else {
-            for reg in Reg desc {
-                if LiveGeneralRegSet::contains(gprs, reg) {
-                        diffG = diffG - 8_i32;
-                    if !LiveRegSet::containsReg(ignore, reg) {
-                        let address = Address::new(Reg::Rsp, diffG);
-                        MASM::loadRegAddress(address, reg);
-                    }
+                } else {
+                    MASM::stackPop();
                 }
             }
-            MASM::freeStack(reservedG as UInt32);
         }
-
-        assert diffG == 0_i32;
     }
 
     op SetupUnalignedABICall(scratchReg: Reg) {
@@ -1007,8 +955,8 @@ ir MASM {
         MASM::setData(destReg, data);
     }
 
-    op PassABIArgReg(reg: Reg) {
-        MoveResolver::addRegMove(MASM::getData(reg)); 
+    op PassABIArgReg(reg: Reg, count: UInt16) {
+        MoveResolver::addRegMove(MASM::getData(reg), count); 
     }
 
     op CallWithABI(function: ABIFunction) {
@@ -2068,6 +2016,18 @@ ir MASM {
         let data = MASM::stackPop();
         let regData = StackData::toRegData(data);
         MASM::setData(reg, regData);
+    }
+
+    fn stackPushFloatReg(floatReg: FloatReg) {
+        let floatData = MASM::getFloatData(floatReg);
+        let data = StackData::fromFloatData(floatData);
+        MASM::stackPush(data);
+    }
+
+    fn stackPopFloatReg(floatReg: FloatReg) {
+        let data = MASM::stackPop();
+        let floatData = StackData::toFloatData(data);
+        MASM::setFloatData(floatReg, floatData);
     }
 
     fn loadRegAddress(address: Address, reg: Reg) {
