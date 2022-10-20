@@ -9,6 +9,8 @@ fn runtimeMainContextPtr() -> JSContext;
 fn StringToNumberPureNoErr(ctx: JSContext, str: String) -> Bool;
 fn StringToNumberPureResult(ctx: JSContext, str: String) -> Double;
 
+fn EqualStringsHelperPure(str1: String, str2: String) -> Bool;
+
 enum MIRType {
     Undefined,
     Null,
@@ -610,13 +612,26 @@ struct String;
 impl String {
     fn hasIndexValue(string: String) -> Bool;
 
+    fn isAtom(string: String) -> Bool;
+
     fn getIndexValue(string: String) -> UInt32 {
         assert String::hasIndexValue(string);
         (unsafe { String::getIndexValueUnchecked(string) })
     }
 
     unsafe fn getIndexValueUnchecked(string: String) -> UInt32;
+
+    fn asAtom(string: String) -> Atom {
+        assert String::isAtom(string);
+        (unsafe { string as Atom })
+    }
+
+    unsafe fn asAtomUnchecked(string: String) -> Atom;
+
+    fn length(string: String) -> UInt64;
 }
+
+struct Atom <: String;
 
 struct Symbol;
 

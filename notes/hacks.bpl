@@ -447,25 +447,19 @@ procedure #MoveResolver~resolve()
     $moves := #MoveResolver~moves(#MASM~moveResolver);
     $count := #MoveResolver~count(#MASM~moveResolver);
 
-    if ($count == 1bv16) {
+    if (#UInt16^gte($count, 1bv16)) {
        call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 1bv16)); 
     }
 
-    if ($count == 2bv16) {
-       call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 1bv16)); 
+    if (#UInt16^gte($count, 2bv16)) {
        call #MASM~setData(#Reg^Variant~Rdx(), #Map~get($moves, 2bv16)); 
     }
 
-    if ($count == 3bv16) {
-       call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 1bv16)); 
-       call #MASM~setData(#Reg^Variant~Rdx(), #Map~get($moves, 2bv16)); 
+    if (#UInt16^gte($count, 3bv16)) {
        call #MASM~setData(#Reg^Variant~R8(), #Map~get($moves, 3bv16)); 
     }
 
-    if ($count == 4bv16) {
-       call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 1bv16)); 
-       call #MASM~setData(#Reg^Variant~Rdx(), #Map~get($moves, 2bv16)); 
-       call #MASM~setData(#Reg^Variant~R8(), #Map~get($moves, 3bv16)); 
+    if (#UInt16^gte($count, 4bv16)) {
        call #MASM~setData(#Reg^Variant~R9(), #Map~get($moves, 4bv16)); 
     }
 }

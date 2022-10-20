@@ -772,6 +772,7 @@ impl BaseObjectSlotIndex {
 }
 
 enum ABIFunction {
+    EqualStringsHelperPure,
     StringToNumberPure
 }
 
@@ -788,9 +789,14 @@ impl ABIFunction {
 
             if noErr {
                 let double = StringToNumberPureResult(ctx, str);
-                MASM::stackStore(doublePtr,
-                StackData::fromFloatData(FloatData::fromDouble(double)));
+                MASM::stackStore(doublePtr, StackData::fromFloatData(FloatData::fromDouble(double)));
             }
+        } else if function == ABIFunction::EqualStringsHelperPure {
+            let str1 = MASM::getString(Reg::Rcx);
+            let str2 = MASM::getString(Reg::Rdx);
+
+            let equal = EqualStringsHelperPure(str1, str2);
+            MASM::setBool(Reg::Rax, equal);
         } else {
             assert false;
         }
@@ -872,6 +878,10 @@ ir MASM {
     // TODO: loop through all the registers and push them onto the stack
     // if they are in `set`.
     op PushRegsInMask(set: LiveRegSet) {
+        MASM::pushRegsInMask(set); 
+    }
+
+    fn pushRegsInMask(set: LiveRegSet) {
         let gprs = LiveRegSet::gprs(set);
         let fpus = LiveFloatRegSet::reducedForPush(LiveRegSet::fpus(set)); 
 
@@ -896,9 +906,18 @@ ir MASM {
         }
     }
 
+    op PopRegsInMask(set: LiveRegSet) {
+        let ignore = LiveRegSet::newEmpty();
+        MASM::popRegsInMaskIgnore(set, ignore);
+    }
+
     // TODO: loop through all the registers and pop them off the stack if
     // they are in `set` and not in `ignore`.
     op PopRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
+        MASM::popRegsInMaskIgnore(set, ignore); 
+    }
+
+    fn popRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
         let fpus = LiveFloatRegSet::reducedForPush(LiveRegSet::fpus(set)); 
         let gprs = LiveRegSet::gprs(set);
 
@@ -1184,6 +1203,41 @@ ir MASM {
         let int32 = MASM::getInt32(srcReg);
         let double = int32 as Double;
         MASM::setDouble(destReg, double);
+    }
+
+    op GuardSpecificAtom(strReg: Reg, atom: Atom, scratchReg: Reg, volatileRegs: LiveRegSet,
+            label fail: MASM) {
+
+        let str = MASM::getString(strReg);
+        if str == atom {
+            return;
+        }
+
+        if String::isAtom(str) {
+            goto fail;
+        }
+
+        if String::length(str) != String::length(atom) {
+            goto fail;
+        }
+
+        MASM::pushRegsInMask(volatileRegs);
+
+        MASM::setString(scratchReg, atom);
+        MASM::setString(Reg::Rcx, MASM::getString(scratchReg));
+        MASM::setString(Reg::Rdx, str);
+
+        ABIFunction::call(ABIFunction::EqualStringsHelperPure);
+        MASM::setBool(scratchReg, MASM::getBool(Reg::Rax));
+
+        assert !LiveRegSet::containsReg(volatileRegs, scratchReg);
+        let ignore = LiveRegSet::newEmpty();
+        MASM::popRegsInMaskIgnore(volatileRegs, ignore);
+        
+        let result = MASM::getBool(scratchReg);
+        if !result {
+            goto fail;
+        }
     }
 
     op BranchTestNumber(
