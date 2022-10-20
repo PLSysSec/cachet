@@ -34,6 +34,15 @@ int main() {
     assert (Fn_add_u64(ctx, u64max, 1) == u64max + 1);
 
 
+    assert (Fn_is_infinite(ctx, std::numeric_limits<double>::infinity()));
+    assert (Fn_is_infinite(ctx, -std::numeric_limits<double>::infinity()));
+    assert (!Fn_is_infinite(ctx, 0));
+    assert (!Fn_is_infinite(ctx, 1));
+    assert (!Fn_is_infinite(ctx, -1));
+
     assert (Fn_is_nan(ctx, std::numeric_limits<double>::quiet_NaN()));
+    assert (!Fn_is_nan(ctx, 0));
+    assert (!Fn_is_nan(ctx, 1));
+    assert (!Fn_is_nan(ctx, -1));
     return 0;
 }

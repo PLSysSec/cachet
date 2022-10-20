@@ -234,6 +234,19 @@ impl Value {
 
     unsafe fn toInt32Unchecked(value: Value) -> Int32;
 
+    fn isNumber(value: Value) -> Bool {
+        Value::isDouble(value) || Value::isInt32(value)
+    }
+
+    fn toNumber(value: Value) -> Double {
+        assert Value::isNumber(value);
+        if Value::isDouble(value) {
+            Value::toDouble(value)
+        } else {
+            Value::toInt32(value) as Double
+        }
+    }
+
     fn isBool(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Bool
     }

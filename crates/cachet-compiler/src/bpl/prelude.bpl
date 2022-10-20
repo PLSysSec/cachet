@@ -99,6 +99,8 @@ function {:bvbuiltin "(_ extract     15 0)"}         #UInt64^to#UInt16(n: #UInt6
 function {:bvbuiltin "(_ extract     31 0)"}         #UInt64^to#UInt32(n: #UInt64): #UInt32;
 function {:builtin   "(_ to_fp_unsigned 11 53) RNE"} #UInt64^to#Double(n: #UInt64): #Double;
 
+// FIXME(spinda): These floating-point conversions are unspecified when the
+// input is out of range.
 function {:builtin   "(_ fp.to_sbv   8 ) RNE"}       #Double^to#Int8  (n: #Double): #Int8;
 function {:builtin   "(_ fp.to_sbv   16) RNE"}       #Double^to#Int16 (n: #Double): #Int16;
 function {:builtin   "(_ fp.to_sbv   32) RNE"}       #Double^to#Int32 (n: #Double): #Int32;
@@ -300,6 +302,7 @@ procedure boogie_si_record_bv64(x:#UInt64);
 procedure #Double~print(d: #Double) {
   call {:cexpr "Double"} boogie_si_record_bv64(#Double~bits(d));
 }
+function {:builtin "fp.isInfinite"} #Double~isInfinite(n: #Double): #Bool;
 function {:builtin "fp.isNaN"} #Double~is_nan(n: #Double): #Bool;
 function {:bvbuiltin "fp.roundToIntegral RTP"} #Double~ceil(x: #Double): #Double;
 function {:bvbuiltin "fp.abs"} #Double~abs(x: #Double): #Double;
