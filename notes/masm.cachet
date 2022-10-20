@@ -526,23 +526,23 @@ impl RegData {
         RegData::typeOf(data) == RegDataType::StackIndex
     }
 
-    fn fromStackIndex(index: UInt64) -> RegData {
+    fn fromStackIndex(index: UInt16) -> RegData {
         let data = (unsafe { RegData::fromStackIndexUnchecked(index) });
         assume RegData::isStackIndex(data);
         assume (unsafe { RegData::toStackIndexUnchecked(data) }) == index;
         data
     }
 
-    unsafe fn fromStackIndexUnchecked(index: UInt64) -> RegData;
+    unsafe fn fromStackIndexUnchecked(index: UInt16) -> RegData;
 
-    fn toStackIndex(data: RegData) -> UInt64 {
+    fn toStackIndex(data: RegData) -> UInt16 {
         assert RegData::isStackIndex(data);
         let index = (unsafe { RegData::toStackIndexUnchecked(data) });
         assume (unsafe { RegData::fromStackIndexUnchecked(index) }) == data;
         index
     }
 
-    unsafe fn toStackIndexUnchecked(data: RegData) -> UInt64;
+    unsafe fn toStackIndexUnchecked(data: RegData) -> UInt16;
 
     fn isJSContext(data: RegData) -> Bool {
         RegData::typeOf(data) == RegDataType::JSContext
@@ -588,23 +588,23 @@ struct FloatData;
 impl FloatData {
     fn contentType(data: FloatData) -> FloatContentType;
 
-    fn fromDouble(double: Double) -> FloatData {
+    fn fromDouble(double: Double64) -> FloatData {
         let data = (unsafe { FloatData::fromDoubleUnchecked(double) });
         assume FloatData::contentType(data) == FloatContentType::Double;
         assume (unsafe { FloatData::toDoubleUnchecked(data) }) == double;
         data
     }
 
-    unsafe fn fromDoubleUnchecked(double: Double) -> FloatData;
+    unsafe fn fromDoubleUnchecked(double: Double64) -> FloatData;
 
-    fn toDouble(data: FloatData) -> Double {
+    fn toDouble(data: FloatData) -> Double64 {
         assert FloatData::contentType(data) == FloatContentType::Double;
         let double = (unsafe { FloatData::toDoubleUnchecked(data) });
         assume (unsafe { FloatData::fromDoubleUnchecked(double) }) == data;
         double
     }
 
-    unsafe fn toDoubleUnchecked(data: FloatData) -> Double;
+    unsafe fn toDoubleUnchecked(data: FloatData) -> Double64;
 }
 
 struct StackData;
@@ -612,24 +612,24 @@ struct StackData;
 impl StackData {
     fn isFloat(data: StackData) -> Bool;
 
-    fn size(data: StackData) -> UInt64 {
+    fn size(data: StackData) -> UInt16 {
         if !StackData::isFloat(data) {
             // RegData is always 8 bytes
-            return 8_u64;
+            return 8_u16;
         } else {
             let floatData = StackData::toFloatData(data);
             let contentType = FloatData::contentType(floatData);
             if contentType == FloatContentType::Single {
-                return 4_u64;
+                return 4_u16;
             } else if contentType == FloatContentType::Double {
-                return 8_u64;
+                return 8_u16;
             } else {
-                return 16_u64;
+                return 16_u16;
             }
         }
 
         assert false;
-        return 0_u64;
+        return 0_u16;
     }
 
     fn fromFloatData(floatData: FloatData) -> StackData {
@@ -861,10 +861,10 @@ ir MASM {
     op AddToStackPtrImm32(amount: Int32) {
         let stackPointer = MASM::getStackIndex(Reg::Rsp);
 
-        let newStackPointer = stackPointer + (amount as UInt64);
-        assert (newStackPointer as Int64) >= 0_i64;
+        let newStackPointer = stackPointer + amount;
+        assert newStackPointer >= 0_i32;
 
-        MASM::setStackIndex(Reg::Rsp, newStackPointer);
+        MASM::setStackIndex(Reg::Rsp, newStackPointer as UInt16);
     }
 
     op FreeStack(amount: UInt32) {
@@ -1009,7 +1009,7 @@ ir MASM {
         if RegData::isStackIndex(baseData) {
             let stackIndex = RegData::toStackIndex(baseData);
             let stackIndex = stackIndex + address.offset;
-            let stackData = MASM::stackLoad(stackIndex);
+            let stackData = MASM::stackLoad(stackIndex as UInt16);
             MASM::setFloatData(dstReg, StackData::toFloatData(stackData));
         } else {
             let data = RegData::readData(baseData, address.offset);
@@ -1093,7 +1093,7 @@ ir MASM {
             MASM::setDouble(destReg, double);
         } else if valTy == ValueType::Int32 {
             let int32 = Value::toInt32(value);
-            let double = int32 as Double;
+            let double = Double64::fromInt32(int32);
             MASM::setDouble(destReg, double);
         } else {
             goto failure;
@@ -1195,13 +1195,13 @@ ir MASM {
         }
 
         let int32 = Value::toInt32(value);
-        let double = int32 as Double;
+        let double = Double64::fromInt32(int32);
         MASM::setValue(valueReg, Value::fromDouble(double));
     }
 
     op ConvertInt32ToDouble(srcReg: Reg, destReg: FloatReg) {
         let int32 = MASM::getInt32(srcReg);
-        let double = int32 as Double;
+        let double = Double64::fromInt32(int32);
         MASM::setDouble(destReg, double);
     }
 
@@ -1947,7 +1947,7 @@ ir MASM {
         let lhs = MASM::getDouble(destReg);
         let rhs = MASM::getDouble(srcReg);
 
-        let result = lhs + rhs;
+        let result = Double64::add(lhs, rhs);
         MASM::setDouble(destReg, result);
     }
 
@@ -1986,7 +1986,7 @@ ir MASM {
     fn loadInt32OrDouble(value: Value, dstReg: FloatReg) {
         if Value::isInt32(value) {
             let int32 = Value::toInt32(value);
-            let double = int32 as Double;
+            let double = Double64::fromInt32(int32);
             MASM::setDouble(dstReg, double);
         } else if Value::isDouble(value) {
             let double = Value::toDouble(value);
@@ -1999,8 +1999,8 @@ ir MASM {
     fn getData(reg: Reg) -> RegData;
     fn setData(reg: Reg, data: RegData);
 
-    fn getStackIndex(reg: Reg) -> UInt64;
-    fn setStackIndex(reg: Reg, index: UInt64);
+    fn getStackIndex(reg: Reg) -> UInt16;
+    fn setStackIndex(reg: Reg, index: UInt16);
 
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);
@@ -2026,8 +2026,8 @@ ir MASM {
     fn getFloatData(floatReg: FloatReg) -> FloatData;
     fn setFloatData(floatReg: FloatReg, data: FloatData);
 
-    fn getDouble(floatReg: FloatReg) -> Double;
-    fn setDouble(floatReg: FloatReg, double: Double);
+    fn getDouble(floatReg: FloatReg) -> Double64;
+    fn setDouble(floatReg: FloatReg, double: Double64);
 
     fn saveReg(reg: Reg);
     fn saveFloatReg(floatReg: FloatReg);
@@ -2039,22 +2039,23 @@ ir MASM {
         let stackPointer = MASM::getStackIndex(Reg::Rsp);
 
         let newStackPointer = stackPointer - amount;
-        assert (newStackPointer as Int64) >= 0_i64;
+        assert (newStackPointer as Int32) >= 0_i32;
 
-        MASM::setStackIndex(Reg::Rsp, newStackPointer);
+        MASM::setStackIndex(Reg::Rsp, newStackPointer as UInt16);
     }
 
     fn freeStack(amount: UInt32) {
         let stackPointer = MASM::getStackIndex(Reg::Rsp);
         let newStackPointer = stackPointer + amount;
-        MASM::setStackIndex(Reg::Rsp, newStackPointer);
+        // TODO: check for overflow
+        MASM::setStackIndex(Reg::Rsp, newStackPointer as UInt16);
     }
 
     fn stackPush(data: StackData);
     fn stackPop() -> StackData;
 
-    fn stackStore(idx: UInt64, data: StackData);
-    fn stackLoad(idx: UInt64) -> StackData;
+    fn stackStore(idx: UInt16, data: StackData);
+    fn stackLoad(idx: UInt16) -> StackData;
 
     fn stackPushReg(reg: Reg) {
         let regData = MASM::getData(reg);
@@ -2072,9 +2073,9 @@ ir MASM {
        let baseData = MASM::getData(address.base);
 
        if RegData::isStackIndex(baseData) {
-            let stackIndex = RegData::toStackIndex(baseData);
+            let stackIndex = RegData::toStackIndex(baseData) as Int32;
             stackIndex = stackIndex + address.offset;
-            let stackData = MASM::stackLoad(stackIndex);
+            let stackData = MASM::stackLoad(stackIndex as UInt16);
             let regData = StackData::toRegData(stackData);
             MASM::setData(reg, regData);
        } else {
@@ -2086,11 +2087,11 @@ ir MASM {
         let baseData = MASM::getData(address.base);
 
         if RegData::isStackIndex(baseData) {
-            let stackIndex = RegData::toStackIndex(baseData);
+            let stackIndex = RegData::toStackIndex(baseData) as Int32;
             stackIndex = stackIndex + address.offset;
             let floatData = MASM::getFloatData(floatReg);
             let stackData = StackData::fromFloatData(floatData);
-            MASM::stackStore(stackIndex, stackData);
+            MASM::stackStore(stackIndex as UInt16, stackData);
         } else {
             assert false;
         }
@@ -2100,9 +2101,9 @@ ir MASM {
        let baseData = MASM::getData(address.base);
 
        if RegData::isStackIndex(baseData) {
-            let stackIndex = RegData::toStackIndex(baseData);
+            let stackIndex = RegData::toStackIndex(baseData) as Int32;
             stackIndex = stackIndex + address.offset;
-            let stackData = MASM::stackLoad(stackIndex);
+            let stackData = MASM::stackLoad(stackIndex as UInt16);
             let floatData = StackData::toFloatData(stackData);
             assert FloatData::contentType(floatData) == floatReg.type;
             MASM::setFloatData(floatReg, floatData);

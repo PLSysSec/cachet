@@ -27,14 +27,14 @@ procedure #MASM~setData($reg: #Reg, $data: #RegData)
 }
 
 procedure #MASM~getStackIndex($reg: #Reg)
-  returns (ret: #UInt64)
+  returns (ret: #UInt16)
 {
   var tmp'0: #RegData;
   call tmp'0 := #MASM~getData($reg);
   call ret := #RegData~toStackIndex(tmp'0);
 }
 
-procedure #MASM~setStackIndex($reg: #Reg, $index: #UInt64)
+procedure #MASM~setStackIndex($reg: #Reg, $index: #UInt16)
   modifies #MASM~regs;
 {
   var tmp'0: #RegData;
@@ -185,7 +185,7 @@ procedure #MASM~setFloatData($floatReg: #FloatReg, $data: #FloatData)
 }
 
 procedure #MASM~getDouble($floatReg: #FloatReg)
-  returns (ret: #Double)
+  returns (ret: #Double64)
 {
     var tmp'0: #FloatData;
 
@@ -194,7 +194,7 @@ procedure #MASM~getDouble($floatReg: #FloatReg)
     call ret := #FloatData~toDouble(tmp'0);
 }
 
-procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double)
+procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double64)
 {
     var tmp'0: #FloatData;
 
@@ -203,18 +203,18 @@ procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double)
     call #MASM~setFloatData($floatReg, tmp'0);
 }
 
-var #MASM~stack: #Map #UInt64 #StackData;
+var #MASM~stack: #Map #UInt16 #StackData;
 
 procedure #MASM~stackPush($data: #StackData)
     modifies #MASM~regs, #MASM~stack;
 {
-    var $stackPtr: #UInt64;
-    var $dataSize: #UInt64;
+    var $stackPtr: #UInt16;
+    var $dataSize: #UInt16;
 
     call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
     call $dataSize := #StackData~size($data);
-    assert #UInt64^gte($stackPtr, $dataSize); 
-    $stackPtr := #UInt64^sub($stackPtr, $dataSize);
+    assert #UInt16^gte($stackPtr, $dataSize); 
+    $stackPtr := #UInt16^sub($stackPtr, $dataSize);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
     #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $data);
 }
@@ -224,25 +224,25 @@ procedure #MASM~stackPop()
     modifies #MASM~regs, #MASM~stack;
 {
     var $newData: #StackData;
-    var $stackPtr: #UInt64;
-    var $dataSize: #UInt64;
+    var $stackPtr: #UInt16;
+    var $dataSize: #UInt16;
 
     call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
     data := #Map~get(#MASM~stack, $stackPtr);
     call $dataSize := #StackData~size(data);
     havoc $newData;
     #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $newData);
-    $stackPtr := #UInt64^add($stackPtr, $dataSize);
+    $stackPtr := #UInt16^add($stackPtr, $dataSize);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
 }
 
-procedure #MASM~stackStore($idx: #UInt64, $data: #StackData)
+procedure #MASM~stackStore($idx: #UInt16, $data: #StackData)
     modifies #MASM~stack;
 {
     #MASM~stack := #Map~set(#MASM~stack, $idx, $data);
 }
 
-procedure #MASM~stackLoad($idx: #UInt64)
+procedure #MASM~stackLoad($idx: #UInt16)
     returns (ret: #StackData)
 {
     ret := #Map~get(#MASM~stack, $idx);
@@ -753,7 +753,7 @@ procedure #initRegAllocator()
     call #initAllocatedRegs();
     call #initAllocatedFloatRegs();
 
-    call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
+    call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv16);
 
     call #CacheIR~liveRegs := #LiveRegSet~newEmpty();
     call #MoveResolver~reset();

@@ -7,7 +7,7 @@ struct JSContext;
 fn runtimeMainContextPtr() -> JSContext;
 
 fn StringToNumberPureNoErr(ctx: JSContext, str: String) -> Bool;
-fn StringToNumberPureResult(ctx: JSContext, str: String) -> Double;
+fn StringToNumberPureResult(ctx: JSContext, str: String) -> Double64;
 
 fn EqualStringsHelperPure(str1: String, str2: String) -> Bool;
 
@@ -98,23 +98,23 @@ impl Value {
         Value::typeOf(value) == ValueType::Double
     }
 
-    fn fromDouble(double: Double) -> Value {
+    fn fromDouble(double: Double64) -> Value {
         let value = (unsafe { Value::fromDoubleUnchecked(double) });
         assume Value::isDouble(value);
         assume (unsafe { Value::toDoubleUnchecked(value) }) == double;
         value
     }
 
-    unsafe fn fromDoubleUnchecked(value: Double) -> Value;
+    unsafe fn fromDoubleUnchecked(value: Double64) -> Value;
 
-    fn toDouble(value: Value) -> Double {
+    fn toDouble(value: Value) -> Double64 {
         assert Value::isDouble(value);
         let double = (unsafe { Value::toDoubleUnchecked(value) });
         assume (unsafe { Value::fromDoubleUnchecked(double) }) == value;
         double
     }
 
-    unsafe fn toDoubleUnchecked(value: Value) -> Double;
+    unsafe fn toDoubleUnchecked(value: Value) -> Double64;
 
     fn isInt32(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Int32
@@ -269,6 +269,14 @@ impl Value {
         assert false; // Only support Object for now
         return RegData::fromValue(value);
     }
+}
+
+struct Double64;
+
+impl Double64 {
+    fn fromInt32(int32: Int32) -> Double64;
+
+    fn add(lhs: Double64, rhs: Double64) -> Double64;
 }
 
 struct Object;
