@@ -2,60 +2,52 @@ import "./cacheir.cachet";
 import "./masm.cachet";
 import "./js.cachet";
 
-fn initInputTypedIdOperandLocation(typedId: TypedId);
-fn initInputValueIdOperandLocation(valueId: ValueId);
+fn initOperandId(operandId: OperandId);
 
-fn initValueReg(valueReg: ValueReg);
+fn initInputValueId(valueId: ValueId);
 
-fn initInputValueId(id: ValueId) {
-    initInputValueIdOperandLocation(id);
-    let valueReg = CacheIR::defineValueId(id);
-    initValueReg(valueReg);
+fn initInputObjectId(objectId: ObjectId) {
+    let reg = CacheIR::defineTypedId(TypedId::fromObjectId(objectId));
+    let data = MASM::getData(reg);
+    assume RegData::isUnboxedValue(data);
+    assume Value::isObject(RegData::toUnboxedValue(data));
 }
 
-fn initInputObjectId(id: ObjectId) {
-    let typedId = TypedId::fromObjectId(id);
-    initInputTypedIdOperandLocation(typedId);
-    let reg = CacheIR::defineTypedId(typedId);
+fn initInputInt32Id(int32Id: Int32Id) {
+    let reg = CacheIR::defineTypedId(TypedId::fromInt32Id(int32Id));
+    let data = MASM::getData(reg);
+    assume RegData::isUnboxedValue(data);
+    assume Value::isInt32(RegData::toUnboxedValue(data));
 }
 
-fn initInputInt32IdOperandLocation(id: Int32Id) {
-    let typedId = TypedId::fromInt32Id(id);
-    initInputTypedIdOperandLocation(typedId);
+fn initInputNumberId(numberId: NumberId) {
+    initInputValueId(OperandId::toValueId(numberId));
 }
 
-fn initInputInt32Id(id: Int32Id) {
-    let typedId = TypedId::fromInt32Id(id);
-    initInputTypedIdOperandLocation(typedId);
-    let reg = CacheIR::defineTypedId(typedId);
+fn initInputBoolId(boolId: BoolId) {
+    let reg = CacheIR::defineTypedId(TypedId::fromBoolId(boolId));
+    let data = MASM::getData(reg);
+    assume RegData::isUnboxedValue(data);
+    assume Value::isBool(RegData::toUnboxedValue(data));
 }
 
-fn initInputNumberId(id: NumberId) {
-    let valueId = id as ValueId;
-    initInputValueId(valueId);
-    let valueReg = CacheIR::defineValueId(valueId);
+fn initInputStringId(stringId: StringId) {
+    let reg = CacheIR::defineTypedId(TypedId::fromStringId(stringId));
+    let data = MASM::getData(reg);
+    assume RegData::isUnboxedValue(data);
+    assume Value::isString(RegData::toUnboxedValue(data));
 }
 
-fn initInputBoolId(id: BoolId) {
-    let typedId = TypedId::fromBoolId(id);
-    initInputTypedIdOperandLocation(typedId);
-    let reg = CacheIR::defineTypedId(typedId);
+fn initInputSymbolId(symbolId: SymbolId) {
+    let reg = CacheIR::defineTypedId(TypedId::fromSymbolId(symbolId));
+    let data = MASM::getData(reg);
+    assume RegData::isUnboxedValue(data);
+    assume Value::isSymbol(RegData::toUnboxedValue(data));
 }
 
-fn initInputStringId(id: StringId) {
-    let typedId = TypedId::fromStringId(id);
-    initInputTypedIdOperandLocation(typedId);
-    let reg = CacheIR::defineTypedId(typedId);
-}
-
-fn initInputSymbolId(id: SymbolId) {
-    let typedId = TypedId::fromSymbolId(id);
-    initInputTypedIdOperandLocation(typedId);
-    let reg = CacheIR::defineTypedId(typedId);
-}
-
-fn initInputBigIntId(id: BigIntId) {
-    let typedId = TypedId::fromBigIntId(id);
-    initInputTypedIdOperandLocation(typedId);
-    let reg = CacheIR::defineTypedId(typedId);
+fn initInputBigIntId(bigIntId: BigIntId) {
+    let reg = CacheIR::defineTypedId(TypedId::fromBigIntId(bigIntId));
+    let data = MASM::getData(reg);
+    assume RegData::isUnboxedValue(data);
+    assume Value::isBigInt(RegData::toUnboxedValue(data));
 }

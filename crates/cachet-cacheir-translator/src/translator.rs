@@ -1,5 +1,7 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+use std::collections::BTreeSet;
+
 use lazy_static::lazy_static;
 
 use cachet_lang::ast::*;
@@ -30,6 +32,10 @@ lazy_static! {
     static ref WASM_VAL_TYPE_PATH: Path = Path::from_ident("WasmValType");
     static ref JS_NATIVE_PATH: Path = Path::from_ident("JSNative");
     static ref ALLOC_KIND_PATH: Path = Path::from_ident("AllocKind");
+}
+
+lazy_static! {
+    static ref OPERAND_ID_PATH: Path = Path::from_ident("OperandId");
     static ref VALUE_ID_PATH: Path = Path::from_ident("ValueId");
     static ref OBJECT_ID_PATH: Path = Path::from_ident("ObjectId");
     static ref STRING_ID_PATH: Path = Path::from_ident("StringId");
@@ -41,6 +47,10 @@ lazy_static! {
     static ref VALUE_TAG_ID_PATH: Path = Path::from_ident("ValueTagId");
     static ref INT_PTR_ID_PATH: Path = Path::from_ident("IntPtrId");
     static ref RAW_ID_PATH: Path = Path::from_ident("RawId");
+    static ref INIT_OPERAND_ID_PATH: Path = Path::from_ident("initOperandId");
+}
+
+lazy_static! {
     static ref INT32_FIELD_PATH: Path = Path::from_ident("Int32Field");
     static ref INT_PTR_FIELD_PATH: Path = Path::from_ident("IntPtrField");
     static ref SHAPE_FIELD_PATH: Path = Path::from_ident("ShapeField");
@@ -53,6 +63,9 @@ lazy_static! {
     static ref ALLOC_SITE_FIELD_PATH: Path = Path::from_ident("AllocSiteField");
     static ref INT64_FIELD_PATH: Path = Path::from_ident("Int64Field");
     static ref VALUE_FIELD_PATH: Path = Path::from_ident("ValueField");
+}
+
+lazy_static! {
     static ref VALUE_TYPE_PATH: Path = Path::from_ident("ValueType");
     static ref DOUBLE_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Double");
     static ref INT32_VALUE_TYPE_PATH: Path = VALUE_TYPE_PATH.nest("Int32");
@@ -72,6 +85,34 @@ pub fn translate(stub: &stub::Stub) -> Mod {
     let params = Vec::new();
 
     let mut stmts = Vec::new();
+
+    let operand_ids: BTreeSet<u16> = stub
+        .ops
+        .iter()
+        .flat_map(|op| {
+            op.args.iter().filter_map(|arg| match arg.data {
+                stub::OpArgData::OperandId(operand_id) => Some(operand_id.id),
+                _ => None,
+            })
+        })
+        .collect();
+    stmts.extend(operand_ids.into_iter().map(|id| {
+        Spanned::internal(
+            Expr::Invoke(Call {
+                target: Spanned::internal(*INIT_OPERAND_ID_PATH),
+                args: Spanned::internal(vec![Spanned::internal(
+                    Expr::Invoke(Call {
+                        target: Spanned::internal(OPERAND_ID_PATH.nest("fromId")),
+                        args: Spanned::internal(vec![Spanned::internal(
+                            Expr::from(Literal::UInt16(id)).into(),
+                        )]),
+                    })
+                    .into(),
+                )]),
+            })
+            .into(),
+        )
+    }));
 
     stmts.extend(stub.input_operands.iter().flat_map(|input_operand| {
         [

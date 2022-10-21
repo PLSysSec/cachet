@@ -68,6 +68,14 @@ struct OperandId;
 impl OperandId {
     fn id(operandId: OperandId) -> UInt16;
 
+    fn fromId(id: UInt16) -> OperandId {
+        let operandId = unsafe { OperandId::fromIdUnchecked(id) };
+        assume OperandId::id(operandId) == id;
+        operandId
+    }
+
+    unsafe fn fromIdUnchecked(id: UInt16) -> OperandId;
+
     fn toValueId(operandId: OperandId) -> ValueId {
         ValueId::fromId(OperandId::id(operandId))
     }
@@ -727,13 +735,13 @@ ir CacheIR emits MASM {
     }
 
     op LoadObject(resultId: ObjectId, objField: ObjectField) {
-        let resultReg = CacheIR::defineObjectReg(resultId);
+        let resultReg = CacheIR::defineObjectId(resultId);
         CacheIR::emitLoadObjectStubField(objField, resultReg);
     }
 
     op LoadProto(objectId: ObjectId, resultId: ObjectId) {
         let objectReg = CacheIR::useObjectId(objectId);
-        let resultReg = CacheIR::defineObjectReg(resultId);
+        let resultReg = CacheIR::defineObjectId(resultId);
 
         emit MASM::LoadObjectProto(objectReg, resultReg);
         emit MASM::UnboxObjectProto(resultReg, resultReg);
@@ -1328,11 +1336,10 @@ ir CacheIR emits MASM {
         emit MASM::MovePtrImmGCPtrObject(CacheIR::readObjectField(objectField), dstReg);
     }
 
-    fn readValueField(valueField: ValueField) -> Value;
-    fn readObjectField(objectField: ObjectField) -> Object;
     fn readInt32Field(int32Field: Int32Field) -> Int32;
     fn readShapeField(shapeField: ShapeField) -> Shape;
     fn readClassField(classField: ClassField) -> Class;
+    fn readObjectField(objectField: ObjectField) -> Object;
     fn readInt64Field(int64Field: Int64Field) -> Int64;
     fn readValueField(valueField: ValueField) -> Value;
 

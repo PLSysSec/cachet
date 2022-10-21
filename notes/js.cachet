@@ -240,11 +240,10 @@ impl Value {
 
     fn toNumber(value: Value) -> Double {
         assert Value::isNumber(value);
-        if Value::isDouble(value) {
-            Value::toDouble(value)
-        } else {
-            Value::toInt32(value) as Double
+        if Value::isInt32(value) {
+            return Value::toInt32(value) as Double;
         }
+        Value::toDouble(value)
     }
 
     fn isBool(value: Value) -> Bool {

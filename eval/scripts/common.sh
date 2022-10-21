@@ -20,7 +20,7 @@ successful_verify_logs_dir="${verify_logs_dir}/successes"
 failed_verify_logs_dir="${verify_logs_dir}/failures"
 
 bin_dir="${repo_dir}/target/debug"
-corral_exe="${repo_dir}/vendor/corral/source/Corral/bin/Release/net5.0/corral"
+corral_exe="${repo_dir}/vendor/corral/source/Corral/bin/Release/net6.0/corral"
 notes_dir="${repo_dir}/notes"
 hacks_bpl_file="${notes_dir}/hacks.bpl"
 

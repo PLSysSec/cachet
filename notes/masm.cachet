@@ -1039,29 +1039,67 @@ ir MASM {
         MASM::setData(protoReg, data);
     }
 
-    fn getData(reg: Reg) -> RegData;
-    fn setData(reg: Reg, data: RegData);
-
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);
 
-    fn getInt32(reg: Reg) -> Int32;
-    fn setInt32(reg: Reg, int32: Int32);
+    fn getData(reg: Reg) -> RegData;
+    fn setData(reg: Reg, data: RegData);
 
-    fn getObject(reg: Reg) -> Object;
-    fn setObject(reg: Reg, object: Object);
+    fn getUnboxedValue(reg: Reg) -> Value {
+        RegData::toUnboxedValue(MASM::getData(reg))
+    }
 
-    fn getBool(reg: Reg) -> Bool;
-    fn setBool(reg: Reg, bool: Bool);
+    fn setUnboxedValue(reg: Reg, value: Value) {
+        MASM::setData(reg, RegData::fromUnboxedValue(value));
+    }
 
-    fn getString(reg: Reg) -> String;
-    fn setString(reg: Reg, string: String);
+    fn getInt32(reg: Reg) -> Int32 {
+        Value::toInt32(MASM::getUnboxedValue(reg))
+    }
 
-    fn getSymbol(reg: Reg) -> Symbol;
-    fn setSymbol(reg: Reg, symbol: Symbol);
+    fn setInt32(reg: Reg, int32: Int32) {
+        MASM::setUnboxedValue(reg, Value::fromInt32(int32));
+    }
 
-    fn getBigInt(reg: Reg) -> BigInt;
-    fn setBigInt(reg: Reg, bigInt: BigInt);
+    fn getBool(reg: Reg) -> Bool {
+        Value::toBool(MASM::getUnboxedValue(reg))
+    }
+
+    fn setBool(reg: Reg, bool: Bool) {
+        MASM::setUnboxedValue(reg, Value::fromBool(bool));
+    }
+
+    fn getObject(reg: Reg) -> Object {
+        Value::toObject(MASM::getUnboxedValue(reg))
+    }
+
+    fn setObject(reg: Reg, object: Object) {
+        MASM::setUnboxedValue(reg, Value::fromObject(object));
+    }
+
+    fn getString(reg: Reg) -> String {
+        Value::toString(MASM::getUnboxedValue(reg))
+    }
+
+    fn setString(reg: Reg, string: String) {
+        MASM::setUnboxedValue(reg, Value::fromString(string));
+    }
+
+    fn getSymbol(reg: Reg) -> Symbol {
+        Value::toSymbol(MASM::getUnboxedValue(reg))
+    }
+
+    fn setSymbol(reg: Reg, symbol: Symbol) {
+        MASM::setUnboxedValue(reg, Value::fromSymbol(symbol));
+    }
+
+    fn getBigInt(reg: Reg) -> BigInt {
+        Value::toBigInt(MASM::getUnboxedValue(reg))
+    }
+
+    fn setBigInt(reg: Reg, bigInt: BigInt) {
+        MASM::setUnboxedValue(reg, Value::fromBigInt(bigInt));
+    }
 }
 
 //impl MASM {

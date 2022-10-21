@@ -19,7 +19,7 @@ procedure #MASM~setData($reg: #Reg, $data: #RegData)
 {
   #MASM~regs := #Map~set(#MASM~regs, $reg, $data);
 }
-    
+
 procedure #MASM~getValue($valueReg: #ValueReg)
   returns (ret: #Value)
 {
@@ -36,124 +36,12 @@ procedure #MASM~setValue($valueReg: #ValueReg, $value: #Value)
   call #MASM~setData($valueReg, tmp'0);
 }
 
-procedure #MASM~getUnboxedValue($reg: #Reg)
-  returns (ret: #Value)
-{
-  var tmp'0: #RegData;
-  call tmp'0 := #MASM~getData($reg);
-  call ret := #RegData~toUnboxedValue(tmp'0);
-}
-
-procedure #MASM~setUnboxedValue($reg: #Reg, $value: #Value)
-  modifies #MASM~regs;
-{
-  var tmp'0: #RegData;
-  call tmp'0 := #RegData~fromUnboxedValue($value);
-  call #MASM~setData($reg, tmp'0);
-}
-
-procedure #MASM~getInt32($reg: #Reg)
-  returns (ret: #Int32)
-{
-  var tmp'0: #Value;
-  call tmp'0 := #MASM~getUnboxedValue($reg);
-  call ret := #Value~toInt32(tmp'0);
-}
-
-procedure #MASM~setInt32($reg: #Reg, $int32: #Int32)
-  modifies #MASM~regs;
-{
-  var tmp'0: #Value;
-  call tmp'0 := #Value~fromInt32($int32);
-  call #MASM~setUnboxedValue($reg, tmp'0);
-}
-
-procedure #MASM~getBool($reg: #Reg)
-  returns (ret: #Bool)
-{
-  var tmp'0: #Value;
-  call tmp'0 := #MASM~getUnboxedValue($reg);
-  call ret := #Value~toBool(tmp'0);
-}
-
-procedure #MASM~setBool($reg: #Reg, $bool: #Bool)
-  modifies #MASM~regs;
-{
-  var tmp'0: #Value;
-  call tmp'0 := #Value~fromBool($bool);
-  call #MASM~setUnboxedValue($reg, tmp'0);
-}
-
-procedure #MASM~getObject($reg: #Reg)
-  returns (ret: #Object)
-{
-  var tmp'0: #Value;
-  call tmp'0 := #MASM~getUnboxedValue($reg);
-  call ret := #Value~toObject(tmp'0);
-}
-
-procedure #MASM~setObject($reg: #Reg, $object: #Object)
-  modifies #MASM~regs;
-{
-  var tmp'0: #Value;
-  call tmp'0 := #Value~fromObject($object);
-  call #MASM~setUnboxedValue($reg, tmp'0);
-}
-
-procedure #MASM~getString($reg: #Reg)
-  returns (ret: #String)
-{
-  var tmp'0: #Value;
-  call tmp'0 := #MASM~getUnboxedValue($reg);
-  call ret := #Value~toString(tmp'0);
-}
-
-procedure #MASM~setString($reg: #Reg, $string: #String)
-  modifies #MASM~regs;
-{
-  var tmp'0: #Value;
-  call tmp'0 := #Value~fromString($string);
-  call #MASM~setUnboxedValue($reg, tmp'0);
-}
-
-procedure #MASM~getSymbol($reg: #Reg)
-  returns (ret: #Symbol)
-{
-  var tmp'0: #Value;
-  call tmp'0 := #MASM~getUnboxedValue($reg);
-  call ret := #Value~toSymbol(tmp'0);
-}
-
-procedure #MASM~setSymbol($reg: #Reg, $symbol: #Symbol)
-  modifies #MASM~regs;
-{
-  var tmp'0: #Value;
-  call tmp'0 := #Value~fromSymbol($symbol);
-  call #MASM~setUnboxedValue($reg, tmp'0);
-}
-
-procedure #MASM~getBigInt($reg: #Reg)
-  returns (ret: #BigInt)
-{
-  var tmp'0: #Value;
-  call tmp'0 := #MASM~getUnboxedValue($reg);
-  call ret := #Value~toBigInt(tmp'0);
-}
-
-procedure #MASM~setBigInt($reg: #Reg, $bigInt: #BigInt)
-  modifies #MASM~regs;
-{
-  var tmp'0: #Value;
-  call tmp'0 := #Value~fromBigInt($bigInt);
-  call #MASM~setUnboxedValue($reg, tmp'0);
-}
-
 var #CacheIR~knownOperandIds: #Set #UInt16;
 
 var #CacheIR~operandLocations: #Map #UInt16 #OperandLocation;
 
 procedure #CacheIR~defineTypedId($typedId: #TypedId)
-    returns (reg: #Reg)
+    returns (ret: #Reg)
     modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
 {
     var $id'0: #UInt16;
@@ -166,13 +54,13 @@ procedure #CacheIR~defineTypedId($typedId: #TypedId)
     $locKind'0 := #OperandLocation~kind($loc'0);
     assert $locKind'0 == #OperandLocationKind^Variant~Uninitialized();
     
-    call reg := #CacheIR~allocateReg();
-    call $loc'1 := #OperandLocation~setPayloadReg(reg, #TypedId~type($typedId));
+    call ret := #CacheIR~allocateReg();
+    call $loc'1 := #OperandLocation~setPayloadReg(ret, #TypedId~type($typedId));
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'1);
 }
 
 procedure #CacheIR~defineValueId($valueId: #ValueId)
-    returns (reg: #ValueReg)
+    returns (ret: #ValueReg)
     modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
 {
     var $id'0: #UInt16;
@@ -185,8 +73,8 @@ procedure #CacheIR~defineValueId($valueId: #ValueId)
     $locKind'0 := #OperandLocation~kind($loc'0);
     assert $locKind'0 == #OperandLocationKind^Variant~Uninitialized();
     
-    call reg := #CacheIR~allocateValueReg();
-    call $loc'1 := #OperandLocation~setValueReg(reg);
+    call ret := #CacheIR~allocateValueReg();
+    call $loc'1 := #OperandLocation~setValueReg(ret);
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'1);
 }
 
@@ -203,47 +91,20 @@ procedure #CacheIR~setOperandLocation($operandId: #OperandId, $loc: #OperandLoca
         #Map~set(#CacheIR~operandLocations, #OperandId~id($operandId), $loc);
 }
 
-procedure #initInputTypedIdOperandLocation($typedId: #TypedId)
+procedure #initOperandId($operandId: #OperandId)
     modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
 {
     var $id'0: #UInt16;
     var tmp'0: #Bool;
     var $loc'0: #OperandLocation;
 
-    $id'0 := #OperandId~id(#TypedId^to#OperandId($typedId));
+    $id'0 := #OperandId~id($operandId);
     tmp'0 := #Set~contains(#CacheIR~knownOperandIds, $id'0);
     assume !tmp'0;
     #CacheIR~knownOperandIds := #Set~add(#CacheIR~knownOperandIds, $id'0);
 
     call $loc'0 := #OperandLocation~newUninitialized();
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'0);
-}
-
-procedure #initInputValueIdOperandLocation($valueId: #ValueId)
-    modifies #CacheIR~operandLocations, #CacheIR~knownOperandIds;
-{
-    var $id'0: #UInt16;
-    var tmp'0: #Bool;
-    var $loc'0: #OperandLocation;
-
-    $id'0 := #OperandId~id(#ValueId^to#OperandId($valueId));
-    tmp'0 := #Set~contains(#CacheIR~knownOperandIds, $id'0);
-    assume !tmp'0;
-    #CacheIR~knownOperandIds := #Set~add(#CacheIR~knownOperandIds, $id'0);
-
-    call $loc'0 := #OperandLocation~newUninitialized();
-    #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'0);
-}
-
-procedure #initValueReg($valueReg: #ValueReg)
-    modifies #MASM~regs;
-{
-    var $data'0: #RegData;
-    var tmp'0: #Bool;
-
-    call $data'0 := #MASM~getData($valueReg);
-    call tmp'0 := #RegData~isValue($data'0);
-    assume tmp'0;
 }
 
 var #CacheIR~allocatedRegs: #Set #Reg;
@@ -289,5 +150,17 @@ procedure #CacheIR~releaseReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
   #CacheIR~allocatedRegs := #Set~remove(#CacheIR~allocatedRegs, $reg);
+}
+
+procedure #initInputValueId($valueId: #ValueId)
+  modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
+{
+  var $valueReg'0: #ValueReg;
+  var $data'1: #RegData;
+  var tmp'2: #Bool;
+  call $valueReg'0 := #CacheIR~defineValueId($valueId);
+  call $data'1 := #MASM~getData($valueReg'0);
+  call tmp'2 := #RegData~isValue($data'1);
+  assume tmp'2;
 }
 
