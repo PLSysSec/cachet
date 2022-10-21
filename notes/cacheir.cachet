@@ -576,6 +576,20 @@ ir CacheIR emits MASM {
         CacheIR::releaseReg(scratchReg);
     }
 
+    op GuardStringToInt32(strId: StringId, resultId: Int32Id) {
+        let strReg = CacheIR::useStringReg(strId);
+        let outputReg = CacheIR::defineInt32Reg(resultId);
+
+        let scratchReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        let volatileRegs = LiveRegSet::newVolatile();
+        emit MASM::GuardStringToInt32(strReg, outputReg, scratchReg, volatileRegs, failure);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
     op GuardStringToNumber(strId: StringId, resultId: NumberId) {
         let strReg = CacheIR::useStringReg(strId);
         let outputReg = CacheIR::defineValueReg(resultId);
@@ -792,11 +806,11 @@ ir CacheIR emits MASM {
         let numberReg = CacheIR::useNumberReg(numberId);
 
         // ifdef DEBUG
-        // label ok: MASM;
-        // emit MASM::BranchTestDouble(Condition::Equal, numberReg, ok);
-        // emit MASM::BranchTestInt32(Condition::Equal, numberReg, ok);
-        // emit MASM::AssumeUnreachable();
-        // bind ok;
+        label ok: MASM;
+        emit MASM::BranchTestDouble(Condition::Equal, numberReg, ok);
+        emit MASM::BranchTestInt32(Condition::Equal, numberReg, ok);
+        emit MASM::AssumeUnreachable();
+        bind ok;
         // endif
 
         emit MASM::MoveValue(numberReg, TypedOrValueReg::toValueReg(CacheIR::outputReg));

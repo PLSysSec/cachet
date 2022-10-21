@@ -859,12 +859,7 @@ ir MASM {
     }
 
     op AddToStackPtrImm32(amount: Int32) {
-        let stackPointer = MASM::getStackIndex(Reg::Rsp);
-
-        let newStackPointer = stackPointer + amount;
-        assert newStackPointer >= 0_i32;
-
-        MASM::setStackIndex(Reg::Rsp, newStackPointer as UInt16);
+        MASM::addToStackPtr(amount); 
     }
 
     op FreeStack(amount: UInt32) {
@@ -1203,6 +1198,47 @@ ir MASM {
         let int32 = MASM::getInt32(srcReg);
         let double = Double64::fromInt32(int32);
         MASM::setDouble(destReg, double);
+    }
+
+    op GuardStringToInt32(strReg: Reg, outputReg: Reg, scratchReg: Reg, volatileRegs: LiveRegSet, label fail: MASM) {
+       let str = MASM::getString(strReg);
+
+       if String::hasIndexValue(str) {
+           let index = String::getIndexValue(str);
+           MASM::setInt32(outputReg, index);
+           return;
+       }
+
+       MASM::reserveStack(8_u16);
+       MASM::setStackIndex(outputReg, MASM::getStackIndex(Reg::Rsp));
+
+       LiveRegSet::takeReg(out volatileRegs, volatileRegs, scratchReg);
+       MASM::pushRegsInMask(volatileRegs);
+
+       MASM::setData(scratchReg, RegData::fromJSContext(runtimeMainContextPtr()));
+       
+       let ctxData = MASM::getData(scratchReg);
+       let output = MASM::getStackIndex(outputReg);
+
+       MASM::setData(Reg::Rcx, ctxData);
+       MASM::setString(Reg::Rdx, str);
+       MASM::setStackIndex(Reg::R8, output);
+
+       ABIFunction::call(ABIFunction::GetInt32FromStringPure);
+
+       if scratchReg != Reg::Rax {
+           MASM::setData(scratchReg, MASM::getData(Reg::Rax));
+       }
+
+       let ignore = LiveRegSet::newEmpty();
+       MASM::popRegsInMaskIgnore(volatileRegs, ignore);
+
+       let isErr = MASM::getBool(scratchReg);
+       if isErr {
+           MASM::addToStackPtr(8_u16);
+           goto fail;
+       }
+
     }
 
     op GuardSpecificAtom(strReg: Reg, atom: Atom, scratchReg: Reg, volatileRegs: LiveRegSet,
@@ -2051,6 +2087,15 @@ ir MASM {
         MASM::setStackIndex(Reg::Rsp, newStackPointer as UInt16);
     }
 
+    fn addToStackPtr(amount: Int32) {
+        let stackPointer = MASM::getStackIndex(Reg::Rsp);
+
+        let newStackPointer = stackPointer + amount;
+        assert newStackPointer >= 0_i32;
+
+        MASM::setStackIndex(Reg::Rsp, newStackPointer as UInt16);
+    }
+
     fn stackPush(data: StackData);
     fn stackPop() -> StackData;
 
@@ -2067,6 +2112,17 @@ ir MASM {
         let data = MASM::stackPop();
         let regData = StackData::toRegData(data);
         MASM::setData(reg, regData);
+    }
+
+    fn load32Address(address: Address, reg: Reg) {
+        let baseData = MASM::getData(address.base);
+
+        if RegData::isStackIndex(baseData) {
+            let stackIndex = stackIndex + address.offset;
+            let stackData = MASM::stackLoad(stackIndex as UInt16);
+            let regData = StackData::toRegData(stackData);
+            MASM::setData(reg, regData);
+        }
     }
 
     fn loadRegAddress(address: Address, reg: Reg) {
