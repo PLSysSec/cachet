@@ -2267,6 +2267,7 @@ lazy_static! {
             (Ident::from("initInputOperandLocation").into(), Proc),
             (Ident::from("initValueInputOperandLocation").into(), Proc),
             (Ident::from("initValueReg").into(), Proc),
+            (Ident::from("initRegState").into(), Proc),
         ])
     };
 

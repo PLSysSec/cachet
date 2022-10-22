@@ -266,7 +266,37 @@ procedure #CacheIR~allocateReg()
 {
   var $reg: #Reg;
   var tmp'0: #Bool;
+
+  // ensure that we have enough registers by
+  // asserting that there is atleast one allocatable
+  // register that is not already allocated
+  assert (
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
+  );
+
   $reg := #CacheIR~allocateRegUnchecked(#CacheIR~allocatedRegs);
+
+  // rsp, rbp and r11 are not allocatable registers
+  // NOTE: rbp is allocatable in the latest versions of Firefox
+  // but is not in the cachet fork
+  assume (
+    $reg != #Reg^Variant~Rsp() &&
+    $reg != #Reg^Variant~Rbp() &&
+    $reg != #Reg^Variant~R11()
+  );
+
   tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
   assume !tmp'0;
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
@@ -277,8 +307,20 @@ procedure #CacheIR~allocateKnownReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
   var tmp'0: #Bool;
+  
+  // rsp, rbp and r11 are not allocatable registers
+  // NOTE: rbp is allocatable in the latest versions of Firefox
+  // but is not in the cachet fork
+  assume (
+    $reg != #Reg^Variant~Rsp() &&
+    $reg != #Reg^Variant~Rbp() &&
+    $reg != #Reg^Variant~R11()
+  );
+
+  // register should not already be allocated
   tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
-  assume !tmp'0;
+  assert !tmp'0;
+
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
 }
 
@@ -287,6 +329,35 @@ function #CacheIR~allocateRegUnchecked($allocatedRegs: #Set #Reg): #Reg;
 procedure #CacheIR~releaseReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
+  var tmp'0: #Bool;
+
+  // register should already be allocated
+  tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
+  assert tmp'0;
+
   #CacheIR~allocatedRegs := #Set~remove(#CacheIR~allocatedRegs, $reg);
 }
 
+procedure #initRegState()
+  modifies #CacheIR~allocatedRegs;
+{
+  // initially all registers are unallocated
+  assume (
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsp()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbp()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R11()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) &&
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
+  );
+}
