@@ -1,6 +1,7 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
 import "./js.cachet"
+import "./jsop.cachet"
 
 struct Reg;
 
@@ -23,6 +24,48 @@ enum Condition {
     NotSigned,
     GreaterThan,
     LessThan,
+    GreaterThanOrEqual,
+    LessThanOrEqual,
+    Above,
+    Below,
+    AboveOrEqual,
+    BelowOrEqual,
+}
+
+impl Condition {
+    fn fromJSOp(jsop: JSOp, isSigned: Bool) -> Condition {
+        if isSigned {
+            if jsop == JSOp::Eq || jsop == JSOp::StrictEq {
+                return Condition::Equal;
+            } else if jsop == JSOp::Ne || jsop == JSOp::StrictNe {
+                return Condition::NotEqual;
+            } else if jsop == JSOp::Lt {
+                return Condition::LessThan;
+            } else if jsop == JSOp::Le {
+                return Condition::LessThanOrEqual;
+            } else if jsop == JSOp::Gt {
+                return Condition::GreaterThan;
+            } else {
+                assert jsop == JSOp::Ge;
+                return Condition::GreaterThanOrEqual;
+            }
+        } else {
+            if jsop == JSOp::Eq || jsop == JSOp::StrictEq {
+                return Condition::Equal;
+            } else if jsop == JSOp::Ne || jsop == JSOp::StrictNe {
+                return Condition::NotEqual;
+            } else if jsop == JSOp::Lt {
+                return Condition::Below;
+            } else if jsop == JSOp::Le {
+                return Condition::BelowOrEqual;
+            } else if jsop == JSOp::Gt {
+                return Condition::Above;
+            } else {
+                assert jsop == JSOp::Ge;
+                return Condition::AboveOrEqual;
+            }
+        }
+    }
 }
 
 struct Address {
@@ -343,6 +386,24 @@ ir MASM {
         let value = MASM::getValue(valueReg);
 
         let valueIsNumber = Value::isInt32(value) || Value::isDouble(value);
+
+        if condition == Condition::Equal && valueIsNumber {
+            goto branch;
+        } else if condition == Condition::NotEqual && !valueIsNumber {
+            goto branch;
+        }
+    }
+
+    op BranchTestNumberTag(
+        condition: Condition,
+        tagReg: Reg,
+        label branch: MASM,
+    ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+        let tag = MASM::getValueTag(tagReg);
+
+        let valueIsNumber = tag == ValueType::Int32 || tag == ValueType::Double;
 
         if condition == Condition::Equal && valueIsNumber {
             goto branch;
@@ -691,6 +752,60 @@ ir MASM {
         }
     }
 
+    op Branch32(condition: Condition, lhsReg: Reg, rhsReg: Reg, label branch: MASM) {
+        assert (
+            condition == Condition::Equal || condition == Condition::NotEqual ||
+            condition == Condition::GreaterThan || condition == Condition::LessThan ||
+            condition == Condition::GreaterThanOrEqual || condition == Condition::LessThanOrEqual ||
+            condition == Condition::Above || condition == Condition::Below ||
+            condition == Condition::AboveOrEqual || condition == Condition::BelowOrEqual
+
+        );
+
+        let lhsInt32 = MASM::getInt32(lhsReg);
+        let rhsInt32 = MASM::getInt32(rhsReg);
+        
+        let lhsUInt32 = lhsInt32 as UInt32;
+        let rhsUInt32 = rhsInt32 as UInt32;
+
+        if condition == Condition::Equal && lhsInt32 == rhsInt32 {
+            goto branch;
+        } else if condition == Condition::NotEqual && lhsInt32 != rhsInt32 {
+            goto branch;
+        } else if condition == Condition::GreaterThan && lhsInt32 > rhsInt32 {
+            goto branch;
+        } else if condition == Condition::LessThan && lhsInt32 < rhsInt32 {
+            goto branch;
+        } else if condition == Condition::GreaterThanOrEqual && lhsInt32 >= rhsInt32 {
+            goto branch;
+        } else if condition == Condition::LessThanOrEqual && lhsInt32 <= rhsInt32 {
+            goto branch;
+        } else if condition == Condition::Above && lhsUInt32 > rhsUInt32 {
+            goto branch;
+        } else if condition == Condition::Below && lhsUInt32 < rhsUInt32 {
+            goto branch;
+        } else if condition == Condition::AboveOrEqual && lhsUInt32 >= rhsUInt32 {
+            goto branch;
+        } else if condition == Condition::BelowOrEqual && lhsUInt32 <= rhsUInt32 {
+            goto branch;
+        }
+    }
+
+    op Branch32Tag(condition: Condition, lhsReg: Reg, rhsReg: Reg, label branch: MASM) {
+        assert (
+            condition == Condition::Equal || condition == Condition::NotEqual
+        );
+
+        let lhsData = MASM::getData(lhsReg);
+        let rhsData = MASM::getData(rhsReg);
+
+        if condition == Condition::Equal && lhsData == rhsData {
+            goto branch;
+        } else if condition == Condition::NotEqual && lhsData != rhsData {
+            goto branch;
+        }
+    }
+
     // NOTE: This Op needs to be implemented on the C++ to delegate to the
     // appropriate overload of Branch32Imm since Cachet doesn't have overloading.
     op Branch32Imm(condition: Condition, lhsReg: Reg, rhsInt32: Int32, label branch: MASM) {
@@ -1030,8 +1145,24 @@ ir MASM {
         MASM::setData(protoReg, data);
     }
 
+    fn extractTag(valueReg: ValueReg, scratchReg: Reg) emits MASM -> Reg {
+        //TODO(abhishek) assert scratchReg != R11
+        let value = MASM::getValue(valueReg);
+        let tag = Value::typeOf(value);
+        MASM::setValueTag(scratchReg, tag);
+        return scratchReg;
+    }
+
     fn getData(reg: Reg) -> RegData;
     fn setData(reg: Reg, data: RegData);
+
+    fn getValueTag(reg: Reg) -> ValueType {
+        RegData::toValueType(MASM::getData(reg))
+    }
+
+    fn setValueTag(reg:Reg, tag: ValueType) {
+        MASM::setData(reg, RegData::fromValueType(tag));
+    }
 
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);

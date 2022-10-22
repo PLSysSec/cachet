@@ -88,6 +88,7 @@ struct BooleanId <: OperandId;
 struct StringId <: OperandId;
 struct SymbolId <: OperandId;
 struct BigIntId <: OperandId;
+struct ValueTagId <: OperandId;
 
 struct TypedId <: OperandId;
 
@@ -242,6 +243,27 @@ impl TypedId {
     }
 
     unsafe fn toBigIntIdUnchecked(typedId: TypedId) -> BigIntId;
+
+    fn fromValueTagId(valueTagId: ValueTagId) -> TypedId {
+        let typedId = (unsafe { TypedId::fromValueTagIdUnchecked(valueTagId) });
+        assume !TypedId::isValueId(typedId);
+        assume TypedId::type(typedId) == ValueType::Unknown;
+        assume (unsafe { TypedId::toValueTagIdUnchecked(typedId) }) == valueTagId;
+        assume (valueTagId as OperandId) == (typedId as OperandId);
+        typedId
+    }
+
+    unsafe fn fromValueTagIdUnchecked(valueTagId: ValueTagId) -> TypedId;
+
+    fn toValueTagId(typedId: TypedId) -> ValueTagId {
+        assert !TypedId::isValueId(typedId);
+        assert TypedId::type(typedId) == ValueType::Unknown;
+        let valueTagId = (unsafe { TypedId::toValueTagIdUnchecked(typedId) });
+        assume (unsafe { TypedId::fromValueTagIdUnchecked(valueTagId) }) == typedId;
+        valueTagId
+    }
+
+    unsafe fn toValueTagIdUnchecked(typedId: TypedId) -> ValueTagId;
 }
 
 struct ValueField;
@@ -527,6 +549,24 @@ ir CacheIR emits MASM {
         CacheIR::releaseReg(scratchReg);
     }
 
+    op GuardTagNotEqual(lhsId: ValueTagId, rhsId: ValueTagId) {
+        let lhsReg = CacheIR::useValueTagReg(lhsId);
+        let rhsReg = CacheIR::useValueTagReg(rhsId);
+
+        CacheIR::addFailurePath(out label failure);
+
+        label done: MASM;
+
+        emit MASM::Branch32Tag(Condition::Equal, lhsReg, rhsReg, failure);
+
+        emit MASM::BranchTestNumberTag(Condition::NotEqual, lhsReg, done);
+        emit MASM::BranchTestNumberTag(Condition::NotEqual, rhsReg, done);
+
+        emit MASM::Jump(failure);
+
+        bind done;
+    }
+
     op BooleanToNumber(booleanId: BooleanId, numberId: NumberId) {
         let booleanReg = CacheIR::useBooleanReg(booleanId);
         let numberReg = CacheIR::defineNumberReg(numberId);
@@ -540,12 +580,27 @@ ir CacheIR emits MASM {
         CacheIR::emitLoadObjectStubField(objField, resultReg);
     }
 
+    op LoadObjectResult(objId: ObjectId) {
+        let objectReg = CacheIR::useObjectReg(objId);
+        CacheIR::emitStoreResult(objectReg, ValueType::Object, CacheIR::outputReg);
+    }
+
     op LoadProto(objectId: ObjectId, resultId: ObjectId) {
         let objectReg = CacheIR::useObjectReg(objectId);
         let resultReg = CacheIR::defineObjectReg(resultId);
 
         emit MASM::LoadObjectProto(objectReg, resultReg);
         emit MASM::UnboxObjectProto(resultReg, resultReg);
+    }
+
+    op LoadValueTag(valId: ValueId, resultId: ValueTagId) {
+        let valReg = CacheIR::useValueReg(valId);
+        let resultReg = CacheIR::defineValueTagReg(resultId);
+
+        let tagReg = MASM::extractTag(valReg, resultReg);
+        if(tagReg != resultReg) {
+            emit MASM::Mov(tagReg, resultReg);
+        }
     }
 
     op LoadFixedSlotResult(objectId: ObjectId, slotField: Int32Field) {
@@ -702,6 +757,25 @@ ir CacheIR emits MASM {
         emit MASM::MoveValueImm(Value::fromBool(false), CacheIR::outputReg);
 
         bind done;
+    }
+
+    // TODO(abhishek): use emitStoreBoolean to properly store the result
+    // in TypeOrValueReg output
+    op CompareInt32Result(jsop: JSOp, lhsId: Int32Id, rhsId: Int32Id) {
+        let lhsReg = CacheIR::useInt32Reg(lhsId);
+        let rhsReg = CacheIR::useInt32Reg(rhsId);
+
+        label ifTrue: MASM;
+        label done: MASM;
+
+        emit MASM::Branch32(Condition::fromJSOp(jsop, true), lhsReg, rhsReg, ifTrue);
+        emit MASM::MoveValueImm(Value::fromBool(false), CacheIR::outputReg);
+        emit MASM::Jump(done);
+
+        bind ifTrue;
+        emit MASM::MoveValueImm(Value::fromBool(true), CacheIR::outputReg);
+        bind done;
+
     }
 
     op Int32AddResult(lhsId: Int32Id, rhsId: Int32Id) {
@@ -1025,6 +1099,12 @@ ir CacheIR emits MASM {
         CacheIR::defineReg(typedId)
     }
 
+    #[refined]
+    fn defineValueTagReg(id: ValueTagId) -> Reg {
+        let typedId = TypedId::fromValueTagId(id);
+        CacheIR::defineReg(typedId)
+    }
+
     fn getOperandLocation(id: OperandId) -> OperandLocation;
     fn setOperandLocation(id: OperandId, loc: OperandLocation);
 
@@ -1115,7 +1195,19 @@ ir CacheIR emits MASM {
         CacheIR::useReg(typedId)
     }
 
+    #[refined]
+    fn useValueTagReg(id: ValueTagId) emits MASM -> Reg {
+        let typedId = TypedId::fromValueTagId(id);
+        CacheIR::useReg(typedId)
+    }
+
     var outputReg: ValueReg;
+
+    // TODO(abhishek): outputReg should be TypedOrValueReg and all cases need
+    // to be handled.
+    fn emitStoreResult(reg: Reg, type: ValueType, outputReg: ValueReg) emits MASM {
+        emit MASM::TagValue(type, reg, outputReg);
+    }
 
     #[refined]
     fn emitLoadInt32StubField(int32Field: Int32Field, dstReg: Reg) emits MASM {

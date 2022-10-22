@@ -8,7 +8,7 @@ enum RegDataType {
     UnboxedValue,
     NativeObjectSlots,
     NativeObjectElements,
-    TypeTag,
+    ValueTag,
     TaggedProto,
     Class,
 }
@@ -106,13 +106,13 @@ impl RegData {
 
     unsafe fn toNativeObjectElementsUnchecked(data: RegData) -> NativeObjectElements;
 
-    fn isTypeTag(data: RegData) -> Bool {
-        RegData::typeOf(data) == RegDataType::TypeTag
+    fn isValueTag(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::ValueTag
     }
 
     fn fromValueType(valTy: ValueType) -> RegData {
         let data = (unsafe { RegData::fromValueTypeUnchecked(valTy) });
-        assume RegData::isTypeTag(data);
+        assume RegData::isValueTag(data);
         assume (unsafe { RegData::toValueTypeUnchecked(data) }) == valTy;
         data
     }
@@ -120,7 +120,7 @@ impl RegData {
     unsafe fn fromValueTypeUnchecked(valTy: ValueType) -> RegData;
 
     fn toValueType(data: RegData) -> ValueType {
-        assert RegData::isTypeTag(data);
+        assert RegData::isValueTag(data);
         let valTy = (unsafe { RegData::toValueTypeUnchecked(data) });
         assume (unsafe { RegData::fromValueTypeUnchecked(valTy) }) == data;
         valTy
