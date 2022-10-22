@@ -5,6 +5,7 @@ import "./masm.cachet"
 enum OperandLocationKind {
     Uninitialized,
     PayloadReg,
+    FloatReg,
     ValueReg,
 }
 
@@ -61,6 +62,22 @@ impl OperandLocation {
     }
 
     unsafe fn getPayloadTypeUnchecked(loc: OperandLocation) -> ValueType;
+
+    fn setFloatReg(out loc: OperandLocation, floatReg: FloatReg) {
+        (unsafe { OperandLocation::setFloatRegUnchecked(out loc, floatReg) }); 
+        assume OperandLocation::kind(loc) == OperandLocationKind::FloatReg;
+        assume (unsafe { OperandLocation::getFloatRegUnchecked(loc) } ) == floatReg;
+    }
+
+    unsafe fn setFloatRegUnchecked(out loc: OperandLocation, floatReg: FloatReg);
+
+    fn getFloatReg(loc: OperandLocation) -> FloatReg {
+        assert OperandLocation::kind(loc) == OperandLocationKind::ValueReg;
+        let floatReg = (unsafe { OperandLocation::getFloatRegUnchecked(loc) });
+        floatReg
+    }
+
+    unsafe fn getFloatRegUnchecked(loc: OperandLocation) -> FloatReg;
 }
 
 struct OperandId;
@@ -1054,6 +1071,10 @@ ir CacheIR emits MASM {
     fn allocateValueReg() -> ValueReg;
     fn releaseValueReg(valueReg: ValueReg);
 
+    fn allocateAvailableFloatReg(floatReg: FloatReg) -> FloatReg;
+    fn allocateFloatScratchReg() -> FloatReg;
+    fn releaseFloatReg(floatReg: FloatReg);
+
     fn defineReg(typedId: TypedId) -> Reg;
     fn defineValueReg(valueId: ValueId) -> ValueReg;
 
@@ -1169,6 +1190,39 @@ ir CacheIR emits MASM {
     fn useNumberReg(id: NumberId) emits MASM -> ValueReg {
         let valueId = id as ValueId;
         CacheIR::useValueReg(valueId)
+    }
+
+    #[refined]
+    fn ensureDoubleRegister(id: NumberId, destReg: FloatReg) emits MASM {
+        let operandId = id as OperandId; 
+        let location = CacheIR::getOperandLocation(operandId);
+        let locationKind = OperandLocation::kind(location);
+
+        label failure: MASM;
+        label done: MASM;
+
+        if locationKind == OperandLocationKind::ValueReg {
+            let valueReg = OperandLocation::getValueReg(location);
+            emit MASM::EnsureDouble(valueReg, destReg, failure);
+        } else if locationKind == OperandLocationKind::FloatReg {
+            let floatReg = OperandLocation::getFloatReg(location);
+            emit MASM::MoveDouble(floatReg, destReg);
+            return;
+        } else if locationKind == OperandLocationKind::PayloadReg {
+            let payloadType = OperandLocation::getPayloadType(location);
+            assert payloadType == ValueType::Int32;
+            let payloadReg = OperandLocation::getPayloadReg(location);
+            emit MASM::ConvertInt32ToDouble(payloadReg, destReg);
+            return;
+        } else {
+            assert false;
+            return;
+        }
+
+        emit MASM::Jump(done);
+        bind failure;
+        emit MASM::AssumeUnreachable();
+        bind done;
     }
 
     #[refined]
