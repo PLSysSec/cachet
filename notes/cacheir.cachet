@@ -364,7 +364,8 @@ ir CacheIR emits MASM {
         let valueReg = CacheIR::useValueReg(inputId);
 
         emit MASM::TestObjectSet(Condition::Equal, valueReg, scratchReg);
-        emit MASM::TagValue(ValueType::Bool, scratchReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Bool, scratchReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(scratchReg);
     }
@@ -624,9 +625,7 @@ ir CacheIR emits MASM {
         let objectReg = CacheIR::useObjectReg(objectId);
         let slotOffset = CacheIR::readInt32Field(slotField);
 
-        // Note: this uses TypedOrValueRegister but assuming here
-        // that CacheIR::outputReg is always a Value
-        emit MASM::LoadValueAddress(Address::new(objectReg, slotOffset), CacheIR::outputReg);
+        emit MASM::LoadTypedOrValueAddress(Address::new(objectReg, slotOffset), CacheIR::outputReg);
     }
 
     op LoadDynamicSlotResult(objectId: ObjectId, slotField: Int32Field) {
@@ -637,9 +636,7 @@ ir CacheIR emits MASM {
         emit MASM::LoadPtrAddress(
             Address::new(objectReg, NativeObject::offsetOfSlots as Int32), scratchReg
         );
-        // Note: this uses TypedOrValueRegister but assuming here
-        // that CacheIR::outputReg is always a Value
-        emit MASM::LoadValueAddress(
+        emit MASM::LoadTypedOrValueAddress(
             Address::new(scratchReg, slotOffset), CacheIR::outputReg
         );
 
@@ -660,7 +657,8 @@ ir CacheIR emits MASM {
         );
 
         emit MASM::BranchTest32(Condition::Signed, scratchReg, scratchReg, failure);
-        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Int32, scratchReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(scratchReg);
     }
@@ -672,7 +670,8 @@ ir CacheIR emits MASM {
         CacheIR::addFailurePath(out label failure);
 
         emit MASM::LoadArgumentsObjectLength(objectReg, argObjLengthReg, failure);
-        emit MASM::TagValue(ValueType::Int32, argObjLengthReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Int32, argObjLengthReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(argObjLengthReg);
     }
@@ -704,11 +703,11 @@ ir CacheIR emits MASM {
         emit MASM::Jump(loopHead);
 
         bind returnFalse;
-        emit MASM::StoreBoolValue(false, CacheIR::outputReg);
+        CacheIR::emitStoreBool(false, CacheIR::outputReg);
         emit MASM::Jump(done);
 
         bind returnTrue;
-        emit MASM::StoreBoolValue(true, CacheIR::outputReg);
+        CacheIR::emitStoreBool(true, CacheIR::outputReg);
 
         bind done;
 
@@ -717,27 +716,30 @@ ir CacheIR emits MASM {
 
     op LoadStringResult(stringId: StringId) {
         let stringReg = CacheIR::useStringReg(stringId);
-        emit MASM::TagValue(ValueType::String, stringReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::String, stringReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
     }
 
     op LoadSymbolResult(symbolId: SymbolId) {
         let symbolReg = CacheIR::useSymbolReg(symbolId);
-        emit MASM::TagValue(ValueType::Symbol, symbolReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Symbol, symbolReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
     }
 
     op LoadInt32Result(int32Id: Int32Id) {
         let int32Reg = CacheIR::useInt32Reg(int32Id);
-        emit MASM::TagValue(ValueType::Int32, int32Reg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Int32, int32Reg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
     }
 
     op LoadBooleanResult(bool: Bool) {
-        let value = Value::fromBool(bool);
-        emit MASM::MoveValueImm(value, CacheIR::outputReg);
+        CacheIR::emitStoreBool(bool, CacheIR::outputReg);
     }
 
     op LoadBigIntResult(bigIntId: BigIntId) {
         let bigIntReg = CacheIR::useBigIntReg(bigIntId);
-        emit MASM::TagValue(ValueType::BigInt, bigIntReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::BigInt, bigIntReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
     }
 
     op LoadDoubleResult(numberId: NumberId) {
@@ -751,8 +753,8 @@ ir CacheIR emits MASM {
         // bind ok;
         // endif
 
-        emit MASM::MoveValue(numberReg, CacheIR::outputReg);
-        emit MASM::ConvertInt32ValueToDouble(CacheIR::outputReg);
+        emit MASM::MoveValue(numberReg, TypedOrValueReg::toValueReg(CacheIR::outputReg));
+        emit MASM::ConvertInt32ValueToDouble(TypedOrValueReg::toValueReg(CacheIR::outputReg));
     }
 
     op LoadInt32Constant(valField: Int32Field, resultId: Int32Id) {
@@ -767,17 +769,17 @@ ir CacheIR emits MASM {
         label ifFalse: MASM;
         label done: MASM;
         emit MASM::BranchTestInt32Truthy(false, valueReg, ifFalse);
-        emit MASM::MoveValueImm(Value::fromBool(true), CacheIR::outputReg);
+        emit MASM::MoveValueImm(Value::fromBool(true),
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
         emit MASM::Jump(done);
 
         bind ifFalse;
-        emit MASM::MoveValueImm(Value::fromBool(false), CacheIR::outputReg);
+        emit MASM::MoveValueImm(Value::fromBool(false),
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         bind done;
     }
 
-    // TODO(abhishek): use emitStoreBoolean to properly store the result
-    // in TypeOrValueReg output
     op CompareInt32Result(jsop: JSOp, lhsId: Int32Id, rhsId: Int32Id) {
         let lhsReg = CacheIR::useInt32Reg(lhsId);
         let rhsReg = CacheIR::useInt32Reg(rhsId);
@@ -786,11 +788,11 @@ ir CacheIR emits MASM {
         label done: MASM;
 
         emit MASM::Branch32(Condition::fromJSOp(jsop, true), lhsReg, rhsReg, ifTrue);
-        emit MASM::MoveValueImm(Value::fromBool(false), CacheIR::outputReg);
+        CacheIR::emitStoreBool(false, CacheIR::outputReg);
         emit MASM::Jump(done);
 
         bind ifTrue;
-        emit MASM::MoveValueImm(Value::fromBool(true), CacheIR::outputReg);
+        CacheIR::emitStoreBool(true, CacheIR::outputReg);
         bind done;
 
     }
@@ -804,7 +806,8 @@ ir CacheIR emits MASM {
 
       emit MASM::Mov(rhsReg, scratchReg);
       emit MASM::BranchAdd32(Condition::Overflow, lhsReg, scratchReg, failure);
-      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg,
+              TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
       CacheIR::releaseReg(scratchReg);
     }
@@ -818,7 +821,8 @@ ir CacheIR emits MASM {
 
       emit MASM::Mov(lhsReg, scratchReg);
       emit MASM::BranchSub32(Condition::Overflow, rhsReg, scratchReg, failure);
-      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg,
+              TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
       CacheIR::releaseReg(scratchReg);
     }
@@ -846,7 +850,8 @@ ir CacheIR emits MASM {
       emit MASM::BranchTest32(Condition::Signed, scratch2Reg, scratch2Reg, failure);
 
       bind done;
-      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg,
+              TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
       CacheIR::releaseReg(scratchReg);
     }
@@ -882,7 +887,8 @@ ir CacheIR emits MASM {
         // A remainder implies a double result.
         emit MASM::BranchTest32(Condition::NonZero, remReg, remReg, failure);
 
-        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Int32, scratchReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(remReg);
         CacheIR::releaseReg(scratchReg);
@@ -915,7 +921,8 @@ ir CacheIR emits MASM {
         emit MASM::BranchTest32(Condition::Signed, lhsReg, lhsReg, failure);
         bind notZero;
 
-        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Int32, scratchReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(scratchReg); 
     }
@@ -927,7 +934,8 @@ ir CacheIR emits MASM {
       let scratchReg = CacheIR::allocateReg();
       emit MASM::Mov(rhsReg, scratchReg);
       emit MASM::Or32(lhsReg, scratchReg);
-      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg,
+              TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
       CacheIR::releaseReg(scratchReg);
     }
@@ -939,7 +947,8 @@ ir CacheIR emits MASM {
       let scratchReg = CacheIR::allocateReg();
       emit MASM::Mov(rhsReg, scratchReg);
       emit MASM::Xor32(lhsReg, scratchReg);
-      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg,
+              TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
       CacheIR::releaseReg(scratchReg);
     }
@@ -951,7 +960,8 @@ ir CacheIR emits MASM {
       let scratchReg = CacheIR::allocateReg();
       emit MASM::Mov(rhsReg, scratchReg);
       emit MASM::And32(lhsReg, scratchReg);
-      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg,
+              TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
       CacheIR::releaseReg(scratchReg);
     }
@@ -963,7 +973,8 @@ ir CacheIR emits MASM {
       let scratchReg = CacheIR::allocateReg();
       emit MASM::Mov(lhsReg, scratchReg);
       emit MASM::FlexibleLshift32(rhsReg, scratchReg);
-      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg,
+              TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
       CacheIR::releaseReg(scratchReg);
     }
@@ -975,7 +986,8 @@ ir CacheIR emits MASM {
         let scratchReg = CacheIR::allocateReg();
         emit MASM::Mov(lhsReg, scratchReg);
         emit MASM::FlexibleRshift32Arithmetic(rhsReg, scratchReg);
-        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Int32, scratchReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(scratchReg);
     }
@@ -991,7 +1003,8 @@ ir CacheIR emits MASM {
         emit MASM::Mov(lhsReg, scratchReg);
         emit MASM::FlexibleRshift32(rhsReg, scratchReg);
         emit MASM::BranchTest32(Condition::Signed, scratchReg, scratchReg, failure);
-        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Int32, scratchReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(scratchReg);
     }
@@ -1005,7 +1018,8 @@ ir CacheIR emits MASM {
       emit MASM::BranchTest32Imm(Condition::Zero, inputReg, 2147483647_i32, failure);
       emit MASM::Mov(inputReg, scratchReg);
       emit MASM::Neg32(scratchReg);
-      emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+      emit MASM::TagValue(ValueType::Int32, scratchReg,
+              TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
       CacheIR::releaseReg(scratchReg);
     }
@@ -1018,7 +1032,8 @@ ir CacheIR emits MASM {
 
         emit MASM::Mov(inputReg, scratchReg);
         emit MASM::BranchAdd32Imm(Condition::Overflow, 1_i32, scratchReg, failure);
-        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Int32, scratchReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(scratchReg);
     }
@@ -1031,7 +1046,8 @@ ir CacheIR emits MASM {
 
         emit MASM::Mov(inputReg, scratchReg);
         emit MASM::BranchAdd32Imm(Condition::Overflow, 1_i32, scratchReg, failure);
-        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Int32, scratchReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(scratchReg);
     }
@@ -1042,7 +1058,8 @@ ir CacheIR emits MASM {
 
         emit MASM::Mov(inputReg, scratchReg);
         emit MASM::Not32(scratchReg);
-        emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
+        emit MASM::TagValue(ValueType::Int32, scratchReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(scratchReg);
     }
@@ -1059,6 +1076,18 @@ ir CacheIR emits MASM {
         } else {
             emit MASM::Cmp32Move32(Condition::LessThan, secondReg,
                 firstReg, secondReg, resultReg);
+        }
+    }
+
+    fn emitStoreBool(b: Bool, outputReg: TypedOrValueReg) emits MASM {
+        if TypedOrValueReg::hasValue(outputReg) {
+            let value = Value::fromBool(b);
+            emit MASM::MoveValueImm(value, TypedOrValueReg::toValueReg(outputReg));
+        } else {
+            assert TypedOrValueReg::type(outputReg) == MIRType::Boolean;
+            let anyReg = TypedOrValueReg::toTypedReg(outputReg);
+            let reg = AnyReg::toReg(anyReg);
+            emit MASM::MovePtrBoolImmWord(b, reg);
         }
     }
 
@@ -1255,12 +1284,26 @@ ir CacheIR emits MASM {
         CacheIR::useReg(typedId)
     }
 
-    var outputReg: ValueReg;
+    var outputReg: TypedOrValueReg;
 
-    // TODO(abhishek): outputReg should be TypedOrValueReg and all cases need
-    // to be handled.
-    fn emitStoreResult(reg: Reg, type: ValueType, outputReg: ValueReg) emits MASM {
-        emit MASM::TagValue(type, reg, outputReg);
+    fn emitStoreResult(reg: Reg, type: ValueType, outputReg: TypedOrValueReg) emits MASM {
+        if TypedOrValueReg::hasValue(outputReg) {
+            emit MASM::TagValue(type, reg, TypedOrValueReg::toValueReg(outputReg));
+            return;
+        }
+
+        if type == ValueType::Int32 && AnyReg::isFloat(TypedOrValueReg::toTypedReg(outputReg)) {
+            emit MASM::ConvertInt32ToDouble(reg,
+                    AnyReg::toFloatReg(TypedOrValueReg::toTypedReg(outputReg)));
+            return;
+        }
+
+        if type == ValueType::fromMIRType(TypedOrValueReg::type(outputReg)) {
+            emit MASM::MovData(reg, AnyReg::toReg(TypedOrValueReg::toTypedReg(outputReg)));
+            return;
+        }
+
+        emit MASM::AssumeUnreachable();
     }
 
     #[refined]
