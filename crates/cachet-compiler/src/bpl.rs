@@ -2265,7 +2265,6 @@ lazy_static! {
             (Ident::from("CacheIR").nest("defineReg".into()), Proc),
             (Ident::from("CacheIR").nest("defineValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("allocateAvailableFloatReg".into()), Proc),
-            (Ident::from("CacheIR").nest("allocateFloatScratchReg".into()), Proc),
             (Ident::from("CacheIR").nest("releaseFloatReg".into()), Proc),
             (Ident::from("CacheIR").nest("getOperandLocation".into()), Proc),
             (Ident::from("CacheIR").nest("setOperandLocation".into()), Proc),
@@ -2273,6 +2272,7 @@ lazy_static! {
             (Ident::from("initValueInputOperandLocation").into(), Proc),
             (Ident::from("initValueReg").into(), Proc),
             (Ident::from("initRegState").into(), Proc),
+            (Ident::from("availableReg").into(), Proc),
         ])
     };
 

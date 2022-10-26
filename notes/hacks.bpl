@@ -345,15 +345,6 @@ procedure #CacheIR~allocateKnownReg($reg: #Reg)
 {
   var tmp'0: #Bool;
   
-  // rsp, rbp and r11 are not allocatable registers
-  // NOTE: rbp is allocatable in the latest versions of Firefox
-  // but is not in the cachet fork
-  assume (
-    $reg != #Reg^Variant~Rsp() &&
-    $reg != #Reg^Variant~Rbp() &&
-    $reg != #Reg^Variant~R11()
-  );
-
   // register should not already be allocated
   tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
   assert !tmp'0;
@@ -397,14 +388,6 @@ procedure #CacheIR~allocateAvailableFloatRegUnchecked($floatReg: #FloatReg)
   assert !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
 
   #CacheIR~allocatedFloatRegs := #Set~add(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
-}
-
-procedure #CacheIR~allocateFloatScratchReg()
-  returns (ret: #FloatReg)
-  modifies #CacheIR~allocatedFloatRegs;
-{
-  call ret := #FloatReg~new(#PhyFloatReg^Variant~Xmm15(), #FloatContentType^Variant~Double()); 
-  call #CacheIR~allocateAvailableFloatRegUnchecked(ret);
 }
 
 procedure #CacheIR~releaseFloatReg($floatReg: #FloatReg)
@@ -457,4 +440,46 @@ procedure #initRegState()
     !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm14()) &&
     !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm15())
   );
+}
+
+procedure #availableReg()
+  returns (ret: #Reg)
+{
+  var $reg: #Reg;
+  var tmp'0: #Bool;
+
+  // ensure that we have enough registers by
+  // asserting that there is atleast one allocatable
+  // register that is not already allocated
+  assert (
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
+  );
+
+  $reg := #CacheIR~allocateRegUnchecked(#CacheIR~allocatedRegs);
+
+  // rsp, rbp and r11 are not allocatable registers
+  // NOTE: rbp is allocatable in the latest versions of Firefox
+  // but is not in the cachet fork
+  assume (
+    $reg != #Reg^Variant~Rsp() &&
+    $reg != #Reg^Variant~Rbp() &&
+    $reg != #Reg^Variant~R11()
+  );
+
+  tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
+  assume !tmp'0;
+
+  ret := $reg;
 }

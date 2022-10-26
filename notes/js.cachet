@@ -8,6 +8,7 @@ enum RegDataType {
     UnboxedValue,
     NativeObjectSlots,
     NativeObjectElements,
+    ArgumentsData,
     ValueTag,
     TaggedProto,
     Class,
@@ -105,6 +106,28 @@ impl RegData {
     }
 
     unsafe fn toNativeObjectElementsUnchecked(data: RegData) -> NativeObjectElements;
+
+    fn isArgumentsData(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::ArgumentsData
+    }
+
+    fn fromArgumentsData(argsData: ArgumentsData) -> RegData {
+        let data = (unsafe { RegData::fromArgumentsDataUnchecked(argsData) });
+        assume RegData::isArgumentsData(data);
+        assume (unsafe { RegData::toArgumentsDataUnchecked(data) }) == argsData;
+        data
+    }
+
+    unsafe fn fromArgumentsDataUnchecked(argsData: ArgumentsData) -> RegData;
+
+    fn toArgumentsData(data: RegData) -> ArgumentsData {
+        assert RegData::isArgumentsData(data);
+        let argsData = (unsafe { RegData::toArgumentsDataUnchecked(data) });
+        assume (unsafe { RegData::fromArgumentsDataUnchecked(argsData) }) == data;
+        argsData
+    }
+
+    unsafe fn toArgumentsDataUnchecked(data: RegData) -> ArgumentsData;
 
     fn isValueTag(data: RegData) -> Bool {
         RegData::typeOf(data) == RegDataType::ValueTag
@@ -342,6 +365,14 @@ impl Value {
     fn isNull(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Null
     }
+
+    fn getUndefined() -> Value {
+        let value = (unsafe { Value::getUndefinedUnchecked() });
+        assume Value::isUndefined(value);
+        value
+    }
+
+    unsafe fn getUndefinedUnchecked() -> Value;
 
     fn isUndefined(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Undefined
@@ -597,15 +628,28 @@ impl NativeObjectElements {
     // TODO: can initializedLength be changed ?
     unsafe fn getInitializedLengthUnchecked(heap: Heap, elements: NativeObjectElements) -> UInt32;
 
+    fn getElement(elements: NativeObjectElements, index: UInt64) -> Value {
+        assert index < NativeObjectElements::getInitializedLength(elements);
+        ( unsafe { NativeObjectElements::getElementUnchecked(heap, elements, index) })
+    }
+
+    unsafe fn getElementUnchecked(heap: Heap, elements: NativeObjectElements, index: UInt64) -> Value;
 
     fn readData(elements: NativeObjectElements, offset: Int64) -> RegData {
         if offset == NativeObjectElements::offsetOfLength {
             let length = NativeObjectElements::getLength(elements);
             let value = Value::fromInt32(length as Int32);
-            return RegData::fromValue(value);
+            return RegData::fromUnboxedValue(value);
         } else if offset == NativeObjectElements::offsetOfInitializedLength {
             let initializedLength = NativeObjectElements::getInitializedLength(elements);
             let value = Value::fromInt32(initializedLength as Int32);
+            return RegData::fromUnboxedValue(value);
+        } else if offset >= 0_i64 {
+            let offset = offset as UInt64;
+            assert offset % Value::sizeOf == 0_u64;
+
+            let index = offset / Value::sizeOf;
+            let value = NativeObjectElements::getElement(elements, index);
             return RegData::fromValue(value);
         }
 
@@ -678,10 +722,57 @@ impl DataViewObject {
 struct ArgumentsObject <: NativeObject;
 
 impl ArgumentsObject {
-    var lengthOverridenBit : UInt32 = 1_u32;
+    var lengthOverriddenBit : UInt32 = 1_u32;
+    var elementOverriddenBit : UInt32 = 4_u32;
     var packedBitsCount: UInt32 = 5_u32;
 
-    fn getInitialLength(obj: ArgumentsObject) -> UInt32;
+    var argsLengthMax: UInt32 = 500000_u32;
+
+    fn getInitialLength(obj: ArgumentsObject) -> UInt32 {
+        assert !ArgumentsObject::hasOverriddenLength(obj) || !ArgumentsObject::hasOverriddenElement(obj);
+        let initialLengthSlot = ArgumentsObject::getInitialLengthSlot(obj);
+        initialLengthSlot >> ArgumentsObject::packedBitsCount
+    }
+
+    fn hasOverriddenLength(obj: ArgumentsObject) -> Bool {
+        let initialLengthSlot = ArgumentsObject::getInitialLengthSlot(obj);
+        (initialLengthSlot & ArgumentsObject::lengthOverriddenBit) != 0_u32
+    }
+
+    fn hasOverriddenElement(obj: ArgumentsObject) -> Bool {
+        let initialLengthSlot = ArgumentsObject::getInitialLengthSlot(obj);
+        (initialLengthSlot & ArgumentsObject::elementOverriddenBit) != 0_u32
+    }
+
+    fn getInitialLengthSlot(obj: ArgumentsObject) -> UInt32 {
+        let initialLengthSlot = (unsafe { ArgumentsObject::getInitialLengthSlotUnchecked(heap, obj) });
+        assume (initialLengthSlot >> ArgumentsObject::packedBitsCount) <= ArgumentsObject::argsLengthMax;
+        initialLengthSlot
+    }
+
+    unsafe fn getInitialLengthSlotUnchecked(heap: Heap, obj: ArgumentsObject) -> UInt32;
+
+    fn getArgumentsData(obj: ArgumentsObject) -> ArgumentsData {
+        assert !ArgumentsObject::hasOverriddenElement(obj);
+        let argsData = (unsafe { ArgumentsObject::getArgumentsDataUnchecked(heap, obj) });
+        assume argsData.numArgs == ArgumentsObject::getInitialLength(obj);
+        argsData
+    }
+
+    unsafe fn getArgumentsDataUnchecked(heap: Heap, obj: ArgumentsObject) -> ArgumentsData;
+}
+
+struct ArgumentsData {
+    numArgs: UInt32
+}
+
+impl ArgumentsData {
+    fn getArg(argsData: ArgumentsData, index: UInt32) -> Value {
+        assert index < argsData.numArgs;
+        (unsafe { ArgumentsData::getArgUnchecked(heap, argsData, index) })
+    }
+
+    unsafe fn getArgUnchecked(heap: Heap, argsData: ArgumentsData, index: UInt32) -> Value;
 }
 
 struct UnmappedArgumentsObject <: ArgumentsObject;

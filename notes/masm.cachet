@@ -22,6 +22,12 @@ enum Reg {
     R15,
 }
 
+impl Reg {
+    fn scratchReg() -> Reg {
+        Reg::R11
+    }
+}
+
 // #[cfg(cpp)]
 struct ValueReg;
 // #[cfg(verify)]
@@ -74,6 +80,14 @@ impl FloatReg {
     }
 
     unsafe fn newUnchecked(reg: PhyFloatReg, type: FloatContentType) -> FloatReg;
+
+    fn floatReg0() -> FloatReg {
+        FloatReg::newDouble(PhyFloatReg::Xmm0)
+    }
+
+    fn doubleScratchReg() -> FloatReg {
+        FloatReg::newDouble((PhyFloatReg::Xmm15))
+    }
 }
 
 struct AnyReg;
@@ -270,6 +284,20 @@ impl BaseIndex {
     }    
 
     unsafe fn newUnchecked(base: Reg, index: Reg, scale: Scale, offset: UInt32) -> BaseIndex;
+
+    fn getOffset(baseIndex: BaseIndex) -> Int64 {
+        let index = (MASM::getInt32(baseIndex.index) as UInt32) as Int64;
+        if baseIndex.scale == Scale::TimesOne {
+            return index * 1_i64 + baseIndex.offset;
+        } else if baseIndex.scale == Scale::TimesTwo {
+            return index * 2_i64 + baseIndex.offset;
+        } else if baseIndex.scale == Scale::TimesFour {
+            return index * 4_i64 + baseIndex.offset;
+        } else {
+            assert baseIndex.scale == Scale::TimesEight;
+            return index * 8_i64 + baseIndex.offset;
+        }
+    }
 }
 
 struct BaseValueIndex {
@@ -391,7 +419,7 @@ ir MASM {
     op Load32Address(address: Address, dstReg: Reg) {
         let baseData = MASM::getData(address.base);
         let data = RegData::readData(baseData, address.offset);
-        let value = RegData::toValue(data);
+        let value = RegData::toUnboxedValue(data);
         let int32 = Value::toInt32(value);
         MASM::setInt32(dstReg, int32);
     }
@@ -408,6 +436,33 @@ ir MASM {
             MASM::loadUnboxedValue(value, TypedOrValueReg::type(dstReg),
                 TypedOrValueReg::toTypedReg(dstReg));
         }
+    }
+
+    op LoadTypedOrValueBaseObjectElementIndex(index: BaseObjectElementIndex, dstReg: TypedOrValueReg) {
+        let baseIndex = index.inner.inner;
+        let baseData = MASM::getData(baseIndex.base);    
+        let offset = BaseIndex::getOffset(baseIndex);
+
+        let data = RegData::readData(baseData, offset);
+        let value = RegData::toValue(data);
+
+        if TypedOrValueReg::hasValue(dstReg) {
+            MASM::setValue(TypedOrValueReg::toValueReg(dstReg), value);
+        } else {
+            assert TypedOrValueReg::hasTyped(dstReg);
+            MASM::loadUnboxedValue(value, TypedOrValueReg::type(dstReg),
+                TypedOrValueReg::toTypedReg(dstReg));
+        }
+    }
+
+    op LoadValueBaseObjectElementIndex(index: BaseObjectElementIndex, dstReg: ValueReg) {
+        let baseIndex = index.inner.inner;
+        let baseData = MASM::getData(baseIndex.base);    
+        let offset = BaseIndex::getOffset(baseIndex);
+
+        let data = RegData::readData(baseData, offset);
+        let value = RegData::toValue(data);
+        MASM::setValue(dstReg, value);
     }
 
     op LoadPtrAddress(address: Address, dstReg: Reg) {
@@ -532,6 +587,12 @@ ir MASM {
         MASM::unboxNonDouble(value, dstReg, valTy);
     }
 
+    op UnboxDouble(valueReg: ValueReg, floatReg: FloatReg) {
+        let value = MASM::getValue(valueReg);
+        let double = Value::toDouble(value);
+        MASM::setDouble(floatReg, double);
+    }
+
     // NOTE: This Op needs to be implemented as a Phantom Op on the
     // C++ side since Firefox implicitly reinterprets booleans
     // as int32 within registers.
@@ -554,6 +615,46 @@ ir MASM {
         let int32 = Value::toInt32(value);
         let double = int32 as Double;
         MASM::setValue(valueReg, Value::fromDouble(double));
+    }
+
+    op ConvertDoubleToInt32(srcReg: FloatReg, destReg: Reg, label failure: MASM, negativeZeroCheck: Bool) {
+        let double = MASM::getDouble(srcReg);
+        
+        if negativeZeroCheck && double == -0.0 {
+            goto failure; 
+        }
+
+        let int32 = double as Int32;
+        let doubleTrunc = int32 as Double;
+
+        MASM::setDouble(FloatReg::doubleScratchReg(), doubleTrunc);
+
+        if Double::is_nan(double) || Double::is_nan(doubleTrunc) || double != doubleTrunc {
+            goto failure;
+        }
+
+
+        MASM::setInt32(destReg, int32);
+    }
+
+    op SpectreBoundsCheck32Address(
+        indexReg: Reg,
+        length: Address,
+        maybeScratch: Reg,
+        label failure: MASM
+    ) {
+        assert indexReg != length.base;
+        assert length.base != maybeScratch;
+        assert indexReg != maybeScratch;
+
+        let index = MASM::getInt32(indexReg) as UInt32;
+        let baseData = MASM::getData(length.base);
+        let data = RegData::readData(baseData, length.offset);
+        let length = Value::toInt32(RegData::toUnboxedValue(data)) as UInt32;
+
+        if index >= length {
+            goto failure;
+        }
     }
 
     op BranchTestNumber(
@@ -608,6 +709,23 @@ ir MASM {
         }
     }
 
+    op BranchTestDoubleTag(
+        condition: Condition,
+        tagReg: Reg,
+        label branch: MASM,
+    ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let tag = MASM::getValueTag(tagReg);
+
+        let tagIsDouble = tag == ValueType::Double;
+
+        if condition == Condition::Equal && tagIsDouble {
+            goto branch;
+        } else if condition == Condition::NotEqual && !tagIsDouble {
+            goto branch;
+        }
+    }
+
     op BranchObject(
         condition: Condition,
         lhsReg: Reg,
@@ -645,6 +763,18 @@ ir MASM {
         if condition == Condition::Equal && valueIsInt32 {
             goto branch;
         } else if condition == Condition::NotEqual && !valueIsInt32 {
+            goto branch;
+        }
+    }
+
+    op BranchTestInt32Tag(condition: Condition, tagReg: Reg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+        let tag = MASM::getValueTag(tagReg);
+        let tagIsInt32 = tag == ValueType::Int32;
+
+        if condition == Condition::Equal && tagIsInt32 {
+            goto branch;
+        } else if condition == Condition::NotEqual && !tagIsInt32 {
             goto branch;
         }
     }
@@ -788,6 +918,30 @@ ir MASM {
             if !valueIsMagic {
                 goto branch;
             }
+        }
+    }
+
+    op BranchTestMagicBaseObjectElementIndex(
+        condition: Condition,
+        index: BaseObjectElementIndex,
+        label branch: MASM,
+    ) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+        let baseIndex = index.inner.inner;
+        let baseData = MASM::getData(baseIndex.base);    
+        let offset = BaseIndex::getOffset(baseIndex);
+
+        let data = RegData::readData(baseData, offset);
+        let value = RegData::toValue(data);
+        let valueIsMagic = Value::isMagic(value);
+
+        if condition == Condition::Equal && valueIsMagic {
+            goto branch;
+        }
+
+        if condition == Condition::NotEqual && !valueIsMagic {
+            goto branch;
         }
     }
 
@@ -1311,12 +1465,46 @@ ir MASM {
     ) {
         let obj = MASM::getObject(objectReg);
         let argObj = Object::toArgumentsObject(obj);
-        let length = ArgumentsObject::getInitialLength(argObj);
+        let length = ArgumentsObject::getInitialLengthSlot(argObj);
         MASM::setInt32(outputReg, length as Int32);
-        if length & ArgumentsObject::lengthOverridenBit != 0_u32 {
+        if ArgumentsObject::hasOverriddenLength(argObj) {
             goto failure;
         }
-        MASM::setInt32(outputReg, (length >> ArgumentsObject::packedBitsCount) as Int32)
+        MASM::setInt32(outputReg, ArgumentsObject::getInitialLength(argObj) as Int32);
+    }
+
+    op LoadArgumentsObjectElement(
+        objReg: Reg, indexReg: Reg, output: ValueReg, tempReg: Reg, label failure: MASM,
+    ) {
+        let tempReg2 = ValueReg::scratchReg(output);
+
+        let obj = MASM::getObject(objReg);
+        let argObj = Object::toArgumentsObject(obj);
+        let length = ArgumentsObject::getInitialLengthSlot(argObj);
+        MASM::setInt32(tempReg, length as Int32);
+
+        if ArgumentsObject::hasOverriddenElement(argObj) {
+            goto failure;
+        }
+
+        length = ArgumentsObject::getInitialLength(argObj);
+        MASM::setInt32(tempReg, length as Int32);
+
+        let index = MASM::getInt32(indexReg) as UInt32;
+
+        if index >= length {
+            goto failure;
+        }
+
+        let argsData = ArgumentsObject::getArgumentsData(argObj);
+        MASM::setData(tempReg, RegData::fromArgumentsData(argsData));
+
+        let argValue = ArgumentsData::getArg(argsData, index as UInt32);
+        if Value::isMagic(argValue) {
+            goto failure;
+        }
+
+        MASM::setValue(output, argValue);
     }
 
     op LoadObjectProto(objectReg: Reg, protoReg: Reg) {
@@ -1330,11 +1518,16 @@ ir MASM {
         MASM::setData(protoReg, data);
     }
 
-    fn extractTag(valueReg: ValueReg, scratchReg: Reg) emits MASM -> Reg {
-        //TODO(abhishek) assert scratchReg != R11
+    op SplitTagForTest(valueReg: ValueReg, tagReg: Reg) {
         let value = MASM::getValue(valueReg);
         let tag = Value::typeOf(value);
-        MASM::setValueTag(scratchReg, tag);
+        MASM::setValueTag(tagReg, tag);
+    }
+
+    fn extractTag(valueReg: ValueReg, scratchReg: Reg) emits MASM -> Reg {
+        assert scratchReg != Reg::scratchReg();
+        
+        emit MASM::SplitTagForTest(valueReg, scratchReg);
         return scratchReg;
     }
 

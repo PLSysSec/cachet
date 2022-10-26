@@ -359,6 +359,44 @@ ir CacheIR emits MASM {
         emit MASM::Branch32Imm(Condition::LessThan, indexReg, 0_i32, failure);
     }
 
+    op GuardToInt32Index(inputId: ValueId, resultId: Int32Id) {
+        let outputReg = CacheIR::defineInt32Reg(resultId);
+
+        let inputReg = CacheIR::useValueReg(inputId);
+
+        CacheIR::addFailurePath(out label failure);
+
+        label done: MASM;
+
+        {
+            let tagReg = CacheIR::allocateScratchTagReg(inputReg);
+            emit MASM::SplitTagForTest(inputReg, tagReg);
+
+            label notInt32: MASM;
+            emit MASM::BranchTestInt32Tag(Condition::NotEqual, tagReg, notInt32);
+            {
+                CacheIR::releaseReg(tagReg);
+                emit MASM::UnboxInt32(inputReg, outputReg);
+                emit MASM::Jump(done);
+                CacheIR::allocateScratchTagReg(inputReg);
+            }
+            bind notInt32;
+
+            emit MASM::BranchTestDoubleTag(Condition::NotEqual, tagReg, failure);
+            {
+                CacheIR::releaseReg(tagReg);
+                let floatReg = CacheIR::allocateAvailableFloatReg(FloatReg::floatReg0());
+
+                emit MASM::UnboxDouble(inputReg, floatReg);
+                emit MASM::ConvertDoubleToInt32(floatReg, outputReg, failure, false);
+                CacheIR::allocateScratchTagReg(inputReg);
+            }
+            CacheIR::releaseReg(tagReg);
+        }
+
+        bind done;
+    }
+
     op IsObjectResult(inputId: ValueId) {
         let scratchReg = CacheIR::allocateReg();
         let valueReg = CacheIR::useValueReg(inputId);
@@ -643,6 +681,69 @@ ir CacheIR emits MASM {
         CacheIR::releaseReg(scratchReg);
     }
 
+    op LoadDenseElementResult(objectId: ObjectId, indexId: Int32Id) {
+        let objReg = CacheIR::useObjectReg(objectId);
+        let indexReg = CacheIR::useInt32Reg(indexId);
+
+        let scratchReg1 = CacheIR::allocateReg();
+        let scratchReg2 = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::LoadPtrAddress(
+            Address::new(objReg, NativeObject::offsetOfElements as Int32), scratchReg1
+        );
+
+        let initLength = Address::new(scratchReg1,
+                NativeObjectElements::offsetOfInitializedLength);
+        emit MASM::SpectreBoundsCheck32Address(indexReg, initLength, scratchReg2, failure);
+
+        let element = BaseObjectElementIndex::new(scratchReg1, indexReg, 0_u32);
+        emit MASM::BranchTestMagicBaseObjectElementIndex(Condition::Equal, element, failure);
+        emit MASM::LoadTypedOrValueBaseObjectElementIndex(element, CacheIR::outputReg);
+
+        CacheIR::releaseReg(scratchReg2);
+        CacheIR::releaseReg(scratchReg1);
+    }
+
+    op LoadDenseElementHoleResult(objectId: ObjectId, indexId: Int32Id) {
+        let objReg = CacheIR::useObjectReg(objectId);
+        let indexReg = CacheIR::useInt32Reg(indexId);
+
+        let scratchReg1 = CacheIR::allocateReg();
+        let scratchReg2 = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::Branch32Imm(Condition::LessThan, indexReg, 0_i32, failure);
+
+        emit MASM::LoadPtrAddress(
+            Address::new(objReg, NativeObject::offsetOfElements as Int32), scratchReg1
+        );
+
+        label hole: MASM;
+
+        let initLength = Address::new(scratchReg1,
+                NativeObjectElements::offsetOfInitializedLength);
+        emit MASM::SpectreBoundsCheck32Address(indexReg, initLength, scratchReg2, hole);
+
+        label done: MASM;
+        let element = BaseObjectElementIndex::new(scratchReg1, indexReg, 0_u32);
+        emit MASM::LoadValueBaseObjectElementIndex(element,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
+        emit MASM::BranchTestMagic(Condition::NotEqual,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg), done);
+
+        bind hole;
+        emit MASM::MoveValueImm(Value::getUndefined(),
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
+
+        bind done;
+
+        CacheIR::releaseReg(scratchReg2);
+        CacheIR::releaseReg(scratchReg1);
+    }
+
     op LoadInt32ArrayLengthResult(objectId: ObjectId) {
         let objectReg = CacheIR::useObjectReg(objectId);
         let scratchReg = CacheIR::allocateReg();
@@ -674,6 +775,20 @@ ir CacheIR emits MASM {
                 TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(argObjLengthReg);
+    }
+
+    op LoadArgumentsObjectArgResult(objId: ObjectId, indexId: Int32Id) {
+        let objReg = CacheIR::useObjectReg(objId);
+        let indexReg = CacheIR::useInt32Reg(indexId);
+
+        let scratchReg = CacheIR::allocateReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        emit MASM::LoadArgumentsObjectElement(objReg, indexReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg), scratchReg, failure);
+
+        CacheIR::releaseReg(scratchReg);
     }
 
     op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId) {
@@ -1094,15 +1209,44 @@ ir CacheIR emits MASM {
     fn addFailurePath(out label failure: MASM);
 
     fn allocateReg() -> Reg;
-    fn allocateKnownReg(reg: Reg);
+    // SAFETY: does not check that reg is an allocatable register
+    unsafe fn allocateKnownReg(reg: Reg);
     fn releaseReg(reg: Reg);
+
+    // Register allocated by AutoScratchRegisterMaybeOutput
+    fn allocateRegMaybeOutput() -> Reg {
+        assert TypedOrValueReg::hasValue(CacheIR::outputReg);
+        if TypedOrValueReg::hasValue(CacheIR::outputReg) {
+            return ValueReg::scratchReg(TypedOrValueReg::toValueReg(CacheIR::outputReg));
+        } else if TypedOrValueReg::hasTyped(CacheIR::outputReg) && !AnyReg::isFloat(TypedOrValueReg::toTypedReg(CacheIR::outputReg)) {
+            return AnyReg::toReg(TypedOrValueReg::toTypedReg(CacheIR::outputReg));
+        } else {
+            return CacheIR::allocateReg();
+        }
+    }
+
+    // Register allocated by ScratchTagScope
+    fn allocateScratchTagReg(valueReg: ValueReg) -> Reg {
+        // safe because we want to allocate the scratch register
+        unsafe { CacheIR::allocateKnownReg(Reg::scratchReg()); }
+        Reg::scratchReg()
+    }
 
     fn allocateValueReg() -> ValueReg;
     fn releaseValueReg(valueReg: ValueReg);
 
     fn allocateAvailableFloatReg(floatReg: FloatReg) -> FloatReg;
-    fn allocateFloatScratchReg() -> FloatReg;
     fn releaseFloatReg(floatReg: FloatReg);
+
+    // Register allocated by ScratchDoubleScope
+    fn allocateDoubleScratchReg() -> FloatReg {
+        CacheIR::allocateAvailableFloatReg(FloatReg::doubleScratchReg())
+    }
+
+    // Register allocated by AutoScratchFloatRegister
+    fn allocateFloatScratchReg() -> FloatReg {
+        CacheIR::allocateAvailableFloatReg(FloatReg::floatReg0())
+    }
 
     fn defineReg(typedId: TypedId) -> Reg;
     fn defineValueReg(valueId: ValueId) -> ValueReg;
@@ -1170,7 +1314,9 @@ ir CacheIR emits MASM {
             let valueReg = OperandLocation::getValueReg(location);
             CacheIR::releaseValueReg(valueReg);
             let reg = ValueReg::scratchReg(valueReg);
-            CacheIR::allocateKnownReg(reg);
+            // safe because we know valueReg was previously allocated
+            // with allocateValueReg and is allocatable
+            unsafe { CacheIR::allocateKnownReg(reg); }
             emit MASM::UnboxNonDouble(valueReg, reg, TypedId::type(id));
             OperandLocation::setPayloadReg(out location, reg, TypedId::type(id));
             CacheIR::setOperandLocation(operandId, location);

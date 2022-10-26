@@ -1,0 +1,23 @@
+import "../cacheir.cachet"
+import "../utils.cachet"
+
+ir CacheStub emits CacheIR {
+    op GetArg(
+        valueId: ValueId,
+        indexId: ValueId,
+        indexInt32Id: Int32Id,
+        shapeField: ShapeField,
+    ) {
+        initRegState();
+        initValueInput(valueId);
+        initValueInput(indexId);
+        initInt32InputOperandLocation(indexInt32Id);
+        initValueOutput();
+
+        emit CacheIR::GuardToObject(valueId);
+        emit CacheIR::GuardToInt32Index(indexId, indexInt32Id);
+        let objectId = ValueId::toObjectId(valueId);
+        emit CacheIR::GuardClass(objectId, GuardClassKind::MappedArguments);
+        emit CacheIR::LoadArgumentsObjectArgResult(objectId, indexInt32Id);
+    }
+}
