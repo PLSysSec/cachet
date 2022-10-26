@@ -850,6 +850,20 @@ ir MASM {
       }
     }
 
+    op BranchTestObjectTag(condition: Condition, tagReg: Reg, label branch: MASM) {
+      assert condition == Condition::Equal || condition == Condition::NotEqual;
+      let tag = MASM::getValueTag(tagReg);
+      let valueIsObject = tag == ValueType::Object;
+
+      if condition == Condition::Equal && valueIsObject {
+          goto branch;
+      }
+
+      if condition == Condition::NotEqual && !valueIsObject {
+          goto branch;
+      }
+    }
+
     // Note: this is a wrapper around branchTestPtr for when
     // the register contains a TaggedProto
     op BranchTestNullProto(reg: Reg, label branch: MASM) {
@@ -873,6 +887,8 @@ ir MASM {
     }
 
     op BranchTestNull(condition: Condition, valueReg: ValueReg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
         let value = MASM::getValue(valueReg);
         let valueIsNull = Value::isNull(value);
 
@@ -889,6 +905,39 @@ ir MASM {
         }
     }
 
+    op BranchTestNullTag(condition: Condition, tagReg: Reg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+        let tag = MASM::getValueTag(tagReg);
+        let valueIsNull = tag == ValueType::Null;
+
+        if condition == Condition::Equal {
+            if valueIsNull {
+                goto branch;
+            }
+        }
+
+        if condition == Condition::NotEqual {
+            if !valueIsNull {
+                goto branch;
+            }
+        }
+    }
+
+    op TestNullSet(condition: Condition, valueReg: ValueReg, destReg: Reg) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+        let value = MASM::getValue(valueReg);
+        let valueIsNull = Value::isNull(value);
+
+        if ((condition == Condition::Equal && valueIsNull) ||
+                (condition == Condition::NotEqual && !valueIsNull)) {
+            MASM::setBool(destReg, true);
+        } else {
+            MASM::setBool(destReg, false);
+        }
+    }
+
     op BranchTestUndefined(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         assert condition == Condition::Equal || condition == Condition::NotEqual;
 
@@ -901,6 +950,50 @@ ir MASM {
 
         if condition == Condition::NotEqual && !valueIsUndefined {
             goto branch;
+        }
+    }
+
+    op BranchTestUndefinedTag(condition: Condition, tagReg: Reg, label branch: MASM) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+        let tag = MASM::getValueTag(tagReg);
+        let valueIsUndefined = tag == ValueType::Undefined;
+
+        if condition == Condition::Equal && valueIsUndefined{
+            goto branch;
+        }
+
+        if condition == Condition::NotEqual && !valueIsUndefined {
+            goto branch;
+        }
+    }
+
+    op BranchIfObjectEmulatesUndefined(objReg: Reg, scratchReg: Reg, label slowCheck: MASM, label branch: MASM) {
+        let object = MASM::getObject(objReg);
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        MASM::setData(scratchReg, RegData::fromClass(class));
+
+        if Class::isProxyObject(class) {
+            goto slowCheck;
+        }
+
+        if Class::emulatesUndefined(class) {
+            goto branch;
+        }
+    }
+
+    op TestUndefinedSet(condition: Condition, valueReg: ValueReg, destReg: Reg) {
+        assert condition == Condition::Equal || condition == Condition::NotEqual;
+
+        let value = MASM::getValue(valueReg);
+        let valueIsUndefined = Value::isUndefined(value);
+
+        if ((condition == Condition::Equal && valueIsUndefined) ||
+                (condition == Condition::NotEqual && !valueIsUndefined)) {
+            MASM::setBool(destReg, true);
+        } else {
+            MASM::setBool(destReg, false);
         }
     }
 

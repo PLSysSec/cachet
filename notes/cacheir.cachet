@@ -369,7 +369,7 @@ ir CacheIR emits MASM {
         label done: MASM;
 
         {
-            let tagReg = CacheIR::allocateScratchTagReg(inputReg);
+            let tagReg = CacheIR::allocateScratchReg();
             emit MASM::SplitTagForTest(inputReg, tagReg);
 
             label notInt32: MASM;
@@ -378,7 +378,7 @@ ir CacheIR emits MASM {
                 CacheIR::releaseReg(tagReg);
                 emit MASM::UnboxInt32(inputReg, outputReg);
                 emit MASM::Jump(done);
-                CacheIR::allocateScratchTagReg(inputReg);
+                CacheIR::allocateScratchReg();
             }
             bind notInt32;
 
@@ -389,7 +389,7 @@ ir CacheIR emits MASM {
 
                 emit MASM::UnboxDouble(inputReg, floatReg);
                 emit MASM::ConvertDoubleToInt32(floatReg, outputReg, failure, false);
-                CacheIR::allocateScratchTagReg(inputReg);
+                CacheIR::allocateScratchReg();
             }
             CacheIR::releaseReg(tagReg);
         }
@@ -895,6 +895,67 @@ ir CacheIR emits MASM {
         bind done;
     }
 
+    op CompareNullUndefinedResult(jsop: JSOp, isUndefined: Bool, inputId: ValueId) {
+        let inputReg = CacheIR::useValueReg(inputId);
+        let scratchReg = CacheIR::allocateReg();
+
+        if JSOp::isStrictEqualityOp(jsop) {
+            if isUndefined {
+                emit MASM::TestUndefinedSet(Condition::fromJSOp(jsop, false), inputReg, scratchReg);    
+            } else {
+                emit MASM::TestNullSet(Condition::fromJSOp(jsop, false), inputReg, scratchReg);
+            }
+
+            CacheIR::emitStoreResult(scratchReg, ValueType::Bool, CacheIR::outputReg);
+            return;
+        }
+
+        CacheIR::addFailurePath(out label failure);
+        
+        assert JSOp::isLooseEqualityOp(jsop);
+
+        label nullOrLikeUndefined: MASM;
+        label notNullOrLikeUndefined: MASM;
+        label done: MASM;
+
+        {
+            let tagReg = CacheIR::allocateScratchReg();
+            emit MASM::SplitTagForTest(inputReg, tagReg);
+
+            if isUndefined {
+                emit MASM::BranchTestUndefinedTag(Condition::Equal, tagReg, nullOrLikeUndefined);
+                emit MASM::BranchTestNullTag(Condition::Equal, tagReg, nullOrLikeUndefined);
+            } else {
+                emit MASM::BranchTestNullTag(Condition::Equal, tagReg, nullOrLikeUndefined);
+                emit MASM::BranchTestUndefinedTag(Condition::Equal, tagReg, nullOrLikeUndefined);
+            }
+            emit MASM::BranchTestObjectTag(Condition::NotEqual, tagReg, notNullOrLikeUndefined);
+
+            {
+                CacheIR::releaseReg(tagReg);
+
+                emit MASM::UnboxObject(inputReg, scratchReg);
+                emit MASM::BranchIfObjectEmulatesUndefined(scratchReg, scratchReg, failure, nullOrLikeUndefined);
+                emit MASM::Jump(notNullOrLikeUndefined);
+
+                CacheIR::allocateScratchReg();
+            }
+
+            CacheIR::releaseReg(tagReg);
+        }
+
+        bind nullOrLikeUndefined;
+        CacheIR::emitStoreBool(jsop == JSOp::Eq, CacheIR::outputReg);
+        emit MASM::Jump(done);
+
+        bind notNullOrLikeUndefined;
+        CacheIR::emitStoreBool(jsop == JSOp::Ne, CacheIR::outputReg);
+
+        bind done;
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
     op CompareInt32Result(jsop: JSOp, lhsId: Int32Id, rhsId: Int32Id) {
         let lhsReg = CacheIR::useInt32Reg(lhsId);
         let rhsReg = CacheIR::useInt32Reg(rhsId);
@@ -1213,20 +1274,8 @@ ir CacheIR emits MASM {
     unsafe fn allocateKnownReg(reg: Reg);
     fn releaseReg(reg: Reg);
 
-    // Register allocated by AutoScratchRegisterMaybeOutput
-    fn allocateRegMaybeOutput() -> Reg {
-        assert TypedOrValueReg::hasValue(CacheIR::outputReg);
-        if TypedOrValueReg::hasValue(CacheIR::outputReg) {
-            return ValueReg::scratchReg(TypedOrValueReg::toValueReg(CacheIR::outputReg));
-        } else if TypedOrValueReg::hasTyped(CacheIR::outputReg) && !AnyReg::isFloat(TypedOrValueReg::toTypedReg(CacheIR::outputReg)) {
-            return AnyReg::toReg(TypedOrValueReg::toTypedReg(CacheIR::outputReg));
-        } else {
-            return CacheIR::allocateReg();
-        }
-    }
-
-    // Register allocated by ScratchTagScope
-    fn allocateScratchTagReg(valueReg: ValueReg) -> Reg {
+    // Register allocated by ScratchScope
+    fn allocateScratchReg() -> Reg {
         // safe because we want to allocate the scratch register
         unsafe { CacheIR::allocateKnownReg(Reg::scratchReg()); }
         Reg::scratchReg()
