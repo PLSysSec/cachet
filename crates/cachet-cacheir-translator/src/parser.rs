@@ -233,8 +233,20 @@ fn parse_fact(input: &str) -> ParseResult<Fact> {
         map(parse_shape_class_fact, Into::into),
         map(parse_shape_num_fixed_slots_fact, Into::into),
         map(parse_shape_slot_span_fact, Into::into),
+        map(parse_shape_base_fact, Into::into),
+        map(parse_base_shape_tagged_proto_fact, Into::into),
         map(parse_class_is_native_object_fact, Into::into),
+        map(parse_tagged_proto_is_object_fact, Into::into),
+        map(parse_tagged_proto_is_lazy_fact, Into::into),
+        map(parse_tagged_proto_is_null_fact, Into::into),
     ))(input)
+}
+
+fn parse_shape_base_fact(input: &str) -> ParseResult<ShapeBaseFact> {
+    let (input, _) = symbol("ShapeBase")(input)?;
+    let (input, shape) = terminated(addr, comma)(input)?;
+    let (input, base_shape) = addr(input)?;
+    Ok((input, ShapeBaseFact { shape, base_shape }))
 }
 
 fn parse_shape_class_fact(input: &str) -> ParseResult<ShapeClassFact> {
@@ -264,10 +276,35 @@ fn parse_shape_slot_span_fact(input: &str) -> ParseResult<ShapeSlotSpanFact> {
     Ok((input, ShapeSlotSpanFact { shape, slot_span }))
 }
 
+fn parse_base_shape_tagged_proto_fact(input: &str) -> ParseResult<BaseShapeTaggedProtoFact> {
+    let (input, _) = symbol("BaseShapeTaggedProto")(input)?;
+    let (input, base_shape) = terminated(addr, comma)(input)?;
+    let (input, tagged_proto) = addr(input)?;
+    Ok((input, BaseShapeTaggedProtoFact { base_shape, tagged_proto }))
+}
+
 fn parse_class_is_native_object_fact(input: &str) -> ParseResult<ClassIsNativeObjectFact> {
     let (input, _) = symbol("ClassIsNativeObject")(input)?;
     let (input, class) = addr(input)?;
     Ok((input, ClassIsNativeObjectFact { class }))
+}
+
+fn parse_tagged_proto_is_object_fact(input: &str) -> ParseResult<TaggedProtoIsObjectFact> {
+    let (input, _) = symbol("TaggedProtoIsObject")(input)?;
+    let (input, tagged_proto) = addr(input)?;
+    Ok((input, TaggedProtoIsObjectFact { tagged_proto }))
+}
+
+fn parse_tagged_proto_is_lazy_fact(input: &str) -> ParseResult<TaggedProtoIsLazyFact> {
+    let (input, _) = symbol("TaggedProtoIsLazy")(input)?;
+    let (input, tagged_proto) = addr(input)?;
+    Ok((input, TaggedProtoIsLazyFact { tagged_proto }))
+}
+
+fn parse_tagged_proto_is_null_fact(input: &str) -> ParseResult<TaggedProtoIsNullFact> {
+    let (input, _) = symbol("TaggedProtoIsNull")(input)?;
+    let (input, tagged_proto) = addr(input)?;
+    Ok((input, TaggedProtoIsNullFact { tagged_proto }))
 }
 
 fn parse_ident(input: &str) -> ParseResult<Ident> {

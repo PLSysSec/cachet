@@ -398,8 +398,6 @@ impl Object {
 
     unsafe fn shapeOfUnchecked(heap: Heap, object: Object) -> Shape;
 
-    
-
     fn toNativeObject(object: Object) -> NativeObject {
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
@@ -665,6 +663,8 @@ impl MapObject {
 struct BaseShape;
 
 impl BaseShape {
+    fn fromAddr(addr: UInt64) -> BaseShape;
+
     fn classOf(baseShape: BaseShape) -> Class;
 
     // #[reads(heap)]
@@ -739,6 +739,8 @@ enum ProtoTag {
 struct TaggedProto;
 
 impl TaggedProto {
+    fn fromAddr(addr: UInt64) -> TaggedProto;
+
     fn tag(proto: TaggedProto) -> ProtoTag;
 
     fn isNull(proto: TaggedProto) -> Bool {

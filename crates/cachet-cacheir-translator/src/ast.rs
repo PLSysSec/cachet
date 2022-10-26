@@ -359,10 +359,22 @@ impl Display for CallFlags {
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Fact {
+    ShapeBase(ShapeBaseFact),
     ShapeClass(ShapeClassFact),
     ShapeNumFixedSlots(ShapeNumFixedSlotsFact),
     ShapeSlotSpan(ShapeSlotSpanFact),
-    ClassIsNativeObjectFact(ClassIsNativeObjectFact),
+    BaseShapeTaggedProto(BaseShapeTaggedProtoFact),
+    ClassIsNativeObject(ClassIsNativeObjectFact),
+    TaggedProtoIsObject(TaggedProtoIsObjectFact),
+    TaggedProtoIsLazy(TaggedProtoIsLazyFact),
+    TaggedProtoIsNull(TaggedProtoIsNullFact),
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "ShapeBase {shape:x}, {base_shape:x}")]
+pub struct ShapeBaseFact {
+    pub shape: Addr,
+    pub base_shape: Addr,
 }
 
 #[derive(Clone, Debug, Display)]
@@ -387,7 +399,32 @@ pub struct ShapeSlotSpanFact {
 }
 
 #[derive(Clone, Debug, Display)]
+#[display(fmt = "BaseShapeTaggedProto {base_shape:x}, {tagged_proto:x}")]
+pub struct BaseShapeTaggedProtoFact {
+    pub base_shape: Addr,
+    pub tagged_proto: Addr,
+}
+
+#[derive(Clone, Debug, Display)]
 #[display(fmt = "ClassIsNativeObject {class:x}")]
 pub struct ClassIsNativeObjectFact {
     pub class: Addr,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "TaggedProtoIsObject {tagged_proto:x}")]
+pub struct TaggedProtoIsObjectFact {
+    pub tagged_proto: Addr,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "TaggedProtoIsLazy {tagged_proto:x}")]
+pub struct TaggedProtoIsLazyFact {
+    pub tagged_proto: Addr,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "TaggedProtoIsNull {tagged_proto:x}")]
+pub struct TaggedProtoIsNullFact {
+    pub tagged_proto: Addr,
 }

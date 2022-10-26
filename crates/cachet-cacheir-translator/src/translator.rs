@@ -19,6 +19,7 @@ lazy_static! {
     static ref VALUE_PATH: Path = Path::from_ident("Value");
     static ref OBJECT_PATH: Path = Path::from_ident("Object");
     static ref SHAPE_PATH: Path = Path::from_ident("Shape");
+    static ref BASE_SHAPE_PATH: Path = Path::from_ident("BaseShape");
     static ref CLASS_PATH: Path = Path::from_ident("Class");
     static ref STRING_PATH: Path = Path::from_ident("String");
     static ref SYMBOL_PATH: Path = Path::from_ident("Symbol");
@@ -32,6 +33,7 @@ lazy_static! {
     static ref WASM_VAL_TYPE_PATH: Path = Path::from_ident("WasmValType");
     static ref JS_NATIVE_PATH: Path = Path::from_ident("JSNative");
     static ref ALLOC_KIND_PATH: Path = Path::from_ident("AllocKind");
+    static ref TAGGED_PROTO_PATH: Path = Path::from_ident("TaggedProto");
 }
 
 lazy_static! {
@@ -190,6 +192,30 @@ pub fn translate(stub: &stub::Stub) -> Mod {
         ));
 
         match fact {
+            stub::Fact::ShapeBase(fact) => {
+                stmts.push(Spanned::internal(
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        cond: Spanned::internal(
+                            BinOperExpr {
+                                oper: Spanned::internal(CompareBinOper::Eq.into()),
+                                lhs: Spanned::internal(Expr::Invoke(Call {
+                                    target: Spanned::internal(SHAPE_PATH.nest("baseShapeOf")),
+                                    args: Spanned::internal(vec![Spanned::internal(
+                                        generate_from_addr_call(*SHAPE_PATH, fact.shape).into(),
+                                    )]),
+                                })),
+                                rhs: Spanned::internal(generate_from_addr_call(
+                                    *BASE_SHAPE_PATH,
+                                    fact.base_shape,
+                                )),
+                            }
+                            .into(),
+                        ),
+                    }
+                    .into(),
+                ));
+            }
             stub::Fact::ShapeClass(fact) => {
                 stmts.push(Spanned::internal(
                     CheckStmt {
@@ -258,7 +284,32 @@ pub fn translate(stub: &stub::Stub) -> Mod {
                     .into(),
                 ));
             }
-            stub::Fact::ClassIsNativeObjectFact(fact) => {
+            stub::Fact::BaseShapeTaggedProto(fact) => {
+                stmts.push(Spanned::internal(
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        cond: Spanned::internal(
+                            BinOperExpr {
+                                oper: Spanned::internal(CompareBinOper::Eq.into()),
+                                lhs: Spanned::internal(Expr::Invoke(Call {
+                                    target: Spanned::internal(BASE_SHAPE_PATH.nest("protoOf")),
+                                    args: Spanned::internal(vec![Spanned::internal(
+                                        generate_from_addr_call(*BASE_SHAPE_PATH, fact.base_shape)
+                                            .into(),
+                                    )]),
+                                })),
+                                rhs: Spanned::internal(generate_from_addr_call(
+                                    *TAGGED_PROTO_PATH,
+                                    fact.tagged_proto,
+                                )),
+                            }
+                            .into(),
+                        ),
+                    }
+                    .into(),
+                ));
+            }
+            stub::Fact::ClassIsNativeObject(fact) => {
                 stmts.push(Spanned::internal(
                     CheckStmt {
                         kind: CheckKind::Assume,
@@ -266,6 +317,51 @@ pub fn translate(stub: &stub::Stub) -> Mod {
                             target: Spanned::internal(CLASS_PATH.nest("isNativeObject")),
                             args: Spanned::internal(vec![Spanned::internal(
                                 generate_from_addr_call(*CLASS_PATH, fact.class).into(),
+                            )]),
+                        })),
+                    }
+                    .into(),
+                ));
+            }
+            stub::Fact::TaggedProtoIsObject(fact) => {
+                stmts.push(Spanned::internal(
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        cond: Spanned::internal(Expr::Invoke(Call {
+                            target: Spanned::internal(TAGGED_PROTO_PATH.nest("isObject")),
+                            args: Spanned::internal(vec![Spanned::internal(
+                                generate_from_addr_call(*TAGGED_PROTO_PATH, fact.tagged_proto)
+                                    .into(),
+                            )]),
+                        })),
+                    }
+                    .into(),
+                ));
+            }
+            stub::Fact::TaggedProtoIsLazy(fact) => {
+                stmts.push(Spanned::internal(
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        cond: Spanned::internal(Expr::Invoke(Call {
+                            target: Spanned::internal(TAGGED_PROTO_PATH.nest("isLazy")),
+                            args: Spanned::internal(vec![Spanned::internal(
+                                generate_from_addr_call(*TAGGED_PROTO_PATH, fact.tagged_proto)
+                                    .into(),
+                            )]),
+                        })),
+                    }
+                    .into(),
+                ));
+            }
+            stub::Fact::TaggedProtoIsNull(fact) => {
+                stmts.push(Spanned::internal(
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        cond: Spanned::internal(Expr::Invoke(Call {
+                            target: Spanned::internal(TAGGED_PROTO_PATH.nest("isNull")),
+                            args: Spanned::internal(vec![Spanned::internal(
+                                generate_from_addr_call(*TAGGED_PROTO_PATH, fact.tagged_proto)
+                                    .into(),
                             )]),
                         })),
                     }
