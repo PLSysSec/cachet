@@ -277,28 +277,18 @@ procedure #LiveGeneralRegSet~newVolatile()
     returns (set: #LiveGeneralRegSet)
 {
     var $rawSet: #Set #Reg;
-    $rawSet := #LiveGeneralRegSet~volatileRawSet();
-    assume #Set~contains($rawSet, #Reg^Variant~Rax());
-    assume !#Set~contains($rawSet, #Reg^Variant~Rbx());
-    assume #Set~contains($rawSet, #Reg^Variant~Rcx());
-    assume #Set~contains($rawSet, #Reg^Variant~Rdx());
-    assume !#Set~contains($rawSet, #Reg^Variant~Rsp());
-    assume !#Set~contains($rawSet, #Reg^Variant~Rbp());
-    assume #Set~contains($rawSet, #Reg^Variant~Rsi());
-    assume #Set~contains($rawSet, #Reg^Variant~Rdi());
-    assume #Set~contains($rawSet, #Reg^Variant~R8());
-    assume #Set~contains($rawSet, #Reg^Variant~R9());
-    assume #Set~contains($rawSet, #Reg^Variant~R10());
-    assume !#Set~contains($rawSet, #Reg^Variant~R11());
-    assume !#Set~contains($rawSet, #Reg^Variant~R12());
-    assume !#Set~contains($rawSet, #Reg^Variant~R13());
-    assume !#Set~contains($rawSet, #Reg^Variant~R14());
-    assume !#Set~contains($rawSet, #Reg^Variant~R15());
+    $rawSet := #LiveGeneralRegSet~emptyRawSet();
+    $rawSet := #Set~add($rawSet, #Reg^Variant~Rax());
+    $rawSet := #Set~add($rawSet, #Reg^Variant~Rcx());
+    $rawSet := #Set~add($rawSet, #Reg^Variant~Rdx());
+    $rawSet := #Set~add($rawSet, #Reg^Variant~Rsi());
+    $rawSet := #Set~add($rawSet, #Reg^Variant~Rdi());
+    $rawSet := #Set~add($rawSet, #Reg^Variant~R8());
+    $rawSet := #Set~add($rawSet, #Reg^Variant~R9());
+    $rawSet := #Set~add($rawSet, #Reg^Variant~R10());
 
     call set := #LiveGeneralRegSet~new($rawSet);
 }
-
-function #LiveGeneralRegSet~volatileRawSet(): #Set #Reg;
 
 function #LiveGeneralRegSet~contains($set: #LiveGeneralRegSet, $reg: #Reg): #Bool
 {
