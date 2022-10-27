@@ -217,18 +217,21 @@ impl<'a> Compiler<'a> {
             type_: PreludeTypeIdent::Pc.into(),
         });
 
-        let ops_global_var_item = GlobalVarItem::from(TypedVar {
-            ident: IrMemberGlobalVarIdent {
+        let ops_fn_item = FnItem {
+            ident: IrMemberFnIdent {
                 ir_ident,
-                selector: IrMemberGlobalVarSelector::Ops,
+                selector: IrMemberFnSelector::Ops,
             }
             .into(),
-            type_: MapType {
-                key_types: vec![PreludeTypeIdent::Pc.into()],
-                value_type: op_type_item.ident.into(),
-            }
+            attr: None,
+            param_vars: vec![TypedVar {
+                ident: ParamVarIdent::Pc.into(),
+                type_: PreludeTypeIdent::Pc.into(),
+            }]
             .into(),
-        });
+            ret: op_type_item.ident.into(),
+            value: None,
+        };
 
         let incr_pc_stmt: Stmt = AssignStmt {
             lhs: pc_global_var_item.var.ident.into(),
@@ -256,18 +259,21 @@ impl<'a> Compiler<'a> {
             }),
         };
 
-        let pc_emit_paths_global_var_item = GlobalVarItem::from(TypedVar {
-            ident: IrMemberGlobalVarIdent {
+        let pc_emit_paths_fn_item = FnItem {
+            ident: IrMemberFnIdent {
                 ir_ident,
-                selector: IrMemberGlobalVarSelector::PcEmitPaths,
+                selector: IrMemberFnSelector::PcEmitPaths,
             }
             .into(),
-            type_: MapType {
-                key_types: vec![PreludeTypeIdent::Pc.into()],
-                value_type: PreludeTypeIdent::EmitPath.into(),
-            }
+            attr: None,
+            param_vars: vec![TypedVar {
+                ident: ParamVarIdent::Pc.into(),
+                type_: PreludeTypeIdent::Pc.into(),
+            }]
             .into(),
-        });
+            ret: PreludeTypeIdent::EmitPath.into(),
+            value: None,
+        };
 
         let emit_proc_item = ProcItem {
             ident: IrMemberFnIdent {
@@ -291,24 +297,34 @@ impl<'a> Compiler<'a> {
             body: Some(Body {
                 local_vars: Vec::new(),
                 stmts: vec![
-                    AssignStmt {
-                        lhs: IndexExpr {
-                            base: pc_emit_paths_global_var_item.var.ident.into(),
-                            key: pc_global_var_item.var.ident.into(),
-                            value: None,
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        attr: None,
+                        cond: BinOperExpr {
+                            oper: CompareBinOper::Eq.into(),
+                            lhs: CallExpr {
+                                target: pc_emit_paths_fn_item.ident,
+                                arg_exprs: vec![pc_global_var_item.var.ident.into()],
+                            }
+                            .into(),
+                            rhs: ParamVarIdent::EmitPath.into(),
                         }
                         .into(),
-                        rhs: ParamVarIdent::EmitPath.into(),
                     }
                     .into(),
-                    AssignStmt {
-                        lhs: IndexExpr {
-                            base: ops_global_var_item.var.ident.into(),
-                            key: pc_global_var_item.var.ident.into(),
-                            value: None,
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        attr: None,
+                        cond: BinOperExpr {
+                            oper: CompareBinOper::Eq.into(),
+                            lhs: CallExpr {
+                                target: ops_fn_item.ident,
+                                arg_exprs: vec![pc_global_var_item.var.ident.into()],
+                            }
+                            .into(),
+                            rhs: ParamVarIdent::Op.into(),
                         }
                         .into(),
-                        rhs: ParamVarIdent::Op.into(),
                     }
                     .into(),
                     incr_pc_stmt,
@@ -478,9 +494,9 @@ impl<'a> Compiler<'a> {
             op_type_item.into(),
             exit_op_ctor_fn_item.into(),
             pc_global_var_item.into(),
-            ops_global_var_item.into(),
+            ops_fn_item.into(),
             step_proc_item.into(),
-            pc_emit_paths_global_var_item.into(),
+            pc_emit_paths_fn_item.into(),
             emit_proc_item.into(),
             label_type_item.into(),
             next_label_global_var_item.into(),
@@ -804,12 +820,6 @@ impl<'a> Compiler<'a> {
             })
             .collect();
 
-        let pc_emit_paths_var_ident: VarIdent = IrMemberGlobalVarIdent {
-            ir_ident: bottom_ir_ident,
-            selector: IrMemberGlobalVarSelector::PcEmitPaths,
-        }
-        .into();
-
         let pc_var_ident: VarIdent = IrMemberGlobalVarIdent {
             ir_ident: bottom_ir_ident,
             selector: IrMemberGlobalVarSelector::Pc,
@@ -818,38 +828,13 @@ impl<'a> Compiler<'a> {
 
         let nil_emit_path_expr: Expr = generate_emit_path_expr(&EmitLabelIdent::default()).into();
 
-        let assume_pc_emit_paths_uninit_stmt = CheckStmt {
-            kind: CheckKind::Assume,
-            attr: None,
-            cond: ForAllExpr {
-                vars: vec![TypedVar {
-                    ident: VarIdent::Pc,
-                    type_: PreludeTypeIdent::Pc.into(),
-                }]
-                .into(),
-                expr: BinOperExpr {
-                    oper: CompareBinOper::Eq.into(),
-                    lhs: IndexExpr {
-                        base: pc_emit_paths_var_ident.into(),
-                        key: VarIdent::Pc.into(),
-                        value: None,
-                    }
-                    .into(),
-                    rhs: nil_emit_path_expr.clone(),
-                }
-                .into(),
-            }
-            .into(),
-        }
-        .into();
-
         let init_emit_pc_stmt: Stmt = AssignStmt {
             lhs: pc_var_ident.into(),
             rhs: Literal::Int(0).into(),
         }
         .into();
 
-        stmts.extend([assume_pc_emit_paths_uninit_stmt, init_emit_pc_stmt]);
+        stmts.push(init_emit_pc_stmt);
 
         // Bind all top-level label parameters to the exit point we're about to
         // emit at PC 0. Filter down to just the labels of the bottom-level IR,
@@ -988,10 +973,13 @@ impl<'a> Compiler<'a> {
                 attr: Some(CheckAttr::Partition),
                 cond: BinOperExpr {
                     oper: CompareBinOper::Eq.into(),
-                    lhs: IndexExpr {
-                        base: pc_emit_paths_var_ident.into(),
-                        key: pc_var_ident.into(),
-                        value: None,
+                    lhs: CallExpr {
+                        target: IrMemberFnIdent {
+                            ir_ident: bottom_ir_ident,
+                            selector: IrMemberFnSelector::PcEmitPaths,
+                        }
+                        .into(),
+                        arg_exprs: vec![pc_var_ident.into()],
                     }
                     .into(),
                     rhs: generate_emit_path_expr(emit_node.label_ident.as_ref().unwrap()).into(),
@@ -1008,14 +996,13 @@ impl<'a> Compiler<'a> {
 
                 let assign_op_stmt = AssignStmt {
                     lhs: VarIdent::Op.into(),
-                    rhs: IndexExpr {
-                        base: IrMemberGlobalVarIdent {
+                    rhs: CallExpr {
+                        target: IrMemberFnIdent {
                             ir_ident: bottom_ir_ident,
-                            selector: IrMemberGlobalVarSelector::Ops,
+                            selector: IrMemberFnSelector::Ops,
                         }
                         .into(),
-                        key: pc_var_ident.into(),
-                        value: None,
+                        arg_exprs: vec![pc_var_ident.into()],
                     }
                     .into(),
                 }

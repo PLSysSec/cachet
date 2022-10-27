@@ -89,14 +89,15 @@ pub fn translate(stub: &stub::Stub) -> Mod {
     let mut stmts = Vec::new();
 
     let operand_ids: BTreeSet<u16> = stub
-        .ops
+        .input_operands
         .iter()
-        .flat_map(|op| {
+        .map(|input_operand| input_operand.data.id)
+        .chain(stub.ops.iter().flat_map(|op| {
             op.args.iter().filter_map(|arg| match arg.data {
                 stub::OpArgData::OperandId(operand_id) => Some(operand_id.id),
                 _ => None,
             })
-        })
+        }))
         .collect();
     stmts.extend(operand_ids.into_iter().map(|id| {
         Spanned::internal(

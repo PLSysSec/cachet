@@ -160,10 +160,6 @@ pub struct IrMemberGlobalVarIdent {
 pub enum IrMemberGlobalVarSelector {
     #[display(fmt = "pc")]
     Pc,
-    #[display(fmt = "ops")]
-    Ops,
-    #[display(fmt = "pcEmitPaths")]
-    PcEmitPaths,
     #[display(fmt = "nextLabel")]
     NextLabel,
     #[display(fmt = "labelPcs")]
@@ -203,6 +199,8 @@ pub enum ParamVarIdent {
     Last,
     #[display(fmt = "op")]
     Op,
+    #[display(fmt = "pc")]
+    Pc,
     User(UserParamVarIdent),
 }
 
@@ -378,6 +376,10 @@ pub struct IrMemberFnIdent {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum IrMemberFnSelector {
+    #[display(fmt = "ops")]
+    Ops,
+    #[display(fmt = "pcEmitPaths")]
+    PcEmitPaths,
     #[display(fmt = "step")]
     Step,
     #[display(fmt = "emit")]
