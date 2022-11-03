@@ -6,12 +6,13 @@ enum OperandLocationKind {
     Uninitialized,
     PayloadReg,
     ValueReg,
+    Constant,
 }
 
 struct OperandLocation;
 
 impl OperandLocation {
-    fn kind(loc: OperandLocation) -> OperandLocationKind; 
+    fn kind(loc: OperandLocation) -> OperandLocationKind;
 
     fn newUninitialized() -> OperandLocation {
         let loc = (unsafe { OperandLocation::newUninitializedUnchecked() });
@@ -22,7 +23,7 @@ impl OperandLocation {
     unsafe fn newUninitializedUnchecked() -> OperandLocation;
 
     fn setValueReg(out loc: OperandLocation, valueReg: ValueReg) {
-        (unsafe { OperandLocation::setValueRegUnchecked(out loc, valueReg) }); 
+        (unsafe { OperandLocation::setValueRegUnchecked(out loc, valueReg) });
         assume OperandLocation::kind(loc) == OperandLocationKind::ValueReg;
         assume (unsafe { OperandLocation::getValueRegUnchecked(loc) } ) == valueReg;
     }
@@ -37,8 +38,16 @@ impl OperandLocation {
 
     unsafe fn getValueRegUnchecked(loc: OperandLocation) -> ValueReg;
 
+    fn getConstant(loc: OperandLocation) -> Value {
+        assert OperandLocation::kind(loc) == OperandLocationKind::Constant;
+        let val = (unsafe { OperandLocation::getConstantUnchecked(loc) });
+        val
+    }
+
+    unsafe fn getConstantUnchecked(loc: OperandLocation) -> Value;
+
     fn setPayloadReg(out loc: OperandLocation, reg: Reg, type: ValueType) {
-        (unsafe { OperandLocation::setPayloadRegUnchecked(out loc, reg, type) }); 
+        (unsafe { OperandLocation::setPayloadRegUnchecked(out loc, reg, type) });
         assume OperandLocation::kind(loc) == OperandLocationKind::PayloadReg;
         assume (unsafe { OperandLocation::getPayloadRegUnchecked(loc) } ) == reg;
         assume (unsafe { OperandLocation::getPayloadTypeUnchecked(loc) } ) == type;
@@ -65,6 +74,7 @@ impl OperandLocation {
 
 struct OperandId;
 
+// Corresponds to a ValOperandId
 struct ValueId <: OperandId;
 
 impl ValueId {
@@ -105,13 +115,13 @@ impl TypedId {
         typedId
     }
 
-    unsafe fn fromValueIdUnchecked(valueId: ValueId, type: ValueType) -> TypedId; 
+    unsafe fn fromValueIdUnchecked(valueId: ValueId, type: ValueType) -> TypedId;
 
     fn toValueId(typedId: TypedId) -> ValueId {
         assert TypedId::isValueId(typedId);
         let type = TypedId::type(typedId);
         let valueId = (unsafe { TypedId::toValueIdUnchecked(typedId) });
-        assume (unsafe { TypedId::fromValueIdUnchecked(valueId, type) }) == typedId; 
+        assume (unsafe { TypedId::fromValueIdUnchecked(valueId, type) }) == typedId;
         valueId
     }
 
@@ -357,7 +367,7 @@ ir CacheIR emits MASM {
     op GuardClass(objId: ObjectId, kind: GuardClassKind) {
         let objReg = CacheIR::useObjectReg(objId);
         let scratchReg = CacheIR::allocateReg();
-    
+
         CacheIR::addFailurePath(out label failure);
 
         if kind == GuardClassKind::JSFunction {
@@ -468,6 +478,53 @@ ir CacheIR emits MASM {
         }
 
         CacheIR::releaseReg(scratchReg);
+    }
+
+    op GuardFixedSlotValue(objId: ObjectId,
+                           offsetOffset: Int32Field,
+                           valOffset: ValueField) {
+        let obj = CacheIR::useObjectReg(objId);
+        let offset = CacheIR::allocateReg();
+        let scratchVal = CacheIR::allocateValueReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        CacheIR::emitLoadInt32StubField(offsetOffset, offset);
+        CacheIR::emitLoadValueStubField(valOffset, scratchVal);
+
+        let slotVal = BaseIndex::new(obj, offset, Scale::TimesOne, 0_u32);
+        emit MASM::BranchTestValue(
+            Condition::NotEqual, slotVal, scratchVal, failure
+        );
+
+        CacheIR::releaseReg(offset);
+        CacheIR::releaseValueReg(scratchVal);
+    }
+
+    op GuardDynamicSlotValue(objId: ObjectId,
+                             offsetOffset: Int32Field,
+                             valOffset: ValueField) {
+        let obj = CacheIR::useObjectReg(objId);
+        let objSlots = CacheIR::allocateReg();
+        let offset = CacheIR::allocateReg();
+        let scratchVal = CacheIR::allocateValueReg();
+
+        CacheIR::addFailurePath(out label failure);
+
+        let objOffsetAddr = Address::new(obj, NativeObject::offsetOfSlots as Int32);
+        emit MASM::LoadPtrAddress(objOffsetAddr, objSlots);
+
+        CacheIR::emitLoadInt32StubField(offsetOffset, offset);
+        CacheIR::emitLoadValueStubField(valOffset, scratchVal);
+
+        let slotVal = BaseIndex::new(objSlots, offset, Scale::TimesOne, 0_u32);
+        emit MASM::BranchTestValue(
+            Condition::NotEqual, slotVal, scratchVal, failure
+        );
+
+        CacheIR::releaseReg(objSlots);
+        CacheIR::releaseReg(offset);
+        CacheIR::releaseValueReg(scratchVal);
     }
 
     op GuardToString(valueId: ValueId) {
@@ -663,6 +720,11 @@ ir CacheIR emits MASM {
         emit MASM::MoveValueImm(value, CacheIR::outputReg);
     }
 
+    op LoadUndefinedResult() {
+        let value = Value::getUndefined();
+        emit MASM::MoveValueImm(value, CacheIR::outputReg);
+    }
+
     op LoadBigIntResult(bigIntId: BigIntId) {
         let bigIntReg = CacheIR::useBigIntReg(bigIntId);
         emit MASM::TagValue(ValueType::BigInt, bigIntReg, CacheIR::outputReg);
@@ -702,6 +764,16 @@ ir CacheIR emits MASM {
         emit MASM::MoveValueImm(Value::fromBool(false), CacheIR::outputReg);
 
         bind done;
+    }
+
+    op StoreFixedSlot(objId: ObjectId, offsetOffset: Int32Field, ValueId) {
+        let obj = CacheIR::useObjectReg(objId);
+        let offset = readInt32Field(offsetOffset);
+        let val = CacheIR::useConstantOrReg(objId);
+        let scratch = CacheIR::allocateReg();
+
+        let slot = Address::new(obj, offset);
+        emit MASM::GuardedCallPreBarrier(slot, MIRType::Value)
     }
 
     op Int32AddResult(lhsId: Int32Id, rhsId: Int32Id) {
@@ -826,7 +898,7 @@ ir CacheIR emits MASM {
 
         emit MASM::TagValue(ValueType::Int32, scratchReg, CacheIR::outputReg);
 
-        CacheIR::releaseReg(scratchReg); 
+        CacheIR::releaseReg(scratchReg);
     }
 
     op Int32BitOrResult(lhsId: Int32Id, rhsId: Int32Id) {
@@ -896,7 +968,7 @@ ir CacheIR emits MASM {
         let scratchReg = CacheIR::allocateReg();
 
         CacheIR::addFailurePath(out label failure);
-    
+
         emit MASM::Mov(lhsReg, scratchReg);
         emit MASM::FlexibleRshift32(rhsReg, scratchReg);
         emit MASM::BranchTest32(Condition::Signed, scratchReg, scratchReg, failure);
@@ -1000,7 +1072,7 @@ ir CacheIR emits MASM {
         let valueId = id as ValueId;
         CacheIR::defineValueReg(valueId)
     }
-        
+
     #[refined]
     fn defineBooleanReg(id: BooleanId) -> Reg {
         let typedId = TypedId::fromBooleanId(id);
@@ -1018,7 +1090,7 @@ ir CacheIR emits MASM {
         let typedId = TypedId::fromSymbolId(id);
         CacheIR::defineReg(typedId)
     }
-    
+
     #[refined]
     fn defineBigIntReg(id: BigIntId) -> Reg {
         let typedId = TypedId::fromBigIntId(id);
@@ -1030,7 +1102,7 @@ ir CacheIR emits MASM {
 
     #[refined]
     fn useReg(id: TypedId) emits MASM -> Reg {
-        let operandId = id as OperandId; 
+        let operandId = id as OperandId;
         let location = CacheIR::getOperandLocation(operandId);
         let locationKind = OperandLocation::kind(location);
 
@@ -1053,7 +1125,7 @@ ir CacheIR emits MASM {
 
     #[refined]
     fn useValueReg(valueId: ValueId) emits MASM -> ValueReg {
-        let operandId = valueId as OperandId; 
+        let operandId = valueId as OperandId;
         let location = CacheIR::getOperandLocation(operandId);
         let locationKind = OperandLocation::kind(location);
 
@@ -1077,6 +1149,25 @@ ir CacheIR emits MASM {
     fn useObjectReg(id: ObjectId) emits MASM -> Reg {
         let typedId = TypedId::fromObjectId(id);
         CacheIR::useReg(typedId)
+    }
+
+    fn useConstantOrReg(id: ValueId) -> ConstantOrReg {
+        let operandId = id as OperandId;
+        let location = CacheIR::getOperandLocation(operandId);
+        let locationKind = OperandLocation::kind(location);
+
+        if locationKind == OperandLocationKind::Constant {
+            let c = OperandLocation::getConstant(location);
+            return ConstantOrReg::fromValue(c);
+        } else if locationKind == OperandLocationKind::PayloadReg {
+            let r = OperandLocation::getValueReg(location);
+            return ConstantOrReg::fromValueReg(r);
+        } else {
+            assert false;
+        }
+
+        // TODO: unecessary fallthrough?
+        return ConstantOrReg::fromValueReg(CacheIR::useValueReg(id));
     }
 
     #[refined]
@@ -1120,6 +1211,11 @@ ir CacheIR emits MASM {
     #[refined]
     fn emitLoadInt32StubField(int32Field: Int32Field, dstReg: Reg) emits MASM {
        emit MASM::Move32Imm32(CacheIR::readInt32Field(int32Field), dstReg);
+    }
+
+    #[refined]
+    fn emitLoadValueStubField(valueField: ValueField, dstReg: ValueReg) emits MASM {
+       emit MASM::MoveValueImm(CacheIR::readValueField(valueField), dstReg);
     }
 
     #[refined]

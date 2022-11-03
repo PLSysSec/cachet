@@ -4,6 +4,14 @@ import "./js.cachet"
 
 struct Reg;
 
+struct ConstantOrReg;
+
+impl ConstantOrReg {
+    fn fromValue(v: Value) -> ConstantOrReg;
+    fn fromValueReg(v: ValueReg) -> ConstantOrReg;
+}
+
+// Used for ValueOperand as well
 // #[cfg(cpp)]
 struct ValueReg;
 // #[cfg(verify)]
@@ -23,6 +31,10 @@ enum Condition {
     NotSigned,
     GreaterThan,
     LessThan,
+}
+
+struct AbsoluteAddress {
+    addr: UInt64,
 }
 
 struct Address {
@@ -113,6 +125,14 @@ impl BaseObjectSlotIndex {
     }
 
     unsafe fn newUnchecked(inner: BaseValueIndex) -> BaseObjectSlotIndex;
+}
+
+struct Operand;
+
+impl Operand {
+    fn fromBaseIndex(baseIndex: BaseIndex) -> Operand;
+    fn fromAbsoluteAddress(addr: AbsoluteAddress) -> Operand;
+    fn compareToReg(cond: Condition, operand: Operand, reg: Reg) -> Bool;
 }
 
 ir MASM {
@@ -474,6 +494,25 @@ ir MASM {
       }
     }
 
+    op BranchTestGCThing(cond: Condition, addr: Address, label done: MASM) {
+        assert cond == Condition::Equal || cond == Condition::NotEqual;
+        if MASM::testGCThingAddr(cond, addr) {
+            goto done;
+        }
+    }
+
+    op BranchTestValue(cond: Condition,
+                       lhs: BaseIndex,
+                       rhs: ValueReg,
+                       label branch: MASM) {
+        assert cond == Condition::Equal || cond == Condition::NotEqual;
+        let rhsReg = ValueReg::scratchReg(rhs);
+        let lhsOp = Operand::fromBaseIndex(lhs);
+        if Operand::compareToReg(cond, lhsOp, rhsReg) {
+            goto branch;
+        }
+    }
+
     // Note: this is a wrapper around branchTestPtr for when
     // the register contains a TaggedProto
     op BranchTestNullProto(reg: Reg, label branch: MASM) {
@@ -712,14 +751,13 @@ ir MASM {
     }
 
     op Branch32AddressImm32(
-        condition: Condition, address: Address, rhsInt32: Int32, label branch:MASM
+        condition: Condition, address: Address, rhsInt32: Int32, label branch: MASM
     ) {
         assert (
             condition == Condition::Equal ||
             condition == Condition::NotEqual ||
             condition == Condition::LessThan
         );
-
 
         let baseData = MASM::getData(address.base);
         let data = RegData::readData(baseData, address.offset);
@@ -730,6 +768,18 @@ ir MASM {
         } else if condition == Condition::NotEqual && lhsInt32 != rhsInt32 {
             goto branch;
         } else if condition == Condition::LessThan && lhsInt32 < rhsInt32 {
+            goto branch;
+        }
+    }
+
+    op BranchPtrAbsAddrImm64(
+        cond: Condition, addr: AbsoluteAddress, imm: UInt64, label branch: MASM
+    ) {
+        assert cond == Condition::Equal || cond == Condition::NotEqual;
+
+        if cond == Condition::Equal && addr.addr == imm {
+            goto branch;
+        } else if cond == Condition::NotEqual && addr.addr != imm {
             goto branch;
         }
     }
@@ -795,6 +845,68 @@ ir MASM {
           goto branch;
         }
       }
+    }
+
+    op BranchTest32AbsAddrImm32(condition: Condition,
+                              lhsAddr: AbsoluteAddress,
+                              rhsImm: Int32,
+                              label branch: MASM) {
+        assert (
+            condition == Condition::Zero ||
+            condition == Condition::NonZero ||
+            condition == Condition::Signed ||
+            condition == Condition::NotSigned
+        );
+
+        // TODO: we don't really have to check the address right now because we
+        // only allow a small set of conditions, but will need to check for
+        // other conditions
+        if MASM::isAddressImmediate(lhsAddr.addr) {
+            // The address fits in 32-bits, so directly compare
+            let result = (lhsAddr.addr as UInt32) & (rhsImm as UInt32);
+            if condition == Condition::Zero {
+                if result == 0_i32 {
+                    goto branch;
+                }
+            } else if condition == Condition::NonZero {
+                if result != 0_i32 {
+                    goto branch;
+                }
+            } else if condition == Condition::Signed {
+                if result < 0_i32 {
+                    goto branch;
+                }
+            } else if condition == Condition::NotSigned {
+                if result > 0_i32 {
+                    goto branch;
+                }
+            }
+        } else {
+            let result = lhsAddr.addr & (rhsImm as UInt64);
+            if condition == Condition::Zero {
+                if result == 0_i32 {
+                    goto branch;
+                }
+            } else if condition == Condition::NonZero {
+                if result != 0_i32 {
+                    goto branch;
+                }
+            } else if condition == Condition::Signed {
+                if result < 0_i32 {
+                    goto branch;
+                }
+            } else if condition == Condition::NotSigned {
+                if result > 0_i32 {
+                    goto branch;
+                }
+            }
+        }
+    }
+
+    op BranchTestNeedsIncrementalBarrier(cond: Condition, label l: MASM) {
+        assert cond == Condition::Zero || cond == Condition::NonZero;
+        needsBarrierAddr = MASM::addressOfNeedsIncrementalBarrier();
+        MASM::BranchTest32AbsAddrImm32(cond, needsBarrierAddr, 1_i32, l)
     }
 
     op BranchAdd32(condition: Condition, srcReg: Reg, dstReg: Reg, label branch: MASM) {
@@ -1030,6 +1142,24 @@ ir MASM {
         MASM::setData(protoReg, data);
     }
 
+    op GuardedCallPreBarrier(addr: Address, ty: MIRType) {
+        label done: MASM;
+        BranchTestNeedsIncrementalBarrier(Condition::Zero, done);
+        UnguardedCallPreBarrier(addr, ty);
+        bind done;
+    }
+
+    op UnguardedCallPreBarrier(addr: Address, ty: MIRType) {
+        label done: MASM;
+        if ty == MIRType::Value {
+            BranchTestGCThing(Condition::NotEqual, addr, done);
+        } else if ty == MIRType::Object || ty == MIRType::String {
+            // TODO: This is really trying to compare pointer types, but we'll
+            // list them as uint64 for now
+            BranchPtrAbsAddrImm64(Condition::Equal, addr, 0_u64, done);
+        }
+    }
+
     fn getData(reg: Reg) -> RegData;
     fn setData(reg: Reg, data: RegData);
 
@@ -1053,6 +1183,18 @@ ir MASM {
 
     fn getBigInt(reg: Reg) -> BigInt;
     fn setBigInt(reg: Reg, bigInt: BigInt);
+
+    fn addressOfNeedsIncrementalBarrier() -> UInt32;
+    #[refined]
+    fn isAddressImmediate(addr: UInt64) -> Bool {
+        // checks if the address fits into a UInt32
+        if addr <= 4294967295_u64 {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    fn testGCThingAddr(cond: Condition, addr: Address) -> Bool;
 }
 
 //impl MASM {
