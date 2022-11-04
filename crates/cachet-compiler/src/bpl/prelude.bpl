@@ -216,7 +216,7 @@ function {:bvbuiltin "bvule"} #UInt64^lte(a: #UInt64, y: #UInt64): #Bool;
 function {:bvbuiltin "bvuge"} #UInt64^gte(a: #UInt64, y: #UInt64): #Bool;
 function {:bvbuiltin "bvult"} #UInt64^lt(a: #UInt64, y: #UInt64): #Bool;
 function {:bvbuiltin "bvugt"} #UInt64^gt(a: #UInt64, y: #UInt64): #Bool;
-function {:bvbuiltin "bvnot"} #UInt64^bitNot(x: #UInt32): #UInt32;
+function {:bvbuiltin "bvnot"} #UInt64^bitNot(x: #UInt64): #UInt64;
 function {:bvbuiltin "bvor"} #UInt64^bitOr(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvand"} #UInt64^bitAnd(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvxor"} #UInt64^xor(a: #UInt64, y: #UInt64): #UInt64;
