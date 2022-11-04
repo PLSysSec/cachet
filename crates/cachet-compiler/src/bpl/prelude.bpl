@@ -14,6 +14,8 @@ axiom (forall x: #Unit, y: #Unit :: x == y);
 // Boogie.
 type #Bool = bool;
 
+type #UInt8 = bv8;
+type #Int8 = bv8;
 type #UInt16 = bv16;
 type #Int16 = bv16;
 type #Int32 = bv32;
@@ -29,11 +31,15 @@ type #Double = float53e11; // 64-bit; see https://github.com/boogie-org/boogie/i
 function {:builtin "(_ fp.to_sbv 64) RNE"}  #Double^to#Int64 (n: #Double): #Int64;
 function {:builtin "(_ fp.to_sbv 32) RNE"}  #Double^to#Int32 (n: #Double): #Int32;
 function {:builtin "(_ fp.to_sbv 16) RNE"}  #Double^to#Int16 (n: #Double): #Int16;
+function {:builtin "(_ fp.to_sbv 8) RNE"}   #Double^to#Int8 (n: #Double): #Int8;
 function {:builtin "(_ fp.to_ubv 64) RNE"}  #Double^to#UInt64 (n: #Double): #UInt64;
 function {:builtin "(_ fp.to_ubv 32) RNE"}  #Double^to#UInt32 (n: #Double): #UInt32;
 function {:builtin "(_ fp.to_ubv 16) RNE"}  #Double^to#UInt16 (n: #Double): #UInt16;
+function {:builtin "(_ fp.to_ubv 8) RNE"}   #Double^to#UInt8 (n: #Double): #UInt8;
 
 
+function {:bvbuiltin "(_ extract 7 0)"}    #Int64^to#Int8 (n: #Int64): #Int8;
+function {:bvbuiltin "(_ extract 7 0)"}    #Int64^to#UInt8(n: #Int64): #UInt8;
 function {:bvbuiltin "(_ extract 15 0)"}   #Int64^to#Int16 (n: #Int64): #Int16;
 function {:bvbuiltin "(_ extract 15 0)"}   #Int64^to#UInt16(n: #Int64): #UInt16;
 function {:bvbuiltin "(_ extract 31 0)"}   #Int64^to#Int32 (n: #Int64): #Int32;
@@ -41,6 +47,8 @@ function {:bvbuiltin "(_ extract 31 0)"}   #Int64^to#UInt32(n: #Int64): #UInt32;
 function                                   #Int64^to#UInt64(n: #Int64): #UInt64 { n }
 function {:builtin "(_ to_fp 11 53) RNE"}  #Int64^to#Double(n: #Int64): #Double;
 
+function {:bvbuiltin "(_ extract 7 0)"}    #Int32^to#Int8 (n: #Int32): #Int8;
+function {:bvbuiltin "(_ extract 7 0)"}    #Int32^to#UInt8(n: #Int32): #UInt8;
 function {:bvbuiltin "(_ extract 15 0)"}   #Int32^to#Int16 (n: #Int32): #Int16;
 function {:bvbuiltin "(_ extract 15 0)"}   #Int32^to#UInt16(n: #Int32): #UInt16;
 function                                   #Int32^to#UInt32(n: #Int32): #UInt32 { n }
@@ -48,6 +56,8 @@ function {:bvbuiltin "(_ sign_extend 32)"} #Int32^to#Int64 (n: #Int32): #Int64;
 function {:bvbuiltin "(_ sign_extend 32)"} #Int32^to#UInt64(n: #Int32): #UInt64;
 function {:builtin "(_ to_fp 11 53) RNE"}  #Int32^to#Double(n: #Int32): #Double;
 
+function {:bvbuiltin "(_ extract 7 0)"}    #Int16^to#Int8 (n: #Int16): #Int8;
+function {:bvbuiltin "(_ extract 7 0)"}    #Int16^to#UInt8(n: #Int16): #UInt8;
 function                                   #Int16^to#UInt16(n: #Int16): #UInt16 { n }
 function {:bvbuiltin "(_ sign_extend 16)"} #Int16^to#Int32 (n: #Int16): #Int32;
 function {:bvbuiltin "(_ sign_extend 16)"} #Int16^to#UInt32(n: #Int16): #UInt32;
@@ -55,6 +65,8 @@ function {:bvbuiltin "(_ sign_extend 48)"} #Int16^to#Int64 (n: #Int16): #Int64;
 function {:bvbuiltin "(_ sign_extend 48)"} #Int16^to#UInt64(n: #Int16): #UInt64;
 function {:builtin "(_ to_fp 11 53) RNE"}  #Int16^to#Double(n: #Int16): #Double;
 
+function {:bvbuiltin "(_ extract 7 0)"}    #UInt16^to#Int8 (n: #UInt16): #Int8;
+function {:bvbuiltin "(_ extract 7 0)"}    #UInt16^to#UInt8(n: #UInt16): #UInt8;
 function                                   #UInt16^to#Int16 (n: #UInt16): #UInt16 { n }
 function {:bvbuiltin "(_ zero_extend 16)"} #UInt16^to#Int32 (n: #UInt16): #Int32;
 function {:bvbuiltin "(_ zero_extend 16)"} #UInt16^to#UInt32(n: #UInt16): #UInt32;
@@ -62,6 +74,8 @@ function {:bvbuiltin "(_ zero_extend 48)"} #UInt16^to#Int64 (n: #UInt16): #Int64
 function {:bvbuiltin "(_ zero_extend 48)"} #UInt16^to#UInt64(n: #UInt16): #UInt64;
 function {:builtin "(_ to_fp_unsigned 11 53) RNE"}  #UInt16^to#Double(n: #UInt16): #Double;
 
+function {:bvbuiltin "(_ extract 7 0)"}    #UInt32^to#Int8 (n: #UInt32): #Int8;
+function {:bvbuiltin "(_ extract 7 0)"}    #UInt32^to#UInt8(n: #UInt32): #UInt8;
 function {:bvbuiltin "(_ extract 15 0)"}   #UInt32^to#Int16 (n: #UInt32): #Int16;
 function {:bvbuiltin "(_ extract 15 0)"}   #UInt32^to#UInt16(n: #UInt32): #UInt16;
 function                                   #UInt32^to#Int32 (n: #UInt32): #Int32 { n }
@@ -69,12 +83,32 @@ function {:bvbuiltin "(_ zero_extend 32)"} #UInt32^to#Int64 (n: #UInt32): #Int64
 function {:bvbuiltin "(_ zero_extend 32)"} #UInt32^to#UInt64(n: #UInt32): #UInt64;
 function {:builtin "(_ to_fp_unsigned 11 53) RNE"}  #UInt32^to#Double(n: #UInt32): #Double;
 
+function {:bvbuiltin "(_ extract 7 0)"}    #UInt64^to#Int8 (n: #UInt64): #Int8;
+function {:bvbuiltin "(_ extract 7 0)"}    #UInt64^to#UInt8(n: #UInt64): #UInt8;
 function {:bvbuiltin "(_ extract 15 0)"}   #UInt64^to#Int16 (n: #UInt64): #Int16;
 function {:bvbuiltin "(_ extract 15 0)"}   #UInt64^to#UInt16(n: #UInt64): #UInt16;
 function {:bvbuiltin "(_ extract 31 0)"}   #UInt64^to#Int32 (n: #UInt64): #Int32;
 function {:bvbuiltin "(_ extract 31 0)"}   #UInt64^to#UInt32(n: #UInt64): #UInt32;
 function                                   #UInt64^to#Int64 (n: #UInt64): #Int64 { n }
 function {:builtin "(_ to_fp_unsigned 11 53) RNE"}  #UInt64^to#Double(n: #UInt64): #Double;
+
+function                                   #Int8^to#UInt8(n: #Int8): #UInt8 { n }
+function {:bvbuiltin "(_ sign_extend 8)"}  #Int8^to#Int16 (n: #Int8): #Int16;
+function {:bvbuiltin "(_ sign_extend 8)"}  #Int8^to#UInt16(n: #Int8): #UInt16;
+function {:bvbuiltin "(_ sign_extend 24)"} #Int8^to#Int32 (n: #Int8): #Int32;
+function {:bvbuiltin "(_ sign_extend 24)"} #Int8^to#UInt32(n: #Int8): #UInt32;
+function {:bvbuiltin "(_ sign_extend 56)"} #Int8^to#Int64 (n: #Int8): #Int64;
+function {:bvbuiltin "(_ sign_extend 56)"} #Int8^to#UInt64(n: #Int8): #UInt64;
+function {:builtin "(_ to_fp 11 53) RNE"}  #Int8^to#Double(n: #Int8): #Double;
+
+function                                   #UInt8^to#Int8 (n: #UInt8): #UInt8 { n }
+function {:bvbuiltin "(_ zero_extend 8)"}  #UInt8^to#Int16 (n: #UInt8): #Int16;
+function {:bvbuiltin "(_ zero_extend 8)"}  #UInt8^to#UInt16(n: #UInt8): #UInt16;
+function {:bvbuiltin "(_ zero_extend 24)"} #UInt8^to#Int32 (n: #UInt8): #Int32;
+function {:bvbuiltin "(_ zero_extend 24)"} #UInt8^to#UInt32(n: #UInt8): #UInt32;
+function {:bvbuiltin "(_ zero_extend 56)"} #UInt8^to#Int64 (n: #UInt8): #Int64;
+function {:bvbuiltin "(_ zero_extend 56)"} #UInt8^to#UInt64(n: #UInt8): #UInt64;
+function {:builtin "(_ to_fp_unsigned 11 53) RNE"}  #UInt8^to#Double(n: #UInt8): #Double;
 
 function {:bvbuiltin "bvneg"} #Int32^negate(n: #Int32): #Int32;
 function {:bvbuiltin "bvadd"} #Int32^add(x: #Int32, y: #Int32): #Int32;
@@ -188,6 +222,40 @@ function {:bvbuiltin "bvand"} #UInt64^bitAnd(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvxor"} #UInt64^xor(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvshl"} #UInt64^shl(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvlshr"} #UInt64^shr(a: #UInt64, y: #UInt64): #UInt64;
+
+function {:bvbuiltin "bvneg"} #UInt8^negate(n: #UInt8): #UInt8;
+function {:bvbuiltin "bvadd"} #UInt8^add(x: #UInt8, y: #UInt8): #UInt8;
+function {:bvbuiltin "bvsub"} #UInt8^sub(x: #UInt8, y: #UInt8): #UInt8;
+function {:bvbuiltin "bvmul"} #UInt8^mul(x: #UInt8, y: #UInt8): #UInt8;
+function {:bvbuiltin "bvudiv"} #UInt8^div(x: #UInt8, y: #UInt8): #UInt8;
+function {:bvbuiltin "bvurem"} #UInt8^mod(x: #UInt8, y: #UInt8): #UInt8;
+function {:bvbuiltin "bvule"} #UInt8^lte(a: #UInt8, y: #UInt8): #Bool;
+function {:bvbuiltin "bvuge"} #UInt8^gte(a: #UInt8, y: #UInt8): #Bool;
+function {:bvbuiltin "bvult"} #UInt8^lt(a: #UInt8, y: #UInt8): #Bool;
+function {:bvbuiltin "bvugt"} #UInt8^gt(a: #UInt8, y: #UInt8): #Bool;
+function {:bvbuiltin "bvnot"} #UInt8^bitNot(x: #UInt8): #UInt8;
+function {:bvbuiltin "bvor"} #UInt8^bitOr(a: #UInt8, y: #UInt8): #UInt8;
+function {:bvbuiltin "bvand"} #UInt8^bitAnd(a: #UInt8, y: #UInt8): #UInt8;
+function {:bvbuiltin "bvxor"} #UInt8^xor(a: #UInt8, y: #UInt8): #UInt8;
+function {:bvbuiltin "bvshl"} #UInt8^shl(a: #UInt8, y: #UInt8): #UInt8;
+function {:bvbuiltin "bvlshr"} #UInt8^shr(a: #UInt8, y: #UInt8): #UInt8;
+
+function {:bvbuiltin "bvneg"} #Int8^negate(n: #Int8): #Int8;
+function {:bvbuiltin "bvadd"} #Int8^add(x: #Int8, y: #Int8): #Int8;
+function {:bvbuiltin "bvsub"} #Int8^sub(x: #Int8, y: #Int8): #Int8;
+function {:bvbuiltin "bvmul"} #Int8^mul(x: #Int8, y: #Int8): #Int8;
+function {:bvbuiltin "bvsdiv"} #Int8^div(x: #Int8, y: #Int8): #Int8;
+function {:bvbuiltin "bvsrem"} #Int8^mod(x: #Int8, y: #Int8): #Int8;
+function {:bvbuiltin "bvsle"} #Int8^lte(a: #Int8, y: #Int8): #Bool;
+function {:bvbuiltin "bvsge"} #Int8^gte(a: #Int8, y: #Int8): #Bool;
+function {:bvbuiltin "bvslt"} #Int8^lt(a: #Int8, y: #Int8): #Bool;
+function {:bvbuiltin "bvsgt"} #Int8^gt(a: #Int8, y: #Int8): #Bool;
+function {:bvbuiltin "bvnot"} #Int8^bitNot(x: #Int8): #Int8;
+function {:bvbuiltin "bvor"} #Int8^bitOr(a: #Int8, y: #Int8): #Int8;
+function {:bvbuiltin "bvand"} #Int8^bitAnd(a: #Int8, y: #Int8): #Int8;
+function {:bvbuiltin "bvxor"} #Int8^xor(a: #Int8, y: #Int8): #Int8;
+function {:bvbuiltin "bvshl"} #Int8^shl(a: #Int8, y: #Int8): #Int8;
+function {:bvbuiltin "bvlshr"} #Int8^shr(a: #Int8, y: #Int8): #Int8;
 
 type #Map k v = [k]v;
 

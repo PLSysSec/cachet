@@ -1761,9 +1761,11 @@ fn is_const(expr: &Expr) -> bool {
 
 fn cast_literal(l: &Literal, t: BuiltInType) -> Option<Literal> {
     match l {
+        Literal::Int8(v) => try_construct_lit(t, *v),
         Literal::Int16(v) => try_construct_lit(t, *v),
         Literal::Int32(v) => try_construct_lit(t, *v),
         Literal::Int64(v) => try_construct_lit(t, *v),
+        Literal::UInt8(v) => try_construct_lit(t, *v),
         Literal::UInt16(v) => try_construct_lit(t, *v),
         Literal::UInt32(v) => try_construct_lit(t, *v),
         Literal::UInt64(v) => try_construct_lit(t, *v),
@@ -1773,9 +1775,11 @@ fn cast_literal(l: &Literal, t: BuiltInType) -> Option<Literal> {
 
 fn try_construct_lit<V>(t: BuiltInType, v: V) -> Option<Literal>
 where
+    i8: TryFrom<V>,
     i16: TryFrom<V>,
     i32: TryFrom<V>,
     i64: TryFrom<V>,
+    u8: TryFrom<V>,
     u16: TryFrom<V>,
     u32: TryFrom<V>,
     u64: TryFrom<V>,
@@ -1787,9 +1791,11 @@ where
         BuiltInType::Unit => None?,
         BuiltInType::Bool => None?,
         BuiltInType::Double => None?,
+        BuiltInType::Integral(Signed, W8) => Literal::Int8(v.try_into().ok()?),
         BuiltInType::Integral(Signed, W16) => Literal::Int16(v.try_into().ok()?),
         BuiltInType::Integral(Signed, W32) => Literal::Int32(v.try_into().ok()?),
         BuiltInType::Integral(Signed, W64) => Literal::Int64(v.try_into().ok()?),
+        BuiltInType::Integral(Unsigned, W8) => Literal::UInt8(v.try_into().ok()?),
         BuiltInType::Integral(Unsigned, W16) => Literal::UInt16(v.try_into().ok()?),
         BuiltInType::Integral(Unsigned, W32) => Literal::UInt32(v.try_into().ok()?),
         BuiltInType::Integral(Unsigned, W64) => Literal::UInt64(v.try_into().ok()?),

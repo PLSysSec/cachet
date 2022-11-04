@@ -501,9 +501,11 @@ NumericCompareBinOper: NumericCompareBinOper = {
 // TODO(spinda): Support NaN literals and scientific notation.
 
 Literal: Literal = {
+    <n:UInt8Literal> => Literal::UInt8(n),
     <n:UInt16Literal> => Literal::UInt16(n),
     <n:UInt32Literal> => Literal::UInt32(n),
     <n:UInt64Literal> => Literal::UInt64(n),
+    <n:Int8Literal> => Literal::Int8(n),
     <n:Int16Literal> => Literal::Int16(n),
     <n:Int32Literal> => Literal::Int32(n),
     <n:Int64Literal> => Literal::Int64(n),
@@ -525,6 +527,13 @@ HexLiteral: Literal =
         }
     };
 
+UInt8Literal: u8 =
+    <digits:Spanned<r"[0-9]+_u8">> =>?
+        u8::from_str(&digits.value[..digits.value.len() - 3])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in UInt8"),
+            });
+
 UInt16Literal: u16 =
     <digits:Spanned<r"[0-9]+_u16">> =>?
         u16::from_str(&digits.value[..digits.value.len() - 4])
@@ -537,6 +546,13 @@ UInt64Literal: u64 =
         u64::from_str(&digits.value[..digits.value.len() - 4])
             .map_err(|error| RawParseError::User {
                 error: Spanned::new(digits.span, "number too large to fit in UInt16"),
+            });
+
+Int8Literal: i8 =
+    <digits:Spanned<r"[0-9]+_i8">> =>?
+        i8::from_str(&digits.value[..digits.value.len() - 3])
+            .map_err(|error| RawParseError::User {
+                error: Spanned::new(digits.span, "number too large to fit in Int8"),
             });
 
 Int16Literal: i16 =
