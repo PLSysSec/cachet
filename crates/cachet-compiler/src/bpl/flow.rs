@@ -333,6 +333,9 @@ impl<'a> FlowTracer<'a> {
                 return Break(());
             }
             flattener::Stmt::If(if_stmt) => self.trace_if_stmt(if_stmt)?,
+            // TODO: assume right now that for-in loop body
+            // does not contain any labels, binds or emits.
+            flattener::Stmt::ForIn(_) => (),
             flattener::Stmt::Goto(goto_stmt) => self.trace_goto_stmt(goto_stmt),
             flattener::Stmt::Bind(bind_stmt) => self.trace_bind_stmt(bind_stmt),
             flattener::Stmt::Emit(emit_stmt) => self.trace_emit_stmt(emit_stmt),

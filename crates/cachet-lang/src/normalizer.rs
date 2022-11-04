@@ -328,6 +328,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Stmt::Let(let_stmt) => self.normalize_let_stmt(let_stmt),
             type_checker::Stmt::Label(label_stmt) => self.stmts.push(label_stmt.into()),
             type_checker::Stmt::If(if_stmt) => self.normalize_if_stmt(if_stmt),
+            type_checker::Stmt::ForIn(for_in_stmt) => self.normalize_for_in_stmt(for_in_stmt),
             type_checker::Stmt::Check(check_stmt) => self.normalize_check_stmt(check_stmt),
             type_checker::Stmt::Goto(goto_stmt) => self.stmts.push(goto_stmt.into()),
             type_checker::Stmt::Bind(bind_stmt) => self.stmts.push(bind_stmt.into()),
@@ -367,6 +368,20 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_if_stmt(&mut self, if_stmt: type_checker::IfStmt) {
         let if_ = self.normalize_if_stmt_recurse(if_stmt);
         self.stmts.push(if_.into());
+    }
+
+    fn normalize_for_in_stmt(&mut self, for_in_stmt: type_checker::ForInStmt) {
+        let body = self.normalize_unused_block(for_in_stmt.body);
+
+        self.stmts.push(
+            ForInStmt {
+                var: for_in_stmt.var,
+                target: for_in_stmt.target,
+                order: for_in_stmt.order,
+                body,
+            }
+            .into(),
+        );
     }
 
     fn normalize_check_stmt(&mut self, check_stmt: type_checker::CheckStmt) {

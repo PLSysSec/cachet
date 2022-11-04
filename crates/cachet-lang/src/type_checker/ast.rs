@@ -9,7 +9,9 @@ use typed_index_collections::TiVec;
 
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
-use crate::ast::{BinOper, BlockKind, CastSafety, CheckKind, Ident, NegateKind, Path, Spanned};
+use crate::ast::{
+    BinOper, BlockKind, CastSafety, CheckKind, ForInOrder, Ident, NegateKind, Path, Spanned,
+};
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::resolver;
 pub use crate::resolver::{
@@ -322,6 +324,8 @@ pub enum Stmt {
     #[from]
     If(IfStmt),
     #[from]
+    ForIn(ForInStmt),
+    #[from]
     Check(CheckStmt),
     #[from]
     Goto(GotoStmt),
@@ -341,6 +345,7 @@ impl Typed for Stmt {
             Self::Let(let_stmt) => let_stmt.type_(),
             Self::Label(label_stmt) => label_stmt.type_(),
             Self::If(if_stmt) => if_stmt.type_(),
+            Self::ForIn(for_in_stmt) => for_in_stmt.type_(),
             Self::Check(check_stmt) => check_stmt.type_(),
             Self::Goto(goto_stmt) => goto_stmt.type_(),
             Self::Bind(bind_stmt) => bind_stmt.type_(),
@@ -392,6 +397,20 @@ impl Typed for ElseClause {
             Self::ElseIf(if_stmt) => if_stmt.type_(),
             Self::Else(block) => block.type_(),
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ForInStmt {
+    pub var: LocalVarIndex,
+    pub target: EnumIndex,
+    pub order: ForInOrder,
+    pub body: Block,
+}
+
+impl Typed for ForInStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
     }
 }
 
