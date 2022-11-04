@@ -3,11 +3,18 @@ import "../utils.cachet";
 
 ir CacheStub emits CacheIR {
     op InstanceOf(lhsId: ValueId, rhsId: ValueId) {
+        initRegState();
+
+        initOperandId(lhsId);
         initInputValueId(lhsId);
+
+        initOperandId(rhsId);
         initInputValueId(rhsId);
 
+        initTypedOutput(MIRType::Boolean);
+
         emit CacheIR::GuardToObject(rhsId);
-        let protoId = ValueId::toObjectId(rhsId);
+        let protoId = OperandId::toObjectId(rhsId);
         emit CacheIR::LoadInstanceOfObjectResult(lhsId, protoId);
     }
 }

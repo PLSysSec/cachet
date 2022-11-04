@@ -5,10 +5,15 @@ ir CacheStub emits CacheIR {
     op Not(
         inputValueId: ValueId,
     ) {
+        initRegState();
+
+        initOperandId(inputValueId);
         initInputValueId(inputValueId);
 
+        initValueOutput();
+
         emit CacheIR::GuardToInt32(inputValueId);
-        let inputInt32Id = ValueId::toInt32Id(inputValueId);
+        let inputInt32Id = OperandId::toInt32Id(inputValueId);
         emit CacheIR::Int32NotResult(inputInt32Id);
     }
 }

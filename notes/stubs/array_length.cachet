@@ -5,7 +5,9 @@ ir CacheStub emits CacheIR {
     op GetArrayLength(
         valueId: ValueId,
     ) {
+        initRegState();
         initValueInput(valueId);
+        initValueOutput();
 
         emit CacheIR::GuardToObject(valueId);
         let objectId = ValueId::toObjectId(valueId);

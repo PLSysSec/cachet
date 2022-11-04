@@ -7,7 +7,12 @@ ir CacheStub emits CacheIR {
         shapeField: ShapeField,
         slotField: Int32Field,
     ) {
+        initRegState();
+
+        initOperandId(valueId);
         initInputValueId(valueId);
+
+        initValueOutput();
 
         let shape = CacheIR::readShapeField(shapeField);
 
@@ -20,7 +25,7 @@ ir CacheStub emits CacheIR {
         assume slotOffset == 8_i32;
 
         emit CacheIR::GuardToObject(valueId);
-        let objectId = ValueId::toObjectId(valueId);
+        let objectId = OperandId::toObjectId(valueId);
         emit CacheIR::GuardShape(objectId, shapeField);
         emit CacheIR::LoadDynamicSlotResult(objectId, slotField);
     }

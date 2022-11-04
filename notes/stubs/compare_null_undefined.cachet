@@ -1,0 +1,22 @@
+import "../cacheir.cachet"
+import "../utils.cachet"
+
+ir CacheStub emits CacheIR {
+    op CompareNullUndefined(
+        valId: ValueId,
+        jsop: JSOp,
+        isUndefined: Bool,
+    ) {
+        initRegState();
+        initValueInput(valId);
+        initTypedOutput(MIRType::Boolean);
+
+        assume (
+            jsop == JSOp::Eq || jsop == JSOp::StrictEq ||
+            jsop == JSOp::Ne || jsop == JSOp::StrictNe
+        );
+
+        emit CacheIR::GuardIsNull(valId);
+        emit CacheIR::CompareNullUndefinedResult(jsop, isUndefined, valId);
+    }
+}

@@ -2,6 +2,8 @@ import "./cacheir.cachet";
 import "./masm.cachet";
 import "./js.cachet";
 
+fn initRegState();
+
 fn initOperandId(operandId: OperandId);
 
 fn initInputValueId(valueId: ValueId);
@@ -51,3 +53,12 @@ fn initInputBigIntId(bigIntId: BigIntId) {
     assume RegData::isUnboxedValue(data);
     assume Value::isBigInt(RegData::toUnboxedValue(data));
 }
+
+fn initValueTagInputId(valueTagId: ValueTagId) {
+    let reg = CacheIR::defineTypedId(TypedId::fromValueTagId(valueTagId));
+    let data = MASM::getData(reg);
+    assume RegData::isValueTag(data);
+}
+
+fn initValueOutput();
+fn initTypedOutput(type: MIRType);

@@ -1,0 +1,28 @@
+import "../cacheir.cachet"
+import "../utils.cachet"
+
+ir CacheStub emits CacheIR {
+    op CompareInt32(
+        lhsId: ValueId,
+        rhsId: ValueId,
+        jsop: JSOp,
+    ) {
+        initRegState();
+        initValueInput(lhsId);
+        initValueInput(rhsId);
+        initTypedOutput(MIRType::Boolean);
+
+        assume (
+            jsop == JSOp::Eq || jsop == JSOp::StrictEq ||
+            jsop == JSOp::Ne || jsop == JSOp::StrictNe ||
+            jsop == JSOp::Lt || jsop == JSOp::Le ||
+            jsop == JSOp::Gt || jsop == JSOp::Ge
+        );
+
+        emit CacheIR::GuardToInt32(lhsId);
+        let lhsInt32Id = ValueId::toInt32Id(lhsId);
+        emit CacheIR::GuardToInt32(rhsId);
+        let rhsInt32Id = ValueId::toInt32Id(rhsId);
+        emit CacheIR::CompareInt32Result(jsop, lhsInt32Id, rhsInt32Id);
+    }
+}

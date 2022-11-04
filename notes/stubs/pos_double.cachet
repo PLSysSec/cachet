@@ -5,10 +5,15 @@ ir CacheStub emits CacheIR {
     op Pos(
         inputId: ValueId,
     ) {
+        initRegState();
+
+        initOperandId(inputId);
         initInputValueId(inputId);
 
+        initValueOutput();
+
         emit CacheIR::GuardIsNumber(inputId);
-        let valId = ValueId::toNumberId(inputId);
+        let valId = OperandId::toNumberId(inputId);
         emit CacheIR::LoadDoubleResult(valId);
     }
 }

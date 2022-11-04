@@ -1,0 +1,23 @@
+import "../cacheir.cachet"
+import "../utils.cachet"
+
+ir CacheStub emits CacheIR {
+    op CompareTagNe(
+        lhsId: ValueId,
+        rhsId: ValueId,
+        lhsTagId: ValueTagId,
+        rhsTagId: ValueTagId,
+    ) {
+        initRegState();
+        initValueInput(lhsId);
+        initValueInput(rhsId);
+        initValueTagInputOperandLocation(lhsTagId);
+        initValueTagInputOperandLocation(rhsTagId);
+        initTypedOutput(MIRType::Boolean);
+
+        emit CacheIR::LoadValueTag(lhsId, lhsTagId);
+        emit CacheIR::LoadValueTag(rhsId, rhsTagId);
+        emit CacheIR::GuardTagNotEqual(lhsTagId, rhsTagId);
+        emit CacheIR::LoadBooleanResult(false);
+    }
+}
