@@ -148,15 +148,31 @@ procedure #MASM~setBigInt($reg: #Reg, $bigInt: #BigInt)
   call #MASM~setUnboxedValue($reg, tmp'0);
 }
 
-var #MASM~floatRegs: #Map #PhyFloatReg #RegData;
+procedure #MASM~getStackIndex($reg: #Reg)
+  returns (ret: #UInt64)
+{
+  var tmp'0: #RegData;
+  call tmp'0 := #MASM~getData($reg);
+  call ret := #RegData~toStackIndex(tmp'0);
+}
+
+procedure #MASM~setStackIndex($reg: #Reg, $index: #UInt64)
+  modifies #MASM~regs;
+{
+  var tmp'0: #RegData;
+  call tmp'0 := #RegData~fromStackIndex($index);
+  call #MASM~setData($reg, tmp'0);
+}
+
+var #MASM~floatRegs: #Map #PhyFloatReg #FloatData;
 
 procedure #MASM~getFloatData($phyReg: #PhyFloatReg)
-  returns (ret: #RegData)
+  returns (ret: #FloatData)
 {
   ret := #Map~get(#MASM~floatRegs, $phyReg);
 }
 
-procedure #MASM~setFloatData($phyReg: #PhyFloatReg, $data: #RegData)
+procedure #MASM~setFloatData($phyReg: #PhyFloatReg, $data: #FloatData)
   modifies #MASM~floatRegs;
 {
     #MASM~floatRegs := #Map~set(#MASM~floatRegs, $phyReg, $data);
@@ -165,24 +181,98 @@ procedure #MASM~setFloatData($phyReg: #PhyFloatReg, $data: #RegData)
 procedure #MASM~getDouble($floatReg: #FloatReg)
   returns (ret: #Double)
 {
-    var tmp'0: #RegData;
-    var tmp'1: #Value;
+    var tmp'0: #FloatData;
 
     assert #FloatReg^field~type($floatReg) == #FloatContentType^Variant~Double();
     call tmp'0 := #MASM~getFloatData(#FloatReg^field~reg($floatReg));
-    call tmp'1 := #RegData~toUnboxedValue(tmp'0);
-    call ret := #Value~toDouble(tmp'1);
+    call ret := #FloatData~toDouble(tmp'0);
 }
 
 procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double)
 {
-    var tmp'0: #Value;
-    var tmp'1: #RegData;
+    var tmp'0: #FloatData;
 
     assert #FloatReg^field~type($floatReg) == #FloatContentType^Variant~Double();
-    call tmp'0 := #Value~fromDouble($double);
-    call tmp'1 := #RegData~fromUnboxedValue(tmp'0);
-    call #MASM~setFloatData(#FloatReg^field~reg($floatReg), tmp'1);
+    call tmp'0 := #FloatData~fromDouble($double);
+    call #MASM~setFloatData(#FloatReg^field~reg($floatReg), tmp'0);
+}
+
+var #MASM~pushedLiveGeneralRegs: #Map #Reg #RegData;
+var #MASM~pushedLiveFloatRegs: #Map #PhyFloatReg #FloatData;
+
+procedure #MASM~stackPushLiveGeneralReg($reg: #Reg)
+{
+    var $data: #RegData;
+    call $data := #MASM~getData($reg);
+    #MASM~pushedLiveGeneralRegs := #Map~set(#MASM~pushedLiveGeneralRegs, $reg, $data);
+}
+
+procedure #MASM~stackPopLiveGeneralReg($reg: #Reg)
+{
+    var $data: #RegData;
+    $data := #Map~get(#MASM~pushedLiveGeneralRegs, $reg);
+    call #MASM~setData($reg, $data);
+}
+
+procedure #MASM~stackPushLiveFloatReg($floatReg: #FloatReg)
+{
+    var $data: #FloatData;
+    call $data := #MASM~getFloatData(#FloatReg^field~reg($floatReg));
+    assert #FloatReg^field~type($floatReg) == #FloatData~contentType($data);
+    #MASM~pushedLiveFloatRegs := #Map~set(#MASM~pushedLiveFloatRegs, #FloatReg^field~reg($floatReg), $data);
+}
+
+procedure #MASM~stackPopLiveFloatReg($floatReg: #FloatReg)
+{
+    var $data: #FloatData;
+    $data := #Map~get(#MASM~pushedLiveFloatRegs, #FloatReg^field~reg($floatReg));
+    assert #FloatReg^field~type($floatReg) == #FloatData~contentType($data);
+    call #MASM~setFloatData(#FloatReg^field~reg($floatReg), $data);
+}
+
+var #MASM~stack: #Map #UInt64 #StackData;
+
+procedure #MASM~stackPush($data: #StackData)
+    modifies #MASM~regs, #MASM~stack;
+{
+    var $stackPtr: #UInt64;
+    var $dataSize: #UInt64;
+
+    call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
+    call $dataSize := #StackData~size($data);
+    assert #UInt64^gte($stackPtr, $dataSize); 
+    $stackPtr := #UInt64^sub($stackPtr, $dataSize);
+    call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
+    #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $data);
+}
+
+procedure #MASM~stackPop()
+    returns (data: #StackData)
+    modifies #MASM~regs, #MASM~stack;
+{
+    var $newData: #StackData;
+    var $stackPtr: #UInt64;
+    var $dataSize: #UInt64;
+
+    call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
+    data := #Map~get(#MASM~stack, $stackPtr);
+    call $dataSize := #StackData~size(data);
+    havoc $newData;
+    #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $newData);
+    $stackPtr := #UInt64^add($stackPtr, $dataSize);
+    call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
+}
+
+procedure #MASM~stackStore($idx: #UInt64, $data: #StackData)
+    modifies #MASM~stack;
+{
+    #MASM~stack := #Map~set(#MASM~stack, $idx, $data);
+}
+
+procedure #MASM~stackLoad($idx: #UInt64)
+    returns (ret: #StackData)
+{
+    ret := #Map~get(#MASM~stack, $idx);
 }
 
 var #CacheIR~knownOperandIds: #Set #OperandId;
@@ -283,6 +373,14 @@ procedure #initValueReg($valueReg: #ValueReg)
 }
 
 var #CacheIR~allocatedRegs: #Set #Reg;
+
+var #CacheIR~liveFloatRegSetRaw: #FloatRegSet;
+
+procedure #CacheIR~liveFloatRegSet()
+  returns (ret: #FloatRegSet)
+{
+    ret := #CacheIR~liveFloatRegSetRaw;
+}
 
 procedure #CacheIR~allocateValueReg()
   returns (ret: #ValueReg)
@@ -440,6 +538,10 @@ procedure #initRegState()
     !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm14()) &&
     !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm15())
   );
+
+  call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
+
+  call #CacheIR~liveFloatRegSetRaw := #FloatRegSet~newEmpty();
 }
 
 procedure #availableReg()

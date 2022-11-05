@@ -281,6 +281,10 @@ impl GeneralRegSet {
         GeneralRegSet::new(GeneralRegs::AllocatableMask() & GeneralRegs::VolatileMask())
     }
 
+    fn newDifference(lhs: GeneralRegSet, rhs: GeneralRegSet) -> GeneralRegSet {
+        GeneralRegSet::new(GeneralRegSet::bits(lhs) & ~GeneralRegSet::bits(rhs))
+    }
+
     fn contains(set: GeneralRegSet, reg: Reg) -> Bool {
         GeneralRegSet::bits(set) & GeneralRegs::mask(reg) != 0_u16
     }
@@ -292,6 +296,7 @@ impl GeneralRegSet {
     fn take(out newSet: GeneralRegSet, set: GeneralRegSet, reg: Reg) {
         newSet = GeneralRegSet::new(GeneralRegSet::bits(set) & ~GeneralRegs::mask(reg));
     }
+
 }
 
 struct FloatRegs;
@@ -400,6 +405,14 @@ impl FloatRegSet {
         FloatRegSet::new(FloatRegs::AllocatableMask() & FloatRegs::VolatileMask())
     }
 
+    fn newIntersect(lhs: FloatRegSet, rhs: FloatRegSet) -> FloatRegSet {
+        FloatRegSet::new(FloatRegSet::bits(lhs) & FloatRegSet::bits(rhs))
+    }
+
+    fn newDifference(lhs: FloatRegSet, rhs: FloatRegSet) -> FloatRegSet {
+        FloatRegSet::new(FloatRegSet::bits(lhs) & ~FloatRegSet::bits(rhs))
+    }
+
     fn contains(set: FloatRegSet, floatReg: FloatReg) -> Bool {
         FloatRegSet::bits(set) & FloatRegs::mask(floatReg) != 0_u16
     }
@@ -423,6 +436,28 @@ impl FloatRegSet {
         bits = bits & ~(bits >> (3_u64 * FloatRegs::TotalPhys));
 
         FloatRegSet::new(bits)
+    }
+
+    fn pushSizeInBytes(set: FloatRegSet) -> UInt32 {
+        let mut size = 0_u32;
+
+        let reducedSet = FloatRegSet::reducedForPush(set);
+
+        for phyReg in PhyFloatReg desc {
+            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+
+            if FloatRegSet::contains(reducedSet, simdReg) {
+                size = size + 16_u32
+            } else if FloatRegSet::contains(reducedSet, doubleReg) {
+                size = size + 8_u32
+            } else if FloatRegSet::contains(reducedSet, singleReg) {
+                size = size + 4_u32
+            }
+        }
+
+        size
     }
 }
 
@@ -480,12 +515,6 @@ impl LiveRegSet {
         LiveRegSet::new(gprs, fpus)
     }
 
-    fn newVolatile() -> LiveRegSet {
-        let gprs = GeneralRegSet::newVolatile();
-        let fpus = FloatRegSet::newVolatile();
-        LiveRegSet::new(gprs, fpus)
-    }
-
     fn new(gprs: GeneralRegSet, fpus: FloatRegSet) -> LiveRegSet {
         let set = (unsafe { LiveRegSet::newUnchecked(gprs, fpus) });
         assume LiveRegSet::gprs(set) == gprs;
@@ -494,6 +523,209 @@ impl LiveRegSet {
     }
 
     unsafe fn newUnchecked(gprs: GeneralRegSet, fpus: FloatRegSet) -> LiveRegSet;
+}
+
+struct FloatData;
+
+impl FloatData {
+    fn contentType(data: FloatData) -> FloatContentType;
+
+    fn fromDouble(double: Double) -> FloatData {
+        let data = (unsafe { FloatData::fromDoubleUnchecked(double) });
+        assume FloatData::contentType(data) == FloatContentType::Double;
+        assume (unsafe { FloatData::toDoubleUnchecked(data) }) == double;
+        data
+    }
+
+    unsafe fn fromDoubleUnchecked(double: Double) -> FloatData;
+
+    fn toDouble(data: FloatData) -> Double {
+        assert FloatData::contentType(data) == FloatContentType::Double;
+        let double = (unsafe { FloatData::toDoubleUnchecked(data) });
+        assume (unsafe { FloatData::fromDoubleUnchecked(double) }) == data;
+        double
+    }
+
+    unsafe fn toDoubleUnchecked(data: FloatData) -> Double;
+
+    fn fromFloat(float: Float) -> FloatData {
+        let data = (unsafe { FloatData::fromFloatUnchecked(float) });
+        assume FloatData::contentType(data) == FloatContentType::Single;
+        assume (unsafe { FloatData::toFloatUnchecked(data) }) == float;
+        data
+    }
+
+    unsafe fn fromFloatUnchecked(float: Float) -> FloatData;
+
+    fn toFloat(data: FloatData) -> Float {
+        assert FloatData::contentType(data) == FloatContentType::Single;
+        let float = (unsafe { FloatData::toFloatUnchecked(data) });
+        assume (unsafe { FloatData::fromFloatUnchecked(float) }) == data;
+        float
+    }
+
+    unsafe fn toFloatUnchecked(data: FloatData) -> Float;
+
+    fn fromSimd128(simd128: Simd128) -> FloatData {
+        let data = (unsafe { FloatData::fromSimd128Unchecked(simd128) });
+        assume FloatData::contentType(data) == FloatContentType::Simd128;
+        assume (unsafe { FloatData::toSimd128Unchecked(data) }) == simd128;
+        data
+    }
+
+    unsafe fn fromSimd128Unchecked(simd128: Simd128) -> FloatData;
+
+    fn toSimd128(data: FloatData) -> Simd128 {
+        assert FloatData::contentType(data) == FloatContentType::Simd128;
+        let simd128 = (unsafe { FloatData::toSimd128Unchecked(data) });
+        assume (unsafe { FloatData::fromSimd128Unchecked(simd128) }) == data;
+        simd128
+    }
+
+    unsafe fn toSimd128Unchecked(data: FloatData) -> Simd128;
+}
+
+struct SavedGeneralRegs {
+    set: GeneralRegSet,
+    size: UInt64,
+}
+
+impl SavedGeneralRegs {
+    fn new(set: GeneralRegSet, size: UInt64) -> SavedGeneralRegs {
+        let saved = (unsafe { SavedGeneralRegs::newUnchecked(set, size) });
+        assume saved.set == set;
+        assume saved.size == size;
+        saved
+    }
+
+    unsafe fn newUnchecked(set: GeneralRegSet, size: UInt64) -> SavedGeneralRegs;
+}
+
+struct SavedFloatRegs {
+    set: FloatRegSet,
+    size: UInt64,
+}
+
+impl SavedFloatRegs {
+    fn new(set: FloatRegSet, size: UInt64) -> SavedFloatRegs {
+        let saved = (unsafe { SavedFloatRegs::newUnchecked(set, size) });
+        assume saved.set == set;
+        assume saved.size == size;
+        saved
+    }
+
+    unsafe fn newUnchecked(set: FloatRegSet, size: UInt64) -> SavedFloatRegs;
+}
+
+enum StackDataType {
+    RegData,
+    FloatData,
+    SavedGeneralRegs,
+    SavedFloatRegs,
+}
+
+struct StackData;
+
+impl StackData {
+    fn typeOf(data: StackData) -> StackDataType;
+
+    fn size(data: StackData) -> UInt64 {
+        if StackData::typeOf(data) == StackDataType::RegData {
+            // RegData is always 8 bytes
+            return 8_u64;
+        } else if StackData::typeOf(data) == StackDataType::FloatData {
+            let floatData = StackData::toFloatData(data);
+            let contentType = FloatData::contentType(floatData);
+            if contentType == FloatContentType::Single {
+                return 4_u64;
+            } else if contentType == FloatContentType::Double {
+                return 8_u64;
+            } else {
+                return 16_u64;
+            }
+        } else if StackData::typeOf(data) == StackDataType::SavedGeneralRegs {
+            let saved = StackData::toSavedGeneralRegs(data);
+            return saved.size;
+        } else if StackData::typeOf(data) == StackDataType::SavedFloatRegs {
+            let saved = StackData::toSavedFloatRegs(data);
+            return saved.size;
+        }
+
+        assert false;
+        return 0_u64;
+    }
+
+    fn fromFloatData(floatData: FloatData) -> StackData {
+        let data = (unsafe { StackData::fromFloatDataUnchecked(floatData) });
+        assume StackData::typeOf(data) == StackDataType::FloatData;
+        assume (unsafe { StackData::toFloatDataUnchecked(data) }) == floatData;
+        data
+    }
+
+    unsafe fn fromFloatDataUnchecked(floatData: FloatData) -> StackData;
+
+    fn toFloatData(data: StackData) -> FloatData {
+        assert StackData::typeOf(data) == StackDataType::FloatData;
+        let floatData = (unsafe { StackData::toFloatDataUnchecked(data) });
+        assume (unsafe { StackData::fromFloatDataUnchecked(floatData) }) == data;
+        floatData
+    }
+
+    unsafe fn toFloatDataUnchecked(data: StackData) -> FloatData;
+
+    fn fromRegData(regData: RegData) -> StackData {
+        let data = (unsafe { StackData::fromRegDataUnchecked(regData) });
+        assume StackData::typeOf(data) == StackDataType::RegData;
+        assume (unsafe { StackData::toRegDataUnchecked(data) }) == regData;
+        data
+    }
+
+    unsafe fn fromRegDataUnchecked(regData: RegData) -> StackData;
+
+    fn toRegData(data: StackData) -> RegData {
+        assert StackData::typeOf(data) == StackDataType::RegData;
+        let regData = (unsafe { StackData::toRegDataUnchecked(data) });
+        assume (unsafe { StackData::fromRegDataUnchecked(regData) }) == data;
+        regData
+    }
+
+    unsafe fn toRegDataUnchecked(data: StackData) -> RegData;
+
+    fn fromSavedGeneralRegs(saved: SavedGeneralRegs) -> StackData {
+        let data = (unsafe { StackData::fromSavedGeneralRegsUnchecked(saved) });
+        assume StackData::typeOf(data) == StackDataType::SavedGeneralRegs;
+        assume (unsafe { StackData::toSavedGeneralRegsUnchecked(data) }) == saved;
+        data
+    }
+
+    unsafe fn fromSavedGeneralRegsUnchecked(saved: SavedGeneralRegs) -> StackData;
+
+    fn toSavedGeneralRegs(data: StackData) -> SavedGeneralRegs {
+        assert StackData::typeOf(data) == StackDataType::SavedGeneralRegs;
+        let saved = (unsafe { StackData::toSavedGeneralRegsUnchecked(data) });
+        assume (unsafe { StackData::fromSavedGeneralRegsUnchecked(saved) }) == data;
+        saved
+    }
+
+    unsafe fn toSavedGeneralRegsUnchecked(data: StackData) -> SavedGeneralRegs;
+
+    fn fromSavedFloatRegs(saved: SavedFloatRegs) -> StackData {
+        let data = (unsafe { StackData::fromSavedFloatRegsUnchecked(saved) });
+        assume StackData::typeOf(data) == StackDataType::SavedFloatRegs;
+        assume (unsafe { StackData::toSavedFloatRegsUnchecked(data) }) == saved;
+        data
+    }
+
+    unsafe fn fromSavedFloatRegsUnchecked(saved: SavedFloatRegs) -> StackData;
+
+    fn toSavedFloatRegs(data: StackData) -> SavedFloatRegs {
+        assert StackData::typeOf(data) == StackDataType::SavedFloatRegs;
+        let saved = (unsafe { StackData::toSavedFloatRegsUnchecked(data) });
+        assume (unsafe { StackData::fromSavedFloatRegsUnchecked(saved) }) == data;
+        saved
+    }
+
+    unsafe fn toSavedFloatRegsUnchecked(data: StackData) -> SavedFloatRegs;
 }
 
 enum Condition {
@@ -778,6 +1010,88 @@ ir MASM {
         let baseData = MASM::getData(address.base);
         let data = RegData::readData(baseData, address.offset);
         MASM::setData(dstReg, data);
+    }
+
+    op PushRegsInMask(set: LiveRegSet) {
+        let gprs = LiveRegSet::gprs(set);
+        let fpus = FloatRegSet::reducedForPush(LiveRegSet::fpus(set));
+
+        let mut gprsSize = 0_u64;
+
+        for reg in Reg desc {
+            if GeneralRegSet::contains(gprs, reg) {
+                gprsSize = gprsSize + 8_u64;
+                MASM::stackPushLiveGeneralReg(reg);
+            }
+        }
+
+        let gprsSaved = SavedGeneralRegs::new(gprs, gprsSize);
+        let gprsStackData = StackData::fromSavedGeneralRegs(gprsSaved);
+        MASM::stackPush(gprsStackData);
+
+        let mut fpusSize = 0_u64;
+
+        for phyReg in PhyFloatReg desc {
+            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+
+            if FloatRegSet::contains(fpus, simdReg) {
+                gprsSize = gprsSize + 16_u64;
+                MASM::stackPushLiveFloatReg(simdReg);
+            } else if FloatRegSet::contains(fpus, doubleReg) {
+                gprsSize = gprsSize + 8_u64;
+                MASM::stackPushLiveFloatReg(doubleReg);
+            } else if FloatRegSet::contains(fpus, singleReg) {
+                gprsSize = gprsSize + 4_u64;
+                MASM::stackPushLiveFloatReg(singleReg);
+            }
+        }
+
+        let fpusSaved = SavedFloatRegs::new(fpus, fpusSize);
+        let fpusStackData = StackData::fromSavedFloatRegs(fpusSaved);
+        MASM::stackPush(fpusStackData);
+    }
+
+    op PopRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
+        let fpus = FloatRegSet::reducedForPush(LiveRegSet::fpus(set)); 
+        let gprs = LiveRegSet::gprs(set);
+
+        let fpusIgnore = LiveRegSet::fpus(ignore);
+        let gprsIgnore = LiveRegSet::gprs(ignore);
+
+        let fpusPop = FloatRegSet::newDifference(fpus, fpusIgnore);
+        let gprsPop = GeneralRegSet::newDifference(gprs, gprsIgnore);
+
+        let fpusStackData = MASM::stackPop();
+        let fpusSaved = StackData::toSavedFloatRegs(fpusStackData);
+
+        assert fpus == fpusSaved.set;
+
+        for phyReg in PhyFloatReg desc {
+            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+
+            if FloatRegSet::contains(fpusPop, simdReg) {
+                MASM::stackPopLiveFloatReg(simdReg);
+            } else if FloatRegSet::contains(fpusPop, doubleReg) {
+                MASM::stackPopLiveFloatReg(doubleReg);
+            } else if FloatRegSet::contains(fpusPop, singleReg) {
+                MASM::stackPopLiveFloatReg(singleReg);
+            }
+        }
+
+        let gprsStackData = MASM::stackPop();
+        let gprsSaved = StackData::toSavedGeneralRegs(gprsStackData);
+
+        assert gprs == gprsSaved.set;
+
+        for reg in Reg desc {
+            if GeneralRegSet::contains(gprsPop, reg) {
+                MASM::stackPopLiveGeneralReg(reg);
+            }
+        }
     }
 
     op TagValue(valTy: ValueType, payload: Reg, dest: ValueReg) {
@@ -2012,6 +2326,30 @@ ir MASM {
 
     fn getDouble(floatReg: FloatReg) -> Double;
     fn setDouble(floatReg: FloatReg, double: Double);
+
+    fn stackPush(stackData: StackData);
+    fn stackPop() -> StackData;
+
+    fn stackStore(idx: UInt64, stackData: StackData);
+    fn stackLoad(idx: UInt64) -> StackData;
+
+    fn stackPushReg(reg: Reg) {
+        let regData = MASM::getData(reg);
+        let stackData = StackData::fromRegData(regData);
+        MASM::stackPush(stackData);
+    }
+
+    fn stackPopReg(reg: Reg) {
+        let stackData = MASM::stackPop();
+        let regData = StackData::toRegData(stackData);
+        MASM::setData(reg, regData);
+    }
+
+    fn stackPushLiveGeneralReg(reg: Reg);
+    fn stackPopLiveGeneralReg(reg: Reg);
+
+    fn stackPushLiveFloatReg(floatReg: FloatReg);
+    fn stackPopLiveFloatReg(floatReg: FloatReg);
 }
 
 //impl MASM {

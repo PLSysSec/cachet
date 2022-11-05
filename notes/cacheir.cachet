@@ -623,6 +623,20 @@ ir CacheIR emits MASM {
         bind done;
     }
 
+    op PushPopRegs() {
+        let scratchReg = CacheIR::allocateReg();
+        let volatileRegs = LiveRegSet::new(
+            GeneralRegSet::newVolatile(), CacheIR::liveVolatileFloatRegs()
+        );
+        emit MASM::PushRegsInMask(volatileRegs);
+
+        let ignoreRegs = LiveRegSet::newEmpty();
+        LiveRegSet::addReg(out ignoreRegs, ignoreRegs, scratchReg);
+        emit MASM::PopRegsInMaskIgnore(volatileRegs, ignoreRegs);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
     op BooleanToNumber(booleanId: BooleanId, numberId: NumberId) {
         let booleanReg = CacheIR::useBooleanReg(booleanId);
         let numberReg = CacheIR::defineNumberReg(numberId);
@@ -1518,6 +1532,14 @@ ir CacheIR emits MASM {
     fn readClassField(classField: ClassField) -> Class;
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
+
+    fn liveFloatRegSet() -> FloatRegSet;
+
+    #[refined]
+    fn liveVolatileFloatRegs() -> FloatRegSet {
+        FloatRegSet::newIntersect(CacheIR::liveFloatRegSet(), FloatRegSet::newVolatile())
+    }
+
 }
 
 

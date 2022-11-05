@@ -12,6 +12,7 @@ enum RegDataType {
     ValueTag,
     TaggedProto,
     Class,
+    StackIndex,
 }
 
 struct RegData;
@@ -195,6 +196,27 @@ impl RegData {
 
     unsafe fn toClassUnchecked(data: RegData) -> Class;
 
+    fn isStackIndex(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::StackIndex
+    }
+
+    fn fromStackIndex(index: UInt64) -> RegData {
+        let data = (unsafe { RegData::fromStackIndexUnchecked(index) });
+        assume RegData::isStackIndex(data);
+        assume (unsafe { RegData::toStackIndexUnchecked(data) }) == index;
+        data
+    }
+
+    unsafe fn fromStackIndexUnchecked(index: UInt64) -> RegData;
+
+    fn toStackIndex(data: RegData) -> UInt64 {
+        assert RegData::isStackIndex(data);
+        let index = (unsafe { RegData::toStackIndexUnchecked(data) });
+        assume (unsafe { RegData::fromStackIndexUnchecked(index) }) == data;
+        index
+    }
+
+    unsafe fn toStackIndexUnchecked(data: RegData) -> UInt64;
 
     fn readData(data: RegData, offset: Int64) -> RegData {
         if RegData::isUnboxedValue(data) {
@@ -243,6 +265,10 @@ enum MIRType {
     StackResults,
     Shape,
 }
+
+struct Float;
+
+struct Simd128;
 
 enum ValueType {
   Double,
