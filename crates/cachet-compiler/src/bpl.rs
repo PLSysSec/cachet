@@ -2281,6 +2281,20 @@ lazy_static! {
         HashMap::from([
             (Ident::from("ValueReg").into(), Proc),
             (Ident::from("ValueReg").nest("scratchReg".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("newEmpty".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("newVolatile".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("newIntersect".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("newDifference".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("contains".into()), Fn),
+            (Ident::from("GeneralRegSet").nest("add".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("take".into()), Proc),
+            (Ident::from("FloatRegSet").nest("newEmpty".into()), Proc),
+            (Ident::from("FloatRegSet").nest("newVolatile".into()), Proc),
+            (Ident::from("FloatRegSet").nest("newIntersect".into()), Proc),
+            (Ident::from("FloatRegSet").nest("newDifference".into()), Proc),
+            (Ident::from("FloatRegSet").nest("contains".into()), Fn),
+            (Ident::from("FloatRegSet").nest("add".into()), Proc),
+            (Ident::from("FloatRegSet").nest("take".into()), Proc),
             (Ident::from("MASM").nest("getData".into()), Proc),
             (Ident::from("MASM").nest("setData".into()), Proc),
             (Ident::from("MASM").nest("getValue".into()), Proc),
@@ -2324,6 +2338,7 @@ lazy_static! {
             (Ident::from("initValueReg").into(), Proc),
             (Ident::from("initRegState").into(), Proc),
             (Ident::from("availableReg").into(), Proc),
+            (Ident::from("addLiveFloatReg").into(), Proc),
         ])
     };
 

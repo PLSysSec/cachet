@@ -197,6 +197,185 @@ procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double)
     call #MASM~setFloatData(#FloatReg^field~reg($floatReg), tmp'0);
 }
 
+// GeneralRegSet
+
+function #GeneralRegSet~rawSet($set: #GeneralRegSet): #Set #Reg;
+function #GeneralRegSet~newUnchecked($rawSet: #Set #Reg): #GeneralRegSet;
+
+procedure #GeneralRegSet~new($rawSet: #Set #Reg)
+    returns (ret: #GeneralRegSet)
+{
+    var tmp'0: #GeneralRegSet;
+
+    tmp'0 := #GeneralRegSet~newUnchecked($rawSet);
+    assume #GeneralRegSet~rawSet(tmp'0) == $rawSet;
+    ret := tmp'0;
+}
+
+procedure #GeneralRegSet~newEmpty()
+    returns (ret: #GeneralRegSet)
+{
+    var tmp'0: #Set #Reg;
+
+    tmp'0 := #Set~empty();
+    call ret := #GeneralRegSet~new(tmp'0);
+}
+
+procedure #GeneralRegSet~newVolatile()
+    returns (ret: #GeneralRegSet)
+{
+    var tmp'0: #Set #Reg;
+
+    tmp'0 := #Set~empty();
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~Rax());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~Rcx());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~Rdx());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~Rsi());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~Rdi());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~R8());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~R9());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~R10());
+
+    call ret := #GeneralRegSet~new(tmp'0);
+}
+
+procedure #GeneralRegSet~newIntersect($lhs: #GeneralRegSet, $rhs: #GeneralRegSet)
+    returns (ret: #GeneralRegSet)
+{
+    var tmp'0: #Set #Reg;
+    var tmp'1: #Set #Reg;
+
+    tmp'0 := #GeneralRegSet~rawSet($lhs);
+    tmp'1 := #GeneralRegSet~rawSet($rhs);
+
+    call ret := #GeneralRegSet~new(#Set~intersect(tmp'0, tmp'1));
+}
+
+procedure #GeneralRegSet~newDifference($lhs: #GeneralRegSet, $rhs: #GeneralRegSet)
+    returns (ret: #GeneralRegSet)
+{
+    var tmp'0: #Set #Reg;
+    var tmp'1: #Set #Reg;
+
+    tmp'0 := #GeneralRegSet~rawSet($lhs);
+    tmp'1 := #GeneralRegSet~rawSet($rhs);
+
+    call ret := #GeneralRegSet~new(#Set~difference(tmp'0, tmp'1));
+}
+
+function {:inline} #GeneralRegSet~contains($set: #GeneralRegSet, $reg: #Reg): #Bool {
+    #Set~contains(#GeneralRegSet~rawSet($set), $reg)
+}
+
+procedure #GeneralRegSet~add($set: #GeneralRegSet, $reg: #Reg)
+    returns (newSet: #GeneralRegSet)
+{
+    var $rawSet: #Set #Reg;
+
+    $rawSet := #Set~add(#GeneralRegSet~rawSet($set), $reg);
+    call newSet := #GeneralRegSet~new($rawSet);
+}
+
+procedure #GeneralRegSet~take($set: #GeneralRegSet, $reg: #Reg)
+    returns (newSet: #GeneralRegSet)
+{
+    var $rawSet: #Set #Reg;
+
+    $rawSet := #Set~remove(#GeneralRegSet~rawSet($set), $reg);
+    call newSet := #GeneralRegSet~new($rawSet);
+}
+
+// FloatRegSet
+
+function #FloatRegSet~rawSet($set: #FloatRegSet): #Set #FloatReg;
+function #FloatRegSet~newUnchecked($rawSet: #Set #FloatReg): #FloatRegSet;
+
+procedure #FloatRegSet~new($rawSet: #Set #FloatReg)
+    returns (ret: #FloatRegSet)
+{
+    var tmp'0: #FloatRegSet;
+
+    tmp'0 := #FloatRegSet~newUnchecked($rawSet);
+    assume #FloatRegSet~rawSet(tmp'0) == $rawSet;
+    ret := tmp'0;
+}
+
+procedure #FloatRegSet~newEmpty()
+    returns (ret: #FloatRegSet)
+{
+    var tmp'0: #Set #FloatReg;
+
+    tmp'0 := #Set~empty();
+    call ret := #FloatRegSet~new(tmp'0);
+}
+
+procedure #FloatRegSet~newVolatile()
+    returns (ret: #FloatRegSet)
+{
+    var tmp'0: #Set #FloatReg;
+    var simdReg: #FloatReg;
+    var doubleReg: #FloatReg;
+    var singleReg: #FloatReg;
+
+    tmp'0 := #Set~complement(#Set~empty());
+
+    call simdReg := #FloatReg~new(#PhyFloatReg^Variant~Xmm15(), #FloatContentType^Variant~Simd128());
+    call doubleReg := #FloatReg~new(#PhyFloatReg^Variant~Xmm15(), #FloatContentType^Variant~Double());
+    call singleReg := #FloatReg~new(#PhyFloatReg^Variant~Xmm15(), #FloatContentType^Variant~Single());
+
+    tmp'0 := #Set~remove(tmp'0, simdReg);
+    tmp'0 := #Set~remove(tmp'0, doubleReg);
+    tmp'0 := #Set~remove(tmp'0, singleReg);
+
+    call ret := #FloatRegSet~new(tmp'0);
+}
+
+procedure #FloatRegSet~newIntersect($lhs: #FloatRegSet, $rhs: #FloatRegSet)
+    returns (ret: #FloatRegSet)
+{
+    var tmp'0: #Set #FloatReg;
+    var tmp'1: #Set #FloatReg;
+
+    tmp'0 := #FloatRegSet~rawSet($lhs);
+    tmp'1 := #FloatRegSet~rawSet($rhs);
+
+    call ret := #FloatRegSet~new(#Set~intersect(tmp'0, tmp'1));
+}
+
+procedure #FloatRegSet~newDifference($lhs: #FloatRegSet, $rhs: #FloatRegSet)
+    returns (ret: #FloatRegSet)
+{
+    var tmp'0: #Set #FloatReg;
+    var tmp'1: #Set #FloatReg;
+
+    tmp'0 := #FloatRegSet~rawSet($lhs);
+    tmp'1 := #FloatRegSet~rawSet($rhs);
+
+    call ret := #FloatRegSet~new(#Set~difference(tmp'0, tmp'1));
+}
+
+function {:inline} #FloatRegSet~contains($set: #FloatRegSet, $reg: #FloatReg): #Bool {
+    #Set~contains(#FloatRegSet~rawSet($set), $reg)
+}
+
+procedure #FloatRegSet~add($set: #FloatRegSet, $reg: #FloatReg)
+    returns (newSet: #FloatRegSet)
+{
+    var $rawSet: #Set #FloatReg;
+
+    $rawSet := #Set~add(#FloatRegSet~rawSet($set), $reg);
+    call newSet := #FloatRegSet~new($rawSet);
+}
+
+procedure #FloatRegSet~take($set: #FloatRegSet, $reg: #FloatReg)
+    returns (newSet: #FloatRegSet)
+{
+    var $rawSet: #Set #FloatReg;
+
+    $rawSet := #Set~remove(#FloatRegSet~rawSet($set), $reg);
+    call newSet := #FloatRegSet~new($rawSet);
+}
+
 var #MASM~pushedLiveGeneralRegs: #Map #Reg #RegData;
 var #MASM~pushedLiveFloatRegs: #Map #PhyFloatReg #FloatData;
 
@@ -240,8 +419,8 @@ procedure #MASM~stackPush($data: #StackData)
 
     call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
     call $dataSize := #StackData~size($data);
-    assert #UInt64^gte($stackPtr, $dataSize); 
     $stackPtr := #UInt64^sub($stackPtr, $dataSize);
+    assert #UInt64^gte($stackPtr, 0bv64);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
     #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $data);
 }
@@ -250,15 +429,12 @@ procedure #MASM~stackPop()
     returns (data: #StackData)
     modifies #MASM~regs, #MASM~stack;
 {
-    var $newData: #StackData;
     var $stackPtr: #UInt64;
     var $dataSize: #UInt64;
 
     call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
     data := #Map~get(#MASM~stack, $stackPtr);
     call $dataSize := #StackData~size(data);
-    havoc $newData;
-    #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $newData);
     $stackPtr := #UInt64^add($stackPtr, $dataSize);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
 }
@@ -499,6 +675,11 @@ procedure #CacheIR~releaseFloatReg($floatReg: #FloatReg)
 
 procedure #initRegState()
 {
+
+  var value: #Value;
+  var regData: #RegData;
+  var stackData: #StackData;
+
   // initially all registers are unallocated
   assume (
     !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) &&
@@ -538,6 +719,11 @@ procedure #initRegState()
     !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm14()) &&
     !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm15())
   );
+
+  call value := #Value~fromInt32(0bv32);
+  call regData := #RegData~fromUnboxedValue(value);
+  call stackData := #StackData~fromRegData(regData);
+  #MASM~stack := #Map~const(stackData);
 
   call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
 
@@ -584,4 +770,15 @@ procedure #availableReg()
   assume !tmp'0;
 
   ret := $reg;
+}
+
+procedure #addLiveFloatReg($floatReg: #FloatReg)
+{
+    var data'0: #FloatData;
+
+    havoc data'0;
+    call #CacheIR~liveFloatRegSetRaw := #FloatRegSet~add(#CacheIR~liveFloatRegSetRaw, $floatReg);
+
+    assume #FloatReg^field~type($floatReg) == #FloatData~contentType(data'0);
+    call #MASM~setFloatData(#FloatReg^field~reg($floatReg), data'0);
 }

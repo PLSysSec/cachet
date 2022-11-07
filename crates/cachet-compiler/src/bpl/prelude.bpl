@@ -259,6 +259,8 @@ function {:bvbuiltin "bvlshr"} #Int8^shr(a: #Int8, y: #Int8): #Int8;
 
 type #Map k v = [k]v;
 
+function {:builtin "MapConst"} #Map~const<k, v>(value: v): #Map k v;
+
 function {:inline} #Map~get<k, v>(map: #Map k v, key: k): v {
   map[key]
 }
@@ -268,6 +270,10 @@ function {:inline} #Map~set<k, v>(map: #Map k v, key: k, value: v): #Map k v {
 }
 
 type #Set a = #Map a #Bool;
+
+function {:inline} #Set~empty<a>(): #Set a {
+    #Map~const(false)
+}
 
 function {:inline} #Set~contains<a>(set: #Set a, value: a): #Bool {
   #Map~get(set, value)
@@ -279,6 +285,17 @@ function {:inline} #Set~add<a>(set: #Set a, value: a): #Set a {
 
 function {:inline} #Set~remove<a>(set: #Set a, value: a): #Set a {
   #Map~set(set, value, false)
+}
+
+function {:builtin "MapOr"} #Set~union<a>(lhs: #Set a, rhs: #Set a): #Set a;
+
+function {:builtin "MapAnd"} #Set~intersect<a>(lhs: #Set a, rhs: #Set a): #Set a;
+
+function {:builtin "MapNot"} #Set~complement<a>(set: #Set a): #Set a;
+
+function {:inline} #Set~difference<a>(lhs: #Set a, rhs: #Set a) : #Set a
+{
+  #Set~intersect(lhs, #Set~complement(rhs))
 }
 
 // Impls for cachet's prelude...

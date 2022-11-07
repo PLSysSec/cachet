@@ -187,277 +187,81 @@ impl TypedOrValueReg {
     unsafe fn toTypedRegUnchecked(reg: TypedOrValueReg) -> AnyReg;
 }
 
-struct GeneralRegs;
-
-impl GeneralRegs {
-    var Total: UInt32 = 16_u32;
-
-    var AllMask: UInt16 = ((1_u32 << GeneralRegs::Total) - 1_u32) as UInt16;
-
-    fn NonAllocatableMask() -> UInt16 {
-        (1_u16 << GeneralRegs::code(Reg::Rsp)) |
-        (1_u16 << GeneralRegs::code(Reg::Rbp)) |
-        (1_u16 << GeneralRegs::code(Reg::R11))
-    }
-
-    fn VolatileMask() -> UInt16 {
-        (1_u16 << GeneralRegs::code(Reg::Rax)) |
-        (1_u16 << GeneralRegs::code(Reg::Rdi)) |
-        (1_u16 << GeneralRegs::code(Reg::Rsi)) |
-        (1_u16 << GeneralRegs::code(Reg::Rdx)) |
-        (1_u16 << GeneralRegs::code(Reg::Rcx)) |
-        (1_u16 << GeneralRegs::code(Reg::R8)) |
-        (1_u16 << GeneralRegs::code(Reg::R9)) |
-        (1_u16 << GeneralRegs::code(Reg::R10)) |
-        (1_u16 << GeneralRegs::code(Reg::R11))
-    }
-
-    fn AllocatableMask() -> UInt16 {
-        GeneralRegs::AllMask & ~GeneralRegs::NonAllocatableMask()
-    }
-
-    fn code(reg: Reg) -> UInt8 {
-        if reg == Reg::Rax {
-            return 0_u8;
-        } else if reg == Reg::Rcx {
-            return 1_u8;
-        } else if reg == Reg::Rdx {
-            return 2_u8;
-        } else if reg == Reg::Rbx {
-            return 3_u8;
-        } else if reg == Reg::Rsp {
-            return 4_u8;
-        } else if reg == Reg::Rbp {
-            return 5_u8;
-        } else if reg == Reg::Rsi {
-            return 6_u8;
-        } else if reg == Reg::Rdi {
-            return 7_u8;
-        } else if reg == Reg::R8 {
-            return 8_u8;
-        } else if reg == Reg::R9 {
-            return 9_u8;
-        } else if reg == Reg::R10 {
-            return 10_u8;
-        } else if reg == Reg::R11 {
-            return 11_u8;
-        } else if reg == Reg::R12 {
-            return 12_u8;
-        } else if reg == Reg::R13 {
-            return 13_u8;
-        } else if reg == Reg::R14 {
-            return 14_u8;
-        } else if reg == Reg::R15 {
-            return 15_u8;
-        }
-
-        assert false;
-        return 0_u8;
-    }
-
-    fn mask(reg: Reg) -> UInt16 {
-        1_u16 << GeneralRegs::code(reg)
-    }
-}
-
 struct GeneralRegSet;
 
 impl GeneralRegSet {
-    fn bits(set: GeneralRegSet) -> UInt16;
+    fn newEmpty() -> GeneralRegSet;
+    fn newVolatile() -> GeneralRegSet;
 
-    fn new(bits: UInt16) -> GeneralRegSet {
-        let set = (unsafe { GeneralRegSet::newUnchecked(bits) });
-        assume GeneralRegSet::bits(set) == bits;
-        set
-    }
+    fn newIntersect(lhs: GeneralRegSet, rhs: GeneralRegSet) -> GeneralRegSet;
+    fn newDifference(lhs: GeneralRegSet, rhs: GeneralRegSet) -> GeneralRegSet;
 
-    unsafe fn newUnchecked(bits: UInt16) -> GeneralRegSet;
+    fn isEmpty(set: GeneralRegSet) -> Bool {
+        let mut res = true;
 
-    fn newEmpty() -> GeneralRegSet {
-        GeneralRegSet::new(0_u16)
-    }
-
-    fn newVolatile() -> GeneralRegSet {
-        GeneralRegSet::new(GeneralRegs::AllocatableMask() & GeneralRegs::VolatileMask())
-    }
-
-    fn newDifference(lhs: GeneralRegSet, rhs: GeneralRegSet) -> GeneralRegSet {
-        GeneralRegSet::new(GeneralRegSet::bits(lhs) & ~GeneralRegSet::bits(rhs))
-    }
-
-    fn contains(set: GeneralRegSet, reg: Reg) -> Bool {
-        GeneralRegSet::bits(set) & GeneralRegs::mask(reg) != 0_u16
-    }
-
-    fn add(out newSet: GeneralRegSet, set: GeneralRegSet, reg: Reg) {
-        newSet = GeneralRegSet::new(GeneralRegSet::bits(set) | GeneralRegs::mask(reg));
-    }
-
-    fn take(out newSet: GeneralRegSet, set: GeneralRegSet, reg: Reg) {
-        newSet = GeneralRegSet::new(GeneralRegSet::bits(set) & ~GeneralRegs::mask(reg));
-    }
-
-}
-
-struct FloatRegs;
-
-impl FloatRegs {
-    var Total: UInt32 = 48_u32;
-    var TotalPhys: UInt32 = 16_u32;
-
-    var SpreadSingle: UInt64 = 1_u64;
-    var SpreadDouble: UInt64 = 1_u64 << FloatRegs::TotalPhys;
-    var SpreadSimd128: UInt64 = 1_u64 << (2_u32 * FloatRegs::TotalPhys);
-
-    var SpreadScalar: UInt64 = FloatRegs::SpreadSingle | FloatRegs::SpreadDouble;
-    var SpreadVector: UInt64 = FloatRegs::SpreadSimd128;
-    var Spread: UInt64 = FloatRegs::SpreadScalar | FloatRegs::SpreadVector;
-
-    var AllPhysMask: UInt64 = ((1_u64 << FloatRegs::TotalPhys) - 1_u64);
-    var AllMask: UInt64 = FloatRegs::AllPhysMask * FloatRegs::Spread;
-    var AllSingleMask: UInt64 = FloatRegs::AllPhysMask * FloatRegs::SpreadSingle;
-    var AllDoubleMask: UInt64 = FloatRegs::AllPhysMask * FloatRegs::SpreadDouble;
-    var AllVector128Mask: UInt64 = FloatRegs::AllPhysMask * FloatRegs::SpreadSimd128;
-
-    fn NonAllocatableMask() -> UInt64 {
-        FloatRegs::Spread * (1_u64 << FloatRegs::code(PhyFloatReg::Xmm15))
-    }
-
-    fn VolatileMask() -> UInt64 {
-        FloatRegs::AllMask
-    }
-
-    fn AllocatableMask() -> UInt64 {
-        FloatRegs::AllMask & ~FloatRegs::NonAllocatableMask()
-    }
-
-    fn code(phyReg: PhyFloatReg) -> UInt8 {
-        if phyReg == PhyFloatReg::Xmm0 {
-            return 0_u8;
-        } else if phyReg == PhyFloatReg::Xmm1 {
-            return 1_u8;
-        } else if phyReg == PhyFloatReg::Xmm2 {
-            return 2_u8;
-        } else if phyReg == PhyFloatReg::Xmm3 {
-            return 3_u8;
-        } else if phyReg == PhyFloatReg::Xmm4 {
-            return 4_u8;
-        } else if phyReg == PhyFloatReg::Xmm5 {
-            return 5_u8;
-        } else if phyReg == PhyFloatReg::Xmm6 {
-            return 6_u8;
-        } else if phyReg == PhyFloatReg::Xmm7 {
-            return 7_u8;
-        } else if phyReg == PhyFloatReg::Xmm8 {
-            return 8_u8;
-        } else if phyReg == PhyFloatReg::Xmm9 {
-            return 9_u8;
-        } else if phyReg == PhyFloatReg::Xmm10 {
-            return 10_u8;
-        } else if phyReg == PhyFloatReg::Xmm11 {
-            return 11_u8;
-        } else if phyReg == PhyFloatReg::Xmm12 {
-            return 12_u8;
-        } else if phyReg == PhyFloatReg::Xmm13 {
-            return 13_u8;
-        } else if phyReg == PhyFloatReg::Xmm14 {
-            return 14_u8;
-        } else if phyReg == PhyFloatReg::Xmm15 {
-            return 15_u8;
+        for reg in Reg asc {
+            if GeneralRegSet::contains(set, reg) {
+                res = false;
+            }
         }
 
-        assert false;
-        return 0_u8;
+        res
     }
 
-    fn mask(floatReg: FloatReg) -> UInt64 {
-        if floatReg.type == FloatContentType::Single {
-            return (1_u64 << FloatRegs::code(floatReg.reg)) * FloatRegs::SpreadSingle;
-        } else if floatReg.type == FloatContentType::Double {
-            return (1_u64 << FloatRegs::code(floatReg.reg)) * FloatRegs::SpreadDouble;
-        } else if floatReg.type == FloatContentType::Simd128 {
-            return (1_u64 << FloatRegs::code(floatReg.reg)) * FloatRegs::SpreadSimd128;
-        }
-
-        assert false;
-        return 0_u64;
-    }
+    fn contains(set: GeneralRegSet, reg: Reg) -> Bool;
+    fn add(out newSet: GeneralRegSet, set: GeneralRegSet, reg: Reg);
+    fn take(out newSet: GeneralRegSet, set: GeneralRegSet, reg: Reg);
 }
 
 struct FloatRegSet;
 
 impl FloatRegSet {
-    fn bits(set: FloatRegSet) -> UInt64;
+    fn newEmpty() -> FloatRegSet;
+    fn newVolatile() -> FloatRegSet;
 
-    fn new(bits: UInt64) -> FloatRegSet {
-        let set = (unsafe { FloatRegSet::newUnchecked(bits) });
-        assume FloatRegSet::bits(set) == bits;
-        set
-    }
+    fn newIntersect(lhs: FloatRegSet, rhs: FloatRegSet) -> FloatRegSet;
+    fn newDifference(lhs: FloatRegSet, rhs: FloatRegSet) -> FloatRegSet;
 
-    unsafe fn newUnchecked(bits: UInt64) -> FloatRegSet;
+    fn contains(set: FloatRegSet, floatReg: FloatReg) -> Bool;
+    fn add(out newSet: FloatRegSet, set: FloatRegSet, floatReg: FloatReg);
+    fn take(out newSet: FloatRegSet, set: FloatRegSet, floatReg: FloatReg);
 
-    fn newEmpty() -> FloatRegSet {
-        FloatRegSet::new(0_u64)
-    }
-
-    fn newVolatile() -> FloatRegSet {
-        FloatRegSet::new(FloatRegs::AllocatableMask() & FloatRegs::VolatileMask())
-    }
-
-    fn newIntersect(lhs: FloatRegSet, rhs: FloatRegSet) -> FloatRegSet {
-        FloatRegSet::new(FloatRegSet::bits(lhs) & FloatRegSet::bits(rhs))
-    }
-
-    fn newDifference(lhs: FloatRegSet, rhs: FloatRegSet) -> FloatRegSet {
-        FloatRegSet::new(FloatRegSet::bits(lhs) & ~FloatRegSet::bits(rhs))
-    }
-
-    fn contains(set: FloatRegSet, floatReg: FloatReg) -> Bool {
-        FloatRegSet::bits(set) & FloatRegs::mask(floatReg) != 0_u16
-    }
-
-    fn add(out newSet: FloatRegSet, set: FloatRegSet, floatReg: FloatReg) {
-        newSet = FloatRegSet::new(FloatRegSet::bits(set) | FloatRegs::mask(floatReg));
-    }
-
-    fn take(out newSet: FloatRegSet, set: FloatRegSet, floatReg: FloatReg) {
-        newSet = FloatRegSet::new(FloatRegSet::bits(set) & ~FloatRegs::mask(floatReg));
-    }
-
-    #[refined]
-    fn reducedForPush(set: FloatRegSet) -> FloatRegSet {
-        let mut bits = FloatRegSet::bits(set);
-
-        // TODO: ENABLE_WASM_SIMD
-
-        bits = bits & ~(bits >> (1_u64 * FloatRegs::TotalPhys));
-        bits = bits & ~(bits >> (2_u64 * FloatRegs::TotalPhys));
-        bits = bits & ~(bits >> (3_u64 * FloatRegs::TotalPhys));
-
-        FloatRegSet::new(bits)
-    }
-
-    fn pushSizeInBytes(set: FloatRegSet) -> UInt32 {
-        let mut size = 0_u32;
-
-        let reducedSet = FloatRegSet::reducedForPush(set);
-
-        for phyReg in PhyFloatReg desc {
+    fn isEmpty(set: FloatRegSet) -> Bool {
+        let mut res = true;
+        for phyReg in PhyFloatReg asc {
             let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
             let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
             let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
 
-            if FloatRegSet::contains(reducedSet, simdReg) {
-                size = size + 16_u32
-            } else if FloatRegSet::contains(reducedSet, doubleReg) {
-                size = size + 8_u32
-            } else if FloatRegSet::contains(reducedSet, singleReg) {
-                size = size + 4_u32
+            if FloatRegSet::contains(set, singleReg) || FloatRegSet::contains(set, doubleReg) || FloatRegSet::contains(set, simdReg) {
+                res = false;
             }
         }
 
-        size
+        res
+    }
+
+    #[refined]
+    fn reducedForPush(set: FloatRegSet) -> FloatRegSet {
+        if FloatRegSet::isEmpty(set) {
+            return set;
+        }
+
+        let mut newSet = set;
+        for phyReg in PhyFloatReg asc {
+            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+
+            if FloatRegSet::contains(newSet, simdReg) {
+                FloatRegSet::take(out newSet, newSet, doubleReg);
+                FloatRegSet::take(out newSet, newSet, singleReg);
+            } else if FloatRegSet::contains(newSet, doubleReg) {
+                FloatRegSet::take(out newSet, newSet, singleReg);
+            }
+        }
+
+        newSet
     }
 }
 
@@ -1014,84 +818,94 @@ ir MASM {
 
     op PushRegsInMask(set: LiveRegSet) {
         let gprs = LiveRegSet::gprs(set);
-        let fpus = FloatRegSet::reducedForPush(LiveRegSet::fpus(set));
+        let fpus = LiveRegSet::fpus(set);
 
-        let mut gprsSize = 0_u64;
+        //if !GeneralRegSet::isEmpty(gprs) {
+            let mut gprsSize = 0_u64;
 
-        for reg in Reg desc {
-            if GeneralRegSet::contains(gprs, reg) {
-                gprsSize = gprsSize + 8_u64;
-                MASM::stackPushLiveGeneralReg(reg);
+            for reg in Reg desc {
+                if GeneralRegSet::contains(gprs, reg) {
+                    gprsSize = gprsSize + 8_u64;
+                    MASM::stackPushLiveGeneralReg(reg);
+                }
             }
-        }
 
-        let gprsSaved = SavedGeneralRegs::new(gprs, gprsSize);
-        let gprsStackData = StackData::fromSavedGeneralRegs(gprsSaved);
-        MASM::stackPush(gprsStackData);
+            //let gprsSaved = SavedGeneralRegs::new(gprs, gprsSize);
+            //let gprsStackData = StackData::fromSavedGeneralRegs(gprsSaved);
+            //MASM::stackPush(gprsStackData);
+        //}
 
-        let mut fpusSize = 0_u64;
+        //if !FloatRegSet::isEmpty(fpus) {
+            let mut fpusSize = 0_u64;
 
-        for phyReg in PhyFloatReg desc {
-            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
-            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
-            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+            for phyReg in PhyFloatReg desc {
+                let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+                let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+                let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
 
-            if FloatRegSet::contains(fpus, simdReg) {
-                gprsSize = gprsSize + 16_u64;
-                MASM::stackPushLiveFloatReg(simdReg);
-            } else if FloatRegSet::contains(fpus, doubleReg) {
-                gprsSize = gprsSize + 8_u64;
-                MASM::stackPushLiveFloatReg(doubleReg);
-            } else if FloatRegSet::contains(fpus, singleReg) {
-                gprsSize = gprsSize + 4_u64;
-                MASM::stackPushLiveFloatReg(singleReg);
+                if FloatRegSet::contains(fpus, simdReg) {
+                    fpusSize = fpusSize + 16_u64;
+                    MASM::stackPushLiveFloatReg(simdReg);
+                } else if FloatRegSet::contains(fpus, doubleReg) {
+                    fpusSize = fpusSize + 8_u64;
+                    MASM::stackPushLiveFloatReg(doubleReg);
+                } else if FloatRegSet::contains(fpus, singleReg) {
+                    fpusSize = fpusSize + 4_u64;
+                    MASM::stackPushLiveFloatReg(singleReg);
+                }
             }
-        }
 
-        let fpusSaved = SavedFloatRegs::new(fpus, fpusSize);
-        let fpusStackData = StackData::fromSavedFloatRegs(fpusSaved);
-        MASM::stackPush(fpusStackData);
+            //let fpusSaved = SavedFloatRegs::new(fpus, fpusSize);
+            //let fpusStackData = StackData::fromSavedFloatRegs(fpusSaved);
+            //MASM::stackPush(fpusStackData);
+        //}
     }
 
     op PopRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
         let fpus = FloatRegSet::reducedForPush(LiveRegSet::fpus(set)); 
         let gprs = LiveRegSet::gprs(set);
 
-        let fpusIgnore = LiveRegSet::fpus(ignore);
-        let gprsIgnore = LiveRegSet::gprs(ignore);
 
-        let fpusPop = FloatRegSet::newDifference(fpus, fpusIgnore);
-        let gprsPop = GeneralRegSet::newDifference(gprs, gprsIgnore);
+        //if !FloatRegSet::isEmpty(fpus) {
+            //let fpusStackData = MASM::stackPop();
+            //let fpusSaved = StackData::toSavedFloatRegs(fpusStackData);
 
-        let fpusStackData = MASM::stackPop();
-        let fpusSaved = StackData::toSavedFloatRegs(fpusStackData);
+            //assert fpus == fpusSaved.set;
 
-        assert fpus == fpusSaved.set;
+            let fpusIgnore = LiveRegSet::fpus(ignore);
+            let fpusPop = FloatRegSet::newDifference(fpus, fpusIgnore);
 
-        for phyReg in PhyFloatReg desc {
-            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
-            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
-            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+            for phyReg in PhyFloatReg desc {
+                let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+                let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+                let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
 
-            if FloatRegSet::contains(fpusPop, simdReg) {
-                MASM::stackPopLiveFloatReg(simdReg);
-            } else if FloatRegSet::contains(fpusPop, doubleReg) {
-                MASM::stackPopLiveFloatReg(doubleReg);
-            } else if FloatRegSet::contains(fpusPop, singleReg) {
-                MASM::stackPopLiveFloatReg(singleReg);
+                if FloatRegSet::contains(fpusPop, simdReg) {
+                        MASM::stackPopLiveFloatReg(simdReg);
+                } else if FloatRegSet::contains(fpusPop, doubleReg) {
+                        MASM::stackPopLiveFloatReg(doubleReg);
+                } else if FloatRegSet::contains(fpusPop, singleReg) {
+                        MASM::stackPopLiveFloatReg(singleReg);
+                }
             }
-        }
+        //}
 
-        let gprsStackData = MASM::stackPop();
-        let gprsSaved = StackData::toSavedGeneralRegs(gprsStackData);
+        //if !GeneralRegSet::isEmpty(gprs) {
+            //let gprsStackData = MASM::stackPop();
+            //let gprsSaved = StackData::toSavedGeneralRegs(gprsStackData);
 
-        assert gprs == gprsSaved.set;
+            //assert gprs == gprsSaved.set;
 
-        for reg in Reg desc {
-            if GeneralRegSet::contains(gprsPop, reg) {
-                MASM::stackPopLiveGeneralReg(reg);
+
+            let gprsIgnore = LiveRegSet::gprs(ignore);
+            let gprsPop = GeneralRegSet::newDifference(gprs, gprsIgnore);
+
+            for reg in Reg desc {
+                if GeneralRegSet::contains(gprsPop, reg) {
+                    MASM::stackPopLiveGeneralReg(reg);
+                }
             }
-        }
+        //}
     }
 
     op TagValue(valTy: ValueType, payload: Reg, dest: ValueReg) {
