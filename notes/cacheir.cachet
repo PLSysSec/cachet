@@ -96,6 +96,10 @@ impl ValueId {
     fn toNumberId(id: ValueId) -> NumberId {
         unsafe { id as NumberId }
     }
+
+    fn toStringId(id: ValueId) -> StringId {
+        unsafe { (id as OperandId) as StringId }
+    }
 }
 
 struct ObjectId <: OperandId;
@@ -286,6 +290,7 @@ impl TypedId {
 struct ValueField;
 struct ObjectField;
 struct Int32Field;
+struct StringField;
 struct ShapeField;
 struct ClassField;
 
@@ -621,6 +626,24 @@ ir CacheIR emits MASM {
         emit MASM::Jump(failure);
 
         bind done;
+    }
+
+    op GuardSpecificAtom(strId: StringId, stringField: StringField) {
+        let strReg = CacheIR::useStringReg(strId);
+        let scratchReg = CacheIR::allocateReg();
+
+        let atom = String::asAtom(CacheIR::readStringField(stringField));
+
+        CacheIR::addFailurePath(out label failure);
+
+        let volatileRegs = LiveRegSet::new(
+            GeneralRegSet::newVolatile(), CacheIR::liveVolatileFloatRegs()
+        );
+        LiveRegSet::takeReg(out volatileRegs, volatileRegs, scratchReg);
+
+        emit MASM::GuardSpecificAtom(strReg, atom, scratchReg, volatileRegs, failure);
+
+        CacheIR::releaseReg(scratchReg);
     }
 
     op PushPopRegs() {
@@ -1528,6 +1551,7 @@ ir CacheIR emits MASM {
     fn readValueField(valueField: ValueField) -> Value;
     fn readObjectField(objectField: ObjectField) -> Object;
     fn readInt32Field(int32Field: Int32Field) -> Int32;
+    fn readStringField(stringField: StringField) -> String;
     fn readShapeField(shapeField: ShapeField) -> Shape;
     fn readClassField(classField: ClassField) -> Class;
 

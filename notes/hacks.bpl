@@ -376,8 +376,22 @@ procedure #FloatRegSet~take($set: #FloatRegSet, $reg: #FloatReg)
     call newSet := #FloatRegSet~new($rawSet);
 }
 
+var #MASM~hasPushedRegs: #Bool;
+
 var #MASM~pushedLiveGeneralRegs: #Map #Reg #RegData;
 var #MASM~pushedLiveFloatRegs: #Map #PhyFloatReg #FloatData;
+
+procedure #MASM~setHasPushedRegs()
+{
+    assert #MASM~hasPushedRegs == false;
+    #MASM~hasPushedRegs := true;
+}
+
+procedure #MASM~unsetHasPushedRegs()
+{
+    assert #MASM~hasPushedRegs == true;
+    #MASM~hasPushedRegs := false;
+}
 
 procedure #MASM~stackPushLiveGeneralReg($reg: #Reg)
 {
@@ -449,6 +463,24 @@ procedure #MASM~stackLoad($idx: #UInt64)
     returns (ret: #StackData)
 {
     ret := #Map~get(#MASM~stack, $idx);
+}
+
+procedure #ABIFunction~clobberVolatileRegs()
+{
+    var $value: #Value;
+    var $data: #RegData;
+
+    call $value := #Value~getUndefined();
+    call $data := #RegData~fromValue($value);
+
+    call #MASM~setData(#Reg^Variant~Rax(), $data);
+    call #MASM~setData(#Reg^Variant~Rcx(), $data);
+    call #MASM~setData(#Reg^Variant~Rdx(), $data);
+    call #MASM~setData(#Reg^Variant~Rsi(), $data);
+    call #MASM~setData(#Reg^Variant~Rdi(), $data);
+    call #MASM~setData(#Reg^Variant~R8(), $data);
+    call #MASM~setData(#Reg^Variant~R9(), $data);
+    call #MASM~setData(#Reg^Variant~R10(), $data);
 }
 
 var #CacheIR~knownOperandIds: #Set #OperandId;
@@ -728,6 +760,7 @@ procedure #initRegState()
   call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
 
   call #CacheIR~liveFloatRegSetRaw := #FloatRegSet~newEmpty();
+  #MASM~hasPushedRegs := false;
 }
 
 procedure #availableReg()

@@ -3,6 +3,8 @@
 struct Heap;
 var mut heap: Heap;
 
+fn EqualStringsHelperPure(str1: String, str2: String) -> Bool;
+
 enum RegDataType {
     Value,
     UnboxedValue,
@@ -906,6 +908,19 @@ impl Class {
 }
 
 struct String;
+
+impl String {
+    fn isAtom(string: String) -> Bool;
+
+    fn asAtom(string: String) -> Atom {
+        assert String::isAtom(string);
+        (unsafe { string as Atom })
+    }
+
+    fn length(string: String) -> UInt64;
+}
+
+struct Atom <: String;
 
 struct Symbol;
 
