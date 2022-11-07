@@ -179,7 +179,7 @@ procedure #MASM~setFloatData($phyReg: #PhyFloatReg, $data: #FloatData)
 }
 
 procedure #MASM~getDouble($floatReg: #FloatReg)
-  returns (ret: #Double)
+  returns (ret: #Float64)
 {
     var tmp'0: #FloatData;
 
@@ -188,7 +188,7 @@ procedure #MASM~getDouble($floatReg: #FloatReg)
     call ret := #FloatData~toDouble(tmp'0);
 }
 
-procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double)
+procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Float64)
 {
     var tmp'0: #FloatData;
 
@@ -713,44 +713,10 @@ procedure #initRegState()
   var stackData: #StackData;
 
   // initially all registers are unallocated
-  assume (
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsp()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbp()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R11()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
-  );
+  #CacheIR~allocatedRegs := #Set~empty(); 
 
   // initially all registers are unallocated
-  assume (
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm0()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm1()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm2()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm3()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm4()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm5()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm6()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm7()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm8()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm9()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm10()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm11()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm12()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm13()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm14()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm15())
-  );
+  #CacheIR~allocatedFloatRegs := #Set~empty(); 
 
   call value := #Value~fromInt32(0bv32);
   call regData := #RegData~fromUnboxedValue(value);
@@ -763,10 +729,8 @@ procedure #initRegState()
   #MASM~hasPushedRegs := false;
 }
 
-procedure #availableReg()
-  returns (ret: #Reg)
+procedure #availableReg($reg: #Reg)
 {
-  var $reg: #Reg;
   var tmp'0: #Bool;
 
   // ensure that we have enough registers by
@@ -788,21 +752,8 @@ procedure #availableReg()
     !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
   );
 
-  $reg := #CacheIR~allocateRegUnchecked(#CacheIR~allocatedRegs);
-
-  // rsp, rbp and r11 are not allocatable registers
-  // NOTE: rbp is allocatable in the latest versions of Firefox
-  // but is not in the cachet fork
-  assume (
-    $reg != #Reg^Variant~Rsp() &&
-    $reg != #Reg^Variant~Rbp() &&
-    $reg != #Reg^Variant~R11()
-  );
-
   tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
   assume !tmp'0;
-
-  ret := $reg;
 }
 
 procedure #addLiveFloatReg($floatReg: #FloatReg)

@@ -334,41 +334,41 @@ struct FloatData;
 impl FloatData {
     fn contentType(data: FloatData) -> FloatContentType;
 
-    fn fromDouble(double: Double) -> FloatData {
+    fn fromDouble(double: Float64) -> FloatData {
         let data = (unsafe { FloatData::fromDoubleUnchecked(double) });
         assume FloatData::contentType(data) == FloatContentType::Double;
         assume (unsafe { FloatData::toDoubleUnchecked(data) }) == double;
         data
     }
 
-    unsafe fn fromDoubleUnchecked(double: Double) -> FloatData;
+    unsafe fn fromDoubleUnchecked(double: Float64) -> FloatData;
 
-    fn toDouble(data: FloatData) -> Double {
+    fn toDouble(data: FloatData) -> Float64 {
         assert FloatData::contentType(data) == FloatContentType::Double;
         let double = (unsafe { FloatData::toDoubleUnchecked(data) });
         assume (unsafe { FloatData::fromDoubleUnchecked(double) }) == data;
         double
     }
 
-    unsafe fn toDoubleUnchecked(data: FloatData) -> Double;
+    unsafe fn toDoubleUnchecked(data: FloatData) -> Float64;
 
-    fn fromFloat(float: Float) -> FloatData {
+    fn fromFloat(float: Float32) -> FloatData {
         let data = (unsafe { FloatData::fromFloatUnchecked(float) });
         assume FloatData::contentType(data) == FloatContentType::Single;
         assume (unsafe { FloatData::toFloatUnchecked(data) }) == float;
         data
     }
 
-    unsafe fn fromFloatUnchecked(float: Float) -> FloatData;
+    unsafe fn fromFloatUnchecked(float: Float32) -> FloatData;
 
-    fn toFloat(data: FloatData) -> Float {
+    fn toFloat(data: FloatData) -> Float32 {
         assert FloatData::contentType(data) == FloatContentType::Single;
         let float = (unsafe { FloatData::toFloatUnchecked(data) });
         assume (unsafe { FloatData::fromFloatUnchecked(float) }) == data;
         float
     }
 
-    unsafe fn toFloatUnchecked(data: FloatData) -> Float;
+    unsafe fn toFloatUnchecked(data: FloatData) -> Float32;
 
     fn fromSimd128(simd128: Simd128) -> FloatData {
         let data = (unsafe { FloatData::fromSimd128Unchecked(simd128) });
@@ -915,7 +915,7 @@ ir MASM {
             MASM::setDouble(destReg, double);
         } else if valTy == ValueType::Int32 {
             let int32 = Value::toInt32(value);
-            let double = int32 as Double;
+            let double = Float64::fromInt32(int32);
             MASM::setDouble(destReg, double);
         } else {
             goto failure;
@@ -1023,23 +1023,23 @@ ir MASM {
         }
 
         let int32 = Value::toInt32(value);
-        let double = int32 as Double;
+        let double = Float64::fromInt32(int32);
         MASM::setValue(valueReg, Value::fromDouble(double));
     }
 
     op ConvertDoubleToInt32(srcReg: FloatReg, destReg: Reg, label failure: MASM, negativeZeroCheck: Bool) {
         let double = MASM::getDouble(srcReg);
         
-        if negativeZeroCheck && double == -0.0 {
+        if negativeZeroCheck && Float64::isNegativeZero(double) {
             goto failure; 
         }
 
-        let int32 = double as Int32;
-        let doubleTrunc = int32 as Double;
+        let int32 = Float64::toInt32(double);
+        let doubleTrunc = Float64::fromInt32(int32);
 
         MASM::setDouble(FloatReg::doubleScratchReg(), doubleTrunc);
 
-        if Double::is_nan(double) || Double::is_nan(doubleTrunc) || double != doubleTrunc {
+        if Float64::isNan(double) || Float64::isNan(doubleTrunc) || double != doubleTrunc {
             goto failure;
         }
 
@@ -1161,7 +1161,7 @@ ir MASM {
 
     op ConvertInt32ToDouble(srcReg: Reg, destReg: FloatReg) {
         let int32 = MASM::getInt32(srcReg);
-        let double = int32 as Double;
+        let double = Float64::fromInt32(int32);
         MASM::setDouble(destReg, double);
     }
 
@@ -2069,7 +2069,7 @@ ir MASM {
     fn loadInt32OrDouble(value: Value, dstReg: FloatReg) {
         if Value::isInt32(value) {
             let int32 = Value::toInt32(value);
-            let double = int32 as Double;
+            let double = Float64::fromInt32(int32);
             MASM::setDouble(dstReg, double);
         } else if Value::isDouble(value) {
             let double = Value::toDouble(value);
@@ -2111,8 +2111,8 @@ ir MASM {
     fn getBigInt(reg: Reg) -> BigInt;
     fn setBigInt(reg: Reg, bigInt: BigInt);
 
-    fn getDouble(floatReg: FloatReg) -> Double;
-    fn setDouble(floatReg: FloatReg, double: Double);
+    fn getDouble(floatReg: FloatReg) -> Float64;
+    fn setDouble(floatReg: FloatReg, double: Float64);
 
     fn stackPush(stackData: StackData);
     fn stackPop() -> StackData;

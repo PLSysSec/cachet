@@ -3,7 +3,7 @@ import "./masm.cachet"
 import "./js.cachet"
 
 fn initRegState();
-fn availableReg() -> Reg;
+fn availableReg(reg: Reg);
 
 fn addLiveFloatReg(floatReg: FloatReg);
 
@@ -74,7 +74,7 @@ fn initValueOutput() {
     // TODO: assume that outputReg is not one of the registers
     // allocated for the inputs.
     assume TypedOrValueReg::hasValue(CacheIR::outputReg);
-    assume ValueReg::scratchReg(TypedOrValueReg::toValueReg(CacheIR::outputReg)) == availableReg();
+    availableReg(ValueReg::scratchReg(TypedOrValueReg::toValueReg(CacheIR::outputReg)));
 }
 
 fn initTypedOutput(type: MIRType) {
@@ -84,5 +84,5 @@ fn initTypedOutput(type: MIRType) {
     assume TypedOrValueReg::type(CacheIR::outputReg) == type;
     let anyReg = TypedOrValueReg::toTypedReg(CacheIR::outputReg);
     assume !AnyReg::isFloat(anyReg);
-    assume AnyReg::toReg(anyReg) == availableReg();
+    availableReg(AnyReg::toReg(anyReg));
 }
