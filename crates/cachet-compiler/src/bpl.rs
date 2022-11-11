@@ -2306,9 +2306,9 @@ lazy_static! {
             (Ident::from("MASM").nest("stackPopLiveGeneralReg".into()), Proc),
             (Ident::from("MASM").nest("stackPushLiveFloatReg".into()), Proc),
             (Ident::from("MASM").nest("stackPopLiveFloatReg".into()), Proc),
-            (Ident::from("CacheIR").nest("hasAvailableReg".into()), Fn),
-            (Ident::from("CacheIR").nest("isAllocatedValueReg".into()), Fn),
-            (Ident::from("CacheIR").nest("isAllocatedReg".into()), Fn),
+            (Ident::from("CacheIR").nest("hasAvailableReg".into()), Proc),
+            (Ident::from("CacheIR").nest("isAllocatedValueReg".into()), Proc),
+            (Ident::from("CacheIR").nest("isAllocatedReg".into()), Proc),
             (Ident::from("CacheIR").nest("allocateValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("releaseValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("allocateReg".into()), Proc),
@@ -2323,8 +2323,6 @@ lazy_static! {
             (Ident::from("initRegState").into(), Proc),
             (Ident::from("initOperandId").into(), Proc),
             (Ident::from("initInputValueId").into(), Proc),
-            (Ident::from("initValueOutput").into(), Proc),
-            (Ident::from("initTypedOutput").into(), Proc),
             (Ident::from("addLiveFloatReg").into(), Proc),
         ])
     };

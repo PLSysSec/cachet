@@ -396,15 +396,19 @@ procedure #CacheIR~allocateReg()
   modifies #CacheIR~allocatedRegs;
 {
   var tmp'0: #Bool;
+  var tmp'1: #Bool;
+  var tmp'2: #Bool;
 
-  assert #CacheIR~hasAvailableReg();
+  call tmp'0 := #CacheIR~hasAvailableReg();
+  assert tmp'0;
 
   ret := #CacheIR~allocateRegUnchecked(#CacheIR~allocatedRegs);
 
-  call tmp'0 := #CacheIR~isAllocatableReg(ret);
-  assume tmp'0;
+  call tmp'1 := #CacheIR~isAllocatableReg(ret);
+  assume tmp'1;
 
-  assume !#CacheIR~isAllocatedReg(ret);
+  call tmp'2 := #CacheIR~isAllocatedReg(ret);
+  assume !tmp'2;
 
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, ret);
 }
@@ -485,7 +489,7 @@ procedure #initRegState()
 
   call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
 
-  call #CacheIR~liveFloatRegSetRaw := #FloatRegSet~empty();
+  call #CacheIR~liveFloatRegSet := #FloatRegSet~empty();
   #MASM~hasPushedRegs := false;
 }
 
@@ -522,37 +526,40 @@ procedure #addLiveFloatReg($floatReg: #FloatReg)
   var data'0: #FloatData;
 
   havoc data'0;
-  call #CacheIR~liveFloatRegSetRaw := #FloatRegSet~add(#CacheIR~liveFloatRegSetRaw, $floatReg);
+  call #CacheIR~liveFloatRegSet := #FloatRegSet~add(#CacheIR~liveFloatRegSet, $floatReg);
 
   assume #FloatReg^field~type($floatReg) == #FloatData~contentType(data'0);
   call #MASM~setFloatData(#FloatReg^field~reg($floatReg), data'0);
 }
 
-function {:inline} #CacheIR~hasAvailableReg(): #Bool
+procedure {:inline 1} #CacheIR~hasAvailableReg()
+  returns (ret: #Bool)
 {
   // True if there is at least one allocatable register that is not already
   // allocated.
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) ||
-  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
+  ret := !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) ||
+    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15());
 }
 
-function {:inline} #CacheIR~isAllocatedValueReg($valueReg: #ValueReg): #Bool
+procedure {:inline 1} #CacheIR~isAllocatedValueReg($valueReg: #ValueReg)
+  returns (ret: #Bool)
 {
-  #CacheIR~isAllocatedReg($valueReg)
+  call ret := #CacheIR~isAllocatedReg($valueReg);
 }
 
-function {:inline} #CacheIR~isAllocatedReg($reg: #Reg): #Bool
+procedure {:inline 1} #CacheIR~isAllocatedReg($reg: #Reg)
+  returns (ret: #Bool)
 {
-  #Set~contains(#CacheIR~allocatedRegs, ret)
+  ret := #Set~contains(#CacheIR~allocatedRegs, $reg);
 }
