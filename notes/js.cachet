@@ -12,6 +12,7 @@ enum RegDataType {
     ValueTag,
     TaggedProto,
     Class,
+    StackIndex,
 }
 
 struct RegData;
@@ -195,6 +196,27 @@ impl RegData {
 
     unsafe fn toClassUnchecked(data: RegData) -> Class;
 
+    fn isStackIndex(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::StackIndex
+    }
+
+    fn fromStackIndex(index: UInt64) -> RegData {
+        let data = (unsafe { RegData::fromStackIndexUnchecked(index) });
+        assume RegData::isStackIndex(data);
+        assume (unsafe { RegData::toStackIndexUnchecked(data) }) == index;
+        data
+    }
+
+    unsafe fn fromStackIndexUnchecked(index: UInt64) -> RegData;
+
+    fn toStackIndex(data: RegData) -> UInt64 {
+        assert RegData::isStackIndex(data);
+        let index = (unsafe { RegData::toStackIndexUnchecked(data) });
+        assume (unsafe { RegData::fromStackIndexUnchecked(index) }) == data;
+        index
+    }
+
+    unsafe fn toStackIndexUnchecked(data: RegData) -> UInt64;
 
     fn readData(data: RegData, offset: Int64) -> RegData {
         if RegData::isUnboxedValue(data) {
@@ -243,6 +265,49 @@ enum MIRType {
     StackResults,
     Shape,
 }
+
+struct Float32;
+struct Float64;
+
+impl Float64 {
+    fn isNegativeZero(float64: Float64) -> Bool;
+    fn isNaN(float64: Float64) -> Bool;
+
+    fn isSafeInt32(float64: Float64) -> Bool {
+       let result = unsafe { Float64::isSafeInt32Unchecked(float64) };
+       if result {
+           assume !Float64::isNegativeZero(float64);
+           assume !Float64::isNaN(float64);
+       }
+       result
+    }
+
+    unsafe fn isSafeInt32Unchecked(float64: Float64) -> Bool;
+
+    fn fromInt32(int32: Int32) -> Float64 {
+       let float64 = (unsafe { Float64::fromInt32Unchecked(int32) });
+       assume (unsafe { Float64::toInt32Unchecked(float64) }) == int32;
+       assume Float64::isSafeInt32(float64);
+
+       float64
+    }
+
+    unsafe fn fromInt32Unchecked(int32: Int32) -> Float64;
+
+    fn toInt32(float64: Float64) -> Int32 {
+        let int32 = (unsafe { Float64::toInt32Unchecked(float64) });
+
+        if Float64::isSafeInt32(float64) {
+            assume (unsafe { Float64::fromInt32Unchecked(int32) }) == float64;
+        }
+
+        int32
+    }
+
+    unsafe fn toInt32Unchecked(float64: Float64) -> Int32;
+}
+
+struct Simd128;
 
 enum ValueType {
   Double,
@@ -300,23 +365,23 @@ impl Value {
         Value::typeOf(value) == ValueType::Double
     }
 
-    fn fromDouble(double: Double) -> Value {
+    fn fromDouble(double: Float64) -> Value {
         let value = (unsafe { Value::fromDoubleUnchecked(double) });
         assume Value::isDouble(value);
         assume (unsafe { Value::toDoubleUnchecked(value) }) == double;
         value
     }
 
-    unsafe fn fromDoubleUnchecked(value: Double) -> Value;
+    unsafe fn fromDoubleUnchecked(value: Float64) -> Value;
 
-    fn toDouble(value: Value) -> Double {
+    fn toDouble(value: Value) -> Float64 {
         assert Value::isDouble(value);
         let double = (unsafe { Value::toDoubleUnchecked(value) });
         assume (unsafe { Value::fromDoubleUnchecked(double) }) == value;
         double
     }
 
-    unsafe fn toDoubleUnchecked(value: Value) -> Double;
+    unsafe fn toDoubleUnchecked(value: Value) -> Float64;
 
     fn isInt32(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Int32
@@ -344,10 +409,10 @@ impl Value {
         Value::isDouble(value) || Value::isInt32(value)
     }
 
-    fn toNumber(value: Value) -> Double {
+    fn toNumber(value: Value) -> Float64 {
         assert Value::isNumber(value);
         if Value::isInt32(value) {
-            return Value::toInt32(value) as Double;
+            return Float64::fromInt32(Value::toInt32(value));
         }
         Value::toDouble(value)
     }
@@ -895,6 +960,21 @@ impl Class {
 }
 
 struct String;
+
+impl String {
+    fn isAtom(string: String) -> Bool;
+
+    fn asAtom(string: String) -> Atom {
+        assert String::isAtom(string);
+        (unsafe { string as Atom })
+    }
+
+    fn length(string: String) -> UInt64;
+}
+
+struct Atom <: String;
+
+fn EqualStringsHelperPure(str1: String, str2: String) -> Bool;
 
 struct Symbol;
 

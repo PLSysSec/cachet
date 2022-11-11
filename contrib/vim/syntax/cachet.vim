@@ -13,6 +13,7 @@ syn keyword cachetCheck assert assume
 syn keyword cachetKeyword import var let out label bind return
 syn keyword cachetStorage mut
 syn keyword cachetConditional if else
+syn keyword cachetLoop for in asc desc
 syn keyword cachetControlFlow goto
 syn keyword cachetEmit emit
 
@@ -56,6 +57,7 @@ hi def link cachetCheck Exception
 hi def link cachetKeyword Keyword
 hi def link cachetStorage StorageClass
 hi def link cachetConditional Conditional
+hi def link cachetLoop Conditional
 hi def link cachetControlFlow Keyword
 hi def link cachetEmit Keyword
 

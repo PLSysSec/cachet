@@ -21,6 +21,7 @@ pub type Body = normalizer::Body<Void>;
 pub type Stmt = normalizer::Stmt<Void>;
 pub type LetStmt = normalizer::LetStmt<Void>;
 pub type IfStmt = normalizer::IfStmt<Void>;
+pub type ForInStmt = normalizer::ForInStmt<Void>;
 pub type ElseClause = normalizer::ElseClause<Void>;
 pub type CheckStmt = normalizer::CheckStmt<Void>;
 pub type AssignStmt = normalizer::AssignStmt<Void>;

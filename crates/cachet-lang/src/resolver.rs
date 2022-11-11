@@ -866,8 +866,8 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
 
     /// This is deliberately *not* named `resolve_block`, to force explicit
     /// disambiguation between calls to `resolve_body_block` and
-    /// `resolve_nested_block`. `resolve_block_impl` should not be called
-    /// directly.
+    /// `resolve_nested_block`. `resolve_block_impl` should not generally be
+    /// called directly.
     fn resolve_block_impl(&mut self, block: parser::Block) -> Option<Block> {
         let stmts: Option<_> = collect_eager(block.stmts.into_iter().filter_map(|stmt| {
             let stmt_span = stmt.span;
@@ -914,6 +914,9 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 .map(Stmt::from)
                 .map(Some),
             parser::Stmt::If(if_stmt) => self.resolve_if_stmt(if_stmt).map(Stmt::from).map(Some),
+            parser::Stmt::ForIn(for_in_stmt) => {
+                self.resolve_for_in_stmt(for_in_stmt).map(Stmt::from).map(Some)
+            }
             parser::Stmt::Check(check_stmt) => self
                 .resolve_check_stmt(check_stmt)
                 .map(Stmt::from)
@@ -971,6 +974,8 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
 
         let else_ = match if_stmt.else_ {
             Some(parser::ElseClause::ElseIf(elseif_)) => self
+                // TODO(spinda): What's this doing? Should we really be
+                // recursing here?
                 .resolve_nested_elseif(elseif_)
                 .map(ElseClause::ElseIf)
                 .map(Some),
@@ -985,6 +990,34 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             cond: cond?,
             then: then?,
             else_: else_?,
+        })
+    }
+
+    fn resolve_for_in_stmt(&mut self, for_in_stmt: parser::ForInStmt) -> Option<ForInStmt> {
+        // Lookup the target type that we are iterating over.
+        let target_type_index = self
+            .lookup_type_scoped(for_in_stmt.target)
+            .found(&mut self.errors);
+
+        // Create a local variable with the type of the target type that we are
+        // iterating over, scoped to the loop body.
+        let mut scoped_resolver = self.recurse();
+        let loop_var = LocalVar {
+            ident: for_in_stmt.var,
+            type_: target_type_index,
+            is_mut: false,
+        };
+        let loop_var_ident = loop_var.ident;
+        let loop_var_index = scoped_resolver.locals.local_vars.push_and_get_key(loop_var);
+        scoped_resolver.register_scoped(loop_var_ident, loop_var_index.into());
+
+        let body = scoped_resolver.resolve_block_impl(for_in_stmt.body);
+
+        Some(ForInStmt {
+            var: loop_var_index,
+            target: target_type_index?,
+            order: for_in_stmt.order,
+            body: body?,
         })
     }
 

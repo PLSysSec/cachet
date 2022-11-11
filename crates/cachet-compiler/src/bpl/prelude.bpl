@@ -239,7 +239,7 @@ function {:bvbuiltin "bvule"}      #UInt64^lte   (a: #UInt64, y: #UInt64): #Bool
 function {:bvbuiltin "bvuge"}      #UInt64^gte   (a: #UInt64, y: #UInt64): #Bool;
 function {:bvbuiltin "bvult"}      #UInt64^lt    (a: #UInt64, y: #UInt64): #Bool;
 function {:bvbuiltin "bvugt"}      #UInt64^gt    (a: #UInt64, y: #UInt64): #Bool;
-function {:bvbuiltin "bvnot"}      #UInt64^bitNot(x: #UInt32):             #UInt32;
+function {:bvbuiltin "bvnot"}      #UInt64^bitNot(x: #UInt64):             #UInt32;
 function {:bvbuiltin "bvor"}       #UInt64^bitOr (a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvand"}      #UInt64^bitAnd(a: #UInt64, y: #UInt64): #UInt64;
 function {:bvbuiltin "bvxor"}      #UInt64^xor   (a: #UInt64, y: #UInt64): #UInt64;
@@ -259,6 +259,8 @@ function {:bvbuiltin "fp.gt"}      #Double^gt    (x: #Double, y: #Double): #Bool
 
 type #Map k v = [k]v;
 
+function {:builtin "MapConst"} #Map~const<k, v>(value: v): #Map k v;
+
 function {:inline} #Map~get<k, v>(map: #Map k v, key: k): v {
   map[key]
 }
@@ -268,6 +270,14 @@ function {:inline} #Map~set<k, v>(map: #Map k v, key: k, value: v): #Map k v {
 }
 
 type #Set a = #Map a #Bool;
+
+function {:inline} #Set~empty<a>(): #Set a {
+  #Map~const(false)
+}
+
+function {:inline} #Set~all<a>(): #Set a {
+  #Map~const(true)
+}
 
 function {:inline} #Set~contains<a>(set: #Set a, value: a): #Bool {
   #Map~get(set, value)
@@ -279,6 +289,17 @@ function {:inline} #Set~add<a>(set: #Set a, value: a): #Set a {
 
 function {:inline} #Set~remove<a>(set: #Set a, value: a): #Set a {
   #Map~set(set, value, false)
+}
+
+function {:builtin "MapOr"} #Set~union<a>(lhs: #Set a, rhs: #Set a): #Set a;
+
+function {:builtin "MapAnd"} #Set~intersect<a>(lhs: #Set a, rhs: #Set a): #Set a;
+
+function {:builtin "MapNot"} #Set~complement<a>(set: #Set a): #Set a;
+
+function {:inline} #Set~difference<a>(lhs: #Set a, rhs: #Set a) : #Set a
+{
+  #Set~intersect(lhs, #Set~complement(rhs))
 }
 
 // Impls for Cachet's prelude...
@@ -293,7 +314,6 @@ procedure boogie_si_record_bv32(x:bv32);
 procedure #Int32~print(d: #Int32) {
   call {:cexpr "Int32"} boogie_si_record_bv32(d);
 }
-
 procedure #UInt32~print(d: #UInt32) {
   call {:cexpr "UInt32"} boogie_si_record_bv32(d);
 }
@@ -302,22 +322,22 @@ procedure boogie_si_record_bv64(x:#UInt64);
 procedure #Double~print(d: #Double) {
   call {:cexpr "Double"} boogie_si_record_bv64(#Double~bits(d));
 }
+
 function {:builtin "fp.isInfinite"} #Double~isInfinite(n: #Double): #Bool;
 function {:builtin "fp.isNaN"} #Double~is_nan(n: #Double): #Bool;
 function {:bvbuiltin "fp.roundToIntegral RTP"} #Double~ceil(x: #Double): #Double;
 function {:bvbuiltin "fp.abs"} #Double~abs(x: #Double): #Double;
 
-// "There is no function for converting from (_ FloatingPoint eb sb) to the
-//  corresponding IEEE 754-2008 binary format, as a bit vector (_ BitVec m) with 
-//  m = eb + sb, because (_ NaN eb sb) has multiple, well-defined representations.
-//  Instead, an encoding of the kind below is recommended, where f is a term
-//  of sort (_ FloatingPoint eb sb):
+// From <https://smtlib.cs.uiowa.edu/theories-FloatingPoint.shtml>:
 //
-// (declare-fun b () (_ BitVec m))
-// (assert (= ((_ to_fp eb sb) b) f))
-//"
-//
-// Copied from https://smtlib.cs.uiowa.edu/theories-FloatingPoint.shtml
+// > There is no function for converting from (_ FloatingPoint eb sb) to the
+// > corresponding IEEE 754-2008 binary format, as a bit vector (_ BitVec m)
+// > with > m = eb + sb, because (_ NaN eb sb) has multiple, well-defined
+// > representations. Instead, an encoding of the kind below is recommended,
+// > where f is a term of sort (_ FloatingPoint eb sb):
+// >
+// > (declare-fun b () (_ BitVec m))
+// > (assert (= ((_ to_fp eb sb) b) f))
 function                              #Double~bits     (n: #Double): #UInt64;
 function {:builtin "(_ to_fp 11 53)"} #Double~from_bits(n: #UInt64): #Double;
 axiom (forall d: #Double :: #Double~from_bits(#Double~bits(d)) == d);

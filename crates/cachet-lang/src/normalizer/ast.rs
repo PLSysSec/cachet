@@ -6,7 +6,9 @@ use derive_more::From;
 use enumset::EnumSet;
 use typed_index_collections::TiVec;
 
-use crate::ast::{BinOper, BlockKind, CastSafety, CheckKind, NegateKind, Path, Spanned};
+use crate::ast::{
+    BinOper, BlockKind, CastSafety, CheckKind, ForInOrder, NegateKind, Path, Spanned,
+};
 use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 
 pub use crate::type_checker::{
@@ -172,6 +174,8 @@ pub enum Stmt<B = ()> {
     #[from]
     If(IfStmt<B>),
     #[from]
+    ForIn(ForInStmt<B>),
+    #[from]
     Check(CheckStmt<B>),
     #[from]
     Goto(GotoStmt),
@@ -206,6 +210,14 @@ pub enum ElseClause<B = ()> {
     ElseIf(Box<IfStmt<B>>),
     #[from]
     Else(Vec<Stmt<B>>),
+}
+
+#[derive(Clone, Debug)]
+pub struct ForInStmt<B = ()> {
+    pub var: LocalVarIndex,
+    pub target: EnumIndex,
+    pub order: ForInOrder,
+    pub body: Vec<Stmt<B>>,
 }
 
 #[derive(Clone, Debug)]

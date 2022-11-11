@@ -13,7 +13,8 @@ use typed_index_collections::TiSlice;
 use void::unreachable;
 
 use cachet_lang::ast::{
-    ArithBinOper, BinOper, CheckKind, CompareBinOper, Ident, NegateKind, Path, VarParamKind,
+    ArithBinOper, BinOper, CheckKind, CompareBinOper, ForInOrder, Ident, NegateKind, Path,
+    Spanned, VarParamKind,
 };
 use cachet_lang::built_in::{BuiltInVar, IdentEnum};
 use cachet_lang::flattener::{self, HasAttrs, Typed};
@@ -1617,6 +1618,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Stmt::Let(let_stmt) => self.compile_let_stmt(let_stmt),
             flattener::Stmt::Label(label_stmt) => self.compile_label_stmt(label_stmt),
             flattener::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
+            flattener::Stmt::ForIn(for_in_stmt) => self.compile_for_in_stmt(for_in_stmt),
             flattener::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
             flattener::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
             flattener::Stmt::Bind(bind_stmt) => self.compile_bind_stmt(bind_stmt),
@@ -1689,6 +1691,51 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_if_stmt(&mut self, if_stmt: &flattener::IfStmt) {
         let if_ = self.compile_if_stmt_recurse(if_stmt);
         self.stmts.push(if_.into());
+    }
+
+    fn compile_for_in_stmt(&mut self, for_in_stmt: &flattener::ForInStmt) {
+        let enum_item = &self.env[for_in_stmt.target];
+
+        let body = self.compile_block(&for_in_stmt.body);
+
+        let compile_iteration = |variant_path: &Spanned<Path>| {
+            let loop_var_expr = Expr::from(self.get_local_var_ident(for_in_stmt.var));
+
+            let variant_expr: Expr = CallExpr {
+                target: TypeMemberFnIdent {
+                    type_ident: enum_item.ident.value.into(),
+                    selector: VariantCtorTypeMemberFnSelector::from(variant_path.value.ident())
+                        .into(),
+                }
+                .into(),
+                arg_exprs: vec![],
+            }
+            .into();
+
+            let loop_var_update: Stmt = AssignStmt {
+                lhs: loop_var_expr,
+                rhs: variant_expr,
+            }
+            .into();
+
+            let body_stmts = body.stmts.iter().cloned();
+            iterate![loop_var_update, ..body_stmts]
+        };
+
+        let stmts: Vec<_> = match for_in_stmt.order {
+            ForInOrder::Ascending => enum_item
+                .variants
+                .iter()
+                .flat_map(compile_iteration)
+                .collect(),
+            ForInOrder::Descending => enum_item
+                .variants
+                .iter()
+                .rev()
+                .flat_map(compile_iteration)
+                .collect(),
+        };
+        self.stmts.extend(stmts);
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &flattener::CheckStmt) {
@@ -2165,16 +2212,18 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 Some(UserParamVarIdent::from(var_param.ident.value).into())
             }
             flattener::VarIndex::Local(local_var_index) => {
-                let local_var = &self.context.local(local_var_index);
-                Some(
-                    LocalVarIdent {
-                        ident: local_var.ident.value,
-                        index: local_var_index,
-                    }
-                    .into(),
-                )
+                Some(self.get_local_var_ident(local_var_index))
             }
         }
+    }
+
+    fn get_local_var_ident(&self, local_var_index: flattener::LocalVarIndex) -> VarIdent {
+        let local_var = &self.context.local(local_var_index);
+        LocalVarIdent {
+            ident: local_var.ident.value,
+            index: local_var_index,
+        }
+        .into()
     }
 }
 
@@ -2228,12 +2277,38 @@ lazy_static! {
         HashMap::from([
             (Ident::from("ValueReg").into(), Proc),
             (Ident::from("ValueReg").nest("scratchReg".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("empty".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("volatile".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("intersect".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("difference".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("contains".into()), Fn),
+            (Ident::from("GeneralRegSet").nest("add".into()), Proc),
+            (Ident::from("GeneralRegSet").nest("take".into()), Proc),
+            (Ident::from("FloatRegSet").nest("empty".into()), Proc),
+            (Ident::from("FloatRegSet").nest("volatile".into()), Proc),
+            (Ident::from("FloatRegSet").nest("intersect".into()), Proc),
+            (Ident::from("FloatRegSet").nest("difference".into()), Proc),
+            (Ident::from("FloatRegSet").nest("contains".into()), Fn),
+            (Ident::from("FloatRegSet").nest("add".into()), Proc),
+            (Ident::from("FloatRegSet").nest("take".into()), Proc),
+            (Ident::from("ABIFunction").nest("clobberVolatileRegs".into()), Proc),
             (Ident::from("MASM").nest("getValue".into()), Proc),
             (Ident::from("MASM").nest("setValue".into()), Proc),
             (Ident::from("MASM").nest("getData".into()), Proc),
             (Ident::from("MASM").nest("setData".into()), Proc),
-            (Ident::from("MASM").nest("getDouble".into()), Proc),
-            (Ident::from("MASM").nest("setDouble".into()), Proc),
+            (Ident::from("MASM").nest("getFloatData".into()), Proc),
+            (Ident::from("MASM").nest("setFloatData".into()), Proc),
+            (Ident::from("MASM").nest("stackPush".into()), Proc),
+            (Ident::from("MASM").nest("stackPop".into()), Proc),
+            (Ident::from("MASM").nest("stackStore".into()), Proc),
+            (Ident::from("MASM").nest("stackLoad".into()), Proc),
+            (Ident::from("MASM").nest("stackPushLiveGeneralReg".into()), Proc),
+            (Ident::from("MASM").nest("stackPopLiveGeneralReg".into()), Proc),
+            (Ident::from("MASM").nest("stackPushLiveFloatReg".into()), Proc),
+            (Ident::from("MASM").nest("stackPopLiveFloatReg".into()), Proc),
+            (Ident::from("CacheIR").nest("hasAvailableReg".into()), Fn),
+            (Ident::from("CacheIR").nest("isAllocatedValueReg".into()), Fn),
+            (Ident::from("CacheIR").nest("isAllocatedReg".into()), Fn),
             (Ident::from("CacheIR").nest("allocateValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("releaseValueReg".into()), Proc),
             (Ident::from("CacheIR").nest("allocateReg".into()), Proc),
@@ -2250,7 +2325,7 @@ lazy_static! {
             (Ident::from("initInputValueId").into(), Proc),
             (Ident::from("initValueOutput").into(), Proc),
             (Ident::from("initTypedOutput").into(), Proc),
+            (Ident::from("addLiveFloatReg").into(), Proc),
         ])
     };
-
 }

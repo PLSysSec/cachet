@@ -12,7 +12,7 @@ use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
-use cachet_lang::ast::{BinOper, Ident, NegateKind, Path, VarParamKind};
+use cachet_lang::ast::{BinOper, ForInOrder, Ident, NegateKind, Path, VarParamKind};
 use cachet_lang::built_in::{BuiltInType, IdentEnum};
 use cachet_lang::normalizer::{self, HasAttrs, Typed};
 
@@ -896,6 +896,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Stmt::Let(let_stmt) => self.compile_let_stmt(let_stmt),
             normalizer::Stmt::Label(label_stmt) => self.compile_label_stmt(label_stmt),
             normalizer::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
+            normalizer::Stmt::ForIn(for_in_stmt) => self.compile_for_in_stmt(for_in_stmt),
             normalizer::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
             normalizer::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
             normalizer::Stmt::Bind(bind_stmt) => self.compile_bind_stmt(bind_stmt),
@@ -984,6 +985,59 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_if_stmt(&mut self, if_stmt: &normalizer::IfStmt) {
         let if_ = self.compile_if_stmt_recurse(if_stmt);
         self.stmts.push(if_.into());
+    }
+
+    fn compile_for_in_stmt(&mut self, for_in_stmt: &normalizer::ForInStmt) {
+        let enum_item = &self.env[for_in_stmt.target];
+
+        let body = self.compile_block(&for_in_stmt.body);
+
+        let iteration_stmts: Vec<_> = enum_item.variants.iter().map(|variant_path| {
+            let loop_var_index = for_in_stmt.var;
+
+            let lhs = LocalVarIdent {
+                ident: self.scope.local(loop_var_index).ident.value,
+                index: loop_var_index,
+            }
+            .into();
+
+            let type_ = TypeMemberTypePath {
+                parent: self.get_type_ident(for_in_stmt.target.into()),
+                ident: ExprTag::Local.into(),
+            }
+            .into();
+
+            let rhs = Some(
+                self.use_expr(
+                    TaggedExpr {
+                        expr: CallExpr {
+                            target: TypeMemberFnPath {
+                                parent: enum_item.ident.value,
+                                ident: VariantTypeMemberFnIdent::from(variant_path.value.ident())
+                                    .into(),
+                            }
+                            .into(),
+                            args: vec![CONTEXT_ARG],
+                        }
+                        .into(),
+                        type_: for_in_stmt.target.into(),
+                        tags: ExprTag::Ref.into(),
+                    },
+                    ExprTag::Local.into(),
+                ),
+            );
+
+            let body_stmts = body.stmts.iter().cloned();
+            Stmt::from(BlockStmt::from_iter(iterate![
+                LetStmt { lhs, type_, rhs }.into(),
+                ..body_stmts,
+            ]))
+        }).collect();
+
+        match for_in_stmt.order {
+            ForInOrder::Ascending => self.stmts.extend(iteration_stmts),
+            ForInOrder::Descending => self.stmts.extend(iteration_stmts.into_iter().rev()),
+        };
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &normalizer::CheckStmt) {

@@ -227,6 +227,7 @@ Stmt: Stmt = {
     <let_stmt:LetStmt> ";"+ => let_stmt.into(),
     <label_stmt:LabelStmt> ";"+ => label_stmt.into(),
     <if_stmt:IfStmt> => if_stmt.into(),
+    <for_in_stmt:ForInStmt> => for_in_stmt.into(),
     <check_stmt:CheckStmt> ";"+ => check_stmt.into(),
     <goto_stmt:GotoStmt> ";"+ => goto_stmt.into(),
     <bind_stmt:BindStmt> ";"+ => bind_stmt.into(),
@@ -245,6 +246,15 @@ LabelStmt: LabelStmt =
 IfStmt: IfStmt =
     "if" <cond:Spanned<Expr<WithBlock>>> <then:Block> <else_:("else" <ElseClause>)?> =>
         IfStmt { cond, then, else_ };
+
+ForInStmt: ForInStmt = 
+    "for" <var:Spanned<Ident>> "in" <target:Spanned<Path>> <order:ForInOrder> <body:Block> =>
+        ForInStmt { var, target, order, body };
+
+ForInOrder: ForInOrder = {
+    "asc" => ForInOrder::Ascending,
+    "desc" => ForInOrder::Descending,
+}
 
 ElseClause: ElseClause = {
     <else_if:Box<IfStmt>> => else_if.into(),
@@ -507,7 +517,7 @@ Literal: Literal = {
 
 Int8Literal: i8 =
     <digits:Spanned<r"[0-9]+_i8">> =>?
-        i8::from_str(&digits.value[..digits.value.len() - 4])
+        i8::from_str(&digits.value[..digits.value.len() - 3])
             .map_err(|error| RawParseError::User {
                 error: Spanned::new(digits.span, "number too large to fit in Int8"),
             });
@@ -535,7 +545,7 @@ Int64Literal: i64 =
 
 UInt8Literal: u8 =
     <digits:Spanned<r"[0-9]+_u8">> =>?
-        u8::from_str(&digits.value[..digits.value.len() - 4])
+        u8::from_str(&digits.value[..digits.value.len() - 3])
             .map_err(|error| RawParseError::User {
                 error: Spanned::new(digits.span, "number too large to fit in UInt8"),
             });
@@ -572,7 +582,8 @@ HexLiteral: Literal =
     <digits:Spanned<r"0x[0-9A-Fa-f]+">> =>? {
         let radix = &digits.value[2..];
         match radix.len() {
-            // Safety: The regex and length checks ensure the radix can be successfully parsed
+            // Safety: The regex and length checks ensure the radix can be
+            // successfully parsed.
             1..=2 => Ok(Literal::UInt8(u8::from_str_radix(radix, 16).unwrap())),
             3..=4 => Ok(Literal::UInt16(u16::from_str_radix(radix, 16).unwrap())),
             5..=8 => Ok(Literal::UInt32(u32::from_str_radix(radix, 16).unwrap())),

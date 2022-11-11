@@ -812,6 +812,38 @@ ir CacheIR emits MASM {
         bind done;
     }
 
+    op GuardSpecificAtom(strId: StringId, stringField: StringField) {
+        let strReg = CacheIR::useStringId(strId);
+        let scratchReg = CacheIR::allocateReg();
+
+        let atom = String::asAtom(CacheIR::readStringField(stringField));
+
+        CacheIR::addFailurePath(out label failure);
+
+        let volatileRegs = LiveRegSet::new(
+            GeneralRegSet::volatile(), CacheIR::liveVolatileFloatRegs()
+        );
+        LiveRegSet::takeReg(out volatileRegs, volatileRegs, scratchReg);
+
+        emit MASM::GuardSpecificAtom(strReg, atom, scratchReg, volatileRegs, failure);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
+    op PushPopRegs() {
+        let scratchReg = CacheIR::allocateReg();
+        let volatileRegs = LiveRegSet::new(
+            GeneralRegSet::volatile(), CacheIR::liveVolatileFloatRegs()
+        );
+        emit MASM::PushRegsInMask(volatileRegs);
+
+        let ignoreRegs = LiveRegSet::empty();
+        LiveRegSet::addReg(out ignoreRegs, ignoreRegs, scratchReg);
+        emit MASM::PopRegsInMaskIgnore(volatileRegs, ignoreRegs);
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
     op BooleanToNumber(boolId: BoolId, numberId: NumberId) {
         let boolReg = CacheIR::useBoolId(boolId);
         let numberReg = CacheIR::defineNumberId(numberId);
@@ -1463,6 +1495,21 @@ ir CacheIR emits MASM {
 
     fn addFailurePath(out label failure: MASM);
 
+    fn hasAvailableReg() -> Bool;
+    fn isAllocatedValueReg(valueReg: ValueReg) -> Bool;
+    fn isAllocatedReg(reg: Reg) -> Bool;
+
+    fn isAllocatableReg(reg: Reg) -> Bool {
+        // NOTE: rbp is allocatable in the latest versions of Firefox, but is not in
+        // the current Cachet fork.
+        reg != Reg::Rsp &&
+        reg != Reg::Rbp &&
+        reg != Reg::R11
+    }
+
+    fn allocateValueReg() -> ValueReg;
+    fn releaseValueReg(valueReg: ValueReg);
+
     fn allocateReg() -> Reg;
     // SAFETY: does not check that reg is an allocatable register
     unsafe fn allocateKnownReg(reg: Reg);
@@ -1474,9 +1521,6 @@ ir CacheIR emits MASM {
         unsafe { CacheIR::allocateKnownReg(Reg::scratchReg()); }
         Reg::scratchReg()
     }
-
-    fn allocateValueReg() -> ValueReg;
-    fn releaseValueReg(valueReg: ValueReg);
 
     fn allocateAvailableFloatReg(floatReg: FloatReg) -> FloatReg;
     fn releaseFloatReg(floatReg: FloatReg);
@@ -1713,6 +1757,7 @@ ir CacheIR emits MASM {
     }
 
     fn readInt32Field(int32Field: Int32Field) -> Int32;
+    fn readStringField(stringField: StringField) -> String;
     fn readShapeField(shapeField: ShapeField) -> Shape;
     fn readClassField(classField: ClassField) -> Class;
     fn readObjectField(objectField: ObjectField) -> Object;
@@ -1720,6 +1765,13 @@ ir CacheIR emits MASM {
     fn readValueField(valueField: ValueField) -> Value;
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
+
+    var mut liveFloatRegSet: FloatRegSet;
+
+    #[refined]
+    fn liveVolatileFloatRegs() -> FloatRegSet {
+        FloatRegSet::intersect(CacheIR::liveFloatRegSet, FloatRegSet::volatile())
+    }
 }
 
 //spec struct RegAllocState;

@@ -36,41 +36,289 @@ procedure #MASM~setValue($valueReg: #ValueReg, $value: #Value)
   call #MASM~setData($valueReg, tmp'0);
 }
 
-var #MASM~floatRegs: #Map #PhyFloatReg #RegData;
+var #MASM~floatRegs: #Map #PhyFloatReg #FloatData;
 
 procedure #MASM~getFloatData($phyReg: #PhyFloatReg)
-  returns (ret: #RegData)
+  returns (ret: #FloatData)
 {
   ret := #Map~get(#MASM~floatRegs, $phyReg);
 }
 
-procedure #MASM~setFloatData($phyReg: #PhyFloatReg, $data: #RegData)
+procedure #MASM~setFloatData($phyReg: #PhyFloatReg, $data: #FloatData)
   modifies #MASM~floatRegs;
 {
     #MASM~floatRegs := #Map~set(#MASM~floatRegs, $phyReg, $data);
 }
 
-procedure #MASM~getDouble($floatReg: #FloatReg)
-  returns (ret: #Double)
-{
-    var tmp'0: #RegData;
-    var tmp'1: #Value;
+// GeneralRegSet
 
-    assert #FloatReg^field~type($floatReg) == #FloatContentType^Variant~Double();
-    call tmp'0 := #MASM~getFloatData(#FloatReg^field~reg($floatReg));
-    call tmp'1 := #RegData~toUnboxedValue(tmp'0);
-    call ret := #Value~toDouble(tmp'1);
+function #GeneralRegSet~rawSet($set: #GeneralRegSet): #Set #Reg;
+function #GeneralRegSet~newUnchecked($rawSet: #Set #Reg): #GeneralRegSet;
+
+procedure #GeneralRegSet~new($rawSet: #Set #Reg)
+    returns (ret: #GeneralRegSet)
+{
+    var tmp'0: #GeneralRegSet;
+
+    tmp'0 := #GeneralRegSet~newUnchecked($rawSet);
+    assume #GeneralRegSet~rawSet(tmp'0) == $rawSet;
+    ret := tmp'0;
 }
 
-procedure #MASM~setDouble($floatReg: #FloatReg, $double: #Double)
+procedure #GeneralRegSet~empty()
+    returns (ret: #GeneralRegSet)
 {
-    var tmp'0: #Value;
-    var tmp'1: #RegData;
+    var tmp'0: #Set #Reg;
 
-    assert #FloatReg^field~type($floatReg) == #FloatContentType^Variant~Double();
-    call tmp'0 := #Value~fromDouble($double);
-    call tmp'1 := #RegData~fromUnboxedValue(tmp'0);
-    call #MASM~setFloatData(#FloatReg^field~reg($floatReg), tmp'1);
+    tmp'0 := #Set~empty();
+    call ret := #GeneralRegSet~new(tmp'0);
+}
+
+procedure #GeneralRegSet~volatile()
+    returns (ret: #GeneralRegSet)
+{
+    var tmp'0: #Set #Reg;
+
+    tmp'0 := #Set~empty();
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~Rax());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~Rcx());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~Rdx());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~Rsi());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~Rdi());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~R8());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~R9());
+    tmp'0 := #Set~add(tmp'0, #Reg^Variant~R10());
+
+    call ret := #GeneralRegSet~new(tmp'0);
+}
+
+procedure #GeneralRegSet~intersect($lhs: #GeneralRegSet, $rhs: #GeneralRegSet)
+    returns (ret: #GeneralRegSet)
+{
+    var tmp'0: #Set #Reg;
+    var tmp'1: #Set #Reg;
+
+    tmp'0 := #GeneralRegSet~rawSet($lhs);
+    tmp'1 := #GeneralRegSet~rawSet($rhs);
+
+    call ret := #GeneralRegSet~new(#Set~intersect(tmp'0, tmp'1));
+}
+
+procedure #GeneralRegSet~difference($lhs: #GeneralRegSet, $rhs: #GeneralRegSet)
+    returns (ret: #GeneralRegSet)
+{
+    var tmp'0: #Set #Reg;
+    var tmp'1: #Set #Reg;
+
+    tmp'0 := #GeneralRegSet~rawSet($lhs);
+    tmp'1 := #GeneralRegSet~rawSet($rhs);
+
+    call ret := #GeneralRegSet~new(#Set~difference(tmp'0, tmp'1));
+}
+
+function {:inline} #GeneralRegSet~contains($set: #GeneralRegSet, $reg: #Reg): #Bool {
+    #Set~contains(#GeneralRegSet~rawSet($set), $reg)
+}
+
+procedure #GeneralRegSet~add($set: #GeneralRegSet, $reg: #Reg)
+    returns (newSet: #GeneralRegSet)
+{
+    var $rawSet: #Set #Reg;
+
+    $rawSet := #Set~add(#GeneralRegSet~rawSet($set), $reg);
+    call newSet := #GeneralRegSet~new($rawSet);
+}
+
+procedure #GeneralRegSet~take($set: #GeneralRegSet, $reg: #Reg)
+    returns (newSet: #GeneralRegSet)
+{
+    var $rawSet: #Set #Reg;
+
+    $rawSet := #Set~remove(#GeneralRegSet~rawSet($set), $reg);
+    call newSet := #GeneralRegSet~new($rawSet);
+}
+
+// FloatRegSet
+
+function #FloatRegSet~rawSet($set: #FloatRegSet): #Set #FloatReg;
+function #FloatRegSet~newUnchecked($rawSet: #Set #FloatReg): #FloatRegSet;
+
+procedure #FloatRegSet~new($rawSet: #Set #FloatReg)
+    returns (ret: #FloatRegSet)
+{
+    var tmp'0: #FloatRegSet;
+
+    tmp'0 := #FloatRegSet~newUnchecked($rawSet);
+    assume #FloatRegSet~rawSet(tmp'0) == $rawSet;
+    ret := tmp'0;
+}
+
+procedure #FloatRegSet~empty()
+    returns (ret: #FloatRegSet)
+{
+    var tmp'0: #Set #FloatReg;
+
+    tmp'0 := #Set~empty();
+    call ret := #FloatRegSet~new(tmp'0);
+}
+
+procedure #FloatRegSet~volatile()
+    returns (ret: #FloatRegSet)
+{
+    var simdReg: #FloatReg;
+    var doubleReg: #FloatReg;
+    var singleReg: #FloatReg;
+    var tmp'0: #Set #FloatReg;
+
+    call simdReg := #FloatReg~new(#PhyFloatReg^Variant~Xmm15(), #FloatContentType^Variant~Simd128());
+    call doubleReg := #FloatReg~new(#PhyFloatReg^Variant~Xmm15(), #FloatContentType^Variant~Double());
+    call singleReg := #FloatReg~new(#PhyFloatReg^Variant~Xmm15(), #FloatContentType^Variant~Single());
+
+    tmp'0 := #Set~all();
+    tmp'0 := #Set~remove(tmp'0, simdReg);
+    tmp'0 := #Set~remove(tmp'0, doubleReg);
+    tmp'0 := #Set~remove(tmp'0, singleReg);
+
+    call ret := #FloatRegSet~new(tmp'0);
+}
+
+procedure #FloatRegSet~intersect($lhs: #FloatRegSet, $rhs: #FloatRegSet)
+    returns (ret: #FloatRegSet)
+{
+    var tmp'0: #Set #FloatReg;
+    var tmp'1: #Set #FloatReg;
+
+    tmp'0 := #FloatRegSet~rawSet($lhs);
+    tmp'1 := #FloatRegSet~rawSet($rhs);
+
+    call ret := #FloatRegSet~new(#Set~intersect(tmp'0, tmp'1));
+}
+
+procedure #FloatRegSet~difference($lhs: #FloatRegSet, $rhs: #FloatRegSet)
+    returns (ret: #FloatRegSet)
+{
+    var tmp'0: #Set #FloatReg;
+    var tmp'1: #Set #FloatReg;
+
+    tmp'0 := #FloatRegSet~rawSet($lhs);
+    tmp'1 := #FloatRegSet~rawSet($rhs);
+
+    call ret := #FloatRegSet~new(#Set~difference(tmp'0, tmp'1));
+}
+
+function {:inline} #FloatRegSet~contains($set: #FloatRegSet, $reg: #FloatReg): #Bool {
+    #Set~contains(#FloatRegSet~rawSet($set), $reg)
+}
+
+procedure #FloatRegSet~add($set: #FloatRegSet, $reg: #FloatReg)
+    returns (newSet: #FloatRegSet)
+{
+    var $rawSet: #Set #FloatReg;
+
+    $rawSet := #Set~add(#FloatRegSet~rawSet($set), $reg);
+    call newSet := #FloatRegSet~new($rawSet);
+}
+
+procedure #FloatRegSet~take($set: #FloatRegSet, $reg: #FloatReg)
+    returns (newSet: #FloatRegSet)
+{
+    var $rawSet: #Set #FloatReg;
+
+    $rawSet := #Set~remove(#FloatRegSet~rawSet($set), $reg);
+    call newSet := #FloatRegSet~new($rawSet);
+}
+
+var #MASM~pushedLiveGeneralRegs: #Map #Reg #RegData;
+var #MASM~pushedLiveFloatRegs: #Map #PhyFloatReg #FloatData;
+
+procedure #MASM~stackPushLiveGeneralReg($reg: #Reg)
+{
+    var $data: #RegData;
+    call $data := #MASM~getData($reg);
+    #MASM~pushedLiveGeneralRegs := #Map~set(#MASM~pushedLiveGeneralRegs, $reg, $data);
+}
+
+procedure #MASM~stackPopLiveGeneralReg($reg: #Reg)
+{
+    var $data: #RegData;
+    $data := #Map~get(#MASM~pushedLiveGeneralRegs, $reg);
+    call #MASM~setData($reg, $data);
+}
+
+procedure #MASM~stackPushLiveFloatReg($floatReg: #FloatReg)
+{
+    var $data: #FloatData;
+    call $data := #MASM~getFloatData(#FloatReg^field~reg($floatReg));
+    assert #FloatReg^field~type($floatReg) == #FloatData~contentType($data);
+    #MASM~pushedLiveFloatRegs := #Map~set(#MASM~pushedLiveFloatRegs, #FloatReg^field~reg($floatReg), $data);
+}
+
+procedure #MASM~stackPopLiveFloatReg($floatReg: #FloatReg)
+{
+    var $data: #FloatData;
+    $data := #Map~get(#MASM~pushedLiveFloatRegs, #FloatReg^field~reg($floatReg));
+    assert #FloatReg^field~type($floatReg) == #FloatData~contentType($data);
+    call #MASM~setFloatData(#FloatReg^field~reg($floatReg), $data);
+}
+
+var #MASM~stack: #Map #UInt64 #StackData;
+
+procedure #MASM~stackPush($data: #StackData)
+    modifies #MASM~regs, #MASM~stack;
+{
+    var $stackPtr: #UInt64;
+    var $dataSize: #UInt64;
+
+    call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
+    call $dataSize := #StackData~size($data);
+    $stackPtr := #UInt64^sub($stackPtr, $dataSize);
+    assert #UInt64^gte($stackPtr, 0bv64);
+    call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
+    #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $data);
+}
+
+procedure #MASM~stackPop()
+    returns (data: #StackData)
+    modifies #MASM~regs, #MASM~stack;
+{
+    var $stackPtr: #UInt64;
+    var $dataSize: #UInt64;
+
+    call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
+    data := #Map~get(#MASM~stack, $stackPtr);
+    call $dataSize := #StackData~size(data);
+    $stackPtr := #UInt64^add($stackPtr, $dataSize);
+    call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
+}
+
+procedure #MASM~stackStore($idx: #UInt64, $data: #StackData)
+    modifies #MASM~stack;
+{
+    #MASM~stack := #Map~set(#MASM~stack, $idx, $data);
+}
+
+procedure #MASM~stackLoad($idx: #UInt64)
+    returns (ret: #StackData)
+{
+    ret := #Map~get(#MASM~stack, $idx);
+}
+
+procedure #ABIFunction~clobberVolatileRegs()
+{
+    var $value: #Value;
+    var $data: #RegData;
+
+    call $value := #Value~getUndefined();
+    call $data := #RegData~fromValue($value);
+
+    call #MASM~setData(#Reg^Variant~Rax(), $data);
+    call #MASM~setData(#Reg^Variant~Rcx(), $data);
+    call #MASM~setData(#Reg^Variant~Rdx(), $data);
+    call #MASM~setData(#Reg^Variant~Rsi(), $data);
+    call #MASM~setData(#Reg^Variant~Rdi(), $data);
+    call #MASM~setData(#Reg^Variant~R8(), $data);
+    call #MASM~setData(#Reg^Variant~R9(), $data);
+    call #MASM~setData(#Reg^Variant~R10(), $data);
 }
 
 var #CacheIR~knownOperandIds: #Set #UInt16;
@@ -149,38 +397,14 @@ procedure #CacheIR~allocateReg()
 {
   var tmp'0: #Bool;
 
-  // ensure that we have enough registers by
-  // asserting that there is atleast one allocatable
-  // register that is not already allocated
-  assert (
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) ||
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
-  );
+  assert #CacheIR~hasAvailableReg();
 
   ret := #CacheIR~allocateRegUnchecked(#CacheIR~allocatedRegs);
 
-  // rsp, rbp and r11 are not allocatable registers
-  // NOTE: rbp is allocatable in the latest versions of Firefox
-  // but is not in the cachet fork
-  assume (
-    ret != #Reg^Variant~Rsp() &&
-    ret != #Reg^Variant~Rbp() &&
-    ret != #Reg^Variant~R11()
-  );
+  call tmp'0 := #CacheIR~isAllocatableReg(ret);
+  assume tmp'0;
 
-  tmp'0 := #Set~contains(#CacheIR~allocatedRegs, ret);
-  assume !tmp'0;
+  assume !#CacheIR~isAllocatedReg(ret);
 
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, ret);
 }
@@ -246,45 +470,23 @@ procedure #CacheIR~releaseFloatReg($floatReg: #FloatReg)
 
 procedure #initRegState()
 {
-  // initially all registers are unallocated
-  assume (
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsp()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbp()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R11()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) &&
-    !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
-  );
+  var value: #Value;
+  var regData: #RegData;
+  var stackData: #StackData;
 
-  // initially all registers are unallocated
-  assume (
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm0()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm1()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm2()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm3()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm4()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm5()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm6()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm7()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm8()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm9()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm10()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm11()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm12()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm13()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm14()) &&
-    !#Set~contains(#CacheIR~allocatedFloatRegs, #PhyFloatReg^Variant~Xmm15())
-  );
+  // All registers are initially unallocated.
+  #CacheIR~allocatedRegs := #Set~empty(); 
+  #CacheIR~allocatedFloatRegs := #Set~empty(); 
+
+  call value := #Value~fromInt32(0bv32);
+  call regData := #RegData~fromUnboxedValue(value);
+  call stackData := #StackData~fromRegData(regData);
+  #MASM~stack := #Map~const(stackData);
+
+  call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
+
+  call #CacheIR~liveFloatRegSetRaw := #FloatRegSet~empty();
+  #MASM~hasPushedRegs := false;
 }
 
 procedure #initOperandId($operandId: #OperandId)
@@ -315,31 +517,42 @@ procedure #initInputValueId($valueId: #ValueId)
   assume tmp'2;
 }
 
-procedure #initValueOutput()
+procedure #addLiveFloatReg($floatReg: #FloatReg)
 {
-  var tmp'0: #Bool;
-  var tmp'1: #ValueReg;
+  var data'0: #FloatData;
 
-  call tmp'0 := #TypedOrValueReg~hasValue(#CacheIR~outputReg);
-  assume tmp'0;
+  havoc data'0;
+  call #CacheIR~liveFloatRegSetRaw := #FloatRegSet~add(#CacheIR~liveFloatRegSetRaw, $floatReg);
 
-  call tmp'1 := #TypedOrValueReg~toValueReg(#CacheIR~outputReg);
-  assume !#Set~contains(#CacheIR~allocatedRegs, tmp'1);
+  assume #FloatReg^field~type($floatReg) == #FloatData~contentType(data'0);
+  call #MASM~setFloatData(#FloatReg^field~reg($floatReg), data'0);
 }
 
-procedure #initTypedOutput($type: #MIRType)
+function {:inline} #CacheIR~hasAvailableReg(): #Bool
 {
-  var tmp'0: #MIRType;
-  var $anyReg'1: #AnyReg;
-  var tmp'2: #Bool;
-  var tmp'3: #Reg;
+  // True if there is at least one allocatable register that is not already
+  // allocated.
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdx()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rsi()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rdi()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R8()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R9()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R10()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R12()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) ||
+  !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15())
+}
 
-  assert $type != #MIRType^Variant~Value();
-  assume #TypedOrValueReg~type(#CacheIR~outputReg) == $type;
+function {:inline} #CacheIR~isAllocatedValueReg($valueReg: #ValueReg): #Bool
+{
+  #CacheIR~isAllocatedReg($valueReg)
+}
 
-  call $anyReg'1 := #TypedOrValueReg~toTypedReg(#CacheIR~outputReg);
-  assume !#AnyReg~isFloat($anyReg'1);
-
-  call tmp'3 := #AnyReg~toReg($anyReg'1);
-  assume !#Set~contains(#CacheIR~allocatedRegs, tmp'3);
+function {:inline} #CacheIR~isAllocatedReg($reg: #Reg): #Bool
+{
+  #Set~contains(#CacheIR~allocatedRegs, ret)
 }

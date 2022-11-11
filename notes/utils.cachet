@@ -3,6 +3,7 @@ import "./masm.cachet";
 import "./js.cachet";
 
 fn initRegState();
+fn addLiveFloatReg(floatReg: FloatReg);
 
 fn initOperandId(operandId: OperandId);
 
@@ -60,5 +61,15 @@ fn initValueTagInputId(valueTagId: ValueTagId) {
     assume RegData::isValueTag(data);
 }
 
-fn initValueOutput();
-fn initTypedOutput(type: MIRType);
+fn initValueOutput() {
+    assume TypedOrValueReg::hasValue(CacheIR::outputReg);
+    assume !CacheIR::isAllocatedValueReg(TypedOrValueReg::toValueReg(CacheIR::outputReg));
+}
+
+fn initTypedOutput(type: MIRType) {
+    assume TypedOrValueReg::type(CacheIR::outputReg) == type;
+
+    let typedReg = TypedOrValueReg::toTypedReg(CacheIR::outputReg);
+    assume !AnyReg::isFloat(typedReg);
+    assume !CacheIR::isAllocatedReg(AnyReg::toReg(typedReg));
+}

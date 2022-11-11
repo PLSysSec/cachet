@@ -30,6 +30,14 @@ pub enum BlockKind {
 }
 
 #[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+pub enum ForInOrder {
+    #[display(fmt = "asc")]
+    Ascending,
+    #[display(fmt = "desc")]
+    Descending,
+}
+
+#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
 pub enum NegateKind {
     #[display(fmt = "-")]
     Arith,
