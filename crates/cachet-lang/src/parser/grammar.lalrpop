@@ -42,7 +42,8 @@ Item: Item = {
 };
 
 EnumItem: EnumItem =
-    "enum" <ident:Spanned<Ident>> "{" <variants:EnumVariants> "}" => EnumItem { ident, variants };
+    <attrs:Attrs>
+    "enum" <ident:Spanned<Ident>> "{" <variants:EnumVariants> "}" => EnumItem { ident, attrs, variants };
 
 ImportItem: ImportItem =
     "import" <file_path:Spanned<StringLiteral>> ";" =>
@@ -52,8 +53,9 @@ EnumVariants: TiVec<VariantIndex, Spanned<Ident>> =
     <variants:Comma<Spanned<Ident>>> => variants.into();
 
 StructItem: StructItem =
+    <attrs:Attrs>
     "struct" <ident:Spanned<Ident>> <supertype:("<:" <Spanned<Path>>)?> <fields:StructFields> =>
-        StructItem { ident, supertype, fields };
+        StructItem { ident, supertype, attrs, fields };
 
 StructFields: TiVec<FieldIndex, Field> = {
     ";"  => TiVec::new(),

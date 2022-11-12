@@ -78,6 +78,7 @@ impl Display for Comment {
 #[derive(Clone, Debug)]
 pub struct EnumItem {
     pub ident: Spanned<Ident>,
+    pub attrs: Vec<Attr>,
     pub variants: TiVec<VariantIndex, Spanned<Ident>>,
 }
 
@@ -105,6 +106,7 @@ typed_field_index!(EnumItem:variants[pub VariantIndex] => Spanned<Ident>);
 pub struct StructItem {
     pub ident: Spanned<Ident>,
     pub supertype: Option<Spanned<Path>>,
+    pub attrs: Vec<Attr>,
     pub fields: TiVec<FieldIndex, Field>,
 }
 
