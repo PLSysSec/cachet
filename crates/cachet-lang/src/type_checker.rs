@@ -7,6 +7,7 @@ mod graphs;
 use std::iter;
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 
+use enumset::EnumSet;
 use iterate::iterate;
 use lazy_static::lazy_static;
 use typed_index_collections::TiVec;
@@ -32,12 +33,14 @@ pub fn type_check(mut env: resolver::Env) -> Result<Env, TypeCheckErrors> {
 
     let unknown_struct_index = env.struct_items.push_and_get_key(StructItem {
         ident: Spanned::new(Span::Internal, *UNKNOWN_IDENT),
+        attrs: EnumSet::empty(),
         supertype: None,
         fields: TiVec::new(),
     });
 
     let unknown_enum_index = env.enum_items.push_and_get_key(EnumItem {
         ident: Spanned::new(Span::Internal, *UNKNOWN_IDENT),
+        attrs: EnumSet::empty(),
         variants: TiVec::new(),
     });
 

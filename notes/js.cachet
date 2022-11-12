@@ -5,6 +5,7 @@ var mut heap: Heap;
 
 fn EqualStringsHelperPure(str1: String, str2: String) -> Bool;
 
+#[spec]
 enum RegDataType {
     Value,
     UnboxedValue,
@@ -17,6 +18,7 @@ enum RegDataType {
     StackIndex,
 }
 
+#[spec]
 struct RegData;
 
 impl RegData {
@@ -530,6 +532,7 @@ impl Value {
 
     unsafe fn toBigIntUnchecked(value: Value) -> BigInt;
 
+    #[spec]
     fn readData(value: Value, offset: Int64) -> RegData {
         if Value::isObject(value) {
             let object = Value::toObject(value);
@@ -574,6 +577,7 @@ impl Object {
     }
 
     // read RegData at the specified memory offset of the Object
+    #[spec]
     fn readData(object: Object, offset: Int64) -> RegData {
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);   
@@ -624,6 +628,7 @@ impl NativeObject {
     unsafe fn getElementsHeaderUnchecked(heap: Heap, nativeObject: NativeObject) ->
     NativeObjectElements;
 
+    #[spec]
     fn readData(nativeObject: NativeObject, offset: Int64) -> RegData {
         if offset == NativeObject::offsetOfSlots as Int64 {
             // dynamic slots array
@@ -661,6 +666,7 @@ impl NativeObjectSlots {
     unsafe fn getDynamicSlotUnchecked(heap: Heap, slots: NativeObjectSlots, slot: UInt32) ->
     Value;
 
+    #[spec]
     fn readData(slots: NativeObjectSlots, offset: Int64) -> RegData {
         assert offset % Value::sizeOf as Int64 == 0_i64;
         let slot = (offset / Value::sizeOf as Int64) as UInt32;
@@ -695,6 +701,7 @@ impl NativeObjectElements {
 
     unsafe fn getElementUnchecked(heap: Heap, elements: NativeObjectElements, index: UInt64) -> Value;
 
+    #[spec]
     fn readData(elements: NativeObjectElements, offset: Int64) -> RegData {
         if offset == NativeObjectElements::offsetOfLength {
             let length = NativeObjectElements::getLength(elements);

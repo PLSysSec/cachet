@@ -224,6 +224,9 @@ pub enum BuiltInAttr {
     #[display(fmt = "prelude")]
     Prelude,
 
+    #[display(fmt = "spec")]
+    Spec,
+
     #[display(fmt = "refined")]
     Refined,
 }

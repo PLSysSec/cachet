@@ -344,6 +344,10 @@ impl<'a> Compiler<'a> {
     fn compile_enum_item(&mut self, enum_index: normalizer::EnumIndex) {
         let enum_item = &self.env[enum_index];
 
+        if enum_item.is_spec() {
+            return;
+        }
+
         let variant_decls = enum_item.variants.iter().map(|variant_path| {
             let path = TypeMemberFnPath {
                 parent: enum_item.ident.value,
@@ -375,6 +379,10 @@ impl<'a> Compiler<'a> {
 
     fn compile_struct_item(&mut self, struct_index: normalizer::StructIndex) {
         let struct_item = &self.env[struct_index];
+
+        if struct_item.is_spec() {
+            return;
+        }
 
         if let Some(supertype_index) = struct_item.supertype {
             let supertype_ident = self.get_type_ident(supertype_index);
@@ -471,8 +479,28 @@ impl<'a> Compiler<'a> {
 
     fn compile_callable_item(&mut self, callable_index: normalizer::CallableIndex) {
         let callable_item = &self.env[callable_index];
-        if callable_item.is_prelude() {
+        if callable_item.is_prelude() || callable_item.is_spec() {
             return;
+        }
+
+        if let normalizer::CallableIndex::Fn(_) = callable_index {
+            match callable_item.parent {
+                Some(normalizer::ParentIndex::Type(normalizer::TypeIndex::Enum(enum_index))) => {
+                    let enum_item = &self.env[enum_index];
+                    if enum_item.is_spec() {
+                        return;
+                    }
+                }
+                Some(normalizer::ParentIndex::Type(normalizer::TypeIndex::Struct(
+                    struct_index,
+                ))) => {
+                    let struct_item = &self.env[struct_index];
+                    if struct_item.is_spec() {
+                        return;
+                    }
+                }
+                _ => (),
+            }
         }
 
         let callable_parent_ident = callable_item.path.value.parent().map(Path::ident);

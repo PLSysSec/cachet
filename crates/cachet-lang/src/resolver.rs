@@ -37,11 +37,12 @@ pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> 
         item_catalog.impl_item_parents,
     );
 
-    let enum_items = item_catalog
-        .enum_items
-        .into_iter()
-        .map(resolve_enum_item)
-        .collect();
+    let enum_items: Option<_> = collect_eager(
+        item_catalog
+            .enum_items
+            .into_iter()
+            .map(|enum_item| resolver.resolve_enum_item(enum_item)),
+    );
 
     let struct_items: Option<_> = collect_eager(
         item_catalog
@@ -84,7 +85,7 @@ pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> 
 
     if resolver.errors.is_empty() {
         Ok(Env {
-            enum_items,
+            enum_items: enum_items.unwrap(),
             struct_items: struct_items.unwrap(),
             ir_items: ir_items.unwrap(),
             global_var_items: global_var_items.unwrap(),
@@ -94,21 +95,6 @@ pub fn resolve(items: Vec<Spanned<parser::Item>>) -> Result<Env, ResolveErrors> 
     } else {
         resolver.errors.sort_by_key(|error| error.span());
         Err(ResolveErrors(resolver.errors))
-    }
-}
-
-fn resolve_enum_item(enum_item: parser::EnumItem) -> EnumItem {
-    let variants = enum_item
-        .variants
-        .into_iter()
-        .map(|variant_ident| {
-            variant_ident.map(|variant_ident| enum_item.ident.value.nest(variant_ident))
-        })
-        .collect();
-
-    EnumItem {
-        ident: enum_item.ident,
-        variants,
     }
 }
 
@@ -456,7 +442,27 @@ impl<'a> Resolver<'a> {
         resolved_attr
     }
 
+    fn resolve_enum_item(&mut self, enum_item: parser::EnumItem) -> Option<EnumItem> {
+        let attrs = self.resolve_attrs(enum_item.attrs);
+
+        let variants = enum_item
+            .variants
+            .into_iter()
+            .map(|variant_ident| {
+                variant_ident.map(|variant_ident| enum_item.ident.value.nest(variant_ident))
+            })
+            .collect();
+
+        Some(EnumItem {
+            ident: enum_item.ident,
+            attrs: attrs?,
+            variants,
+        })
+    }
+
     fn resolve_struct_item(&mut self, struct_item: parser::StructItem) -> Option<StructItem> {
+        let attrs = self.resolve_attrs(struct_item.attrs);
+
         let supertype = match struct_item.supertype {
             None => Some(None),
             Some(supertype) => self
@@ -479,6 +485,7 @@ impl<'a> Resolver<'a> {
 
         Some(StructItem {
             ident: struct_item.ident,
+            attrs: attrs?,
             supertype: supertype?,
             fields: fields?,
         })
