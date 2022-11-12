@@ -146,6 +146,10 @@ pub trait HasAttrs {
         self.attrs().contains(BuiltInAttr::Prelude)
     }
 
+    fn is_spec(&self) -> bool {
+        self.attrs().contains(BuiltInAttr::Spec)
+    }
+
     fn is_refined(&self) -> bool {
         self.attrs().contains(BuiltInAttr::Refined)
     }
@@ -210,7 +214,14 @@ impl Typed for Literal {
 #[derive(Clone, Debug)]
 pub struct EnumItem {
     pub ident: Spanned<Ident>,
+    pub attrs: EnumSet<BuiltInAttr>,
     pub variants: TiVec<VariantIndex, Spanned<Path>>,
+}
+
+impl HasAttrs for EnumItem {
+    fn attrs(&self) -> &EnumSet<BuiltInAttr> {
+        &self.attrs
+    }
 }
 
 field_index!(EnumItem:variants[VariantIndex] => Spanned<Path>);
@@ -246,8 +257,15 @@ deref_index!(Env[&EnumVariantIndex] => Spanned<Path>);
 #[derive(Clone, Debug)]
 pub struct StructItem {
     pub ident: Spanned<Ident>,
+    pub attrs: EnumSet<BuiltInAttr>,
     pub supertype: Option<TypeIndex>,
     pub fields: TiVec<FieldIndex, Field>,
+}
+
+impl HasAttrs for StructItem {
+    fn attrs(&self) -> &EnumSet<BuiltInAttr> {
+        &self.attrs
+    }
 }
 
 field_index!(StructItem:fields[FieldIndex] => Field);
