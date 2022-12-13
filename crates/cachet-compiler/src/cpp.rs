@@ -365,7 +365,7 @@ impl<'a> Compiler<'a> {
                 path,
                 is_fully_qualified: false,
                 is_inline: true,
-                params: Vec::new(),
+                params: vec![CONTEXT_PARAM],
                 ret,
                 body: None,
             }
@@ -436,7 +436,7 @@ impl<'a> Compiler<'a> {
                     path,
                     is_fully_qualified: false,
                     is_inline: true,
-                    params: vec![],
+                    params: vec![CONTEXT_PARAM],
                     ret,
                     body: None,
                 };
@@ -1365,11 +1365,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                             ident: global_var_item.path.value.ident().into(),
                         }
                         .into(),
-                        args: if global_var_item.value.is_some() {
-                            vec![]
-                        } else {
-                            vec![CONTEXT_ARG]
-                        },
+                        args: vec![CONTEXT_ARG],
                     }
                     .into(),
                     type_: global_var_item.type_,
