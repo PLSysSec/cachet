@@ -17,7 +17,7 @@ else
   rm -f -- "${compile_logs_dir}"/*/${cachet_files_glob}.log
 fi
 
-cargo build -p cachet-compiler
+cargo build -p cachet-compiler -p bpl-tree-shaker
 echo
 
 selectors=()
