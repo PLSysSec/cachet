@@ -33,27 +33,6 @@ impl ParseError {
     }
 }
 
-static TOKEN_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
-    "r#\"[A-Za-z_][A-Za-z0-9_]*\"#" => "identiifer",
-    "r#\"[0-9]+_u16\"#" => "UInt16 literal",
-    "r#\"[0-9]+_i32\"#" => "Int32 literal",
-    "r#\"[0-9]+_i64\"#" => "Int64 literal",
-    "r#\"[0-9]+.[0-9]+\"#" => "Double literal",
-};
-
-fn fmt_expected(f: &mut fmt::Formatter, expected: &[String]) -> Result<(), fmt::Error> {
-    if !expected.is_empty() {
-        write!(f, "; expected ")?;
-        fmt_join_or(f, expected.iter(), |f, item| {
-            match TOKEN_NAMES.get(item.as_str()) {
-                Some(token_name) => write!(f, "{}", token_name),
-                None => write!(f, "{}", item.replace("\"", "`")),
-            }
-        })?;
-    }
-    Ok(())
-}
-
 impl Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match &self.error {
@@ -114,4 +93,25 @@ impl FrontendError for ParseError {
             }
         }
     }
+}
+
+static TOKEN_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
+    "r#\"[A-Za-z_][A-Za-z0-9_]*\"#" => "identiifer",
+    "r#\"[0-9]+_u16\"#" => "UInt16 literal",
+    "r#\"[0-9]+_i32\"#" => "Int32 literal",
+    "r#\"[0-9]+_i64\"#" => "Int64 literal",
+    "r#\"[0-9]+.[0-9]+\"#" => "Double literal",
+};
+
+fn fmt_expected(f: &mut fmt::Formatter, expected: &[String]) -> Result<(), fmt::Error> {
+    if !expected.is_empty() {
+        write!(f, "; expected ")?;
+        fmt_join_or(f, expected.iter(), |f, item| {
+            match TOKEN_NAMES.get(item.as_str()) {
+                Some(token_name) => write!(f, "{}", token_name),
+                None => write!(f, "{}", item.replace("\"", "`")),
+            }
+        })?;
+    }
+    Ok(())
 }

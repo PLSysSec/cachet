@@ -509,6 +509,8 @@ pub enum ElseClause {
     Else(Block),
 }
 
+box_from!(IfStmt => ElseClause);
+
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "{kind} {cond};")]
 pub struct CheckStmt {

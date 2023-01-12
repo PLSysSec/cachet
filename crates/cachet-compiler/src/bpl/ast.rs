@@ -567,7 +567,7 @@ impl FromIterator<TypedVar> for TypedVars {
     where
         T: IntoIterator<Item = TypedVar>,
     {
-        TypedVars {
+        Self {
             vars: iter.into_iter().collect(),
         }
     }
@@ -679,13 +679,13 @@ impl Display for FnItem {
                 write!(f, ";")?;
             }
             Some(value) => {
-                write!(f, "{{")?;
+                write!(f, "{{\n")?;
 
                 let mut indented = AffixWriter::new(f, "  ", "");
                 write!(indented, "{}", value)?;
                 let f = indented.into_inner();
 
-                write!(f, "}}")?;
+                write!(f, "\n}}")?;
             }
         }
 
@@ -721,7 +721,7 @@ impl Display for ProcItem {
         write!(f, "{}({})", self.ident, self.param_vars)?;
 
         if !self.ret_vars.is_empty() {
-            write!(f, "\n  returns ({})", self.ret_vars)?;
+            write!(f, " returns ({})", self.ret_vars)?;
         }
 
         match &self.body {
@@ -1018,16 +1018,19 @@ struct MaybeGrouped<'a>(&'a Expr);
 impl Display for MaybeGrouped<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let needs_group = match self.0 {
-            Expr::Literal(_) | Expr::Var(_) | Expr::Index(_) | Expr::Call(_) => false,
-            Expr::Negate(_) | Expr::BinOper(_) | Expr::ForAll(_) => true,
+            // `ForAllExpr` is always inherently grouped, so it doesn't need
+            // extra grouping.
+            Expr::Literal(_) | Expr::Var(_) | Expr::Index(_) | Expr::Call(_) | Expr::ForAll(_) => {
+                false
+            }
+            Expr::Negate(_) | Expr::BinOper(_) => true,
         };
 
         if needs_group {
-            write!(f, "({})", self.0)?;
+            write!(f, "({})", self.0)
         } else {
-            Display::fmt(self.0, f)?;
+            Display::fmt(self.0, f)
         }
-        Ok(())
     }
 }
 
@@ -1181,7 +1184,7 @@ pub enum BplBinOper {
 }
 
 #[derive(Clone, Debug, Display)]
-#[display(fmt = "forall {} :: {}", vars, "MaybeGrouped(&self.expr)")]
+#[display(fmt = "(forall {} :: {})", vars, "MaybeGrouped(&self.expr)")]
 pub struct ForAllExpr {
     pub vars: TypedVars,
     pub expr: Expr,

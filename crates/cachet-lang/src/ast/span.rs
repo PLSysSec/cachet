@@ -1,10 +1,11 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-pub use codespan::{FileId, Span as RawSpan};
-use codespan_reporting::diagnostic::{Label, LabelStyle};
-use derive_more::{Display, From};
 use std::error;
 use std::fmt::{self, Debug, Display};
+
+pub use codespan::{ByteIndex, FileId, Span as RawSpan};
+use codespan_reporting::diagnostic::{Label, LabelStyle};
+use derive_more::{Display, From};
 
 use cachet_util::deref_from;
 

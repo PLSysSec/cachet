@@ -27,7 +27,7 @@ use self::helpers::RawParseError;
 
 // * Parsing Entry Point
 
-pub fn parse<'a>(file_id: FileId, src: &str) -> Result<Mod, ParseError> {
+pub fn parse(file_id: FileId, src: &str) -> Result<Mod, ParseError> {
     PARSER
         .parse(file_id, src)
         .map_err(|error| ParseError::new(file_id, error))
