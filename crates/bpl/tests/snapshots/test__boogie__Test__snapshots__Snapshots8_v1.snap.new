@@ -1,0 +1,306 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "M",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "0",
+                                ),
+                                op: Lt,
+                                rhs: Var(
+                                    "n",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "M",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "1",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "M",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "x",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                ],
+                stmt_list: [
+                    LabelOrCmd(
+                        Call(
+                            CallCmd {
+                                attrs: [],
+                                call_params: CallParams {
+                                    returns: [
+                                        "x",
+                                    ],
+                                    target: "N",
+                                    params: [
+                                        Var(
+                                            "n",
+                                        ),
+                                    ],
+                                },
+                                is_async: false,
+                                is_free: false,
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Nat(
+                                            "0",
+                                        ),
+                                        op: Le,
+                                        rhs: Var(
+                                            "x",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "3",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "N",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "0",
+                                ),
+                                op: Lt,
+                                rhs: Var(
+                                    "n",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "42",
+                                ),
+                                op: Lt,
+                                rhs: Var(
+                                    "r",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+procedure {:checksum "0"} M(n: int);
+  requires 0 < n;
+
+implementation {:id "M"} {:checksum "1"} M(n: int) {
+  var x: int;
+
+  call x := N(n);
+  assert 0 <= x;
+}
+
+procedure {:checksum "3"} N(n: int) returns (r: int);
+  requires 0 < n;
+  ensures 42 < r;
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots8.v1.bpl]
+procedure {:checksum "0"} M(n: int);
+  requires 0 < n;
+
+implementation {:id "M"} {:checksum "1"} M(n: int)
+{
+    var x: int;
+
+    call x := N(n);
+
+    assert 0 <= x;
+}
+
+procedure {:checksum "3"} N(n: int) returns (r: int);
+  requires 0 < n;
+  // Change: stronger postcondition
+  ensures 42 < r;

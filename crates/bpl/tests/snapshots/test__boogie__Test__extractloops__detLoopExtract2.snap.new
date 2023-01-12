@@ -1,0 +1,405 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "entrypoint",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "Main",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                            "j",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "Flag",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "j",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "Flag",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            false,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Lt,
+                                                rhs: Nat(
+                                                    "3",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Havoc(
+                                                HavocCmd {
+                                                    vars: [
+                                                        "b",
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Expr(
+                                                        Logical(
+                                                            LogicalExpr {
+                                                                lhs: Var(
+                                                                    "b",
+                                                                ),
+                                                                op: Or,
+                                                                rhs: Var(
+                                                                    "Flag",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    then: [
+                                                        LabelOrCmd(
+                                                            Assign(
+                                                                AssignCmd {
+                                                                    lhs: [
+                                                                        AssignLhs {
+                                                                            ident: "i",
+                                                                            subscripts: [],
+                                                                        },
+                                                                    ],
+                                                                    rhs: [
+                                                                        Term(
+                                                                            Term {
+                                                                                lhs: Var(
+                                                                                    "i",
+                                                                                ),
+                                                                                op: Add,
+                                                                                rhs: Nat(
+                                                                                    "1",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                        LabelOrCmd(
+                                                            Assign(
+                                                                AssignCmd {
+                                                                    lhs: [
+                                                                        AssignLhs {
+                                                                            ident: "j",
+                                                                            subscripts: [],
+                                                                        },
+                                                                    ],
+                                                                    rhs: [
+                                                                        Term(
+                                                                            Term {
+                                                                                lhs: Var(
+                                                                                    "j",
+                                                                                ),
+                                                                                op: Add,
+                                                                                rhs: Nat(
+                                                                                    "1",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: Some(
+                                                        Else(
+                                                            [
+                                                                LabelOrCmd(
+                                                                    Assign(
+                                                                        AssignCmd {
+                                                                            lhs: [
+                                                                                AssignLhs {
+                                                                                    ident: "Flag",
+                                                                                    subscripts: [],
+                                                                                },
+                                                                            ],
+                                                                            rhs: [
+                                                                                BoolLit(
+                                                                                    true,
+                                                                                ),
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                ),
+                                                                LabelOrCmd(
+                                                                    Assign(
+                                                                        AssignCmd {
+                                                                            lhs: [
+                                                                                AssignLhs {
+                                                                                    ident: "j",
+                                                                                    subscripts: [],
+                                                                                },
+                                                                            ],
+                                                                            rhs: [
+                                                                                Term(
+                                                                                    Term {
+                                                                                        lhs: Var(
+                                                                                            "j",
+                                                                                        ),
+                                                                                        op: Add,
+                                                                                        rhs: Nat(
+                                                                                            "1",
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                ),
+                                                            ],
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Logical(
+                                                LogicalExpr {
+                                                    lhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "i",
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Var(
+                                                                "j",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: Or,
+                                                    rhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "i",
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Term(
+                                                                Term {
+                                                                    lhs: Var(
+                                                                        "j",
+                                                                    ),
+                                                                    op: Sub,
+                                                                    rhs: Nat(
+                                                                        "1",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure {:entrypoint} Main() returns (r: int) {
+  var i, j: int;
+  var Flag: bool;
+  var b: bool;
+
+  i := 0;
+  j := 0;
+  Flag := false;
+  while (i < 3) {
+    havoc b;
+    if (b || Flag) {
+      i := i + 1;
+      j := j + 1;
+    } else {
+      Flag := true;
+      j := j + 1;
+    }
+  }
+  assume !(i == j || i == j - 1);
+  return;
+}
+
+[Input - ../../vendor/boogie/Test/extractloops/detLoopExtract2.bpl]
+// RUN: %boogie -stratifiedInline:1 -extractLoops -deterministicExtractLoops -recursionBound:6  "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+//This example checks the bug fix in the loop extract for http://symdiff.codeplex.com/workitem/4
+procedure {:entrypoint} Main() returns(r:int)
+{ 
+  var i, j : int;
+  var Flag : bool;
+  var b : bool;
+  i := 0;
+  j := 0;
+  Flag := false;
+  while(i<3)
+  {
+    havoc b;
+    if (b || Flag) {
+      i := i + 1;
+      j := j + 1; 
+    }
+    else {
+     Flag := true;
+     j := j + 1;
+    }
+  }
+  assume !(i == j || i == j - 1);
+  return;
+}

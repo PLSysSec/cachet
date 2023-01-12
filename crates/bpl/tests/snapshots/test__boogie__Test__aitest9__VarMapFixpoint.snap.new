@@ -1,0 +1,613 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "main",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "y",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "z",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "2",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "y",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "6",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "LoopHead",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "LoopHead",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "y",
+                                            ),
+                                            op: Lt,
+                                            rhs: Nat(
+                                                "10",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "LoopBody",
+                                        "LoopEnd",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "LoopBody",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Havoc(
+                                HavocCmd {
+                                    vars: [
+                                        "y",
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "LoopHead",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "LoopEnd",
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "SimpleWhile5",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "returnValue",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "returnValue",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "1",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Havoc(
+                                HavocCmd {
+                                    vars: [
+                                        "i",
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "LoopHead",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "LoopHead",
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "LoopBody",
+                                        "LoopEnd",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "LoopBody",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "1",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "IncLoopHead",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "IncLoopHead",
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "IncI",
+                                        "IncDone",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "IncI",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "IncLoopHead",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "IncDone",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Nat(
+                                                "1",
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "i",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "returnValue",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Factor(
+                                            Factor {
+                                                lhs: Var(
+                                                    "returnValue",
+                                                ),
+                                                op: Mul,
+                                                rhs: Var(
+                                                    "i",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Sub,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "LoopHead",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "LoopEnd",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "returnValue",
+                                            ),
+                                            op: Ge,
+                                            rhs: Nat(
+                                                "1",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure main() {
+  var x: int, y: int, z: int;
+
+  start:
+  x := 2;
+  y := 6;
+  goto LoopHead;
+  LoopHead:
+  assert y < 10;
+  goto LoopBody, LoopEnd;
+  LoopBody:
+  havoc y;
+  goto LoopHead;
+  LoopEnd:
+  return;
+}
+
+procedure SimpleWhile5() returns (returnValue: int) {
+  var i: int;
+
+  start:
+  returnValue := 1;
+  havoc i;
+  goto LoopHead;
+  LoopHead:
+  goto LoopBody, LoopEnd;
+  LoopBody:
+  i := 1;
+  goto IncLoopHead;
+  IncLoopHead:
+  goto IncI, IncDone;
+  IncI:
+  i := i + 1;
+  goto IncLoopHead;
+  IncDone:
+  assert 1 <= i;
+  returnValue := returnValue * i;
+  i := i - 1;
+  goto LoopHead;
+  LoopEnd:
+  assert returnValue >= 1;
+  return;
+}
+
+[Input - ../../vendor/boogie/Test/aitest9/VarMapFixpoint.bpl]
+// RUN: %boogie "%s" -infer:j > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure main()
+{
+  var x: int, y: int, z: int;
+
+  start:
+    x := 2;
+    y := 6;
+    goto LoopHead;
+
+  LoopHead:
+    assert y < 10;  // error: the loop body sets y to an arbitrary value
+    goto LoopBody, LoopEnd;
+
+  LoopBody:
+    havoc y;
+    goto LoopHead;
+
+  LoopEnd:
+    return;
+}
+
+procedure SimpleWhile5() returns (returnValue: int)
+{
+  var i: int;
+
+  start:
+    returnValue := 1;
+    havoc i;
+    goto LoopHead;
+
+  LoopHead:
+    goto LoopBody, LoopEnd;
+
+  LoopBody:
+    // here, we would simply like to "assume 1 <= i", but the interval domain doesn't interpret
+    // assume commands, so we start a loop
+    i := 1;
+    goto IncLoopHead;
+
+  IncLoopHead:
+    goto IncI, IncDone;
+
+  IncI:
+    i := i + 1;
+    goto IncLoopHead;
+
+  IncDone:
+    // now we have 1 <= i
+    assert 1 <= i;
+
+    returnValue := returnValue * i;
+    i := i - 1;
+    goto LoopHead;
+
+  LoopEnd:
+    assert returnValue >= 1;
+    return;
+}

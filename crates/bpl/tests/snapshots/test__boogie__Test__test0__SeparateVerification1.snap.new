@@ -1,0 +1,231 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: Term(
+                        Term {
+                            lhs: Var(
+                                "x",
+                            ),
+                            op: Add,
+                            rhs: Var(
+                                "y",
+                            ),
+                        },
+                    ),
+                    op: Le,
+                    rhs: Nat(
+                        "100",
+                    ),
+                },
+            ),
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "T",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "C",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "F",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "n",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "extern",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "Q",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Main",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "P",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Q",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+axiom x + y <= 100;
+
+type T;
+
+const C: int;
+
+function F(): int;
+
+var n: int;
+
+procedure P();
+
+procedure {:extern} Q(x: int);
+
+procedure Main() {
+  call P();
+  call Q();
+}
+
+[Input - ../../vendor/boogie/Test/test0/SeparateVerification1.bpl]
+// RUN: %boogie -noVerify "%s" SeparateVerification0.bpl > "%t"
+// RUN: %diff "%s.expect" "%t"
+// to be used with SeparateVerification0.bpl
+
+// x and y are declared in SeparateVerification0.bpl
+axiom x + y <= 100;
+
+// these are declared as :extern as SeparateVerification0.bpl
+type T;
+const C: int;
+function F(): int;
+var n: int;
+procedure P();
+procedure {:extern} Q(x: int);
+
+procedure Main() {
+  call P();  // note, calling the parameter-less non-extern P (an extern and a non-extern
+             // declaration of the same name are usually mostly identical declarations,
+             // but Boogie allows them to be different, because it ignores the extern ones)
+  call Q();  // ditto
+}

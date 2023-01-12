@@ -1,0 +1,176 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "M",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "M",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "2",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "M",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    StructuredCmd(
+                        If(
+                            IfCmd {
+                                guard: Asterisk,
+                                then: [
+                                    LabelOrCmd(
+                                        Claim(
+                                            ClaimCmd {
+                                                kind: Assert,
+                                                attrs: [],
+                                                proposition: Rel(
+                                                    RelExpr {
+                                                        lhs: Nat(
+                                                            "1",
+                                                        ),
+                                                        op: Eq,
+                                                        rhs: Nat(
+                                                            "1",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                ],
+                                else_: Some(
+                                    Else(
+                                        [
+                                            LabelOrCmd(
+                                                Claim(
+                                                    ClaimCmd {
+                                                        kind: Assert,
+                                                        attrs: [],
+                                                        proposition: Rel(
+                                                            RelExpr {
+                                                                lhs: Nat(
+                                                                    "2",
+                                                                ),
+                                                                op: Neq,
+                                                                rhs: Nat(
+                                                                    "2",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            ),
+                                        ],
+                                    ),
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Nat(
+                                            "3",
+                                        ),
+                                        op: Neq,
+                                        rhs: Nat(
+                                            "3",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+]
+
+[Printed]
+procedure {:checksum "0"} M();
+
+implementation {:id "M"} {:checksum "2"} M() {
+  if (*) {
+    assert 1 == 1;
+  } else {
+    assert 2 != 2;
+  }
+  assert 3 != 3;
+}
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots21.v1.bpl]
+procedure {:checksum "0"} M();
+
+implementation {:id "M"} {:checksum "2"} M()
+{
+    if (*)
+    {
+        assert 1 == 1;
+    }
+    else
+    {
+        assert 2 != 2;  // error
+    }
+
+    assert 3 != 3;  // error
+}

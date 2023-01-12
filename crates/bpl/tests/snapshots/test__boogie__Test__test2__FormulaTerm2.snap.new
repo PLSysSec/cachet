@@ -1,0 +1,596 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "t",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "a",
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "b",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "t",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "a",
+                                                ),
+                                                op: Eq,
+                                                rhs: Var(
+                                                    "b",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Var(
+                                        "t",
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "f",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Bool,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "A",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "B",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: FuncCall(
+                        FuncCall {
+                            target: "f",
+                            args: [
+                                Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "A",
+                                        ),
+                                        op: Lt,
+                                        rhs: Var(
+                                            "B",
+                                        ),
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    op: Eq,
+                    rhs: Nat(
+                        "5",
+                    ),
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "A",
+                                            ),
+                                            op: Lt,
+                                            rhs: Var(
+                                                "B",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "f",
+                                                    args: [
+                                                        BoolLit(
+                                                            true,
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "5",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "PX",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "t",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "a",
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "b",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "t",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "a",
+                                                ),
+                                                op: Eq,
+                                                rhs: Var(
+                                                    "b",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Var(
+                                                "t",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "QX",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "A",
+                                            ),
+                                            op: Lt,
+                                            rhs: Var(
+                                                "B",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "f",
+                                                    args: [
+                                                        BoolLit(
+                                                            true,
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Lt,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure P() {
+  var a: int, b: int, t: bool;
+
+  start:
+  assume a == b;
+  t := a == b;
+  assert t;
+  return;
+}
+
+function f(bool): int;
+
+const A: int;
+
+const B: int;
+
+axiom f(A < B) == 5;
+
+procedure Q() {
+  start:
+  assume A < B;
+  assert f(true) == 5;
+  return;
+}
+
+procedure PX() {
+  var a: int, b: int, t: bool;
+
+  start:
+  assume a == b;
+  t := a == b;
+  assert !t;
+  return;
+}
+
+procedure QX() {
+  start:
+  assume A < B;
+  assert f(true) < 2;
+  return;
+}
+
+[Input - ../../vendor/boogie/Test/test2/FormulaTerm2.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// This file has been created to test some of the formula/term issues in Zap.
+// However, the test harness does not specify any particular prover to be used,
+// since these tests should pass regardless of which prover is used.
+
+procedure P()
+{
+  var a: int, b: int, t: bool;
+
+  start:
+    assume a == b;
+    t := a == b;
+    assert t;
+    return;
+}
+
+function f(bool) returns (int);
+const A: int;
+const B: int;
+
+axiom f(A < B) == 5;
+
+procedure Q()
+{
+  start:
+    assume A < B;
+    assert f(true) == 5;
+    return;
+}
+
+// ----- and now some erroneous procedures
+
+procedure PX()
+{
+  var a: int, b: int, t: bool;
+
+  start:
+    assume a == b;
+    t := a == b;
+    assert !t;  // error
+    return;
+}
+
+procedure QX()
+{
+  start:
+    assume A < B;
+    assert f(true) < 2;  // error
+    return;
+}

@@ -1,0 +1,3538 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "linear",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "perm",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "Perm",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Left",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "i",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Perm",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Right",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "i",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Perm",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [],
+                    },
+                ),
+                Attr(
+                    AttrContent {
+                        ident: "linear",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "perm",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "IntCollector",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "i",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Map(
+                    MapType {
+                        type_params: [],
+                        keys: [
+                            App(
+                                TypeApp {
+                                    head: "Perm",
+                                    tail: None,
+                                },
+                            ),
+                        ],
+                        value: Atom(
+                            Bool,
+                        ),
+                    },
+                ),
+            },
+            body: Some(
+                Array(
+                    ArrayExpr {
+                        expr: FuncCall(
+                            FuncCall {
+                                target: "MapConst",
+                                args: [
+                                    BoolLit(
+                                        false,
+                                    ),
+                                ],
+                            },
+                        ),
+                        subscripts: [
+                            ArraySubscript {
+                                keys: [
+                                    FuncCall(
+                                        FuncCall {
+                                            target: "Left",
+                                            args: [
+                                                Var(
+                                                    "i",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                ],
+                                value: Some(
+                                    BoolLit(
+                                        true,
+                                    ),
+                                ),
+                            },
+                            ArraySubscript {
+                                keys: [
+                                    FuncCall(
+                                        FuncCall {
+                                            target: "Right",
+                                            args: [
+                                                Var(
+                                                    "i",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                ],
+                                value: Some(
+                                    BoolLit(
+                                        true,
+                                    ),
+                                ),
+                            },
+                        ],
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [],
+                    },
+                ),
+                Attr(
+                    AttrContent {
+                        ident: "linear",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "perm",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "IntSetCollector",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "iset",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                Atom(
+                                    Int,
+                                ),
+                            ],
+                            value: Atom(
+                                Bool,
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Map(
+                    MapType {
+                        type_params: [],
+                        keys: [
+                            App(
+                                TypeApp {
+                                    head: "Perm",
+                                    tail: None,
+                                },
+                            ),
+                        ],
+                        value: Atom(
+                            Bool,
+                        ),
+                    },
+                ),
+            },
+            body: Some(
+                Quant(
+                    QuantExpr {
+                        kind: Lambda,
+                        body: QuantBody {
+                            type_params: [],
+                            bound_vars: [
+                                AttrTypedIdentsWhere {
+                                    attrs: [],
+                                    typed_idents_where: TypedIdentsWhere {
+                                        typed_idents: TypedIdents {
+                                            idents: [
+                                                "p",
+                                            ],
+                                            type_: App(
+                                                TypeApp {
+                                                    head: "Perm",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        },
+                                        where_: None,
+                                    },
+                                },
+                            ],
+                            attrs: [],
+                            expr: Logical(
+                                LogicalExpr {
+                                    lhs: FuncCall(
+                                        FuncCall {
+                                            target: "is#Left",
+                                            args: [
+                                                Var(
+                                                    "p",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                    op: And,
+                                    rhs: Array(
+                                        ArrayExpr {
+                                            expr: Var(
+                                                "iset",
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "i#Left",
+                                                                args: [
+                                                                    Var(
+                                                                        "p",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        },
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "IntSetSubset",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "X",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                Atom(
+                                    Int,
+                                ),
+                            ],
+                            value: Atom(
+                                Bool,
+                            ),
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "Y",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                Atom(
+                                    Int,
+                                ),
+                            ],
+                            value: Atom(
+                                Bool,
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: FuncCall(
+                            FuncCall {
+                                target: "MapImp",
+                                args: [
+                                    Var(
+                                        "X",
+                                    ),
+                                    Var(
+                                        "Y",
+                                    ),
+                                ],
+                            },
+                        ),
+                        op: Eq,
+                        rhs: FuncCall(
+                            FuncCall {
+                                target: "MapConst",
+                                args: [
+                                    BoolLit(
+                                        true,
+                                    ),
+                                ],
+                            },
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "IntSetEq",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "X",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                Atom(
+                                    Int,
+                                ),
+                            ],
+                            value: Atom(
+                                Bool,
+                            ),
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "Y",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                Atom(
+                                    Int,
+                                ),
+                            ],
+                            value: Atom(
+                                Bool,
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: FuncCall(
+                            FuncCall {
+                                target: "MapIff",
+                                args: [
+                                    Var(
+                                        "X",
+                                    ),
+                                    Var(
+                                        "Y",
+                                    ),
+                                ],
+                            },
+                        ),
+                        op: Eq,
+                        rhs: FuncCall(
+                            FuncCall {
+                                target: "MapConst",
+                                args: [
+                                    BoolLit(
+                                        true,
+                                    ),
+                                ],
+                            },
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "size",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "set",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                Atom(
+                                    Int,
+                                ),
+                            ],
+                            value: Atom(
+                                Bool,
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "lemma",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "LemmaAddToSet",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "set",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Neg(
+                            NegExpr {
+                                op: Logical,
+                                expr: Array(
+                                    ArrayExpr {
+                                        expr: Var(
+                                            "set",
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "size",
+                                        args: [
+                                            Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "set",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "i",
+                                                                ),
+                                                            ],
+                                                            value: Some(
+                                                                BoolLit(
+                                                                    true,
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Term(
+                                    Term {
+                                        lhs: FuncCall(
+                                            FuncCall {
+                                                target: "size",
+                                                args: [
+                                                    Var(
+                                                        "set",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        op: Add,
+                                        rhs: Nat(
+                                            "1",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "lemma",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "LemmaRemoveFromSet",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "set",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Array(
+                            ArrayExpr {
+                                expr: Var(
+                                    "set",
+                                ),
+                                subscripts: [
+                                    ArraySubscript {
+                                        keys: [
+                                            Var(
+                                                "i",
+                                            ),
+                                        ],
+                                        value: None,
+                                    },
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "size",
+                                        args: [
+                                            Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "set",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "i",
+                                                                ),
+                                                            ],
+                                                            value: Some(
+                                                                BoolLit(
+                                                                    false,
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Term(
+                                    Term {
+                                        lhs: FuncCall(
+                                            FuncCall {
+                                                target: "size",
+                                                args: [
+                                                    Var(
+                                                        "set",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        op: Sub,
+                                        rhs: Nat(
+                                            "1",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "lemma",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "LemmaSubsetSizeRelation",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "IntSetSubset",
+                                args: [
+                                    Var(
+                                        "a",
+                                    ),
+                                    Var(
+                                        "b",
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "a",
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "b",
+                                        ),
+                                    },
+                                ),
+                                op: Or,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: FuncCall(
+                                            FuncCall {
+                                                target: "size",
+                                                args: [
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        op: Lt,
+                                        rhs: FuncCall(
+                                            FuncCall {
+                                                target: "size",
+                                                args: [
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "N",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: Nat(
+                        "0",
+                    ),
+                    op: Lt,
+                    rhs: Var(
+                        "N",
+                    ),
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "IsMutator",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "i",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Logical(
+                    LogicalExpr {
+                        lhs: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "1",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "i",
+                                ),
+                            },
+                        ),
+                        op: And,
+                        rhs: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "i",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "N",
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "Mutators",
+                ],
+                type_: Map(
+                    MapType {
+                        type_params: [],
+                        keys: [
+                            Atom(
+                                Int,
+                            ),
+                        ],
+                        value: Atom(
+                            Bool,
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: Var(
+                        "Mutators",
+                    ),
+                    op: Eq,
+                    rhs: Quant(
+                        QuantExpr {
+                            kind: Lambda,
+                            body: QuantBody {
+                                type_params: [],
+                                bound_vars: [
+                                    AttrTypedIdentsWhere {
+                                        attrs: [],
+                                        typed_idents_where: TypedIdentsWhere {
+                                            typed_idents: TypedIdents {
+                                                idents: [
+                                                    "x",
+                                                ],
+                                                type_: Atom(
+                                                    Int,
+                                                ),
+                                            },
+                                            where_: None,
+                                        },
+                                    },
+                                ],
+                                attrs: [],
+                                expr: FuncCall(
+                                    FuncCall {
+                                        target: "IsMutator",
+                                        args: [
+                                            Var(
+                                                "x",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        },
+                    ),
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: FuncCall(
+                        FuncCall {
+                            target: "size",
+                            args: [
+                                Var(
+                                    "Mutators",
+                                ),
+                            ],
+                        },
+                    ),
+                    op: Eq,
+                    rhs: Var(
+                        "N",
+                    ),
+                },
+            ),
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "1",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "barrierOn",
+                        ],
+                        type_: Atom(
+                            Bool,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "1",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "barrierCounter",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "1",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+                Attr(
+                    AttrContent {
+                        ident: "linear",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "perm",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "mutatorsInBarrier",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    Atom(
+                                        Int,
+                                    ),
+                                ],
+                                value: Atom(
+                                    Bool,
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "AtomicIsBarrierOn",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "b",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "barrierOn",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "AtomicIsBarrierOn",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "IsBarrierOn",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "AtomicEnterBarrier",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear_in",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "p",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Perm",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "barrierCounter",
+                            "mutatorsInBarrier",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "IsMutator",
+                                            args: [
+                                                Var(
+                                                    "i",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "mutatorsInBarrier",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "barrierCounter",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "barrierCounter",
+                                                ),
+                                                op: Sub,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "p",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Right",
+                                                args: [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "AtomicEnterBarrier",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "EnterBarrier",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear_in",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "p",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Perm",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "AtomicWaitForBarrierRelease",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear_in",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "p",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Perm",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear_out",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "barrierCounter",
+                            "mutatorsInBarrier",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "p",
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "Right",
+                                                            args: [
+                                                                Var(
+                                                                    "i",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "mutatorsInBarrier",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "i",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Var(
+                                                "barrierOn",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "mutatorsInBarrier",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            false,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "barrierCounter",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "barrierCounter",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "AtomicWaitForBarrierRelease",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "WaitForBarrierRelease",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear_in",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "p",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Perm",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear_out",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "AtomicSetBarrier",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "barrierOn",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "barrierOn",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "b",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "AtomicSetBarrier",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "SetBarrier",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "AtomicWaitBarrier",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "barrierCounter",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "AtomicWaitBarrier",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "WaitBarrier",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "yield_preserves",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "BarrierInv",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Mutator",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "IsMutator",
+                                args: [
+                                    Var(
+                                        "i",
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [
+                                Attr(
+                                    AttrContent {
+                                        ident: "linear",
+                                        params: [
+                                            String(
+                                                StringLit {
+                                                    text: "perm",
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "p",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Perm",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "b",
+                                        ],
+                                        target: "IsBarrierOn",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Var(
+                                            "b",
+                                        ),
+                                    ),
+                                    then: [
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [],
+                                                        target: "BarrierInv",
+                                                        params: [],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [
+                                                        Attr(
+                                                            AttrContent {
+                                                                ident: "layer",
+                                                                params: [
+                                                                    Expr(
+                                                                        Nat(
+                                                                            "1",
+                                                                        ),
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                    call_params: CallParams {
+                                                        returns: [],
+                                                        target: "LemmaAddToSet",
+                                                        params: [
+                                                            Var(
+                                                                "mutatorsInBarrier",
+                                                            ),
+                                                            Var(
+                                                                "i",
+                                                            ),
+                                                        ],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [
+                                                            "p",
+                                                        ],
+                                                        target: "EnterBarrier",
+                                                        params: [
+                                                            Var(
+                                                                "i",
+                                                            ),
+                                                        ],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            ParCall(
+                                                ParCallCmd {
+                                                    attrs: [],
+                                                    calls: [
+                                                        CallParams {
+                                                            returns: [],
+                                                            target: "BarrierInv",
+                                                            params: [],
+                                                        },
+                                                        CallParams {
+                                                            returns: [],
+                                                            target: "MutatorInv",
+                                                            params: [
+                                                                Var(
+                                                                    "p",
+                                                                ),
+                                                                Var(
+                                                                    "i",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [
+                                                        Attr(
+                                                            AttrContent {
+                                                                ident: "layer",
+                                                                params: [
+                                                                    Expr(
+                                                                        Nat(
+                                                                            "1",
+                                                                        ),
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                    call_params: CallParams {
+                                                        returns: [],
+                                                        target: "LemmaRemoveFromSet",
+                                                        params: [
+                                                            Var(
+                                                                "mutatorsInBarrier",
+                                                            ),
+                                                            Var(
+                                                                "i",
+                                                            ),
+                                                        ],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [],
+                                                        target: "WaitForBarrierRelease",
+                                                        params: [
+                                                            Var(
+                                                                "p",
+                                                            ),
+                                                            Var(
+                                                                "i",
+                                                            ),
+                                                        ],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "yield_preserves",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "BarrierInv",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Collector",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "i",
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "SetBarrier",
+                                        params: [
+                                            BoolLit(
+                                                true,
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            ParCall(
+                                ParCallCmd {
+                                    attrs: [],
+                                    calls: [
+                                        CallParams {
+                                            returns: [],
+                                            target: "BarrierInv",
+                                            params: [],
+                                        },
+                                        CallParams {
+                                            returns: [],
+                                            target: "CollectorInv",
+                                            params: [
+                                                Var(
+                                                    "i",
+                                                ),
+                                                BoolLit(
+                                                    false,
+                                                ),
+                                            ],
+                                        },
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "WaitBarrier",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "layer",
+                                                params: [
+                                                    Expr(
+                                                        Nat(
+                                                            "1",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "LemmaSubsetSizeRelation",
+                                        params: [
+                                            Var(
+                                                "mutatorsInBarrier",
+                                            ),
+                                            Var(
+                                                "Mutators",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            ParCall(
+                                ParCallCmd {
+                                    attrs: [],
+                                    calls: [
+                                        CallParams {
+                                            returns: [],
+                                            target: "BarrierInv",
+                                            params: [],
+                                        },
+                                        CallParams {
+                                            returns: [],
+                                            target: "CollectorInv",
+                                            params: [
+                                                Var(
+                                                    "i",
+                                                ),
+                                                BoolLit(
+                                                    true,
+                                                ),
+                                            ],
+                                        },
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "layer",
+                                                params: [
+                                                    Expr(
+                                                        Nat(
+                                                            "1",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "mutatorsInBarrier",
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "Mutators",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "SetBarrier",
+                                        params: [
+                                            BoolLit(
+                                                false,
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yield_invariant",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "BarrierInv",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "IntSetSubset",
+                                args: [
+                                    Var(
+                                        "mutatorsInBarrier",
+                                    ),
+                                    Var(
+                                        "Mutators",
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Term(
+                                    Term {
+                                        lhs: FuncCall(
+                                            FuncCall {
+                                                target: "size",
+                                                args: [
+                                                    Var(
+                                                        "mutatorsInBarrier",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        op: Add,
+                                        rhs: Var(
+                                            "barrierCounter",
+                                        ),
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "N",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yield_invariant",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "MutatorInv",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "p",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Perm",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "p",
+                                        ),
+                                        op: Eq,
+                                        rhs: FuncCall(
+                                            FuncCall {
+                                                target: "Right",
+                                                args: [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Array(
+                                    ArrayExpr {
+                                        expr: Var(
+                                            "mutatorsInBarrier",
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yield_invariant",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "CollectorInv",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "perm",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "done",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "i",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Var(
+                                    "barrierOn",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Var(
+                                    "done",
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "mutatorsInBarrier",
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "Mutators",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+type {:linear "perm"} {:datatype} Perm;
+
+function {:constructor} Left(i: int): Perm;
+
+function {:constructor} Right(i: int): Perm;
+
+function {:inline} {:linear "perm"} IntCollector(i: int): [Perm]bool {
+  MapConst(false)[Left(i) := true][Right(i) := true]
+}
+
+function {:inline} {:linear "perm"} IntSetCollector(iset: [int]bool): [Perm]bool {
+  (lambda p: Perm :: is#Left(p) && iset[i#Left(p)])
+}
+
+function {:inline} IntSetSubset(X: [int]bool, Y: [int]bool): bool {
+  MapImp(X, Y) == MapConst(true)
+}
+
+function {:inline} IntSetEq(X: [int]bool, Y: [int]bool): bool {
+  MapIff(X, Y) == MapConst(true)
+}
+
+function size(set: [int]bool): int;
+
+procedure {:lemma} LemmaAddToSet(set: [int]bool, i: int);
+  requires !set[i];
+  ensures size(set[i := true]) == size(set) + 1;
+
+procedure {:lemma} LemmaRemoveFromSet(set: [int]bool, i: int);
+  requires set[i];
+  ensures size(set[i := false]) == size(set) - 1;
+
+procedure {:lemma} LemmaSubsetSizeRelation(a: [int]bool, b: [int]bool);
+  requires IntSetSubset(a, b);
+  ensures a == b || size(a) < size(b);
+
+const N: int;
+
+axiom 0 < N;
+
+function {:inline} IsMutator(i: int): bool {
+  1 <= i && i <= N
+}
+
+const Mutators: [int]bool;
+
+axiom Mutators == (lambda x: int :: IsMutator(x));
+
+axiom size(Mutators) == N;
+
+var {:layer 0, 1} barrierOn: bool;
+
+var {:layer 0, 1} barrierCounter: int;
+
+var {:layer 0, 1} {:linear "perm"} mutatorsInBarrier: [int]bool;
+
+procedure {:atomic} {:layer 1} AtomicIsBarrierOn() returns (b: bool) {
+  b := barrierOn;
+}
+
+procedure {:yields} {:layer 0} {:refines "AtomicIsBarrierOn"} IsBarrierOn() returns (b: bool);
+
+procedure {:atomic} {:layer 1} AtomicEnterBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm)
+  modifies barrierCounter, mutatorsInBarrier;
+{
+  assert IsMutator(i);
+  mutatorsInBarrier[i] := true;
+  barrierCounter := barrierCounter - 1;
+  p := Right(i);
+}
+
+procedure {:yields} {:layer 0} {:refines "AtomicEnterBarrier"} EnterBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm);
+
+procedure {:atomic} {:layer 1} AtomicWaitForBarrierRelease({:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
+  modifies barrierCounter, mutatorsInBarrier;
+{
+  assert p == Right(i) && mutatorsInBarrier[i];
+  assume !barrierOn;
+  mutatorsInBarrier[i] := false;
+  barrierCounter := barrierCounter + 1;
+}
+
+procedure {:yields} {:layer 0} {:refines "AtomicWaitForBarrierRelease"} WaitForBarrierRelease({:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int);
+
+procedure {:atomic} {:layer 1} AtomicSetBarrier(b: bool)
+  modifies barrierOn;
+{
+  barrierOn := b;
+}
+
+procedure {:yields} {:layer 0} {:refines "AtomicSetBarrier"} SetBarrier(b: bool);
+
+procedure {:atomic} {:layer 1} AtomicWaitBarrier() {
+  assume barrierCounter == 0;
+}
+
+procedure {:yields} {:layer 0} {:refines "AtomicWaitBarrier"} WaitBarrier();
+
+procedure {:yields} {:layer 1} {:yield_preserves "BarrierInv"} Mutator({:linear "perm"} i: int)
+  requires {:layer 1} IsMutator(i);
+{
+  var b: bool;
+  var {:linear "perm"} p: Perm;
+
+  call b := IsBarrierOn();
+  if (b) {
+    call BarrierInv();
+    call {:layer 1} LemmaAddToSet(mutatorsInBarrier, i);
+    call p := EnterBarrier(i);
+    par BarrierInv() | MutatorInv(p, i);
+    call {:layer 1} LemmaRemoveFromSet(mutatorsInBarrier, i);
+    call WaitForBarrierRelease(p, i);
+  }
+}
+
+procedure {:yields} {:layer 1} {:yield_preserves "BarrierInv"} Collector({:linear "perm"} i: int)
+  requires {:layer 1} i == 0;
+{
+  call SetBarrier(true);
+  par BarrierInv() | CollectorInv(i, false);
+  call WaitBarrier();
+  call {:layer 1} LemmaSubsetSizeRelation(mutatorsInBarrier, Mutators);
+  par BarrierInv() | CollectorInv(i, true);
+  assert {:layer 1} mutatorsInBarrier == Mutators;
+  call SetBarrier(false);
+}
+
+procedure {:yield_invariant} {:layer 1} BarrierInv();
+  requires IntSetSubset(mutatorsInBarrier, Mutators);
+  requires size(mutatorsInBarrier) + barrierCounter == N;
+
+procedure {:yield_invariant} {:layer 1} MutatorInv({:linear "perm"} p: Perm, i: int);
+  requires p == Right(i) && mutatorsInBarrier[i];
+
+procedure {:yield_invariant} {:layer 1} CollectorInv({:linear "perm"} i: int, done: bool);
+  requires i == 0 && barrierOn;
+  requires done ==> mutatorsInBarrier == Mutators;
+
+[Input - ../../vendor/boogie/Test/civl/cav2020-3.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+type {:linear "perm"} {:datatype} Perm;
+function {:constructor} Left(i: int): Perm;
+function {:constructor} Right(i: int): Perm;
+
+function {:inline} {:linear "perm"} IntCollector(i: int) : [Perm]bool
+{
+  MapConst(false)[Left(i) := true][Right(i) := true]
+}
+function {:inline} {:linear "perm"} IntSetCollector(iset: [int]bool) : [Perm]bool
+{
+  (lambda p: Perm :: is#Left(p) && iset[i#Left(p)])
+}
+
+function {:inline} IntSetSubset(X: [int]bool, Y: [int]bool): bool
+{
+    MapImp(X, Y) == MapConst(true)
+}
+function {:inline} IntSetEq(X: [int]bool, Y: [int]bool): bool
+{
+    MapIff(X, Y) == MapConst(true)
+}
+
+function size(set: [int]bool): int;
+
+procedure {:lemma} LemmaAddToSet(set: [int]bool, i: int);
+requires !set[i];
+ensures size(set[i := true]) ==  size(set) + 1;
+
+procedure {:lemma} LemmaRemoveFromSet(set: [int]bool, i: int);
+requires set[i];
+ensures size(set[i := false]) ==  size(set) - 1;
+
+procedure {:lemma} LemmaSubsetSizeRelation(a: [int]bool, b: [int]bool);
+requires IntSetSubset(a, b);
+ensures a == b || size(a) < size(b);
+
+const N: int;
+axiom 0 < N;
+function {:inline} IsMutator(i: int) : bool
+{
+    1 <= i && i <= N
+}
+const Mutators: [int]bool;
+axiom Mutators == (lambda x: int:: IsMutator(x));
+axiom size(Mutators) == N;
+
+var {:layer 0,1} barrierOn: bool;
+var {:layer 0,1} barrierCounter: int;
+var {:layer 0,1} {:linear "perm"} mutatorsInBarrier: [int]bool;
+
+procedure {:atomic} {:layer 1} AtomicIsBarrierOn() returns (b: bool)
+{
+    b := barrierOn;
+}
+procedure {:yields} {:layer 0} {:refines "AtomicIsBarrierOn"} IsBarrierOn() returns (b: bool);
+
+procedure {:atomic} {:layer 1} AtomicEnterBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm)
+modifies barrierCounter, mutatorsInBarrier;
+{
+    assert IsMutator(i);
+    mutatorsInBarrier[i] := true;
+    barrierCounter := barrierCounter - 1;
+    p := Right(i);
+}
+procedure {:yields} {:layer 0} {:refines "AtomicEnterBarrier"} EnterBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm);
+
+procedure {:atomic} {:layer 1} AtomicWaitForBarrierRelease({:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
+modifies barrierCounter, mutatorsInBarrier;
+{
+    assert p == Right(i) && mutatorsInBarrier[i];
+    assume !barrierOn;
+    mutatorsInBarrier[i] := false;
+    barrierCounter := barrierCounter + 1;
+}
+procedure {:yields} {:layer 0} {:refines "AtomicWaitForBarrierRelease"} WaitForBarrierRelease({:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int);
+
+procedure {:atomic} {:layer 1} AtomicSetBarrier(b: bool)
+modifies barrierOn;
+{
+    barrierOn := b;
+}
+procedure {:yields} {:layer 0} {:refines "AtomicSetBarrier"} SetBarrier(b: bool);
+
+procedure {:atomic} {:layer 1} AtomicWaitBarrier()
+{
+    assume barrierCounter == 0;
+}
+procedure {:yields} {:layer 0} {:refines "AtomicWaitBarrier"} WaitBarrier();
+
+procedure {:yields} {:layer 1}
+{:yield_preserves "BarrierInv"}
+Mutator({:linear "perm"} i: int)
+requires {:layer 1} IsMutator(i);
+{
+    var b: bool;
+    var {:linear "perm"} p: Perm;
+
+    call b := IsBarrierOn();
+    if (b) {
+        call BarrierInv();
+        call {:layer 1} LemmaAddToSet(mutatorsInBarrier, i);
+        call p := EnterBarrier(i);
+        par BarrierInv() | MutatorInv(p, i);
+        call {:layer 1} LemmaRemoveFromSet(mutatorsInBarrier, i);
+        call WaitForBarrierRelease(p, i);
+    }
+    // access memory here
+}
+
+procedure {:yields} {:layer 1}
+{:yield_preserves "BarrierInv"}
+Collector({:linear "perm"} i: int)
+requires {:layer 1} i == 0;
+{
+    call SetBarrier(true);
+    par BarrierInv() | CollectorInv(i, false);
+    call WaitBarrier();
+    call {:layer 1} LemmaSubsetSizeRelation(mutatorsInBarrier, Mutators);
+    par BarrierInv() | CollectorInv(i, true);
+    // do root scan here
+    assert {:layer 1} mutatorsInBarrier == Mutators;
+    call SetBarrier(false);
+}
+
+procedure {:yield_invariant} {:layer 1} BarrierInv();
+requires IntSetSubset(mutatorsInBarrier, Mutators);
+requires size(mutatorsInBarrier) + barrierCounter == N;
+
+procedure {:yield_invariant} {:layer 1} MutatorInv({:linear "perm"} p: Perm, i: int);
+requires p == Right(i) && mutatorsInBarrier[i];
+
+procedure {:yield_invariant} {:layer 1} CollectorInv({:linear "perm"} i: int, done: bool);
+requires i == 0 && barrierOn;
+requires done ==> mutatorsInBarrier == Mutators;

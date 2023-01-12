@@ -1,0 +1,287 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "Cell",
+                    type_params: [
+                        "_",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Cell",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Cell",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "foo",
+            type_params: [
+                "T",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Cell",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "Some",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Some",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Some",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "MyT",
+                    type_params: [],
+                    type_: Some(
+                        App(
+                            TypeApp {
+                                head: "Some",
+                                tail: None,
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "p",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "c1",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Cell",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "MyT",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "c2",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Cell",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "Some",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type {:datatype} Cell _;
+
+function {:constructor} Cell<T>(x: T): Cell T;
+
+function foo<T>(): Cell T;
+
+type {:datatype} Some;
+
+function {:constructor} Some(x: int): Some;
+
+type MyT = Some;
+
+procedure p() {
+  var c1: Cell MyT;
+  var c2: Cell Some;}
+
+[Input - ../../vendor/boogie/Test/monomorphize/issue-364.bpl]
+// RUN: %boogie /monomorphize "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// test for use of type synonyms
+
+type {:datatype} Cell _;
+function {:constructor} Cell<T>(x: T): Cell T;
+
+function foo<T>(): Cell T;
+
+type {:datatype} Some;
+function {:constructor} Some(x: int): Some;
+
+type MyT = Some;
+
+procedure p() {
+    var c1: Cell MyT;
+    var c2: Cell Some;
+}

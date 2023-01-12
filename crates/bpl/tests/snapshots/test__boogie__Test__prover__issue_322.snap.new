@@ -1,0 +1,37 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure foo() {
+}
+
+[Input - ../../vendor/boogie/Test/prover/issue-322.bpl]
+// RUN: %boogie -proverOpt:PROVER_PATH=bogus-path "%s" > "%t"
+// RUN: %boogie -proverOpt:bogus-option "%s" >> "%t"
+// RUN: %diff "%s.expect" "%t"
+
+procedure foo() {}

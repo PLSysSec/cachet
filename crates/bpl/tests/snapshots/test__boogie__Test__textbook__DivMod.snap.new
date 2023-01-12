@@ -1,0 +1,1566 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "abs",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: Some(
+                IfThenElse(
+                    IfThenElseExpr {
+                        cond: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "0",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "x",
+                                ),
+                            },
+                        ),
+                        then: Var(
+                            "x",
+                        ),
+                        else_: Neg(
+                            NegExpr {
+                                op: Arith,
+                                expr: Var(
+                                    "x",
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "divt",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "modt",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: Term(
+                                    Term {
+                                        lhs: Factor(
+                                            Factor {
+                                                lhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "divt",
+                                                        args: [
+                                                            Var(
+                                                                "a",
+                                                            ),
+                                                            Var(
+                                                                "b",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                op: Mul,
+                                                rhs: Var(
+                                                    "b",
+                                                ),
+                                            },
+                                        ),
+                                        op: Add,
+                                        rhs: FuncCall(
+                                            FuncCall {
+                                                target: "modt",
+                                                args: [
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "a",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Logical(
+                            LogicalExpr {
+                                lhs: Implies(
+                                    ImpliesExpr {
+                                        lhs: Rel(
+                                            RelExpr {
+                                                lhs: Nat(
+                                                    "0",
+                                                ),
+                                                op: Le,
+                                                rhs: Var(
+                                                    "a",
+                                                ),
+                                            },
+                                        ),
+                                        rhs: Logical(
+                                            LogicalExpr {
+                                                lhs: Rel(
+                                                    RelExpr {
+                                                        lhs: Nat(
+                                                            "0",
+                                                        ),
+                                                        op: Le,
+                                                        rhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "modt",
+                                                                args: [
+                                                                    Var(
+                                                                        "a",
+                                                                    ),
+                                                                    Var(
+                                                                        "b",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                                op: And,
+                                                rhs: Rel(
+                                                    RelExpr {
+                                                        lhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "modt",
+                                                                args: [
+                                                                    Var(
+                                                                        "a",
+                                                                    ),
+                                                                    Var(
+                                                                        "b",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                        op: Lt,
+                                                        rhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "abs",
+                                                                args: [
+                                                                    Var(
+                                                                        "b",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Implies(
+                                    ImpliesExpr {
+                                        lhs: Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "a",
+                                                ),
+                                                op: Lt,
+                                                rhs: Nat(
+                                                    "0",
+                                                ),
+                                            },
+                                        ),
+                                        rhs: Logical(
+                                            LogicalExpr {
+                                                lhs: Rel(
+                                                    RelExpr {
+                                                        lhs: Neg(
+                                                            NegExpr {
+                                                                op: Arith,
+                                                                expr: FuncCall(
+                                                                    FuncCall {
+                                                                        target: "abs",
+                                                                        args: [
+                                                                            Var(
+                                                                                "b",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                        op: Lt,
+                                                        rhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "modt",
+                                                                args: [
+                                                                    Var(
+                                                                        "a",
+                                                                    ),
+                                                                    Var(
+                                                                        "b",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                                op: And,
+                                                rhs: Rel(
+                                                    RelExpr {
+                                                        lhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "modt",
+                                                                args: [
+                                                                    Var(
+                                                                        "a",
+                                                                    ),
+                                                                    Var(
+                                                                        "b",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                        op: Le,
+                                                        rhs: Nat(
+                                                            "0",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "dive",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "mode",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: Term(
+                                    Term {
+                                        lhs: Factor(
+                                            Factor {
+                                                lhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "dive",
+                                                        args: [
+                                                            Var(
+                                                                "a",
+                                                            ),
+                                                            Var(
+                                                                "b",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                op: Mul,
+                                                rhs: Var(
+                                                    "b",
+                                                ),
+                                            },
+                                        ),
+                                        op: Add,
+                                        rhs: FuncCall(
+                                            FuncCall {
+                                                target: "mode",
+                                                args: [
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "a",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Logical(
+                            LogicalExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Nat(
+                                            "0",
+                                        ),
+                                        op: Le,
+                                        rhs: FuncCall(
+                                            FuncCall {
+                                                target: "mode",
+                                                args: [
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: FuncCall(
+                                            FuncCall {
+                                                target: "mode",
+                                                args: [
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        op: Lt,
+                                        rhs: FuncCall(
+                                            FuncCall {
+                                                target: "abs",
+                                                args: [
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "T_from_E",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "q",
+                                    "r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "b",
+                                ),
+                                op: Neq,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Term(
+                                    Term {
+                                        lhs: Factor(
+                                            Factor {
+                                                lhs: Var(
+                                                    "q",
+                                                ),
+                                                op: Mul,
+                                                rhs: Var(
+                                                    "b",
+                                                ),
+                                            },
+                                        ),
+                                        op: Add,
+                                        rhs: Var(
+                                            "r",
+                                        ),
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "a",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Nat(
+                                            "0",
+                                        ),
+                                        op: Le,
+                                        rhs: Var(
+                                            "a",
+                                        ),
+                                    },
+                                ),
+                                rhs: Logical(
+                                    LogicalExpr {
+                                        lhs: Rel(
+                                            RelExpr {
+                                                lhs: Nat(
+                                                    "0",
+                                                ),
+                                                op: Le,
+                                                rhs: Var(
+                                                    "r",
+                                                ),
+                                            },
+                                        ),
+                                        op: And,
+                                        rhs: Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "r",
+                                                ),
+                                                op: Lt,
+                                                rhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "abs",
+                                                        args: [
+                                                            Var(
+                                                                "b",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "a",
+                                        ),
+                                        op: Lt,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                                rhs: Logical(
+                                    LogicalExpr {
+                                        lhs: Rel(
+                                            RelExpr {
+                                                lhs: Neg(
+                                                    NegExpr {
+                                                        op: Arith,
+                                                        expr: FuncCall(
+                                                            FuncCall {
+                                                                target: "abs",
+                                                                args: [
+                                                                    Var(
+                                                                        "b",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                                op: Lt,
+                                                rhs: Var(
+                                                    "r",
+                                                ),
+                                            },
+                                        ),
+                                        op: And,
+                                        rhs: Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "r",
+                                                ),
+                                                op: Le,
+                                                rhs: Nat(
+                                                    "0",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "qq",
+                                            "rr",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "qq",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "dive",
+                                                args: [
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "rr",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "mode",
+                                                args: [
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "q",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        IfThenElse(
+                                            IfThenElseExpr {
+                                                cond: Logical(
+                                                    LogicalExpr {
+                                                        lhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Nat(
+                                                                    "0",
+                                                                ),
+                                                                op: Le,
+                                                                rhs: Var(
+                                                                    "a",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        op: Or,
+                                                        rhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Var(
+                                                                    "rr",
+                                                                ),
+                                                                op: Eq,
+                                                                rhs: Nat(
+                                                                    "0",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                                then: Var(
+                                                    "qq",
+                                                ),
+                                                else_: IfThenElse(
+                                                    IfThenElseExpr {
+                                                        cond: Rel(
+                                                            RelExpr {
+                                                                lhs: Nat(
+                                                                    "0",
+                                                                ),
+                                                                op: Le,
+                                                                rhs: Var(
+                                                                    "b",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        then: Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "qq",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        else_: Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "qq",
+                                                                ),
+                                                                op: Sub,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "r",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        IfThenElse(
+                                            IfThenElseExpr {
+                                                cond: Logical(
+                                                    LogicalExpr {
+                                                        lhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Nat(
+                                                                    "0",
+                                                                ),
+                                                                op: Le,
+                                                                rhs: Var(
+                                                                    "a",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        op: Or,
+                                                        rhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Var(
+                                                                    "rr",
+                                                                ),
+                                                                op: Eq,
+                                                                rhs: Nat(
+                                                                    "0",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                                then: Var(
+                                                    "rr",
+                                                ),
+                                                else_: IfThenElse(
+                                                    IfThenElseExpr {
+                                                        cond: Rel(
+                                                            RelExpr {
+                                                                lhs: Nat(
+                                                                    "0",
+                                                                ),
+                                                                op: Le,
+                                                                rhs: Var(
+                                                                    "b",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        then: Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "rr",
+                                                                ),
+                                                                op: Sub,
+                                                                rhs: Var(
+                                                                    "b",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        else_: Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "rr",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Var(
+                                                                    "b",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "captureState",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "end of T_from_E",
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "E_from_T",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "q",
+                                    "r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "b",
+                                ),
+                                op: Neq,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Term(
+                                    Term {
+                                        lhs: Factor(
+                                            Factor {
+                                                lhs: Var(
+                                                    "q",
+                                                ),
+                                                op: Mul,
+                                                rhs: Var(
+                                                    "b",
+                                                ),
+                                            },
+                                        ),
+                                        op: Add,
+                                        rhs: Var(
+                                            "r",
+                                        ),
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "a",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "0",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "r",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "r",
+                                ),
+                                op: Lt,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "abs",
+                                        args: [
+                                            Var(
+                                                "b",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "qq",
+                                            "rr",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "qq",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "divt",
+                                                args: [
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "rr",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "modt",
+                                                args: [
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "q",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        IfThenElse(
+                                            IfThenElseExpr {
+                                                cond: Rel(
+                                                    RelExpr {
+                                                        lhs: Nat(
+                                                            "0",
+                                                        ),
+                                                        op: Le,
+                                                        rhs: Var(
+                                                            "rr",
+                                                        ),
+                                                    },
+                                                ),
+                                                then: Var(
+                                                    "qq",
+                                                ),
+                                                else_: IfThenElse(
+                                                    IfThenElseExpr {
+                                                        cond: Rel(
+                                                            RelExpr {
+                                                                lhs: Nat(
+                                                                    "0",
+                                                                ),
+                                                                op: Lt,
+                                                                rhs: Var(
+                                                                    "b",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        then: Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "qq",
+                                                                ),
+                                                                op: Sub,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        else_: Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "qq",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "r",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        IfThenElse(
+                                            IfThenElseExpr {
+                                                cond: Rel(
+                                                    RelExpr {
+                                                        lhs: Nat(
+                                                            "0",
+                                                        ),
+                                                        op: Le,
+                                                        rhs: Var(
+                                                            "rr",
+                                                        ),
+                                                    },
+                                                ),
+                                                then: Var(
+                                                    "rr",
+                                                ),
+                                                else_: IfThenElse(
+                                                    IfThenElseExpr {
+                                                        cond: Rel(
+                                                            RelExpr {
+                                                                lhs: Nat(
+                                                                    "0",
+                                                                ),
+                                                                op: Lt,
+                                                                rhs: Var(
+                                                                    "b",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        then: Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "rr",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Var(
+                                                                    "b",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        else_: Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "rr",
+                                                                ),
+                                                                op: Sub,
+                                                                rhs: Var(
+                                                                    "b",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+function abs(x: int): int {
+  if 0 <= x then x else -x
+}
+
+function divt(int, int): int;
+
+function modt(int, int): int;
+
+axiom (forall a, b: int :: divt(a, b) * b + modt(a, b) == a);
+
+axiom (forall a, b: int :: (0 <= a ==> 0 <= modt(a, b) && modt(a, b) < abs(b)) && (a < 0 ==> -abs(b) < modt(a, b) && modt(a, b) <= 0));
+
+function dive(int, int): int;
+
+function mode(int, int): int;
+
+axiom (forall a, b: int :: dive(a, b) * b + mode(a, b) == a);
+
+axiom (forall a, b: int :: 0 <= mode(a, b) && mode(a, b) < abs(b));
+
+procedure T_from_E(a, b: int) returns (q, r: int)
+  requires b != 0;
+  ensures q * b + r == a;
+  ensures 0 <= a ==> 0 <= r && r < abs(b);
+  ensures a < 0 ==> -abs(b) < r && r <= 0;
+{
+  var qq, rr: int;
+
+  qq := dive(a, b);
+  rr := mode(a, b);
+  q := if 0 <= a || rr == 0 then qq else if 0 <= b then qq + 1 else qq - 1;
+  r := if 0 <= a || rr == 0 then rr else if 0 <= b then rr - b else rr + b;
+  assume {:captureState "end of T_from_E"} true;
+}
+
+procedure E_from_T(a, b: int) returns (q, r: int)
+  requires b != 0;
+  ensures q * b + r == a;
+  ensures 0 <= r;
+  ensures r < abs(b);
+{
+  var qq, rr: int;
+
+  qq := divt(a, b);
+  rr := modt(a, b);
+  q := if 0 <= rr then qq else if 0 < b then qq - 1 else qq + 1;
+  r := if 0 <= rr then rr else if 0 < b then rr + b else rr - b;
+}
+
+[Input - ../../vendor/boogie/Test/textbook/DivMod.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// This file contains two definitions of integer div/mod (truncated division, as is
+// used in C, C#, Java, and several other languages, and Euclidean division, which
+// has mathematical appeal and is used by SMT Lib) and proves the correct
+// correspondence between the two.
+//
+// Rustan Leino, 23 Sep 2010
+
+function abs(x: int): int { if 0 <= x then x else -x }
+
+function divt(int, int): int;
+function modt(int, int): int;
+
+axiom (forall a,b: int :: divt(a,b)*b + modt(a,b) == a);
+axiom (forall a,b: int ::
+  (0 <= a ==> 0 <= modt(a,b) && modt(a,b) < abs(b)) &&
+  (a < 0 ==> -abs(b) < modt(a,b) && modt(a,b) <= 0));
+
+function dive(int, int): int;
+function mode(int, int): int;
+
+axiom (forall a,b: int :: dive(a,b)*b + mode(a,b) == a);
+axiom (forall a,b: int :: 0 <= mode(a,b) && mode(a,b) < abs(b));
+
+procedure T_from_E(a,b: int) returns (q,r: int)
+  requires b != 0;
+  // It would be nice to prove:
+  //   ensures q == divt(a,b);
+  //   ensures r == modt(a,b);
+  // but since we know that the axioms about divt/modt have unique solutions (for
+  // non-zero b), we just prove that the axioms hold.
+  ensures q*b + r == a;
+  ensures 0 <= a ==> 0 <= r && r < abs(b);
+  ensures a < 0 ==> -abs(b) < r && r <= 0;
+{
+  // note, this implementation uses only dive/mode
+  var qq,rr: int;
+  qq := dive(a,b);
+  rr := mode(a,b);
+
+  q := if 0 <= a || rr == 0 then qq else if 0 <= b then qq+1 else qq-1;
+  r := if 0 <= a || rr == 0 then rr else if 0 <= b then rr-b else rr+b;
+  assume {:captureState "end of T_from_E"} true;
+}
+
+procedure E_from_T(a,b: int) returns (q,r: int)
+  requires b != 0;
+  // It would be nice to prove:
+  //   ensures q == dive(a,b);
+  //   ensures r == mode(a,b);
+  // but since we know that the axioms about dive/mode have unique solutions (for
+  // non-zero b), we just prove that the axioms hold.
+  ensures q*b + r == a;
+  ensures 0 <= r;
+  ensures r < abs(b);
+{
+  // note, this implementation uses only divt/modt
+  var qq,rr: int;
+  qq := divt(a,b);
+  rr := modt(a,b);
+
+  q := if 0 <= rr then qq else if 0 < b then qq-1 else qq+1;
+  r := if 0 <= rr then rr else if 0 < b then rr+b else rr-b;
+}

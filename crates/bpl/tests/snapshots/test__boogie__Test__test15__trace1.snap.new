@@ -1,0 +1,267 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "g",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "main",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "g",
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "g",
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "2",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "foo",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "print",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "g (before increment) = ",
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        Var(
+                                                            "g",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "g",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "g",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "print",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "g (after increment) = ",
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        Var(
+                                                            "g",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var g: int;
+
+procedure main()
+  requires g == 0;
+  ensures g == 2;
+  modifies g;
+{
+  call foo();
+}
+
+procedure {:inline 1} foo()
+  modifies g;
+{
+  assume {:print "g (before increment) = ", g} true;
+  g := g + 1;
+  assume {:print "g (after increment) = ", g} true;
+}
+
+[Input - ../../vendor/boogie/Test/test15/trace1.bpl]
+// RUN: %boogie "%s" -enhancedErrorMessages:1 > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+var g: int;
+
+procedure main()
+requires g == 0;
+ensures g == 2;
+modifies g;
+{
+    call foo();
+}
+
+procedure {:inline 1} foo()
+modifies g;
+{
+    assume {:print "g (before increment) = ", g} true;
+    g := g + 1;
+    assume {:print "g (after increment) = ", g} true;
+}

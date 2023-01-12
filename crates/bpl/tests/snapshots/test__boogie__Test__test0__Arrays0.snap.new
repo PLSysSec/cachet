@@ -1,0 +1,115 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "one",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    Atom(
+                                        Int,
+                                    ),
+                                ],
+                                value: Atom(
+                                    Int,
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "two",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    Atom(
+                                        Int,
+                                    ),
+                                    Atom(
+                                        Int,
+                                    ),
+                                ],
+                                value: Atom(
+                                    Int,
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "three",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    Atom(
+                                        Int,
+                                    ),
+                                    Atom(
+                                        Int,
+                                    ),
+                                    Atom(
+                                        Int,
+                                    ),
+                                ],
+                                value: Atom(
+                                    Int,
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+]
+
+[Printed]
+var one: [int]int;
+
+var two: [int, int]int;
+
+var three: [int, int, int]int;
+
+[Input - ../../vendor/boogie/Test/test0/Arrays0.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff NoErrors.expect "%t"
+var one: [int]int;
+var two: [int,int]int;
+var three: [int,int,int]int;  // three's a crowd

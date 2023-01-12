@@ -1,0 +1,988 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "1",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "x",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "1",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "y",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "yield_preserves",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "yield_x",
+                                    },
+                                ),
+                                Expr(
+                                    Var(
+                                        "_x",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "incr_x",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "_x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "_incr_x",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "yield_x",
+                                        params: [
+                                            Var(
+                                                "_x",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "_incr_x",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "yield_invariant",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "yield_x",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "_x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "_x",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "x",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "yield_preserves",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "yield_y",
+                                    },
+                                ),
+                                Expr(
+                                    Var(
+                                        "_y",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "incr_y",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "_y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "_incr_y",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "yield_y",
+                                        params: [
+                                            Var(
+                                                "_y",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "_incr_y",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "yield_invariant",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "yield_y",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "_y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "_y",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "y",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "yield_requires",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "yield_x",
+                                    },
+                                ),
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "yield_requires",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "yield_y",
+                                    },
+                                ),
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "incr_x_y",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Asterisk,
+                                    then: [
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [],
+                                                        target: "incr_x_y",
+                                                        params: [],
+                                                    },
+                                                    is_async: true,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            ParCall(
+                                ParCallCmd {
+                                    attrs: [],
+                                    calls: [
+                                        CallParams {
+                                            returns: [],
+                                            target: "incr_x",
+                                            params: [
+                                                Nat(
+                                                    "0",
+                                                ),
+                                            ],
+                                        },
+                                        CallParams {
+                                            returns: [],
+                                            target: "yield_y",
+                                            params: [
+                                                Nat(
+                                                    "0",
+                                                ),
+                                            ],
+                                        },
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            ParCall(
+                                ParCallCmd {
+                                    attrs: [],
+                                    calls: [
+                                        CallParams {
+                                            returns: [],
+                                            target: "incr_y",
+                                            params: [
+                                                Nat(
+                                                    "0",
+                                                ),
+                                            ],
+                                        },
+                                        CallParams {
+                                            returns: [],
+                                            target: "yield_x",
+                                            params: [
+                                                Nat(
+                                                    "0",
+                                                ),
+                                            ],
+                                        },
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "layer",
+                                                params: [
+                                                    Expr(
+                                                        Nat(
+                                                            "1",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Nat(
+                                                        "0",
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Var(
+                                                        "x",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Nat(
+                                                        "0",
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Var(
+                                                        "y",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "atomic_incr_x",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "atomic_incr_x",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "_incr_x",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "atomic_incr_y",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "y",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "y",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "y",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "atomic_incr_y",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "_incr_y",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+var {:layer 0, 1} x: int;
+
+var {:layer 0, 1} y: int;
+
+procedure {:yields} {:layer 1} {:yield_preserves "yield_x", _x} incr_x(_x: int) {
+  call _incr_x();
+  call yield_x(_x);
+  call _incr_x();
+}
+
+procedure {:layer 1} {:yield_invariant} yield_x(_x: int);
+  requires _x <= x;
+
+procedure {:yields} {:layer 1} {:yield_preserves "yield_y", _y} incr_y(_y: int) {
+  call _incr_y();
+  call yield_y(_y);
+  call _incr_y();
+}
+
+procedure {:layer 1} {:yield_invariant} yield_y(_y: int);
+  requires _y <= y;
+
+procedure {:yields} {:layer 1} {:yield_requires "yield_x", 0} {:yield_requires "yield_y", 0} incr_x_y() {
+  if (*) {
+    async call incr_x_y();
+  }
+  par incr_x(0) | yield_y(0);
+  par incr_y(0) | yield_x(0);
+  assert {:layer 1} 0 <= x && 0 <= y;
+}
+
+procedure {:layer 1, 1} {:atomic} atomic_incr_x()
+  modifies x;
+{
+  x := x + 1;
+}
+
+procedure {:yields} {:layer 0} {:refines "atomic_incr_x"} _incr_x();
+
+procedure {:layer 1, 1} {:atomic} atomic_incr_y()
+  modifies y;
+{
+  y := y + 1;
+}
+
+procedure {:yields} {:layer 0} {:refines "atomic_incr_y"} _incr_y();
+
+[Input - ../../vendor/boogie/Test/civl/cav2020-1.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+var {:layer 0,1} x: int;
+var {:layer 0,1} y: int;
+
+procedure {:yields} {:layer 1}
+{:yield_preserves "yield_x", _x}
+incr_x(_x: int)
+{
+    call _incr_x();
+    call yield_x(_x);
+    call _incr_x();
+}
+
+procedure {:layer 1} {:yield_invariant} yield_x(_x: int);
+requires _x <= x;
+
+procedure {:yields} {:layer 1}
+{:yield_preserves  "yield_y", _y}
+incr_y(_y: int)
+{
+    call _incr_y();
+    call yield_y(_y);
+    call _incr_y();
+}
+
+procedure {:layer 1} {:yield_invariant} yield_y(_y: int);
+requires _y <= y;
+
+procedure {:yields} {:layer 1}
+{:yield_requires "yield_x", 0}
+{:yield_requires "yield_y", 0}
+incr_x_y()
+{
+    if (*) {
+        async call incr_x_y();
+    }
+    par incr_x(0) | yield_y(0);
+    par incr_y(0) | yield_x(0);
+    assert {:layer 1} 0 <= x && 0 <= y;
+}
+
+procedure {:layer 1,1} {:atomic} atomic_incr_x()
+modifies x;
+{
+    x := x + 1;
+}
+procedure {:yields} {:layer 0} {:refines "atomic_incr_x"} _incr_x();
+
+procedure {:layer 1,1} {:atomic} atomic_incr_y()
+modifies y;
+{
+    y := y + 1;
+}
+procedure {:yields} {:layer 0} {:refines "atomic_incr_y"} _incr_y();

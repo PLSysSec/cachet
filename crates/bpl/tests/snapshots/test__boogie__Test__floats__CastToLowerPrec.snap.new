@@ -1,0 +1,366 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "(_ to_fp 11 53) RNE",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "TO_FLOAT64_FLOAT32",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "float24e8",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "float53e11",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "(_ to_fp 8 24) RNE",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "TO_FLOAT32_FLOAT64",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "float53e11",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "float24e8",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "(_ to_fp 11 53) RNE",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "TO_FLOAT64_INT",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "float53e11",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "(_ to_fp 11 53) RNE",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "TO_FLOAT64_REAL",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Real,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "float53e11",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "main",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float53e11",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "y",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float24e8",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "TO_FLOAT64_REAL",
+                                                        args: [
+                                                            Dec(
+                                                                Dec {
+                                                                    whole: "1",
+                                                                    fract: None,
+                                                                    exp: Some(
+                                                                        Exp {
+                                                                            is_neg: false,
+                                                                            digits: "20",
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                op: Add,
+                                                rhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "TO_FLOAT64_INT",
+                                                        args: [
+                                                            Nat(
+                                                                "1",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "y",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "TO_FLOAT32_FLOAT64",
+                                                args: [
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Neq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "TO_FLOAT64_FLOAT32",
+                                                    args: [
+                                                        Var(
+                                                            "y",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+function {:builtin "(_ to_fp 11 53) RNE"} TO_FLOAT64_FLOAT32(float24e8): float53e11;
+
+function {:builtin "(_ to_fp 8 24) RNE"} TO_FLOAT32_FLOAT64(float53e11): float24e8;
+
+function {:builtin "(_ to_fp 11 53) RNE"} TO_FLOAT64_INT(int): float53e11;
+
+function {:builtin "(_ to_fp 11 53) RNE"} TO_FLOAT64_REAL(real): float53e11;
+
+procedure main() {
+  var x: float53e11;
+  var y: float24e8;
+
+  x := TO_FLOAT64_REAL(1e20) + TO_FLOAT64_INT(1);
+  y := TO_FLOAT32_FLOAT64(x);
+  assert x != TO_FLOAT64_FLOAT32(y);
+}
+
+[Input - ../../vendor/boogie/Test/floats/CastToLowerPrec.bpl]
+// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+function {:builtin "(_ to_fp 11 53) RNE"} TO_FLOAT64_FLOAT32(float24e8) returns (float53e11);
+function {:builtin "(_ to_fp 8 24) RNE"} TO_FLOAT32_FLOAT64(float53e11) returns (float24e8);
+function {:builtin "(_ to_fp 11 53) RNE"} TO_FLOAT64_INT(int) returns (float53e11);
+function {:builtin "(_ to_fp 11 53) RNE"} TO_FLOAT64_REAL(real) returns (float53e11);
+
+procedure main() returns () {
+  var x : float53e11;
+  var y : float24e8;
+  
+  x := TO_FLOAT64_REAL(1e20)+TO_FLOAT64_INT(1);
+  y := TO_FLOAT32_FLOAT64(x);
+  assert x != TO_FLOAT64_FLOAT32(y);
+}

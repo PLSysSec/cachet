@@ -1,0 +1,143 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Dup",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "X",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "X",
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "y",
+                                                ),
+                                                op: Lt,
+                                                rhs: Nat(
+                                                    "100",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Label(
+                                                Label {
+                                                    ident: "Y",
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "y",
+                                                ),
+                                                op: Lt,
+                                                rhs: Nat(
+                                                    "1000",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Label(
+                                                Label {
+                                                    ident: "Y",
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure Dup(y: int) {
+  X:
+  X:
+  while (y < 100) {
+    Y:
+  }
+  while (y < 1000) {
+    Y:
+  }
+}
+
+[Input - ../../vendor/boogie/Test/test0/BadLabels0.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure Dup(y: int)
+{
+  X:
+  X:  // error: duplicate label
+  while (y < 100)
+  {
+    Y:
+  }
+  while (y < 1000)
+  {
+    Y:  // error: duplicate label (labels must be unique in entire procedure body)
+  }
+}

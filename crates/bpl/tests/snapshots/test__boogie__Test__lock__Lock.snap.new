@@ -1,0 +1,1493 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "LockingExample",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "LockingExample",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "x",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "y",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "held",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                ],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "start",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "held",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "0",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "x",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "0",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "LoopHead",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "LoopHead",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "held",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "held",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "1",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "y",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Var(
+                                        "x",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "UnlockNow",
+                                    "LoopEnd",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "UnlockNow",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "held",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "1",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "held",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "0",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "x",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Term(
+                                        Term {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Add,
+                                            rhs: Nat(
+                                                "1",
+                                            ),
+                                        },
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "LoopEnd",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "LoopEnd",
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "ContinueIteration",
+                                    "EndIteration",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "ContinueIteration",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assume,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Neq,
+                                        rhs: Var(
+                                            "y",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "LoopHead",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "EndIteration",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assume,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "y",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "AfterLoop",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "AfterLoop",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "held",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "1",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "held",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "0",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "StructuredLockingExample",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "y",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "held",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "held",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            false,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ),
+                                    invariants: [
+                                        Invariant {
+                                            attrs: [],
+                                            expr: Neg(
+                                                NegExpr {
+                                                    op: Logical,
+                                                    expr: Var(
+                                                        "held",
+                                                    ),
+                                                },
+                                            ),
+                                            is_free: false,
+                                        },
+                                    ],
+                                    body: [
+                                        LabelOrCmd(
+                                            Claim(
+                                                ClaimCmd {
+                                                    kind: Assert,
+                                                    attrs: [],
+                                                    proposition: Neg(
+                                                        NegExpr {
+                                                            op: Logical,
+                                                            expr: Var(
+                                                                "held",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "held",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        BoolLit(
+                                                            true,
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "y",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Asterisk,
+                                                    then: [
+                                                        LabelOrCmd(
+                                                            Claim(
+                                                                ClaimCmd {
+                                                                    kind: Assert,
+                                                                    attrs: [],
+                                                                    proposition: Var(
+                                                                        "held",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        ),
+                                                        LabelOrCmd(
+                                                            Assign(
+                                                                AssignCmd {
+                                                                    lhs: [
+                                                                        AssignLhs {
+                                                                            ident: "held",
+                                                                            subscripts: [],
+                                                                        },
+                                                                    ],
+                                                                    rhs: [
+                                                                        BoolLit(
+                                                                            false,
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                        LabelOrCmd(
+                                                            Assign(
+                                                                AssignCmd {
+                                                                    lhs: [
+                                                                        AssignLhs {
+                                                                            ident: "x",
+                                                                            subscripts: [],
+                                                                        },
+                                                                    ],
+                                                                    rhs: [
+                                                                        Term(
+                                                                            Term {
+                                                                                lhs: Var(
+                                                                                    "x",
+                                                                                ),
+                                                                                op: Add,
+                                                                                rhs: Nat(
+                                                                                    "1",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: None,
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Expr(
+                                                        Rel(
+                                                            RelExpr {
+                                                                lhs: Var(
+                                                                    "x",
+                                                                ),
+                                                                op: Eq,
+                                                                rhs: Var(
+                                                                    "y",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    then: [
+                                                        StructuredCmd(
+                                                            Break(
+                                                                BreakCmd {
+                                                                    label: None,
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: None,
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Var(
+                                        "held",
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "held",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            false,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "StructuredLockingExampleWithCalls",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "y",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "mutex",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Mutex",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "mutex",
+                                        ],
+                                        target: "Initialize",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ),
+                                    invariants: [
+                                        Invariant {
+                                            attrs: [],
+                                            expr: Neg(
+                                                NegExpr {
+                                                    op: Logical,
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "IsHeld",
+                                                            args: [
+                                                                Var(
+                                                                    "mutex",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            is_free: false,
+                                        },
+                                    ],
+                                    body: [
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [
+                                                            "mutex",
+                                                        ],
+                                                        target: "Acquire",
+                                                        params: [
+                                                            Var(
+                                                                "mutex",
+                                                            ),
+                                                        ],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "y",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Asterisk,
+                                                    then: [
+                                                        LabelOrCmd(
+                                                            Call(
+                                                                CallCmd {
+                                                                    attrs: [],
+                                                                    call_params: CallParams {
+                                                                        returns: [
+                                                                            "mutex",
+                                                                        ],
+                                                                        target: "Release",
+                                                                        params: [
+                                                                            Var(
+                                                                                "mutex",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                    is_async: false,
+                                                                    is_free: false,
+                                                                },
+                                                            ),
+                                                        ),
+                                                        LabelOrCmd(
+                                                            Assign(
+                                                                AssignCmd {
+                                                                    lhs: [
+                                                                        AssignLhs {
+                                                                            ident: "x",
+                                                                            subscripts: [],
+                                                                        },
+                                                                    ],
+                                                                    rhs: [
+                                                                        Term(
+                                                                            Term {
+                                                                                lhs: Var(
+                                                                                    "x",
+                                                                                ),
+                                                                                op: Add,
+                                                                                rhs: Nat(
+                                                                                    "1",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: None,
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Expr(
+                                                        Rel(
+                                                            RelExpr {
+                                                                lhs: Var(
+                                                                    "x",
+                                                                ),
+                                                                op: Eq,
+                                                                rhs: Var(
+                                                                    "y",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    then: [
+                                                        StructuredCmd(
+                                                            Break(
+                                                                BreakCmd {
+                                                                    label: None,
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: None,
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "mutex",
+                                        ],
+                                        target: "Release",
+                                        params: [
+                                            Var(
+                                                "mutex",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Mutex",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "IsHeld",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "Mutex",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Initialize",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "post",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Mutex",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Neg(
+                            NegExpr {
+                                op: Logical,
+                                expr: FuncCall(
+                                    FuncCall {
+                                        target: "IsHeld",
+                                        args: [
+                                            Var(
+                                                "post",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Acquire",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "pre",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Mutex",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "post",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Mutex",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Neg(
+                            NegExpr {
+                                op: Logical,
+                                expr: FuncCall(
+                                    FuncCall {
+                                        target: "IsHeld",
+                                        args: [
+                                            Var(
+                                                "pre",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "IsHeld",
+                                args: [
+                                    Var(
+                                        "post",
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Release",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "pre",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Mutex",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "post",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Mutex",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "IsHeld",
+                                args: [
+                                    Var(
+                                        "pre",
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Neg(
+                            NegExpr {
+                                op: Logical,
+                                expr: FuncCall(
+                                    FuncCall {
+                                        target: "IsHeld",
+                                        args: [
+                                            Var(
+                                                "post",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+procedure LockingExample();
+
+implementation LockingExample() {
+  var x: int;
+  var y: int;
+  var held: int;
+
+  start:
+  held := 0;
+  x := 0;
+  goto LoopHead;
+  LoopHead:
+  assert held == 0;
+  held := 1;
+  y := x;
+  goto UnlockNow, LoopEnd;
+  UnlockNow:
+  assert held == 1;
+  held := 0;
+  x := x + 1;
+  goto LoopEnd;
+  LoopEnd:
+  goto ContinueIteration, EndIteration;
+  ContinueIteration:
+  assume x != y;
+  goto LoopHead;
+  EndIteration:
+  assume x == y;
+  goto AfterLoop;
+  AfterLoop:
+  assert held == 1;
+  held := 0;
+  return;
+}
+
+procedure StructuredLockingExample() {
+  var x: int;
+  var y: int;
+  var held: bool;
+
+  held := false;
+  x := 0;
+  while (true)
+    invariant !held;
+  {
+    assert !held;
+    held := true;
+    y := x;
+    if (*) {
+      assert held;
+      held := false;
+      x := x + 1;
+    }
+    if (x == y) {
+      break;
+    }
+  }
+  assert held;
+  held := false;
+}
+
+procedure StructuredLockingExampleWithCalls() {
+  var x: int;
+  var y: int;
+  var mutex: Mutex;
+
+  call mutex := Initialize();
+  x := 0;
+  while (true)
+    invariant !IsHeld(mutex);
+  {
+    call mutex := Acquire(mutex);
+    y := x;
+    if (*) {
+      call mutex := Release(mutex);
+      x := x + 1;
+    }
+    if (x == y) {
+      break;
+    }
+  }
+  call mutex := Release(mutex);
+}
+
+type Mutex;
+
+function IsHeld(Mutex): bool;
+
+procedure Initialize() returns (post: Mutex);
+  ensures !IsHeld(post);
+
+procedure Acquire(pre: Mutex) returns (post: Mutex);
+  requires !IsHeld(pre);
+  ensures IsHeld(post);
+
+procedure Release(pre: Mutex) returns (post: Mutex);
+  requires IsHeld(pre);
+  ensures !IsHeld(post);
+
+[Input - ../../vendor/boogie/Test/lock/Lock.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure LockingExample();
+
+implementation LockingExample()
+{
+var x: int;
+var y: int;
+var held: int;
+
+start:
+  held := 0;
+  x := 0;
+  goto LoopHead;
+
+LoopHead:
+  // Lock
+  assert held == 0;
+  held := 1;
+
+  y := x;
+  goto UnlockNow, LoopEnd;
+
+UnlockNow:
+  // Unlock
+  assert held == 1;
+  held := 0;
+
+  x := x + 1;
+  goto LoopEnd;
+
+LoopEnd:
+  goto ContinueIteration, EndIteration;
+
+ContinueIteration:
+  assume x != y;
+  goto LoopHead;
+
+EndIteration:
+  assume x == y;
+  goto AfterLoop;
+
+AfterLoop:
+  // Unlock
+  assert held == 1;
+  held := 0;
+
+  return;
+
+}
+
+
+procedure StructuredLockingExample()
+{
+  var x: int;
+  var y: int;
+  var held: bool;
+
+  held := false;
+  x := 0;
+
+  while (true)
+    invariant !held;
+  {
+    // Lock
+    assert !held;
+    held := true;
+
+    y := x;
+    if (*) {
+      // Unlock
+      assert held;
+      held := false;
+
+      x := x + 1;
+    }
+
+    if (x == y) { break; }
+  }
+
+  // Unlock
+  assert held;
+  held := false;
+}
+
+procedure StructuredLockingExampleWithCalls()
+{
+  var x: int;
+  var y: int;
+  var mutex: Mutex;
+
+  call mutex := Initialize();
+  x := 0;
+
+  while (true)
+    invariant !IsHeld(mutex);
+  {
+    call mutex := Acquire(mutex);
+
+    y := x;
+    if (*) {
+      call mutex := Release(mutex);
+      x := x + 1;
+    }
+
+    if (x == y) { break; }
+  }
+
+  call mutex := Release(mutex);
+}
+
+type Mutex;
+function IsHeld(Mutex) returns (bool);
+
+procedure Initialize() returns (post: Mutex);
+  ensures !IsHeld(post);
+
+procedure Acquire(pre: Mutex) returns (post: Mutex);
+  requires !IsHeld(pre);
+  ensures IsHeld(post);
+
+procedure Release(pre: Mutex) returns (post: Mutex);
+  requires IsHeld(pre);
+  ensures !IsHeld(post);

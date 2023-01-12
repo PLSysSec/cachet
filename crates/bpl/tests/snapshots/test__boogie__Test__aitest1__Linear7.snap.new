@@ -1,0 +1,223 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "x",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "y",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "z",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "p",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "A",
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "B",
+                                        "C",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "B",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Le,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "D",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "C",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "y",
+                                            ),
+                                            op: Le,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "D",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "D",
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var x: int;
+
+var y: int;
+
+var z: int;
+
+procedure p() {
+  A:
+  goto B, C;
+  B:
+  assume x <= 0;
+  goto D;
+  C:
+  assume y <= 0;
+  goto D;
+  D:
+  return;
+}
+
+[Input - ../../vendor/boogie/Test/aitest1/Linear7.bpl]
+// RUN: %boogie -infer:j -instrumentInfer:e -printInstrumented -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// Simple test file for checking the inference of linear constraints.
+
+var x: int;
+var y: int;
+var z: int;
+
+procedure p()
+{
+A:
+    goto B, C;
+B:
+    assume x <= 0;
+    goto D;
+C:
+    assume y <= 0;
+    goto D;
+D:
+    return;
+}

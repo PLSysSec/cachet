@@ -1,0 +1,115 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Exp2",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: App(
+                                            TypeApp {
+                                                head: "float24e8",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "a",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Nat(
+                                                                    "0",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Gt,
+                                            rhs: Float(
+                                                Float {
+                                                    value: Plain(
+                                                        PlainFloatValue {
+                                                            is_neg: false,
+                                                            whole: "0",
+                                                            fract: "0",
+                                                            exp: Exp {
+                                                                is_neg: false,
+                                                                digits: "0",
+                                                            },
+                                                        },
+                                                    ),
+                                                    sig_size: "24",
+                                                    exp_size: "8",
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure Exp2(a: [int]float24e8) {
+  assert a[0] > 0x0.0e0f24e8;
+}
+
+[Input - ../../vendor/boogie/Test/floats/issue110.bpl]
+// RUN: %boogie /printModel:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure Exp2(a:[int]float24e8)
+{
+  assert a[0] > 0x0.0e0f24e8;
+}

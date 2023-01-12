@@ -1,0 +1,112 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "M",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "s",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "ref",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "s",
+                                            ),
+                                            op: Neq,
+                                            rhs: Var(
+                                                "null",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "ref",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "null",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "ref",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+]
+
+[Printed]
+procedure M(s: ref) {
+  assert s != null;
+}
+
+type ref;
+
+const null: ref;
+
+[Input - ../../vendor/boogie/Test/test15/NullInModel.bpl]
+// RUN: %boogie -printModel:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure M (s: ref) {
+  assert s != null;
+}
+type ref;
+const null: ref;

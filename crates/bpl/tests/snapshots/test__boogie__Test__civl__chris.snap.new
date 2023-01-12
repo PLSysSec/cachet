@@ -1,0 +1,417 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "1",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "3",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "x",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "2",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Havoc",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "2",
+                                    ),
+                                ),
+                                Expr(
+                                    Nat(
+                                        "3",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "AtomicRecover",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "5",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "AtomicRecover",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Recover",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "3",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "2",
+                                            ),
+                                        ),
+                                        Expr(
+                                            Nat(
+                                                "3",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "5",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "2",
+                                            ),
+                                        ),
+                                        Expr(
+                                            Nat(
+                                                "3",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "5",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Havoc",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Yield(
+                                YieldCmd,
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "layer",
+                                                params: [
+                                                    Expr(
+                                                        Nat(
+                                                            "3",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "5",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Recover",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var {:layer 1, 3} x: int;
+
+procedure {:yields} {:layer 2} Havoc() {
+}
+
+procedure {:atomic} {:layer 2, 3} AtomicRecover() {
+  assert x == 5;
+}
+
+procedure {:yields} {:layer 1} {:refines "AtomicRecover"} Recover() {
+}
+
+procedure {:yields} {:layer 3} P()
+  requires {:layer 2, 3} x == 5;
+  ensures {:layer 2, 3} x == 5;
+{
+  call Havoc();
+  yield;
+  assert {:layer 3} x == 5;
+  call Recover();
+}
+
+[Input - ../../vendor/boogie/Test/civl/chris.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+var{:layer 1,3} x:int;
+
+procedure{:yields}{:layer 2} Havoc()
+{
+}
+
+procedure{:atomic}{:layer 2,3} AtomicRecover()
+{ assert x == 5; }
+
+procedure{:yields}{:layer 1} {:refines "AtomicRecover"} Recover()
+{
+}
+
+procedure{:yields}{:layer 3} P()
+  requires{:layer 2,3} x == 5;
+  ensures {:layer 2,3} x == 5;
+{
+
+  call Havoc();
+  yield; assert{:layer 3} x == 5;
+  call Recover();
+}

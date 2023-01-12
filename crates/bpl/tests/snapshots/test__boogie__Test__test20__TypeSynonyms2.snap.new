@@ -1,0 +1,681 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Set",
+                    type_params: [
+                        "a",
+                    ],
+                    type_: Some(
+                        Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "a",
+                                            tail: None,
+                                        },
+                                    ),
+                                ],
+                                value: Atom(
+                                    Bool,
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "union",
+            type_params: [
+                "a",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "Set",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "a",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "y",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "Set",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "a",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Set",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "a",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "a",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Set",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "a",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "y",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Set",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "a",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "z",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "a",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: Logical(
+                                    LogicalExpr {
+                                        lhs: Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "x",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Var(
+                                                                "z",
+                                                            ),
+                                                        ],
+                                                        value: None,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                        op: Or,
+                                        rhs: Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "y",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Var(
+                                                                "z",
+                                                            ),
+                                                        ],
+                                                        value: None,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Array(
+                                    ArrayExpr {
+                                        expr: FuncCall(
+                                            FuncCall {
+                                                target: "union",
+                                                args: [
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                    Var(
+                                                        "y",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [
+                                                    Var(
+                                                        "z",
+                                                    ),
+                                                ],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "intSet0",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Set",
+                        tail: Some(
+                            AtomApp(
+                                TypeApp {
+                                    head: Int,
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: Array(
+                                    ArrayExpr {
+                                        expr: Var(
+                                            "intSet0",
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                ],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Logical(
+                                    LogicalExpr {
+                                        lhs: Logical(
+                                            LogicalExpr {
+                                                lhs: Rel(
+                                                    RelExpr {
+                                                        lhs: Var(
+                                                            "x",
+                                                        ),
+                                                        op: Eq,
+                                                        rhs: Nat(
+                                                            "0",
+                                                        ),
+                                                    },
+                                                ),
+                                                op: Or,
+                                                rhs: Rel(
+                                                    RelExpr {
+                                                        lhs: Var(
+                                                            "x",
+                                                        ),
+                                                        op: Eq,
+                                                        rhs: Nat(
+                                                            "2",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                        op: Or,
+                                        rhs: Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Eq,
+                                                rhs: Nat(
+                                                    "3",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "intSet1",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Set",
+                        tail: Some(
+                            AtomApp(
+                                TypeApp {
+                                    head: Int,
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: Array(
+                                    ArrayExpr {
+                                        expr: Var(
+                                            "intSet1",
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                ],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Logical(
+                                    LogicalExpr {
+                                        lhs: Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Eq,
+                                                rhs: Neg(
+                                                    NegExpr {
+                                                        op: Arith,
+                                                        expr: Nat(
+                                                            "5",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                        op: Or,
+                                        rhs: Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Eq,
+                                                rhs: Nat(
+                                                    "3",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "x",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Int,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Rel(
+                                                    RelExpr {
+                                                        lhs: Array(
+                                                            ArrayExpr {
+                                                                expr: FuncCall(
+                                                                    FuncCall {
+                                                                        target: "union",
+                                                                        args: [
+                                                                            Var(
+                                                                                "intSet0",
+                                                                            ),
+                                                                            Var(
+                                                                                "intSet1",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                                subscripts: [
+                                                                    ArraySubscript {
+                                                                        keys: [
+                                                                            Var(
+                                                                                "x",
+                                                                            ),
+                                                                        ],
+                                                                        value: None,
+                                                                    },
+                                                                ],
+                                                            },
+                                                        ),
+                                                        op: Eq,
+                                                        rhs: Logical(
+                                                            LogicalExpr {
+                                                                lhs: Logical(
+                                                                    LogicalExpr {
+                                                                        lhs: Logical(
+                                                                            LogicalExpr {
+                                                                                lhs: Rel(
+                                                                                    RelExpr {
+                                                                                        lhs: Var(
+                                                                                            "x",
+                                                                                        ),
+                                                                                        op: Eq,
+                                                                                        rhs: Neg(
+                                                                                            NegExpr {
+                                                                                                op: Arith,
+                                                                                                expr: Nat(
+                                                                                                    "5",
+                                                                                                ),
+                                                                                            },
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                                op: Or,
+                                                                                rhs: Rel(
+                                                                                    RelExpr {
+                                                                                        lhs: Var(
+                                                                                            "x",
+                                                                                        ),
+                                                                                        op: Eq,
+                                                                                        rhs: Nat(
+                                                                                            "0",
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                        op: Or,
+                                                                        rhs: Rel(
+                                                                            RelExpr {
+                                                                                lhs: Var(
+                                                                                    "x",
+                                                                                ),
+                                                                                op: Eq,
+                                                                                rhs: Nat(
+                                                                                    "2",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                op: Or,
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                        op: Eq,
+                                                                        rhs: Nat(
+                                                                            "3",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type Set a = [a]bool;
+
+function union<a>(x: Set a, y: Set a): Set a;
+
+axiom (forall <a> x: Set a, y: Set a, z: a :: (x[z] || y[z]) == union(x, y)[z]);
+
+const intSet0: Set int;
+
+axiom (forall x: int :: intSet0[x] == (x == 0 || x == 2 || x == 3));
+
+const intSet1: Set int;
+
+axiom (forall x: int :: intSet1[x] == (x == -5 || x == 3));
+
+procedure P() {
+  assert (forall x: int :: union(intSet0, intSet1)[x] == (x == -5 || x == 0 || x == 2 || x == 3));
+}
+
+[Input - ../../vendor/boogie/Test/test20/TypeSynonyms2.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// RUN: %boogie -noVerify -print:- -pretty:0 -env:0 -printDesugared "%s" > "%t"
+// RUN: %diff "%s.print.expect" "%t"
+
+
+type Set a = [a]bool;
+
+function union<a>(x : Set a, y : Set a) returns (Set a);
+axiom (forall<a> x : Set a, y : Set a, z : a :: (x[z] || y[z]) == union(x, y)[z]);
+
+
+const intSet0 : Set int;
+axiom (forall x:int :: intSet0[x] == (x == 0 || x == 2 || x == 3));
+
+const intSet1 : Set int;
+axiom (forall x:int :: intSet1[x] == (x == -5 || x == 3));
+
+
+procedure P() returns () {
+  assert (forall x:int :: union(intSet0, intSet1)[x] ==
+                                     (x == -5 || x == 0 || x == 2 || x == 3));
+}

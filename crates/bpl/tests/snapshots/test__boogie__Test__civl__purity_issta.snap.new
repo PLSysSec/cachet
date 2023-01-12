@@ -1,0 +1,2375 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "linear",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "tid",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "X",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "nil",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "X",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "max",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: Nat(
+                        "0",
+                    ),
+                    op: Le,
+                    rhs: Var(
+                        "max",
+                    ),
+                },
+            ),
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "1",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "l",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    Atom(
+                                        Int,
+                                    ),
+                                ],
+                                value: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "2",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "status",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    Atom(
+                                        Int,
+                                    ),
+                                ],
+                                value: Atom(
+                                    Bool,
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "2",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "atomic_Alloc",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "status",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "tid",
+                                            ),
+                                            op: Neq,
+                                            rhs: Var(
+                                                "nil",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Asterisk,
+                                    then: [
+                                        LabelOrCmd(
+                                            Claim(
+                                                ClaimCmd {
+                                                    kind: Assume,
+                                                    attrs: [],
+                                                    proposition: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "r",
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Neg(
+                                                                NegExpr {
+                                                                    op: Arith,
+                                                                    expr: Nat(
+                                                                        "1",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: Some(
+                                        Else(
+                                            [
+                                                LabelOrCmd(
+                                                    Claim(
+                                                        ClaimCmd {
+                                                            kind: Assume,
+                                                            attrs: [],
+                                                            proposition: Logical(
+                                                                LogicalExpr {
+                                                                    lhs: Logical(
+                                                                        LogicalExpr {
+                                                                            lhs: Rel(
+                                                                                RelExpr {
+                                                                                    lhs: Nat(
+                                                                                        "0",
+                                                                                    ),
+                                                                                    op: Le,
+                                                                                    rhs: Var(
+                                                                                        "r",
+                                                                                    ),
+                                                                                },
+                                                                            ),
+                                                                            op: And,
+                                                                            rhs: Rel(
+                                                                                RelExpr {
+                                                                                    lhs: Var(
+                                                                                        "r",
+                                                                                    ),
+                                                                                    op: Lt,
+                                                                                    rhs: Var(
+                                                                                        "max",
+                                                                                    ),
+                                                                                },
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                    op: And,
+                                                                    rhs: Array(
+                                                                        ArrayExpr {
+                                                                            expr: Var(
+                                                                                "status",
+                                                                            ),
+                                                                            subscripts: [
+                                                                                ArraySubscript {
+                                                                                    keys: [
+                                                                                        Var(
+                                                                                            "r",
+                                                                                        ),
+                                                                                    ],
+                                                                                    value: None,
+                                                                                },
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                ),
+                                                LabelOrCmd(
+                                                    Assign(
+                                                        AssignCmd {
+                                                            lhs: [
+                                                                AssignLhs {
+                                                                    ident: "status",
+                                                                    subscripts: [
+                                                                        [
+                                                                            Var(
+                                                                                "r",
+                                                                            ),
+                                                                        ],
+                                                                    ],
+                                                                },
+                                                            ],
+                                                            rhs: [
+                                                                BoolLit(
+                                                                    false,
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "2",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "atomic_Free",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "status",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "tid",
+                                            ),
+                                            op: Neq,
+                                            rhs: Var(
+                                                "nil",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "status",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "atomic_Alloc",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Alloc",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "r",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Neg(
+                                            NegExpr {
+                                                op: Arith,
+                                                expr: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Lt,
+                                                rhs: Var(
+                                                    "max",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [
+                                        Invariant {
+                                            attrs: [
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "yields",
+                                                        params: [],
+                                                    },
+                                                ),
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "layer",
+                                                        params: [
+                                                            Expr(
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            ],
+                                            expr: BoolLit(
+                                                true,
+                                            ),
+                                            is_free: false,
+                                        },
+                                        Invariant {
+                                            attrs: [
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "layer",
+                                                        params: [
+                                                            Expr(
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            ],
+                                            expr: Rel(
+                                                RelExpr {
+                                                    lhs: Nat(
+                                                        "0",
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Var(
+                                                        "i",
+                                                    ),
+                                                },
+                                            ),
+                                            is_free: false,
+                                        },
+                                    ],
+                                    body: [
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [],
+                                                        target: "acquire",
+                                                        params: [
+                                                            Var(
+                                                                "tid",
+                                                            ),
+                                                            Var(
+                                                                "i",
+                                                            ),
+                                                        ],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [
+                                                            "b",
+                                                        ],
+                                                        target: "Read",
+                                                        params: [
+                                                            Var(
+                                                                "tid",
+                                                            ),
+                                                            Var(
+                                                                "i",
+                                                            ),
+                                                        ],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Expr(
+                                                        Var(
+                                                            "b",
+                                                        ),
+                                                    ),
+                                                    then: [
+                                                        LabelOrCmd(
+                                                            Call(
+                                                                CallCmd {
+                                                                    attrs: [],
+                                                                    call_params: CallParams {
+                                                                        returns: [],
+                                                                        target: "Write",
+                                                                        params: [
+                                                                            Var(
+                                                                                "tid",
+                                                                            ),
+                                                                            Var(
+                                                                                "i",
+                                                                            ),
+                                                                            BoolLit(
+                                                                                false,
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                    is_async: false,
+                                                                    is_free: false,
+                                                                },
+                                                            ),
+                                                        ),
+                                                        LabelOrCmd(
+                                                            Call(
+                                                                CallCmd {
+                                                                    attrs: [],
+                                                                    call_params: CallParams {
+                                                                        returns: [],
+                                                                        target: "release",
+                                                                        params: [
+                                                                            Var(
+                                                                                "tid",
+                                                                            ),
+                                                                            Var(
+                                                                                "i",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                    is_async: false,
+                                                                    is_free: false,
+                                                                },
+                                                            ),
+                                                        ),
+                                                        LabelOrCmd(
+                                                            Assign(
+                                                                AssignCmd {
+                                                                    lhs: [
+                                                                        AssignLhs {
+                                                                            ident: "r",
+                                                                            subscripts: [],
+                                                                        },
+                                                                    ],
+                                                                    rhs: [
+                                                                        Var(
+                                                                            "i",
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                        StructuredCmd(
+                                                            Break(
+                                                                BreakCmd {
+                                                                    label: None,
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: None,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [],
+                                                        target: "release",
+                                                        params: [
+                                                            Var(
+                                                                "tid",
+                                                            ),
+                                                            Var(
+                                                                "i",
+                                                            ),
+                                                        ],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "i",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "i",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "atomic_Free",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Free",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "acquire",
+                                        params: [
+                                            Var(
+                                                "tid",
+                                            ),
+                                            Var(
+                                                "i",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Write",
+                                        params: [
+                                            Var(
+                                                "tid",
+                                            ),
+                                            Var(
+                                                "i",
+                                            ),
+                                            BoolLit(
+                                                true,
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "release",
+                                        params: [
+                                            Var(
+                                                "tid",
+                                            ),
+                                            Var(
+                                                "i",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "right",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "atomic_acquire",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "l",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "tid",
+                                            ),
+                                            op: Neq,
+                                            rhs: Var(
+                                                "nil",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "l",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "i",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "nil",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "l",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "tid",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "left",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "atomic_release",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "l",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "tid",
+                                            ),
+                                            op: Neq,
+                                            rhs: Var(
+                                                "nil",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "l",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "i",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "tid",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "l",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "nil",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "both",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "atomic_Read",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "val",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "tid",
+                                            ),
+                                            op: Neq,
+                                            rhs: Var(
+                                                "nil",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "l",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "i",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "tid",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "val",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "status",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Var(
+                                                                "i",
+                                                            ),
+                                                        ],
+                                                        value: None,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "both",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "atomic_Write",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "val",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "status",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "tid",
+                                            ),
+                                            op: Neq,
+                                            rhs: Var(
+                                                "nil",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "l",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "i",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "tid",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "status",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "val",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "atomic_acquire",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "acquire",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "atomic_release",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "release",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "atomic_Read",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Read",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "val",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "atomic_Write",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Write",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "tid",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "tid",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "val",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+type {:linear "tid"} X;
+
+const nil: X;
+
+const max: int;
+
+axiom 0 <= max;
+
+var {:layer 0, 1} l: [int]X;
+
+var {:layer 0, 2} status: [int]bool;
+
+procedure {:atomic} {:layer 2} atomic_Alloc({:linear "tid"} tid: X) returns (r: int)
+  modifies status;
+{
+  assert tid != nil;
+  if (*) {
+    assume r == -1;
+  } else {
+    assume 0 <= r && r < max && status[r];
+    status[r] := false;
+  }
+}
+
+procedure {:atomic} {:layer 2} atomic_Free({:linear "tid"} tid: X, i: int)
+  modifies status;
+{
+  assert tid != nil;
+  status[i] := true;
+}
+
+procedure {:yields} {:layer 1} {:refines "atomic_Alloc"} Alloc({:linear "tid"} tid: X) returns (r: int) {
+  var i: int;
+  var b: bool;
+
+  i := 0;
+  r := -1;
+  while (i < max)
+    invariant {:yields} {:layer 1} true;
+    invariant {:layer 1} 0 <= i;
+  {
+    call acquire(tid, i);
+    call b := Read(tid, i);
+    if (b) {
+      call Write(tid, i, false);
+      call release(tid, i);
+      r := i;
+      break;
+    }
+    call release(tid, i);
+    i := i + 1;
+  }
+}
+
+procedure {:yields} {:layer 1} {:refines "atomic_Free"} Free({:linear "tid"} tid: X, i: int) {
+  call acquire(tid, i);
+  call Write(tid, i, true);
+  call release(tid, i);
+}
+
+procedure {:right} {:layer 1} atomic_acquire({:linear "tid"} tid: X, i: int)
+  modifies l;
+{
+  assert tid != nil;
+  assume l[i] == nil;
+  l[i] := tid;
+}
+
+procedure {:left} {:layer 1} atomic_release({:linear "tid"} tid: X, i: int)
+  modifies l;
+{
+  assert tid != nil;
+  assert l[i] == tid;
+  l[i] := nil;
+}
+
+procedure {:both} {:layer 1} atomic_Read({:linear "tid"} tid: X, i: int) returns (val: bool) {
+  assert tid != nil;
+  assert l[i] == tid;
+  val := status[i];
+}
+
+procedure {:both} {:layer 1} atomic_Write({:linear "tid"} tid: X, i: int, val: bool)
+  modifies status;
+{
+  assert tid != nil;
+  assert l[i] == tid;
+  status[i] := val;
+}
+
+procedure {:yields} {:layer 0} {:refines "atomic_acquire"} acquire({:linear "tid"} tid: X, i: int);
+
+procedure {:yields} {:layer 0} {:refines "atomic_release"} release({:linear "tid"} tid: X, i: int);
+
+procedure {:yields} {:layer 0} {:refines "atomic_Read"} Read({:linear "tid"} tid: X, i: int) returns (val: bool);
+
+procedure {:yields} {:layer 0} {:refines "atomic_Write"} Write({:linear "tid"} tid: X, i: int, val: bool);
+
+[Input - ../../vendor/boogie/Test/civl/purity-issta.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+type {:linear "tid"} X;
+const nil: X;
+
+const max: int;
+axiom 0 <= max;
+
+var {:layer 0,1} l: [int]X;
+var {:layer 0,2} status: [int]bool;
+
+procedure {:atomic} {:layer 2} atomic_Alloc({:linear "tid"} tid: X) returns (r: int)
+modifies status;
+{
+  assert tid != nil;
+  if (*) {
+    assume r == -1;
+  } else {
+    assume 0 <= r && r < max && status[r];
+    status[r] := false;
+  }
+}
+
+procedure {:atomic} {:layer 2} atomic_Free({:linear "tid"} tid: X, i: int)
+modifies status;
+{ assert tid != nil; status[i] := true; }
+
+procedure {:yields} {:layer 1} {:refines "atomic_Alloc"} Alloc({:linear "tid"} tid: X) returns (r: int)
+{
+  var i: int;
+  var b: bool;
+
+  i := 0;
+  r := -1;
+  while (i < max)
+  invariant {:yields} {:layer 1} true;
+  invariant {:layer 1} 0 <= i;
+  {
+    call acquire(tid, i);
+    call b := Read(tid, i);
+    if (b) {
+      call Write(tid, i, false);
+      call release(tid, i);
+      r := i;
+      break;
+    }
+    call release(tid, i);
+    i := i + 1;
+  }
+}
+
+procedure {:yields} {:layer 1} {:refines "atomic_Free"} Free({:linear "tid"} tid: X, i: int)
+{
+  call acquire(tid, i);
+  call Write(tid, i, true);
+  call release(tid, i);
+}
+
+procedure {:right} {:layer 1} atomic_acquire({:linear "tid"} tid: X, i: int)
+modifies l;
+{ assert tid != nil; assume l[i] == nil; l[i] := tid; }
+
+procedure {:left} {:layer 1} atomic_release({:linear "tid"} tid: X, i: int)
+modifies l;
+{ assert tid != nil; assert l[i] == tid; l[i] := nil; }
+
+procedure {:both} {:layer 1} atomic_Read({:linear "tid"} tid: X, i: int) returns (val: bool)
+{ assert tid != nil; assert l[i] == tid; val := status[i]; }
+
+procedure {:both} {:layer 1} atomic_Write({:linear "tid"} tid: X, i: int, val: bool)
+modifies status;
+{ assert tid != nil; assert l[i] == tid; status[i] := val; }
+
+procedure {:yields} {:layer 0} {:refines "atomic_acquire"} acquire({:linear "tid"} tid: X, i: int);
+procedure {:yields} {:layer 0} {:refines "atomic_release"} release({:linear "tid"} tid: X, i: int);
+procedure {:yields} {:layer 0} {:refines "atomic_Read"} Read({:linear "tid"} tid: X, i: int) returns (val: bool);
+procedure {:yields} {:layer 0} {:refines "atomic_Write"} Write({:linear "tid"} tid: X, i: int, val: bool);

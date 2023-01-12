@@ -1,0 +1,548 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "linear",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "1",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "X",
+                    type_params: [],
+                    type_: Some(
+                        Atom(
+                            Int,
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Split",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear_in",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "1",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "xls",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "1",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "xls1",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "1",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "xls2",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: Logical(
+                                    LogicalExpr {
+                                        lhs: Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "xls",
+                                                ),
+                                                op: Eq,
+                                                rhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "MapOr",
+                                                        args: [
+                                                            Var(
+                                                                "xls1",
+                                                            ),
+                                                            Var(
+                                                                "xls2",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                        op: And,
+                                        rhs: Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "xls1",
+                                                ),
+                                                op: Neq,
+                                                rhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "MapConst",
+                                                        args: [
+                                                            BoolLit(
+                                                                false,
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "xls2",
+                                        ),
+                                        op: Neq,
+                                        rhs: FuncCall(
+                                            FuncCall {
+                                                target: "MapConst",
+                                                args: [
+                                                    BoolLit(
+                                                        false,
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Allocate",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "linear",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "1",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "main",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [
+                                Attr(
+                                    AttrContent {
+                                        ident: "linear",
+                                        params: [
+                                            String(
+                                                StringLit {
+                                                    text: "1",
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Map(
+                                            MapType {
+                                                type_params: [],
+                                                keys: [
+                                                    Atom(
+                                                        Int,
+                                                    ),
+                                                ],
+                                                value: Atom(
+                                                    Bool,
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [
+                                Attr(
+                                    AttrContent {
+                                        ident: "linear",
+                                        params: [
+                                            String(
+                                                StringLit {
+                                                    text: "1",
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x1",
+                                        ],
+                                        type_: Map(
+                                            MapType {
+                                                type_params: [],
+                                                keys: [
+                                                    Atom(
+                                                        Int,
+                                                    ),
+                                                ],
+                                                value: Atom(
+                                                    Bool,
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [
+                                Attr(
+                                    AttrContent {
+                                        ident: "linear",
+                                        params: [
+                                            String(
+                                                StringLit {
+                                                    text: "1",
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x2",
+                                        ],
+                                        type_: Map(
+                                            MapType {
+                                                type_params: [],
+                                                keys: [
+                                                    Atom(
+                                                        Int,
+                                                    ),
+                                                ],
+                                                value: Atom(
+                                                    Bool,
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "x",
+                                        ],
+                                        target: "Allocate",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "MapConst",
+                                                    args: [
+                                                        BoolLit(
+                                                            true,
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "x1",
+                                            "x2",
+                                        ],
+                                        target: "Split",
+                                        params: [
+                                            Var(
+                                                "x",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: BoolLit(
+                                        false,
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type {:linear "1"} X = int;
+
+procedure Split({:linear_in "1"} xls: [int]bool) returns ({:linear "1"} xls1: [int]bool, {:linear "1"} xls2: [int]bool);
+  ensures xls == MapOr(xls1, xls2) && xls1 != MapConst(false) && xls2 != MapConst(false);
+
+procedure Allocate() returns ({:linear "1"} x: [int]bool);
+
+procedure main() {
+  var {:linear "1"} x: [int]bool;
+  var {:linear "1"} x1: [int]bool;
+  var {:linear "1"} x2: [int]bool;
+
+  call x := Allocate();
+  assume x == MapConst(true);
+  call x1, x2 := Split(x);
+  assert false;
+}
+
+[Input - ../../vendor/boogie/Test/civl/linear/f2.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+
+
+
+
+
+type {:linear "1"} X = int;
+
+procedure Split({:linear_in "1"} xls: [int]bool) returns ({:linear "1"} xls1: [int]bool, {:linear "1"} xls2: [int]bool);
+ensures xls == MapOr(xls1, xls2) && xls1 != MapConst(false) && xls2 != MapConst(false);
+
+procedure Allocate() returns ({:linear "1"} x: [int]bool);
+
+procedure main()
+{
+   var {:linear "1"} x: [int] bool;
+   var {:linear "1"} x1: [int] bool;
+   var {:linear "1"} x2: [int] bool;
+
+   call x := Allocate();
+   assume x == MapConst(true);
+
+   call x1, x2 := Split(x);
+   assert false;
+}

@@ -1,0 +1,198 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "g",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "g",
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "1",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Call(
+                            CallCmd {
+                                attrs: [],
+                                call_params: CallParams {
+                                    returns: [],
+                                    target: "Q",
+                                    params: [],
+                                },
+                                is_async: false,
+                                is_free: false,
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Nat(
+                                            "0",
+                                        ),
+                                        op: Lt,
+                                        rhs: Var(
+                                            "g",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "3",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Q",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+var g: int;
+
+procedure {:checksum "0"} P();
+  requires g == 0;
+
+implementation {:id "P"} {:checksum "1"} P() {
+  call Q();
+  assert 0 < g;
+}
+
+procedure {:checksum "3"} Q();
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots32.v1.bpl]
+var g: int;
+
+procedure {:checksum "0"} P();
+  requires g == 0;
+
+implementation {:id "P"} {:checksum "1"} P()
+{
+    call Q();
+    assert 0 < g;
+}
+
+procedure {:checksum "3"} Q();

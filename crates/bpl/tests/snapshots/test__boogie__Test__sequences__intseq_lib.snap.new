@@ -1,0 +1,298 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "test",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "s",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Seq",
+                                                tail: Some(
+                                                    AtomApp(
+                                                        TypeApp {
+                                                            head: Int,
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "s",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Seq_Concat",
+                                                args: [
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "Seq_Empty",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "Seq_Unit",
+                                                            args: [
+                                                                Nat(
+                                                                    "0",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "s",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Seq_Concat",
+                                                args: [
+                                                    Var(
+                                                        "s",
+                                                    ),
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "Seq_Unit",
+                                                            args: [
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "s",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Seq_Concat",
+                                                args: [
+                                                    Var(
+                                                        "s",
+                                                    ),
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "Seq_Unit",
+                                                            args: [
+                                                                Nat(
+                                                                    "2",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Seq_Len",
+                                                    args: [
+                                                        Var(
+                                                            "s",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "3",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Seq_Extract",
+                                                    args: [
+                                                        Var(
+                                                            "s",
+                                                        ),
+                                                        Nat(
+                                                            "1",
+                                                        ),
+                                                        Nat(
+                                                            "2",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Seq_Concat",
+                                                    args: [
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "Seq_Unit",
+                                                                args: [
+                                                                    Nat(
+                                                                        "1",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "Seq_Unit",
+                                                                args: [
+                                                                    Nat(
+                                                                        "2",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Seq_Nth",
+                                                    args: [
+                                                        Var(
+                                                            "s",
+                                                        ),
+                                                        Nat(
+                                                            "1",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "1",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure test() {
+  var s: Seq int;
+
+  s := Seq_Concat(Seq_Empty(), Seq_Unit(0));
+  s := Seq_Concat(s, Seq_Unit(1));
+  s := Seq_Concat(s, Seq_Unit(2));
+  assert Seq_Len(s) == 3;
+  assert Seq_Extract(s, 1, 2) == Seq_Concat(Seq_Unit(1), Seq_Unit(2));
+  assert Seq_Nth(s, 1) == 1;
+}
+
+[Input - ../../vendor/boogie/Test/sequences/intseq_lib.bpl]
+// RUN: %boogie -lib "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+procedure test()
+{
+  var s: Seq int;
+
+  s := Seq_Concat(Seq_Empty(), Seq_Unit(0));
+  s := Seq_Concat(s, Seq_Unit(1));
+  s := Seq_Concat(s, Seq_Unit(2));
+  assert Seq_Len(s) == 3;
+  assert Seq_Extract(s, 1, 2) == Seq_Concat(Seq_Unit(1), Seq_Unit(2));
+  assert Seq_Nth(s, 1) == 1;
+}

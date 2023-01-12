@@ -1,0 +1,1157 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "2",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "x",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "main",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "N",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "N",
+                                ),
+                                op: Ge,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "sync",
+                                                params: [],
+                                            },
+                                        ),
+                                    ],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "inc_by_N",
+                                        params: [
+                                            Var(
+                                                "N",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: true,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "sync",
+                                                params: [],
+                                            },
+                                        ),
+                                    ],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "dec_by_N",
+                                        params: [
+                                            Var(
+                                                "N",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: true,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "left",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "inc_by_N",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "N",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "N",
+                                ),
+                                op: Ge,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Eq,
+                                rhs: Term(
+                                    Term {
+                                        lhs: Old(
+                                            OldExpr {
+                                                expr: Var(
+                                                    "x",
+                                                ),
+                                            },
+                                        ),
+                                        op: Add,
+                                        rhs: Var(
+                                            "N",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Neq,
+                                                rhs: Var(
+                                                    "N",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [
+                                        Invariant {
+                                            attrs: [
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "layer",
+                                                        params: [
+                                                            Expr(
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "cooperates",
+                                                        params: [],
+                                                    },
+                                                ),
+                                            ],
+                                            expr: BoolLit(
+                                                true,
+                                            ),
+                                            is_free: false,
+                                        },
+                                        Invariant {
+                                            attrs: [
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "layer",
+                                                        params: [
+                                                            Expr(
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            ],
+                                            expr: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "x",
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: Term(
+                                                        Term {
+                                                            lhs: Old(
+                                                                OldExpr {
+                                                                    expr: Var(
+                                                                        "x",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            op: Add,
+                                                            rhs: Var(
+                                                                "i",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            is_free: false,
+                                        },
+                                    ],
+                                    body: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "i",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "i",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [
+                                                        Attr(
+                                                            AttrContent {
+                                                                ident: "sync",
+                                                                params: [],
+                                                            },
+                                                        ),
+                                                    ],
+                                                    call_params: CallParams {
+                                                        returns: [],
+                                                        target: "inc",
+                                                        params: [],
+                                                    },
+                                                    is_async: true,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "left",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "dec_by_N",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "N",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "N",
+                                ),
+                                op: Ge,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Eq,
+                                rhs: Term(
+                                    Term {
+                                        lhs: Old(
+                                            OldExpr {
+                                                expr: Var(
+                                                    "x",
+                                                ),
+                                            },
+                                        ),
+                                        op: Sub,
+                                        rhs: Var(
+                                            "N",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Neq,
+                                                rhs: Var(
+                                                    "N",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [
+                                        Invariant {
+                                            attrs: [
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "layer",
+                                                        params: [
+                                                            Expr(
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "cooperates",
+                                                        params: [],
+                                                    },
+                                                ),
+                                            ],
+                                            expr: BoolLit(
+                                                true,
+                                            ),
+                                            is_free: false,
+                                        },
+                                        Invariant {
+                                            attrs: [
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "layer",
+                                                        params: [
+                                                            Expr(
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            ],
+                                            expr: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "x",
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: Term(
+                                                        Term {
+                                                            lhs: Old(
+                                                                OldExpr {
+                                                                    expr: Var(
+                                                                        "x",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            op: Sub,
+                                                            rhs: Var(
+                                                                "i",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            is_free: false,
+                                        },
+                                    ],
+                                    body: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "i",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "i",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [
+                                                        Attr(
+                                                            AttrContent {
+                                                                ident: "sync",
+                                                                params: [],
+                                                            },
+                                                        ),
+                                                    ],
+                                                    call_params: CallParams {
+                                                        returns: [],
+                                                        target: "dec",
+                                                        params: [],
+                                                    },
+                                                    is_async: true,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "both",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "atomic_inc",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "both",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "atomic_dec",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Sub,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "atomic_inc",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "inc",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "atomic_dec",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "dec",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+var {:layer 0, 2} x: int;
+
+procedure {:yields} {:layer 1} main(N: int)
+  requires {:layer 1} N >= 0;
+{
+  async call {:sync} inc_by_N(N);
+  async call {:sync} dec_by_N(N);
+}
+
+procedure {:yields} {:layer 1} {:left} inc_by_N(N: int)
+  modifies x;
+  requires {:layer 1} N >= 0;
+  ensures {:layer 1} x == old (x) + N;
+{
+  var i: int;
+
+  i := 0;
+  while (i != N)
+    invariant {:layer 1} {:cooperates} true;
+    invariant {:layer 1} x == old (x) + i;
+  {
+    i := i + 1;
+    async call {:sync} inc();
+  }
+}
+
+procedure {:yields} {:layer 1} {:left} dec_by_N(N: int)
+  modifies x;
+  requires {:layer 1} N >= 0;
+  ensures {:layer 1} x == old (x) - N;
+{
+  var i: int;
+
+  i := 0;
+  while (i != N)
+    invariant {:layer 1} {:cooperates} true;
+    invariant {:layer 1} x == old (x) - i;
+  {
+    i := i + 1;
+    async call {:sync} dec();
+  }
+}
+
+procedure {:both} {:layer 1} atomic_inc()
+  modifies x;
+{
+  x := x + 1;
+}
+
+procedure {:both} {:layer 1} atomic_dec()
+  modifies x;
+{
+  x := x - 1;
+}
+
+procedure {:yields} {:layer 0} {:refines "atomic_inc"} inc();
+
+procedure {:yields} {:layer 0} {:refines "atomic_dec"} dec();
+
+[Input - ../../vendor/boogie/Test/civl/inc-dec.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+// ###########################################################################
+// Global shared variables
+
+var {:layer 0,2} x : int;
+
+// ###########################################################################
+// Main
+
+procedure {:yields} {:layer 1} main (N: int)
+requires {:layer 1} N >= 0;
+{
+  async call {:sync} inc_by_N(N);
+  async call {:sync} dec_by_N(N);
+}
+
+procedure {:yields} {:layer 1} {:left} inc_by_N (N: int)
+modifies x;
+requires {:layer 1} N >= 0;
+ensures {:layer 1} x == old(x) + N;
+{
+  var i : int;
+
+  i := 0;
+  while (i != N)
+  invariant {:layer 1} {:cooperates} true;
+  invariant {:layer 1} x == old(x) + i;
+  {
+    i := i + 1;
+    async call {:sync} inc();
+  }
+}
+
+procedure {:yields} {:layer 1} {:left} dec_by_N (N: int)
+modifies x;
+requires {:layer 1} N >= 0;
+ensures {:layer 1} x == old(x) - N;
+{
+  var i : int;
+
+  i := 0;
+  while (i != N)
+  invariant {:layer 1} {:cooperates} true;
+  invariant {:layer 1} x == old(x) - i;
+  {
+    i := i + 1;
+    async call {:sync} dec();
+  }
+}
+
+// ###########################################################################
+// Low level atomic actions
+
+procedure {:both} {:layer 1} atomic_inc ()
+modifies x;
+{ x := x + 1; }
+
+procedure {:both} {:layer 1} atomic_dec ()
+modifies x;
+{ x := x - 1; }
+
+procedure {:yields} {:layer 0} {:refines "atomic_inc"} inc ();
+
+procedure {:yields} {:layer 0} {:refines "atomic_dec"} dec ();

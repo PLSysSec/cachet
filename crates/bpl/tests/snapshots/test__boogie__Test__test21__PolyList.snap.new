@@ -1,0 +1,1654 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "List",
+                    type_params: [
+                        "a",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Cons",
+            type_params: [
+                "a",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "a",
+                            tail: None,
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "y",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "List",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "a",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "List",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "a",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Nil",
+            type_params: [
+                "a",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "a",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "List",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "a",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Car",
+            type_params: [
+                "a",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "List",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "a",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "a",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Cdr",
+            type_params: [
+                "a",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "List",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "a",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "List",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "a",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "a",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "a",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "y",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "List",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "a",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "Car",
+                                        args: [
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "Cons",
+                                                    args: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                        Var(
+                                                            "y",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "x",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "a",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "a",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "y",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "List",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "a",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "Cdr",
+                                        args: [
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "Cons",
+                                                    args: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                        Var(
+                                                            "y",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "y",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Len",
+            type_params: [
+                "a",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "List",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "a",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "a",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "a",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "Len",
+                                        args: [
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "Nil",
+                                                    args: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "a",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "a",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "y",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "List",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "a",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "Len",
+                                        args: [
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "Cons",
+                                                    args: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                        Var(
+                                                            "y",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Term(
+                                    Term {
+                                        lhs: Nat(
+                                            "1",
+                                        ),
+                                        op: Add,
+                                        rhs: FuncCall(
+                                            FuncCall {
+                                                target: "Len",
+                                                args: [
+                                                    Var(
+                                                        "y",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [
+                    "a",
+                ],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "param",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "a",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "a",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "NIL",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "List",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "a",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "l",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "List",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "a",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "NIL",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Nil",
+                                                args: [
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Len",
+                                                    args: [
+                                                        Var(
+                                                            "NIL",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Len",
+                                                    args: [
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "Cons",
+                                                                args: [
+                                                                    Var(
+                                                                        "x",
+                                                                    ),
+                                                                    FuncCall(
+                                                                        FuncCall {
+                                                                            target: "Cons",
+                                                                            args: [
+                                                                                Var(
+                                                                                    "x",
+                                                                                ),
+                                                                                Var(
+                                                                                    "NIL",
+                                                                                ),
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "l",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Cons",
+                                                args: [
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "Cons",
+                                                            args: [
+                                                                Var(
+                                                                    "x",
+                                                                ),
+                                                                Var(
+                                                                    "NIL",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Len",
+                                                    args: [
+                                                        Var(
+                                                            "l",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "l",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Cons",
+                                                args: [
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                    Var(
+                                                        "l",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Logical(
+                                                LogicalExpr {
+                                                    lhs: Rel(
+                                                        RelExpr {
+                                                            lhs: FuncCall(
+                                                                FuncCall {
+                                                                    target: "Len",
+                                                                    args: [
+                                                                        Var(
+                                                                            "l",
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Nat(
+                                                                "3",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: And,
+                                                    rhs: Rel(
+                                                        RelExpr {
+                                                            lhs: FuncCall(
+                                                                FuncCall {
+                                                                    target: "Car",
+                                                                    args: [
+                                                                        Var(
+                                                                            "l",
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Var(
+                                                                "x",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "Len",
+                                                            args: [
+                                                                FuncCall(
+                                                                    FuncCall {
+                                                                        target: "Cdr",
+                                                                        args: [
+                                                                            Var(
+                                                                                "l",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "Len",
+                                                            args: [
+                                                                Var(
+                                                                    "l",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "m",
+                                                                ],
+                                                                type_: App(
+                                                                    TypeApp {
+                                                                        head: "List",
+                                                                        tail: Some(
+                                                                            App(
+                                                                                TypeApp {
+                                                                                    head: "a",
+                                                                                    tail: None,
+                                                                                },
+                                                                            ),
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "y",
+                                                                ],
+                                                                type_: App(
+                                                                    TypeApp {
+                                                                        head: "a",
+                                                                        tail: None,
+                                                                    },
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Rel(
+                                                    RelExpr {
+                                                        lhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "Len",
+                                                                args: [
+                                                                    FuncCall(
+                                                                        FuncCall {
+                                                                            target: "Cons",
+                                                                            args: [
+                                                                                Var(
+                                                                                    "y",
+                                                                                ),
+                                                                                Var(
+                                                                                    "m",
+                                                                                ),
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                        op: Gt,
+                                                        rhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "Len",
+                                                                args: [
+                                                                    Var(
+                                                                        "m",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "l",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Cdr",
+                                                args: [
+                                                    Var(
+                                                        "l",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "Len",
+                                                            args: [
+                                                                Var(
+                                                                    "l",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: Nat(
+                                                        "2",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "Car",
+                                                            args: [
+                                                                Var(
+                                                                    "l",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: Var(
+                                                        "x",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Len",
+                                                    args: [
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "Cons",
+                                                                args: [
+                                                                    Var(
+                                                                        "x",
+                                                                    ),
+                                                                    FuncCall(
+                                                                        FuncCall {
+                                                                            target: "Cons",
+                                                                            args: [
+                                                                                Var(
+                                                                                    "x",
+                                                                                ),
+                                                                                FuncCall(
+                                                                                    FuncCall {
+                                                                                        target: "Cons",
+                                                                                        args: [
+                                                                                            Var(
+                                                                                                "x",
+                                                                                            ),
+                                                                                            Var(
+                                                                                                "NIL",
+                                                                                            ),
+                                                                                        ],
+                                                                                    },
+                                                                                ),
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "NIL",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "List",
+                                                tail: Some(
+                                                    AtomApp(
+                                                        TypeApp {
+                                                            head: Int,
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "l",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "List",
+                                                tail: Some(
+                                                    AtomApp(
+                                                        TypeApp {
+                                                            head: Int,
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "NIL",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Nil",
+                                                args: [
+                                                    Nat(
+                                                        "0",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Len",
+                                                    args: [
+                                                        Var(
+                                                            "NIL",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Len",
+                                                    args: [
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "Cons",
+                                                                args: [
+                                                                    Nat(
+                                                                        "1",
+                                                                    ),
+                                                                    FuncCall(
+                                                                        FuncCall {
+                                                                            target: "Cons",
+                                                                            args: [
+                                                                                Nat(
+                                                                                    "2",
+                                                                                ),
+                                                                                Var(
+                                                                                    "NIL",
+                                                                                ),
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "l",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "NIL",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "l",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Cons",
+                                                args: [
+                                                    Nat(
+                                                        "42",
+                                                    ),
+                                                    Var(
+                                                        "l",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "l",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Cons",
+                                                args: [
+                                                    Term(
+                                                        Term {
+                                                            lhs: FuncCall(
+                                                                FuncCall {
+                                                                    target: "Car",
+                                                                    args: [
+                                                                        Var(
+                                                                            "l",
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                            op: Add,
+                                                            rhs: Nat(
+                                                                "17",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "Cdr",
+                                                            args: [
+                                                                Var(
+                                                                    "l",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "Len",
+                                                            args: [
+                                                                Var(
+                                                                    "l",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: Nat(
+                                                        "1",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "Car",
+                                                            args: [
+                                                                Var(
+                                                                    "l",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: Nat(
+                                                        "59",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Len",
+                                                    args: [
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "Cons",
+                                                                args: [
+                                                                    Nat(
+                                                                        "1",
+                                                                    ),
+                                                                    FuncCall(
+                                                                        FuncCall {
+                                                                            target: "Cons",
+                                                                            args: [
+                                                                                Nat(
+                                                                                    "2",
+                                                                                ),
+                                                                                FuncCall(
+                                                                                    FuncCall {
+                                                                                        target: "Cons",
+                                                                                        args: [
+                                                                                            Nat(
+                                                                                                "3",
+                                                                                            ),
+                                                                                            Var(
+                                                                                                "NIL",
+                                                                                            ),
+                                                                                        ],
+                                                                                    },
+                                                                                ),
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type List a;
+
+function Cons<a>(x: a, y: List a): List a;
+
+function Nil<a>(a): List a;
+
+function Car<a>(List a): a;
+
+function Cdr<a>(List a): List a;
+
+axiom (forall <a> x: a, y: List a :: Car(Cons(x, y)) == x);
+
+axiom (forall <a> x: a, y: List a :: Cdr(Cons(x, y)) == y);
+
+function Len<a>(List a): int;
+
+axiom (forall <a> x: a :: Len(Nil(x)) == 0);
+
+axiom (forall <a> x: a, y: List a :: Len(Cons(x, y)) == 1 + Len(y));
+
+procedure P<a>(param: a) {
+  var x: a, NIL: List a, l: List a;
+
+  NIL := Nil(x);
+  assert Len(NIL) == 0;
+  assert Len(Cons(x, Cons(x, NIL))) == 2;
+  l := Cons(x, Cons(x, NIL));
+  assert Len(l) == 2;
+  l := Cons(x, l);
+  assert Len(l) == 3 && Car(l) == x && Len(Cdr(l)) < Len(l);
+  assert (forall m: List a, y: a :: Len(Cons(y, m)) > Len(m));
+  l := Cdr(l);
+  assert Len(l) == 2 && Car(l) == x;
+  assert Len(Cons(x, Cons(x, Cons(x, NIL)))) == 2;
+}
+
+procedure Q() {
+  var NIL: List int, l: List int;
+
+  NIL := Nil(0);
+  assert Len(NIL) == 0;
+  assert Len(Cons(1, Cons(2, NIL))) == 2;
+  l := NIL;
+  l := Cons(42, l);
+  l := Cons(Car(l) + 17, Cdr(l));
+  assert Len(l) == 1 && Car(l) == 59;
+  assert Len(Cons(1, Cons(2, Cons(3, NIL)))) == 2;
+}
+
+[Input - ../../vendor/boogie/Test/test21/PolyList.bpl]
+// RUN: %boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
+// RUN: %diff "%s.p.expect" "%t"
+// RUN: %boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
+// RUN: %diff "%s.a.expect" "%t"
+
+
+
+type List a;
+
+function Cons<a>(x:a, y:List a) returns (List a);
+
+// we need some argument ... ugly
+function Nil<a>(a) returns (List a);
+
+function Car<a>(List a) returns (a);
+function Cdr<a>(List a) returns (List a);
+
+axiom (forall<a> x:a, y:List a :: Car(Cons(x, y)) == x);
+axiom (forall<a> x:a, y:List a :: Cdr(Cons(x, y)) == y);
+
+function Len<a>(List a) returns (int);
+
+axiom (forall <a> x:a :: Len(Nil(x)) == 0);
+axiom (forall <a> x:a, y:List a :: Len(Cons(x, y)) == 1 + Len(y));
+
+
+
+procedure P<a>(param : a) returns () {
+  var x:a, NIL : List a, l : List a;
+
+  NIL := Nil(x);
+
+  assert Len(NIL) == 0;
+  assert Len(Cons(x,Cons(x,NIL))) == 2;
+
+  l := Cons(x,Cons(x,NIL));
+  assert Len(l) == 2;
+
+  l := Cons(x, l);
+  assert Len(l) == 3 && Car(l) == x && Len(Cdr(l)) < Len(l);
+  assert (forall m : List a, y : a :: Len(Cons(y, m)) > Len(m));
+
+  l := Cdr(l);
+  assert Len(l) == 2 && Car(l) == x;
+
+  assert Len(Cons(x,Cons(x,Cons(x,NIL)))) == 2;    // should not be provable
+
+}
+
+procedure Q() returns () {
+  var NIL : List int, l : List int;
+
+  NIL := Nil(0);
+
+  assert Len(NIL) == 0;
+  assert Len(Cons(1,Cons(2,NIL))) == 2;
+
+  l := NIL;
+  l := Cons(42, l);
+  l := Cons(Car(l) + 17, Cdr(l));
+
+  assert Len(l) == 1 && Car(l) == 59;
+
+  assert Len(Cons(1,Cons(2,Cons(3,NIL)))) == 2;    // should not be provable
+
+}

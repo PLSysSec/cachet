@@ -1,0 +1,786 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "2",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "count",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "2",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "AtomicInc",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "count",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "count",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "count",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "AtomicInc",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Inc",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "n",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "success",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ),
+                                    invariants: [
+                                        Invariant {
+                                            attrs: [
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "yields",
+                                                        params: [],
+                                                    },
+                                                ),
+                                                Attr(
+                                                    AttrContent {
+                                                        ident: "layer",
+                                                        params: [
+                                                            Expr(
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            ],
+                                            expr: BoolLit(
+                                                true,
+                                            ),
+                                            is_free: false,
+                                        },
+                                    ],
+                                    body: [
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [
+                                                            "n",
+                                                        ],
+                                                        target: "Read",
+                                                        params: [],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Yield(
+                                                YieldCmd,
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [
+                                                            "success",
+                                                        ],
+                                                        target: "CAS",
+                                                        params: [
+                                                            Var(
+                                                                "n",
+                                                            ),
+                                                            Term(
+                                                                Term {
+                                                                    lhs: Var(
+                                                                        "n",
+                                                                    ),
+                                                                    op: Add,
+                                                                    rhs: Nat(
+                                                                        "1",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        ],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Expr(
+                                                        Var(
+                                                            "success",
+                                                        ),
+                                                    ),
+                                                    then: [
+                                                        StructuredCmd(
+                                                            Break(
+                                                                BreakCmd {
+                                                                    label: None,
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: None,
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "AtomicCAS",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "prev",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "next",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "status",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "count",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "count",
+                                                ),
+                                                op: Eq,
+                                                rhs: Var(
+                                                    "prev",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "count",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Var(
+                                                            "next",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "status",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        BoolLit(
+                                                            true,
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: Some(
+                                        Else(
+                                            [
+                                                LabelOrCmd(
+                                                    Assign(
+                                                        AssignCmd {
+                                                            lhs: [
+                                                                AssignLhs {
+                                                                    ident: "status",
+                                                                    subscripts: [],
+                                                                },
+                                                            ],
+                                                            rhs: [
+                                                                BoolLit(
+                                                                    false,
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "AtomicCAS",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "CAS",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "prev",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "next",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "status",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "AtomicRead",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "val",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "val",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "count",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "AtomicRead",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Read",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "val",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+var {:layer 0, 2} count: int;
+
+procedure {:atomic} {:layer 2} AtomicInc()
+  modifies count;
+{
+  count := count + 1;
+}
+
+procedure {:yields} {:layer 1} {:refines "AtomicInc"} Inc() {
+  var n: int;
+  var success: bool;
+
+  while (true)
+    invariant {:yields} {:layer 1} true;
+  {
+    call n := Read();
+    yield;
+    call success := CAS(n, n + 1);
+    if (success) {
+      break;
+    }
+  }
+}
+
+procedure {:atomic} {:layer 1} AtomicCAS(prev: int, next: int) returns (status: bool)
+  modifies count;
+{
+  if (count == prev) {
+    count := next;
+    status := true;
+  } else {
+    status := false;
+  }
+}
+
+procedure {:yields} {:layer 0} {:refines "AtomicCAS"} CAS(prev: int, next: int) returns (status: bool);
+
+procedure {:atomic} {:layer 1} AtomicRead() returns (val: int) {
+  val := count;
+}
+
+procedure {:yields} {:layer 0} {:refines "AtomicRead"} Read() returns (val: int);
+
+[Input - ../../vendor/boogie/Test/civl/freund.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+var {:layer 0, 2} count: int;
+
+procedure {:atomic} {:layer 2} AtomicInc()
+modifies count;
+{
+    count := count + 1;
+}
+procedure {:yields} {:layer 1} {:refines "AtomicInc"} Inc() {
+    var n: int;
+    var success: bool;
+
+    while(true)
+    invariant {:yields} {:layer 1} true;
+    {
+        call n := Read();
+        yield;
+        call success := CAS(n, n+1);
+        if (success) {
+            break;
+        }
+    }
+}
+
+procedure {:atomic} {:layer 1} AtomicCAS(prev: int, next: int) returns (status: bool)
+modifies count;
+{
+    if (count == prev) {
+        count := next;
+        status := true;
+    } else {
+        status := false;
+    }
+}
+procedure {:yields} {:layer 0} {:refines "AtomicCAS"} CAS(prev: int, next: int) returns (status: bool);
+
+procedure {:atomic} {:layer 1} AtomicRead() returns (val: int)
+{
+    val := count;
+}
+procedure {:yields} {:layer 0} {:refines "AtomicRead"} Read() returns (val: int);

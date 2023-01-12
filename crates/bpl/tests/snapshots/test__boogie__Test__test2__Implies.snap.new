@@ -1,0 +1,735 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "a",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "b",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "c",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "d",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "f",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Explies(
+                            ExpliesExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "f",
+                                        args: [
+                                            Var(
+                                                "x",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Ge,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Implies(
+                                                ImpliesExpr {
+                                                    lhs: Var(
+                                                        "a",
+                                                    ),
+                                                    rhs: Implies(
+                                                        ImpliesExpr {
+                                                            lhs: Implies(
+                                                                ImpliesExpr {
+                                                                    lhs: Var(
+                                                                        "b",
+                                                                    ),
+                                                                    rhs: Var(
+                                                                        "c",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            rhs: Var(
+                                                                "d",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Explies(
+                                                ExpliesExpr {
+                                                    lhs: Explies(
+                                                        ExpliesExpr {
+                                                            lhs: Var(
+                                                                "d",
+                                                            ),
+                                                            rhs: Explies(
+                                                                ExpliesExpr {
+                                                                    lhs: Var(
+                                                                        "c",
+                                                                    ),
+                                                                    rhs: Var(
+                                                                        "b",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                    rhs: Var(
+                                                        "a",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Implies(
+                                                ImpliesExpr {
+                                                    lhs: Var(
+                                                        "a",
+                                                    ),
+                                                    rhs: Implies(
+                                                        ImpliesExpr {
+                                                            lhs: Var(
+                                                                "b",
+                                                            ),
+                                                            rhs: Var(
+                                                                "c",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Explies(
+                                                ExpliesExpr {
+                                                    lhs: Var(
+                                                        "c",
+                                                    ),
+                                                    rhs: Implies(
+                                                        ImpliesExpr {
+                                                            lhs: Var(
+                                                                "a",
+                                                            ),
+                                                            rhs: Var(
+                                                                "b",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "f",
+                                            args: [
+                                                Nat(
+                                                    "23",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "f",
+                                            args: [
+                                                Neg(
+                                                    NegExpr {
+                                                        op: Arith,
+                                                        expr: Nat(
+                                                            "5",
+                                                        ),
+                                                    },
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q0",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q1",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "subsumption",
+                                                params: [
+                                                    Expr(
+                                                        Nat(
+                                                            "0",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q2",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "subsumption",
+                                                params: [
+                                                    Expr(
+                                                        Nat(
+                                                            "0",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q3",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "subsumption",
+                                                params: [
+                                                    Expr(
+                                                        Nat(
+                                                            "0",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "subsumption",
+                                                params: [
+                                                    Expr(
+                                                        Nat(
+                                                            "0",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "2",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+const a: bool;
+
+const b: bool;
+
+const c: bool;
+
+const d: bool;
+
+function f(int): bool;
+
+axiom (forall x: int :: f(x) <== x >= 0);
+
+procedure P() {
+  assert (a ==> (b ==> c) ==> d) == (d <== (c <== b) <== a);
+  assert (a ==> b ==> c) == (c <== (a ==> b));
+  assert f(23);
+  assert f(-5);
+}
+
+procedure Q0(x: int) {
+  assert x == 2;
+  assert x == 2;
+}
+
+procedure Q1(x: int) {
+  assert {:subsumption 0} x == 2;
+  assert x == 2;
+}
+
+procedure Q2(x: int) {
+  assert x == 2;
+  assert {:subsumption 0} x == 2;
+}
+
+procedure Q3(x: int) {
+  assert {:subsumption 0} x == 2;
+  assert {:subsumption 0} x == 2;
+}
+
+[Input - ../../vendor/boogie/Test/test2/Implies.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+const a:bool;
+const b:bool;
+const c:bool;
+const d:bool;
+
+function f(int) returns (bool);
+axiom (forall x:int :: f(x) <== x >= 0);
+
+procedure P() {
+  assert (a ==> (b ==> c) ==> d) == (d <== (c <== b) <== a);
+  assert (a ==> b ==> c) == (c <== (a ==> b));     // error
+
+  assert f(23);
+  assert f(-5);                                    // error
+}
+
+procedure Q0(x: int) {
+  assert x == 2;  // error
+  assert x == 2;  // nothing reported for this line, since control cannot reach here
+}
+
+procedure Q1(x: int) {
+  assert {:subsumption 0} x == 2;  // error
+  assert x == 2;  // error (because the subsumption attribute above makes the execution 'forget' the condition)
+}
+
+procedure Q2(x: int) {
+  assert x == 2;  // error
+  assert {:subsumption 0} x == 2;  // nothing reported for this line, since control cannot reach here
+}
+
+procedure Q3(x: int) {
+  assert {:subsumption 0} x == 2;  // error
+  assert {:subsumption 0} x == 2;  // error (because the subsumption attribute above makes the execution 'forget' the condition)
+}

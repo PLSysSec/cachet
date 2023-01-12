@@ -1,0 +1,207 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "x",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Test",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "entry",
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "loophead",
+                                        "exit",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "loophead",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Ge,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "loophead",
+                                        "exit",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "exit",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Lt,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: BoolLit(
+                                        false,
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var x: int;
+
+procedure Test()
+  modifies x;
+{
+  entry:
+  goto loophead, exit;
+  loophead:
+  assume x >= 0;
+  x := 0;
+  goto loophead, exit;
+  exit:
+  assume x < 0;
+  assert false;
+  return;
+}
+
+[Input - ../../vendor/boogie/Test/test2/LoopInvAssume.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// Check that assumes in loop invariants are handled correctly
+
+var x : int;
+
+procedure Test()
+  modifies x;
+{
+   entry:
+      goto loophead, exit;
+
+   loophead:
+      assume x >= 0;
+      x := 0;
+      goto loophead, exit; 
+
+   exit:
+      assume x < 0;
+      assert false;
+      return;
+}

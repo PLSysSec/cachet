@@ -1,0 +1,261 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "F",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Nat(
+                                            "100",
+                                        ),
+                                        op: Lt,
+                                        rhs: Var(
+                                            "n",
+                                        ),
+                                    },
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "r",
+                                        ),
+                                        op: Eq,
+                                        rhs: Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "n",
+                                                ),
+                                                op: Sub,
+                                                rhs: Nat(
+                                                    "10",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "n",
+                                        ),
+                                        op: Le,
+                                        rhs: Nat(
+                                            "100",
+                                        ),
+                                    },
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "r",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "91",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Nat(
+                                                    "100",
+                                                ),
+                                                op: Lt,
+                                                rhs: Var(
+                                                    "n",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "r",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "n",
+                                                                ),
+                                                                op: Sub,
+                                                                rhs: Nat(
+                                                                    "10",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: Some(
+                                        Else(
+                                            [
+                                                LabelOrCmd(
+                                                    Call(
+                                                        CallCmd {
+                                                            attrs: [],
+                                                            call_params: CallParams {
+                                                                returns: [
+                                                                    "r",
+                                                                ],
+                                                                target: "F",
+                                                                params: [
+                                                                    Term(
+                                                                        Term {
+                                                                            lhs: Var(
+                                                                                "n",
+                                                                            ),
+                                                                            op: Add,
+                                                                            rhs: Nat(
+                                                                                "11",
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                            is_async: false,
+                                                            is_free: false,
+                                                        },
+                                                    ),
+                                                ),
+                                                LabelOrCmd(
+                                                    Call(
+                                                        CallCmd {
+                                                            attrs: [],
+                                                            call_params: CallParams {
+                                                                returns: [
+                                                                    "r",
+                                                                ],
+                                                                target: "F",
+                                                                params: [
+                                                                    Var(
+                                                                        "r",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                            is_async: false,
+                                                            is_free: false,
+                                                        },
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure F(n: int) returns (r: int)
+  ensures 100 < n ==> r == n - 10;
+  ensures n <= 100 ==> r == 91;
+{
+  if (100 < n) {
+    r := n - 10;
+  } else {
+    call r := F(n + 11);
+    call r := F(r);
+  }
+}
+
+[Input - ../../vendor/boogie/Test/textbook/McCarthy-91.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// McCarthy 91 function
+procedure F(n: int) returns (r: int)
+  ensures 100 < n ==> r == n - 10;
+  ensures n <= 100 ==> r == 91;
+{
+  if (100 < n) {
+    r := n - 10;
+  } else {
+    call r := F(n + 11);
+    call r := F(r);
+  }
+}

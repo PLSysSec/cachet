@@ -1,0 +1,602 @@
+---
+source: crates/bpl/tests/test.rs
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "Box",
+                    type_params: [
+                        "_",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "Mut",
+                    type_params: [
+                        "_",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "Pair",
+                    type_params: [
+                        "_",
+                        "_",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Box",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Box",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Mut",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Mut",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Pair",
+            type_params: [
+                "T",
+                "U",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "y",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "U",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Pair",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: Some(
+                                        App(
+                                            TypeApp {
+                                                head: "U",
+                                                tail: None,
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "foo",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Box",
+                                        tail: Some(
+                                            AtomApp(
+                                                TypeApp {
+                                                    head: Paren(
+                                                        App(
+                                                            TypeApp {
+                                                                head: "Box",
+                                                                tail: Some(
+                                                                    AtomApp(
+                                                                        TypeApp {
+                                                                            head: Int,
+                                                                            tail: None,
+                                                                        },
+                                                                    ),
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Mut",
+                                        tail: Some(
+                                            AtomApp(
+                                                TypeApp {
+                                                    head: Paren(
+                                                        App(
+                                                            TypeApp {
+                                                                head: "Box",
+                                                                tail: Some(
+                                                                    AtomApp(
+                                                                        TypeApp {
+                                                                            head: Paren(
+                                                                                App(
+                                                                                    TypeApp {
+                                                                                        head: "Box",
+                                                                                        tail: Some(
+                                                                                            AtomApp(
+                                                                                                TypeApp {
+                                                                                                    head: Int,
+                                                                                                    tail: None,
+                                                                                                },
+                                                                                            ),
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            ),
+                                                                            tail: None,
+                                                                        },
+                                                                    ),
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "y",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Mut",
+                                                args: [
+                                                    Var(
+                                                        "b",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "bar",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Pair",
+                                        tail: Some(
+                                            AtomApp(
+                                                TypeApp {
+                                                    head: Paren(
+                                                        App(
+                                                            TypeApp {
+                                                                head: "Mut",
+                                                                tail: Some(
+                                                                    AtomApp(
+                                                                        TypeApp {
+                                                                            head: Paren(
+                                                                                App(
+                                                                                    TypeApp {
+                                                                                        head: "Box",
+                                                                                        tail: Some(
+                                                                                            AtomApp(
+                                                                                                TypeApp {
+                                                                                                    head: Int,
+                                                                                                    tail: None,
+                                                                                                },
+                                                                                            ),
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            ),
+                                                                            tail: None,
+                                                                        },
+                                                                    ),
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    tail: Some(
+                                                        AtomApp(
+                                                            TypeApp {
+                                                                head: Paren(
+                                                                    App(
+                                                                        TypeApp {
+                                                                            head: "Box",
+                                                                            tail: Some(
+                                                                                AtomApp(
+                                                                                    TypeApp {
+                                                                                        head: Paren(
+                                                                                            App(
+                                                                                                TypeApp {
+                                                                                                    head: "Mut",
+                                                                                                    tail: Some(
+                                                                                                        AtomApp(
+                                                                                                            TypeApp {
+                                                                                                                head: Int,
+                                                                                                                tail: None,
+                                                                                                            },
+                                                                                                        ),
+                                                                                                    ),
+                                                                                                },
+                                                                                            ),
+                                                                                        ),
+                                                                                        tail: None,
+                                                                                    },
+                                                                                ),
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                ),
+                                                                tail: None,
+                                                            },
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "y",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Pair",
+                                                args: [
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "Mut",
+                                                            args: [
+                                                                FuncCall(
+                                                                    FuncCall {
+                                                                        target: "Box",
+                                                                        args: [
+                                                                            Var(
+                                                                                "a",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "Box",
+                                                            args: [
+                                                                FuncCall(
+                                                                    FuncCall {
+                                                                        target: "Mut",
+                                                                        args: [
+                                                                            Var(
+                                                                                "b",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type {:datatype} Box _;
+
+type {:datatype} Mut _;
+
+type {:datatype} Pair _ _;
+
+function {:constructor} Box<T>(x: T): Box T;
+
+function {:constructor} Mut<T>(x: T): Mut T;
+
+function {:constructor} Pair<T, U>(x: T, y: U): Pair T U;
+
+procedure foo(b: Box (Box int)) returns (y: Mut (Box (Box int))) {
+  y := Mut(b);
+}
+
+procedure bar(a: int, b: int) returns (y: Pair (Mut (Box int)) (Box (Mut int))) {
+  y := Pair(Mut(Box(a)), Box(Mut(b)));
+}
+
+[Input - ../../vendor/boogie/Test/monomorphize/issue-376.bpl]
+// RUN: %boogie /monomorphize "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+type {:datatype} Box _;
+type {:datatype} Mut _;
+type {:datatype} Pair _ _;
+
+function {:constructor} Box<T>(x: T): Box T;
+function {:constructor} Mut<T>(x: T): Mut T;
+function {:constructor} Pair<T,U>(x: T, y: U): Pair T U;
+
+procedure foo(b: Box (Box int)) returns (y: Mut (Box (Box int))) {
+   y := Mut(b);
+}
+
+procedure bar(a: int, b: int) returns (y: Pair (Mut (Box int)) (Box (Mut int))) {
+    y := Pair(Mut(Box(a)), Box(Mut(b)));
+}

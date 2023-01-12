@@ -1,0 +1,1036 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "may_fail",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "f",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "test0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Havoc(
+                                HavocCmd {
+                                    vars: [
+                                        "x",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Nat(
+                                                "42",
+                                            ),
+                                            op: Lt,
+                                            rhs: Var(
+                                                "x",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "minimize",
+                                                params: [
+                                                    Expr(
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "may_fail",
+                                            args: [
+                                                Var(
+                                                    "x",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "test1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "24",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Asterisk,
+                                    then: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "x",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Nat(
+                                                            "42",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "minimize",
+                                                params: [
+                                                    Expr(
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "may_fail",
+                                            args: [
+                                                Var(
+                                                    "x",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "test2",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "1",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Asterisk,
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "x",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "x",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "minimize",
+                                                params: [
+                                                    Expr(
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Lt,
+                                            rhs: Nat(
+                                                "10",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "test3",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Havoc(
+                                HavocCmd {
+                                    vars: [
+                                        "x",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Lt,
+                                            rhs: Nat(
+                                                "42",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "maximize",
+                                                params: [
+                                                    Expr(
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "may_fail",
+                                            args: [
+                                                Var(
+                                                    "x",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "test4",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "24",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Asterisk,
+                                    then: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "x",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Nat(
+                                                            "42",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "maximize",
+                                                params: [
+                                                    Expr(
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "may_fail",
+                                            args: [
+                                                Var(
+                                                    "x",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "test5",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "1",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Asterisk,
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "x",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "x",
+                                                                ),
+                                                                op: Sub,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "maximize",
+                                                params: [
+                                                    Expr(
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Lt,
+                                            rhs: Nat(
+                                                "1",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "test6",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "1",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Asterisk,
+                                    then: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "x",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Nat(
+                                                            "2",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "maximize",
+                                                params: [
+                                                    Expr(
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "may_fail",
+                                            args: [
+                                                Var(
+                                                    "x",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+function may_fail(f: int): bool;
+
+procedure test0() {
+  var x: int;
+
+  havoc x;
+  assume 42 < x;
+  assume {:minimize x} true;
+  assert may_fail(x);
+}
+
+procedure test1() {
+  var x: int;
+
+  x := 24;
+  if (*) {
+    x := 42;
+  }
+  assume {:minimize x} true;
+  assert may_fail(x);
+}
+
+procedure test2() {
+  var x: int;
+
+  x := 1;
+  while (*) {
+    x := x + 1;
+  }
+  assume {:minimize x} true;
+  assert x < 10;
+}
+
+procedure test3() {
+  var x: int;
+
+  havoc x;
+  assume x < 42;
+  assume {:maximize x} true;
+  assert may_fail(x);
+}
+
+procedure test4() {
+  var x: int;
+
+  x := 24;
+  if (*) {
+    x := 42;
+  }
+  assume {:maximize x} true;
+  assert may_fail(x);
+}
+
+procedure test5() {
+  var x: int;
+
+  x := 1;
+  while (*) {
+    x := x - 1;
+  }
+  assume {:maximize x} true;
+  assert x < 1;
+}
+
+procedure test6() {
+  var x: int;
+
+  x := 1;
+  if (*) {
+    x := 2;
+  }
+  assume {:maximize x} true;
+  assert may_fail(x);
+}
+
+[Input - ../../vendor/boogie/Test/optimization/Optimization0.bpl]
+// RUN: %boogie /printModel:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+function may_fail(f: int) : bool;
+
+procedure test0()
+{
+    var x: int;
+
+    havoc x;
+    assume 42 < x;
+    assume {:minimize x} true;
+    assert may_fail(x);
+}
+
+procedure test1()
+{
+    var x: int;
+
+    x := 24;
+    if (*) {
+        x := 42;
+    }
+    assume {:minimize x} true;
+    assert may_fail(x);
+}
+
+procedure test2()
+{
+    var x: int;
+
+    x := 1;
+    while (*) {
+        x := x + 1;
+    }
+    assume {:minimize x} true;
+    assert x < 10;
+}
+
+procedure test3()
+{
+    var x: int;
+
+    havoc x;
+    assume x < 42;
+    assume {:maximize x} true;
+    assert may_fail(x);
+}
+
+procedure test4()
+{
+    var x: int;
+
+    x := 24;
+    if (*) {
+        x := 42;
+    }
+    assume {:maximize x} true;
+    assert may_fail(x);
+}
+
+procedure test5()
+{
+    var x: int;
+
+    x := 1;
+    while (*) {
+        x := x - 1;
+    }
+    assume {:maximize x} true;
+    assert x < 1;
+}
+
+procedure test6()
+{
+    var x: int;
+
+    x := 1;
+    if (*) {
+        x := 2;
+    }
+    assume {:maximize x} true;
+    assert may_fail(x);
+}

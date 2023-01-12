@@ -1,0 +1,983 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "g",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: Some(
+                        Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "g",
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "12",
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: Some(
+                                Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Gt,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: Some(
+                                Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "y",
+                                        ),
+                                        op: Lt,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Lt,
+                                rhs: Nat(
+                                    "100",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Neg(
+                                    NegExpr {
+                                        op: Arith,
+                                        expr: Nat(
+                                            "100",
+                                        ),
+                                    },
+                                ),
+                                op: Lt,
+                                rhs: Var(
+                                    "y",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "xx",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "yy",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            impl_body: ImplBody {
+                local_vars: [
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "a",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "b",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                ],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "start",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "a",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Var(
+                                        "xx",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Call(
+                            CallCmd {
+                                attrs: [],
+                                call_params: CallParams {
+                                    returns: [
+                                        "b",
+                                    ],
+                                    target: "P",
+                                    params: [
+                                        Var(
+                                            "a",
+                                        ),
+                                    ],
+                                },
+                                is_async: false,
+                                is_free: false,
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "yy",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Var(
+                                        "b",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "double",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "F",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "double",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "double",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "G",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "double",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "omega",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "double",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: Some(
+                                Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "omega",
+                                        ),
+                                        op: Eq,
+                                        rhs: FuncCall(
+                                            FuncCall {
+                                                target: "F",
+                                                args: [
+                                                    Var(
+                                                        "omega",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "psi",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "double",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: Some(
+                                Rel(
+                                    RelExpr {
+                                        lhs: Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "psi",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "pi",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "double",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: Some(
+                                FuncCall(
+                                    FuncCall {
+                                        target: "F",
+                                        args: [
+                                            Var(
+                                                "pi",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "sigma",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "double",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: Some(
+                                FuncCall(
+                                    FuncCall {
+                                        target: "G",
+                                        args: [
+                                            Var(
+                                                "sigma",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "SomeConstant",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "name",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "fgh",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Cnst",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "name",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: Some(
+                                Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "n",
+                                        ),
+                                        op: Subtype,
+                                        rhs: Var(
+                                            "SomeConstant",
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "SomeConstant",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "k",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: Some(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "k",
+                                                ),
+                                                op: Neq,
+                                                rhs: Var(
+                                                    "SomeConstant",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "m",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "name",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: Some(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "m",
+                                                ),
+                                                op: Neq,
+                                                rhs: Var(
+                                                    "SomeConstant",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "r",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "ref",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: Some(
+                                        Quant(
+                                            QuantExpr {
+                                                kind: ForAll,
+                                                body: QuantBody {
+                                                    type_params: [],
+                                                    bound_vars: [
+                                                        AttrTypedIdentsWhere {
+                                                            attrs: [],
+                                                            typed_idents_where: TypedIdentsWhere {
+                                                                typed_idents: TypedIdents {
+                                                                    idents: [
+                                                                        "abc",
+                                                                    ],
+                                                                    type_: Atom(
+                                                                        Int,
+                                                                    ),
+                                                                },
+                                                                where_: None,
+                                                            },
+                                                        },
+                                                    ],
+                                                    attrs: [],
+                                                    expr: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "abc",
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Var(
+                                                                "SomeConstant",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "b",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Quant(
+                                            QuantExpr {
+                                                kind: ForAll,
+                                                body: QuantBody {
+                                                    type_params: [],
+                                                    bound_vars: [
+                                                        AttrTypedIdentsWhere {
+                                                            attrs: [],
+                                                            typed_idents_where: TypedIdentsWhere {
+                                                                typed_idents: TypedIdents {
+                                                                    idents: [
+                                                                        "x",
+                                                                    ],
+                                                                    type_: Atom(
+                                                                        Int,
+                                                                    ),
+                                                                },
+                                                                where_: None,
+                                                            },
+                                                        },
+                                                    ],
+                                                    attrs: [],
+                                                    expr: Rel(
+                                                        RelExpr {
+                                                            lhs: FuncCall(
+                                                                FuncCall {
+                                                                    target: "fgh",
+                                                                    args: [
+                                                                        Var(
+                                                                            "x",
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                            op: Lt,
+                                                            rhs: Var(
+                                                                "SomeConstant",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "b",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Quant(
+                                            QuantExpr {
+                                                kind: ForAll,
+                                                body: QuantBody {
+                                                    type_params: [],
+                                                    bound_vars: [
+                                                        AttrTypedIdentsWhere {
+                                                            attrs: [],
+                                                            typed_idents_where: TypedIdentsWhere {
+                                                                typed_idents: TypedIdents {
+                                                                    idents: [
+                                                                        "l",
+                                                                    ],
+                                                                    type_: App(
+                                                                        TypeApp {
+                                                                            head: "name",
+                                                                            tail: None,
+                                                                        },
+                                                                    ),
+                                                                },
+                                                                where_: None,
+                                                            },
+                                                        },
+                                                    ],
+                                                    attrs: [],
+                                                    expr: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "l",
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Var(
+                                                                "SomeConstant",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "ref",
+                    type_params: [],
+                    type_: None,
+                },
+                TypeDecl {
+                    ident: "name",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+]
+
+[Printed]
+var g: int where g == 12;
+
+procedure P(x: int where x > 0) returns (y: int where y < 0);
+  requires x < 100;
+  modifies g;
+  ensures -100 < y;
+
+implementation P(xx: int) returns (yy: int) {
+  var a: int;
+  var b: int;
+
+  start:
+  a := xx;
+  call b := P(a);
+  yy := b;
+  return;
+}
+
+type double;
+
+function F(double): double;
+
+function G(double): bool;
+
+procedure Q(omega: double where omega == F(omega), psi: double where psi + 1 == 0, pi: double where F(pi), sigma: double where G(sigma));
+
+const SomeConstant: name;
+
+function fgh(int): int;
+
+procedure Cnst(n: name where n <: SomeConstant) returns (SomeConstant: int) {
+  var k: int where k != SomeConstant;
+  var m: name where m != SomeConstant;
+  var r: ref where (forall abc: int :: abc == SomeConstant);
+  var b: bool;
+
+  start:
+  b := (forall x: int :: fgh(x) < SomeConstant);
+  b := (forall l: name :: l == SomeConstant);
+  return;
+}
+
+type ref,
+  name;
+
+[Input - ../../vendor/boogie/Test/test1/WhereTyping.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+var g: int where g == 12;
+
+procedure P(x: int where x > 0) returns (y: int where y < 0);
+  requires x < 100;
+  modifies g;
+  ensures -100 < y;
+
+implementation P(xx: int) returns (yy: int)
+{
+  var a: int;
+  var b: int;
+
+  start:
+    a := xx;
+    call b := P(a);
+    yy := b;
+    return;
+}
+
+type double;
+function F(double) returns (double);
+function G(double) returns (bool);
+
+procedure Q(omega: double where omega == F(omega),
+            psi: double where psi + 1 == 0,  // error: psi doesn't have right type for +
+            pi: double where F(pi),          // error: F has wrong return type
+            sigma: double where G(sigma));
+
+
+const SomeConstant: name;
+function fgh(int) returns (int);
+
+procedure Cnst(n: name where n <: SomeConstant /*this SomeConstant refers to the const*/) returns (SomeConstant: int)
+{
+  var k: int where k != SomeConstant;  // fine, since SomeConstants refers to the out parameter
+  var m: name where m != SomeConstant;  // error: types don't match up
+  var r: ref where (forall abc: int :: abc == SomeConstant);
+  var b: bool;
+  start:
+    b := (forall x: int :: fgh(x) < SomeConstant);
+    b := (forall l: name :: l == SomeConstant);  // error: SomeConstant here refers to the out parameter
+    return;
+}
+
+type ref, name;

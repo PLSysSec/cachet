@@ -1,0 +1,176 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "foo3",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "y",
+                    ),
+                    type_: Atom(
+                        Bool,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                FuncCall(
+                    FuncCall {
+                        target: "foo3",
+                        args: [
+                            Var(
+                                "x",
+                            ),
+                            Var(
+                                "y",
+                            ),
+                        ],
+                    },
+                ),
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: FuncCall(
+                FuncCall {
+                    target: "foo3",
+                    args: [
+                        Nat(
+                            "1",
+                        ),
+                        BoolLit(
+                            false,
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "baz1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "foo3",
+                                args: [
+                                    Nat(
+                                        "2",
+                                    ),
+                                    BoolLit(
+                                        false,
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "foo3",
+                                            args: [
+                                                Nat(
+                                                    "1",
+                                                ),
+                                                BoolLit(
+                                                    true,
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+function {:inline true} foo3(x: int, y: bool): bool {
+  foo3(x, y)
+}
+
+axiom foo3(1, false);
+
+procedure baz1()
+  requires foo3(2, false);
+{
+  assume foo3(1, true);
+}
+
+[Input - ../../vendor/boogie/Test/inline/expansion3.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+function {:inline true} foo3(x:int, y:bool) returns(bool)
+ { foo3(x,y) }
+
+axiom foo3(1,false);
+
+procedure baz1()
+  requires foo3(2,false);
+{
+  assume foo3(1,true);
+}

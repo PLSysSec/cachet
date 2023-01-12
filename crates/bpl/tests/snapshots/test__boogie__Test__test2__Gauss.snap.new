@@ -1,0 +1,351 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "sum",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "s",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "n",
+                                ),
+                                op: Ge,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "s",
+                                ),
+                                op: Eq,
+                                rhs: Factor(
+                                    Factor {
+                                        lhs: Factor(
+                                            Factor {
+                                                lhs: Var(
+                                                    "n",
+                                                ),
+                                                op: Mul,
+                                                rhs: Term(
+                                                    Term {
+                                                        lhs: Var(
+                                                            "n",
+                                                        ),
+                                                        op: Add,
+                                                        rhs: Nat(
+                                                            "1",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                        op: Div,
+                                        rhs: Nat(
+                                            "2",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "s",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Lt,
+                                                rhs: Var(
+                                                    "n",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [
+                                        Invariant {
+                                            attrs: [],
+                                            expr: Logical(
+                                                LogicalExpr {
+                                                    lhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Nat(
+                                                                "0",
+                                                            ),
+                                                            op: Le,
+                                                            rhs: Var(
+                                                                "i",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: And,
+                                                    rhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "i",
+                                                            ),
+                                                            op: Le,
+                                                            rhs: Var(
+                                                                "n",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            is_free: false,
+                                        },
+                                        Invariant {
+                                            attrs: [],
+                                            expr: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "s",
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: Factor(
+                                                        Factor {
+                                                            lhs: Factor(
+                                                                Factor {
+                                                                    lhs: Var(
+                                                                        "i",
+                                                                    ),
+                                                                    op: Mul,
+                                                                    rhs: Term(
+                                                                        Term {
+                                                                            lhs: Var(
+                                                                                "i",
+                                                                            ),
+                                                                            op: Add,
+                                                                            rhs: Nat(
+                                                                                "1",
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            op: Div,
+                                                            rhs: Nat(
+                                                                "2",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            is_free: false,
+                                        },
+                                    ],
+                                    body: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "i",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "i",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "s",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "s",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Var(
+                                                                    "i",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure sum(n: int) returns (s: int)
+  requires n >= 0;
+  ensures s == n * (n + 1) div 2;
+{
+  var i: int;
+
+  i := 0;
+  s := 0;
+  while (i < n)
+    invariant 0 <= i && i <= n;
+    invariant s == i * (i + 1) div 2;
+  {
+    i := i + 1;
+    s := s + i;
+  }
+}
+
+[Input - ../../vendor/boogie/Test/test2/Gauss.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+procedure sum(n: int) returns (s: int)
+requires n >= 0;
+ensures s == (n * (n + 1)) div 2;
+{
+  var i: int;
+
+  i := 0;
+  s := 0;
+  while (i < n)
+  invariant 0 <= i && i <= n;
+  invariant s == (i * (i + 1)) div 2;
+  {
+    i := i + 1;
+    s := s + i;
+  }
+}

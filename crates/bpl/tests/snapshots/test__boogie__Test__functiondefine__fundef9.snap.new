@@ -1,0 +1,295 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "define",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "foo",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: Some(
+                Term(
+                    Term {
+                        lhs: FuncCall(
+                            FuncCall {
+                                target: "foo2",
+                                args: [
+                                    Var(
+                                        "x",
+                                    ),
+                                ],
+                            },
+                        ),
+                        op: Add,
+                        rhs: Nat(
+                            "1",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "define",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "foo2",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: Some(
+                Term(
+                    Term {
+                        lhs: FuncCall(
+                            FuncCall {
+                                target: "foo",
+                                args: [
+                                    Var(
+                                        "x",
+                                    ),
+                                ],
+                            },
+                        ),
+                        op: Add,
+                        rhs: Nat(
+                            "2",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "test",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "r",
+                                ),
+                                op: Gt,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "foo",
+                                                        args: [
+                                                            Var(
+                                                                "x",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                op: Gt,
+                                                rhs: Nat(
+                                                    "0",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "r",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "foo2",
+                                                                args: [
+                                                                    Var(
+                                                                        "x",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: Some(
+                                        Else(
+                                            [
+                                                LabelOrCmd(
+                                                    Assign(
+                                                        AssignCmd {
+                                                            lhs: [
+                                                                AssignLhs {
+                                                                    ident: "r",
+                                                                    subscripts: [],
+                                                                },
+                                                            ],
+                                                            rhs: [
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+function {:define} foo(x: int): int {
+  foo2(x) + 1
+}
+
+function {:define} foo2(x: int): int {
+  foo(x) + 2
+}
+
+procedure test(x: int) returns (r: int)
+  ensures r > 0;
+{
+  if (foo(x) > 0) {
+    r := foo2(x);
+  } else {
+    r := 1;
+  }
+}
+
+[Input - ../../vendor/boogie/Test/functiondefine/fundef9.bpl]
+// RUN: %boogie "%s" | %OutputCheck "%s"
+
+// CHECK-L: Prover error: Function definition cycle detected: foo depends on foo2
+function {:define} foo(x:int) returns(int)
+  { foo2(x) + 1 }
+function {:define} foo2(x:int) returns(int)
+  { foo(x) + 2 }
+
+procedure test(x:int) returns (r:int)
+  ensures r > 0;
+{
+  if (foo(x) > 0) {
+    r := foo2(x);
+  } else {
+    r := 1;
+  }
+}
+
+// CHECK-L: Boogie program verifier finished with 0 verified, 0 errors, 1 inconclusive

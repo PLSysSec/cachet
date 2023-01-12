@@ -1,0 +1,1711 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "A",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    Atom(
+                                        Int,
+                                    ),
+                                ],
+                                value: Atom(
+                                    Int,
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "N",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Partition",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "l",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "result",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: Logical(
+                                    LogicalExpr {
+                                        lhs: Rel(
+                                            RelExpr {
+                                                lhs: Nat(
+                                                    "0",
+                                                ),
+                                                op: Le,
+                                                rhs: Var(
+                                                    "l",
+                                                ),
+                                            },
+                                        ),
+                                        op: And,
+                                        rhs: Rel(
+                                            RelExpr {
+                                                lhs: Term(
+                                                    Term {
+                                                        lhs: Var(
+                                                            "l",
+                                                        ),
+                                                        op: Add,
+                                                        rhs: Nat(
+                                                            "2",
+                                                        ),
+                                                    },
+                                                ),
+                                                op: Le,
+                                                rhs: Var(
+                                                    "r",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "r",
+                                        ),
+                                        op: Le,
+                                        rhs: Var(
+                                            "N",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "A",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "l",
+                                        ),
+                                        op: Le,
+                                        rhs: Var(
+                                            "result",
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "result",
+                                        ),
+                                        op: Lt,
+                                        rhs: Var(
+                                            "r",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Quant(
+                            QuantExpr {
+                                kind: ForAll,
+                                body: QuantBody {
+                                    type_params: [],
+                                    bound_vars: [
+                                        AttrTypedIdentsWhere {
+                                            attrs: [],
+                                            typed_idents_where: TypedIdentsWhere {
+                                                typed_idents: TypedIdents {
+                                                    idents: [
+                                                        "k",
+                                                    ],
+                                                    type_: Atom(
+                                                        Int,
+                                                    ),
+                                                },
+                                                where_: None,
+                                            },
+                                        },
+                                        AttrTypedIdentsWhere {
+                                            attrs: [],
+                                            typed_idents_where: TypedIdentsWhere {
+                                                typed_idents: TypedIdents {
+                                                    idents: [
+                                                        "j",
+                                                    ],
+                                                    type_: Atom(
+                                                        Int,
+                                                    ),
+                                                },
+                                                where_: None,
+                                            },
+                                        },
+                                    ],
+                                    attrs: [],
+                                    expr: Implies(
+                                        ImpliesExpr {
+                                            lhs: Logical(
+                                                LogicalExpr {
+                                                    lhs: Logical(
+                                                        LogicalExpr {
+                                                            lhs: Logical(
+                                                                LogicalExpr {
+                                                                    lhs: Rel(
+                                                                        RelExpr {
+                                                                            lhs: Var(
+                                                                                "l",
+                                                                            ),
+                                                                            op: Le,
+                                                                            rhs: Var(
+                                                                                "k",
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                    op: And,
+                                                                    rhs: Rel(
+                                                                        RelExpr {
+                                                                            lhs: Var(
+                                                                                "k",
+                                                                            ),
+                                                                            op: Lt,
+                                                                            rhs: Var(
+                                                                                "result",
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            op: And,
+                                                            rhs: Rel(
+                                                                RelExpr {
+                                                                    lhs: Var(
+                                                                        "result",
+                                                                    ),
+                                                                    op: Le,
+                                                                    rhs: Var(
+                                                                        "j",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: And,
+                                                    rhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "j",
+                                                            ),
+                                                            op: Lt,
+                                                            rhs: Var(
+                                                                "r",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "A",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "k",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "A",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "j",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Quant(
+                            QuantExpr {
+                                kind: ForAll,
+                                body: QuantBody {
+                                    type_params: [],
+                                    bound_vars: [
+                                        AttrTypedIdentsWhere {
+                                            attrs: [],
+                                            typed_idents_where: TypedIdentsWhere {
+                                                typed_idents: TypedIdents {
+                                                    idents: [
+                                                        "k",
+                                                    ],
+                                                    type_: Atom(
+                                                        Int,
+                                                    ),
+                                                },
+                                                where_: None,
+                                            },
+                                        },
+                                    ],
+                                    attrs: [],
+                                    expr: Implies(
+                                        ImpliesExpr {
+                                            lhs: Logical(
+                                                LogicalExpr {
+                                                    lhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "l",
+                                                            ),
+                                                            op: Le,
+                                                            rhs: Var(
+                                                                "k",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: And,
+                                                    rhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "k",
+                                                            ),
+                                                            op: Lt,
+                                                            rhs: Var(
+                                                                "result",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "A",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "k",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Old(
+                                                                OldExpr {
+                                                                    expr: Var(
+                                                                        "A",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "l",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Quant(
+                            QuantExpr {
+                                kind: ForAll,
+                                body: QuantBody {
+                                    type_params: [],
+                                    bound_vars: [
+                                        AttrTypedIdentsWhere {
+                                            attrs: [],
+                                            typed_idents_where: TypedIdentsWhere {
+                                                typed_idents: TypedIdents {
+                                                    idents: [
+                                                        "k",
+                                                    ],
+                                                    type_: Atom(
+                                                        Int,
+                                                    ),
+                                                },
+                                                where_: None,
+                                            },
+                                        },
+                                    ],
+                                    attrs: [],
+                                    expr: Implies(
+                                        ImpliesExpr {
+                                            lhs: Logical(
+                                                LogicalExpr {
+                                                    lhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "result",
+                                                            ),
+                                                            op: Le,
+                                                            rhs: Var(
+                                                                "k",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: And,
+                                                    rhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "k",
+                                                            ),
+                                                            op: Lt,
+                                                            rhs: Var(
+                                                                "r",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Old(
+                                                                OldExpr {
+                                                                    expr: Var(
+                                                                        "A",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "l",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "A",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "k",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "pv",
+                                            "i",
+                                            "j",
+                                            "tmp",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "pv",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "A",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Var(
+                                                                "l",
+                                                            ),
+                                                        ],
+                                                        value: None,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "l",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "j",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "r",
+                                                ),
+                                                op: Sub,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "tmp",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "A",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Var(
+                                                                "l",
+                                                            ),
+                                                        ],
+                                                        value: None,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "A",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "l",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "A",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Var(
+                                                                "j",
+                                                            ),
+                                                        ],
+                                                        value: None,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "A",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "j",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "tmp",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "LoopHead",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "LoopHead",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "k",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Int,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: Logical(
+                                                            LogicalExpr {
+                                                                lhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "l",
+                                                                        ),
+                                                                        op: Le,
+                                                                        rhs: Var(
+                                                                            "k",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                op: And,
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "k",
+                                                                        ),
+                                                                        op: Lt,
+                                                                        rhs: Var(
+                                                                            "i",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                        rhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Array(
+                                                                    ArrayExpr {
+                                                                        expr: Var(
+                                                                            "A",
+                                                                        ),
+                                                                        subscripts: [
+                                                                            ArraySubscript {
+                                                                                keys: [
+                                                                                    Var(
+                                                                                        "k",
+                                                                                    ),
+                                                                                ],
+                                                                                value: None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                                op: Le,
+                                                                rhs: Var(
+                                                                    "pv",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "k",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Int,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: Logical(
+                                                            LogicalExpr {
+                                                                lhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "j",
+                                                                        ),
+                                                                        op: Le,
+                                                                        rhs: Var(
+                                                                            "k",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                op: And,
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "k",
+                                                                        ),
+                                                                        op: Lt,
+                                                                        rhs: Var(
+                                                                            "r",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                        rhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Var(
+                                                                    "pv",
+                                                                ),
+                                                                op: Le,
+                                                                rhs: Array(
+                                                                    ArrayExpr {
+                                                                        expr: Var(
+                                                                            "A",
+                                                                        ),
+                                                                        subscripts: [
+                                                                            ArraySubscript {
+                                                                                keys: [
+                                                                                    Var(
+                                                                                        "k",
+                                                                                    ),
+                                                                                ],
+                                                                                value: None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Logical(
+                                                LogicalExpr {
+                                                    lhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "l",
+                                                            ),
+                                                            op: Le,
+                                                            rhs: Var(
+                                                                "i",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: And,
+                                                    rhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "i",
+                                                            ),
+                                                            op: Le,
+                                                            rhs: Var(
+                                                                "j",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "j",
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Var(
+                                                        "r",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "A",
+                                        "B",
+                                        "C",
+                                        "exit",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "A",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "i",
+                                            ),
+                                            op: Lt,
+                                            rhs: Var(
+                                                "j",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "A",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "i",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "pv",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "LoopHead",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "B",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "i",
+                                            ),
+                                            op: Lt,
+                                            rhs: Var(
+                                                "j",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "pv",
+                                            ),
+                                            op: Le,
+                                            rhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "A",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Term(
+                                                                    Term {
+                                                                        lhs: Var(
+                                                                            "j",
+                                                                        ),
+                                                                        op: Sub,
+                                                                        rhs: Nat(
+                                                                            "1",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "j",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "j",
+                                                ),
+                                                op: Sub,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "LoopHead",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "C",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "i",
+                                            ),
+                                            op: Lt,
+                                            rhs: Var(
+                                                "j",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "A",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Term(
+                                                                            Term {
+                                                                                lhs: Var(
+                                                                                    "j",
+                                                                                ),
+                                                                                op: Sub,
+                                                                                rhs: Nat(
+                                                                                    "1",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Var(
+                                                        "pv",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "pv",
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "A",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "i",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "tmp",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "A",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Var(
+                                                                "i",
+                                                            ),
+                                                        ],
+                                                        value: None,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "A",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "A",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Term(
+                                                                Term {
+                                                                    lhs: Var(
+                                                                        "j",
+                                                                    ),
+                                                                    op: Sub,
+                                                                    rhs: Nat(
+                                                                        "1",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        ],
+                                                        value: None,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "A",
+                                            subscripts: [
+                                                [
+                                                    Term(
+                                                        Term {
+                                                            lhs: Var(
+                                                                "j",
+                                                            ),
+                                                            op: Sub,
+                                                            rhs: Nat(
+                                                                "1",
+                                                            ),
+                                                        },
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "tmp",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "A",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "i",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Var(
+                                                        "pv",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "pv",
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "A",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Term(
+                                                                            Term {
+                                                                                lhs: Var(
+                                                                                    "j",
+                                                                                ),
+                                                                                op: Sub,
+                                                                                rhs: Nat(
+                                                                                    "1",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "j",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "j",
+                                                ),
+                                                op: Sub,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "LoopHead",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "exit",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "i",
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "j",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "result",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "i",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var A: [int]int;
+
+const N: int;
+
+procedure Partition(l: int, r: int) returns (result: int)
+  requires 0 <= l && l + 2 <= r && r <= N;
+  modifies A;
+  ensures l <= result && result < r;
+  ensures (forall k: int, j: int :: l <= k && k < result && result <= j && j < r ==> A[k] <= A[j]);
+  ensures (forall k: int :: l <= k && k < result ==> A[k] <= old (A)[l]);
+  ensures (forall k: int :: result <= k && k < r ==> old (A)[l] <= A[k]);
+{
+  var pv, i, j, tmp: int;
+
+  pv := A[l];
+  i := l;
+  j := r - 1;
+  tmp := A[l];
+  A[l] := A[j];
+  A[j] := tmp;
+  goto LoopHead;
+  LoopHead:
+  assert (forall k: int :: l <= k && k < i ==> A[k] <= pv);
+  assert (forall k: int :: j <= k && k < r ==> pv <= A[k]);
+  assert l <= i && i <= j && j < r;
+  goto A, B, C, exit;
+  A:
+  assume i < j;
+  assume A[i] <= pv;
+  i := i + 1;
+  goto LoopHead;
+  B:
+  assume i < j;
+  assume pv <= A[j - 1];
+  j := j - 1;
+  goto LoopHead;
+  C:
+  assume i < j;
+  assume A[j - 1] < pv && pv < A[i];
+  tmp := A[i];
+  A[i] := A[j - 1];
+  A[j - 1] := tmp;
+  assert A[i] < pv && pv < A[j - 1];
+  i := i + 1;
+  j := j - 1;
+  goto LoopHead;
+  exit:
+  assume i == j;
+  result := i;
+}
+
+[Input - ../../vendor/boogie/Test/textbook/DutchFlag.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// The partition step of Quick Sort picks a 'pivot' element from a specified subsection
+// of a given integer array.  It then partially sorts the elements of the array so that
+// elements smaller than the pivot end up to the left of the pivot and elements larger
+// than the pivot end up to the right of the pivot.  Finally, the index of the pivot is
+// returned.
+// The procedure below always picks the first element of the subregion as the pivot.
+// The specification of the procedure talks about the ordering of the elements, but
+// does not say anything about keeping the multiset of elements the same.
+
+var A: [int]int;
+const N: int;
+
+procedure Partition(l: int, r: int) returns (result: int)
+  requires 0 <= l && l+2 <= r && r <= N;
+  modifies A;
+  ensures l <= result && result < r;
+  ensures (forall k: int, j: int :: l <= k && k < result && result <= j && j < r  ==>  A[k] <= A[j]);
+  ensures (forall k: int :: l <= k && k < result  ==>  A[k] <= old(A)[l]);
+  ensures (forall k: int :: result <= k && k < r  ==>  old(A)[l] <= A[k]);
+{
+  var pv, i, j, tmp: int;
+
+  pv := A[l];
+  i := l;
+  j := r-1;
+  // swap A[l] and A[j]
+  tmp := A[l];
+  A[l] := A[j];
+  A[j] := tmp;
+  goto LoopHead;
+
+  // The following loop iterates while 'i < j'.  In each iteration,
+  // one of the three alternatives (A, B, or C) is chosen in such
+  // a way that the assume statements will evaluate to true.
+  LoopHead:
+    // The following the assert statements give the loop invariant
+    assert (forall k: int :: l <= k && k < i  ==>  A[k] <= pv);
+    assert (forall k: int :: j <= k && k < r  ==>  pv <= A[k]);
+    assert l <= i && i <= j && j < r;
+    goto A, B, C, exit;
+
+  A:
+    assume i < j;
+    assume A[i] <= pv;
+    i := i + 1;
+    goto LoopHead;
+
+  B:
+    assume i < j;
+    assume pv <= A[j-1];
+    j := j - 1;
+    goto LoopHead;
+
+  C:
+    assume i < j;
+    assume A[j-1] < pv && pv < A[i];
+    // swap A[j-1] and A[i]
+    tmp := A[i];
+    A[i] := A[j-1];
+    A[j-1] := tmp;
+    assert A[i] < pv && pv < A[j-1];
+    i := i + 1;
+    j := j - 1;
+    goto LoopHead;
+
+  exit:
+    assume i == j;
+    result := i;
+}

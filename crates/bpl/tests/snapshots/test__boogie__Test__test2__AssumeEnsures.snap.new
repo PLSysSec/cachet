@@ -1,0 +1,629 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "g",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "0",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "g",
+                                ),
+                            },
+                        ),
+                        is_free: true,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "entry",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "g",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Term(
+                                        Term {
+                                            lhs: Var(
+                                                "g",
+                                            ),
+                                            op: Add,
+                                            rhs: Nat(
+                                                "1",
+                                            ),
+                                        },
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "BarGood",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "entry",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Foo",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Nat(
+                                                "0",
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "g",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "BarBad",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "entry",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Foo",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Nat(
+                                                "0",
+                                            ),
+                                            op: Lt,
+                                            rhs: Var(
+                                                "g",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Proc",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "g",
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "15",
+                                ),
+                            },
+                        ),
+                        is_free: true,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Proc",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "entry",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "g",
+                                        ),
+                                        op: Gt,
+                                        rhs: Nat(
+                                            "10",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Proc",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "entry",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "g",
+                                        ),
+                                        op: Lt,
+                                        rhs: Nat(
+                                            "10",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Caller0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "entry",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Proc",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Caller1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "entry",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Proc",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "g",
+                                            ),
+                                            op: Gt,
+                                            rhs: Nat(
+                                                "10",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var g: int;
+
+procedure Foo();
+  modifies g;
+  free ensures 0 <= g;
+
+implementation Foo() {
+  entry:
+  g := g + 1;
+  return;
+}
+
+procedure BarGood()
+  modifies g;
+{
+  entry:
+  call Foo();
+  assert 0 <= g;
+  return;
+}
+
+procedure BarBad()
+  modifies g;
+{
+  entry:
+  call Foo();
+  assert 0 < g;
+  return;
+}
+
+procedure Proc();
+  free requires g == 15;
+
+implementation Proc() {
+  entry:
+  assert g > 10;
+  return;
+}
+
+implementation Proc() {
+  entry:
+  assert g < 10;
+  return;
+}
+
+procedure Caller0() {
+  entry:
+  call Proc();
+  return;
+}
+
+procedure Caller1() {
+  entry:
+  call Proc();
+  assert g > 10;
+  return;
+}
+
+[Input - ../../vendor/boogie/Test/test2/AssumeEnsures.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+var g: int;
+
+procedure Foo() returns ();
+    modifies g;
+    free ensures 0 <= g;
+
+implementation Foo() returns ()
+{
+    entry:
+        g := g + 1;
+        return;
+}
+
+procedure BarGood() returns ()
+    modifies g;
+{
+    entry:
+        call Foo();
+        assert 0 <= g;
+        return;
+}
+
+procedure BarBad() returns ()
+    modifies g;
+{
+    entry:
+        call Foo();
+        assert 0 < g;
+        return;
+}
+
+// ----- Free preconditions
+
+procedure Proc() returns ();
+    free requires g == 15;
+
+implementation Proc() returns ()
+{
+    entry:
+        assert g > 10;  // yes, this condition can be used here
+        return;
+}
+
+implementation Proc() returns ()
+{
+    entry:
+        assert g < 10;  // error
+        return;
+}
+
+procedure Caller0() returns ()
+{
+    entry:
+        call Proc();  // yes, legal, since the precondition is not checked
+        return;
+}
+
+procedure Caller1() returns ()
+{
+    entry:
+        call Proc();
+        assert g > 10;  // error, because:
+        // Free preconditions are ignored (that is, treated as "skip") for the caller.
+        // This is a BoogiePL design choice.  Another alternative would be to treat free
+        // preconditions as assume commands also on the caller side, either in the order
+        // that all preconditions are given, or before or after all the checked preconditions
+        // have been checked.
+        return;
+}

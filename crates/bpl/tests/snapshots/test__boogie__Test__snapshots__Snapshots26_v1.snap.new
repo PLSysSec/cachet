@@ -1,0 +1,213 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "M",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "M",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "2",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "M",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "x",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                ],
+                stmt_list: [
+                    StructuredCmd(
+                        While(
+                            WhileCmd {
+                                guard: Asterisk,
+                                invariants: [],
+                                body: [
+                                    LabelOrCmd(
+                                        Assign(
+                                            AssignCmd {
+                                                lhs: [
+                                                    AssignLhs {
+                                                        ident: "x",
+                                                        subscripts: [],
+                                                    },
+                                                ],
+                                                rhs: [
+                                                    Nat(
+                                                        "0",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ),
+                                    LabelOrCmd(
+                                        Assign(
+                                            AssignCmd {
+                                                lhs: [
+                                                    AssignLhs {
+                                                        ident: "x",
+                                                        subscripts: [],
+                                                    },
+                                                ],
+                                                rhs: [
+                                                    Term(
+                                                        Term {
+                                                            lhs: Var(
+                                                                "x",
+                                                            ),
+                                                            op: Add,
+                                                            rhs: Nat(
+                                                                "1",
+                                                            ),
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Nat(
+                                            "0",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Neq,
+                                        rhs: Var(
+                                            "x",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+]
+
+[Printed]
+procedure {:checksum "0"} M();
+
+implementation {:id "M"} {:checksum "2"} M() {
+  var x: int;
+
+  while (*) {
+    x := 0;
+    x := x + 1;
+  }
+  assert 0 == 0;
+  assert x != x;
+}
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots26.v1.bpl]
+procedure {:checksum "0"} M();
+
+implementation {:id "M"} {:checksum "2"} M()
+{
+    var x: int;
+
+    while (*)
+    {
+        x := 0;
+        x := x + 1;
+    }
+
+    assert 0 == 0;
+    assert x != x;
+}

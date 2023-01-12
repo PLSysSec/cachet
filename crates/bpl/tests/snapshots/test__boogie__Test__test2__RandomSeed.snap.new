@@ -1,0 +1,143 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "random_seed",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "100",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "WithRandomSeed0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "WithoutRandomSeed0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "random_seed",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "99",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "WithRandomSeed1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "WithoutRandomSeed1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure {:random_seed 100} WithRandomSeed0() {
+}
+
+procedure WithoutRandomSeed0() {
+}
+
+procedure {:random_seed 99} WithRandomSeed1() {
+}
+
+procedure WithoutRandomSeed1() {
+}
+
+[Input - ../../vendor/boogie/Test/test2/RandomSeed.bpl]
+// RUN: %boogie -proverOpt:O:smt.random_seed=55 -proverLog:"%t.smt2" "%s"
+// RUN: %OutputCheck --file-to-check "%t.smt2" "%s"
+// CHECK-L: (set-info :boogie-vc-id WithRandomSeed0)
+// CHECK-L: (set-option :smt.random_seed 100)
+// CHECK-L: (set-option :smt.random_seed 55)
+// CHECK-L: (set-info :boogie-vc-id WithoutRandomSeed0)
+// CHECK-L: (set-info :boogie-vc-id WithRandomSeed1)
+// CHECK-L: (set-option :smt.random_seed 99)
+// CHECK-L: (set-option :smt.random_seed 55)
+// CHECK-L: (set-info :boogie-vc-id WithoutRandomSeed1)
+procedure {:random_seed 100} WithRandomSeed0()
+{
+}
+procedure WithoutRandomSeed0()
+{
+}
+procedure {:random_seed 99} WithRandomSeed1()
+{
+}
+procedure WithoutRandomSeed1()
+{
+}

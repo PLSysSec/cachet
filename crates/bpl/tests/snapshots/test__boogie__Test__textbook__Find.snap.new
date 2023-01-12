@@ -1,0 +1,662 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "K",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "f",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: Exists,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "k",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "f",
+                                        args: [
+                                            Var(
+                                                "k",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "K",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Find",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "k",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "a",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "b",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Quant(
+                            QuantExpr {
+                                kind: ForAll,
+                                body: QuantBody {
+                                    type_params: [],
+                                    bound_vars: [
+                                        AttrTypedIdentsWhere {
+                                            attrs: [],
+                                            typed_idents_where: TypedIdentsWhere {
+                                                typed_idents: TypedIdents {
+                                                    idents: [
+                                                        "j",
+                                                    ],
+                                                    type_: Atom(
+                                                        Int,
+                                                    ),
+                                                },
+                                                where_: None,
+                                            },
+                                        },
+                                    ],
+                                    attrs: [],
+                                    expr: Implies(
+                                        ImpliesExpr {
+                                            lhs: Logical(
+                                                LogicalExpr {
+                                                    lhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "a",
+                                                            ),
+                                                            op: Lt,
+                                                            rhs: Var(
+                                                                "j",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: And,
+                                                    rhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "j",
+                                                            ),
+                                                            op: Lt,
+                                                            rhs: Var(
+                                                                "b",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "f",
+                                                            args: [
+                                                                Var(
+                                                                    "j",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Neq,
+                                                    rhs: Var(
+                                                        "K",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "f",
+                                        args: [
+                                            Var(
+                                                "k",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "K",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "A",
+                                        "B",
+                                        "C",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "A",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "f",
+                                                    args: [
+                                                        Var(
+                                                            "a",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "K",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "k",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "a",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "B",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "f",
+                                                    args: [
+                                                        Var(
+                                                            "b",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "K",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "k",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "b",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "C",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "f",
+                                                            args: [
+                                                                Var(
+                                                                    "a",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Neq,
+                                                    rhs: Var(
+                                                        "K",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "f",
+                                                            args: [
+                                                                Var(
+                                                                    "b",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Neq,
+                                                    rhs: Var(
+                                                        "K",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "k",
+                                        ],
+                                        target: "Find",
+                                        params: [
+                                            Term(
+                                                Term {
+                                                    lhs: Var(
+                                                        "a",
+                                                    ),
+                                                    op: Sub,
+                                                    rhs: Nat(
+                                                        "1",
+                                                    ),
+                                                },
+                                            ),
+                                            Term(
+                                                Term {
+                                                    lhs: Var(
+                                                        "b",
+                                                    ),
+                                                    op: Add,
+                                                    rhs: Nat(
+                                                        "1",
+                                                    ),
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Main",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "k",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "f",
+                                        args: [
+                                            Var(
+                                                "k",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "K",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "k",
+                                        ],
+                                        target: "Find",
+                                        params: [
+                                            Nat(
+                                                "0",
+                                            ),
+                                            Nat(
+                                                "0",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+const K: int;
+
+function f(int): int;
+
+axiom (exists k: int :: f(k) == K);
+
+procedure Find(a: int, b: int) returns (k: int)
+  requires a <= b;
+  requires (forall j: int :: a < j && j < b ==> f(j) != K);
+  ensures f(k) == K;
+{
+  goto A, B, C;
+  A:
+  assume f(a) == K;
+  k := a;
+  return;
+  B:
+  assume f(b) == K;
+  k := b;
+  return;
+  C:
+  assume f(a) != K && f(b) != K;
+  call k := Find(a - 1, b + 1);
+  return;
+}
+
+procedure Main() returns (k: int)
+  ensures f(k) == K;
+{
+  call k := Find(0, 0);
+}
+
+[Input - ../../vendor/boogie/Test/textbook/Find.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// Declare a constant 'K' and a function 'f' and postulate that 'K' is
+// in the image of 'f'
+const K: int;
+function f(int) returns (int);
+axiom (exists k: int :: f(k) == K);
+
+// This procedure will find a domain value 'k' that 'f' maps to 'K'.  It will
+// do that by recursively enlarging the range where no such domain value exists.
+// Note, Boogie does not prove termination.
+procedure Find(a: int, b: int) returns (k: int)
+  requires a <= b;
+  requires (forall j: int :: a < j && j < b ==> f(j) != K);
+  ensures f(k) == K;
+{
+  goto A, B, C;  // nondeterministically choose one of these 3 goto targets
+
+  A:
+    assume f(a) == K;  // assume we get here only if 'f' maps 'a' to 'K'
+    k := a;
+    return;
+
+  B:
+    assume f(b) == K;  // assume we get here only if 'f' maps 'b' to 'K'
+    k := b;
+    return;
+
+  C:
+    assume f(a) != K && f(b) != K;  // neither of the two above
+    call k := Find(a-1, b+1);
+    return;
+}
+
+// This procedure shows one way to call 'Find'
+procedure Main() returns (k: int)
+  ensures f(k) == K;
+{
+  call k := Find(0, 0);
+}

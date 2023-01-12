@@ -1,0 +1,267 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Logical(
+                            LogicalExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Or,
+                                rhs: Neg(
+                                    NegExpr {
+                                        op: Logical,
+                                        expr: Var(
+                                            "x",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Logical(
+                            LogicalExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Eq,
+                                        rhs: BoolLit(
+                                            true,
+                                        ),
+                                    },
+                                ),
+                                op: Or,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Eq,
+                                        rhs: BoolLit(
+                                            false,
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "j",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "i",
+                                                    ),
+                                                    op: Neq,
+                                                    rhs: Nat(
+                                                        "3",
+                                                    ),
+                                                },
+                                            ),
+                                            op: Or,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "i",
+                                                    ),
+                                                    op: Neq,
+                                                    rhs: Nat(
+                                                        "4",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Var(
+                                                "j",
+                                            ),
+                                            op: Or,
+                                            rhs: Neg(
+                                                NegExpr {
+                                                    op: Logical,
+                                                    expr: Var(
+                                                        "j",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: BoolLit(
+                                        false,
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+axiom (forall x: bool :: x || !x);
+
+axiom (forall x: bool :: x == true || x == false);
+
+procedure P() {
+  var i: int;
+  var j: bool;
+
+  assert i != 3 || i != 4;
+  assert j || !j;
+  assert false;
+}
+
+[Input - ../../vendor/boogie/Test/test21/BooleanQuantification2.bpl]
+// RUN: %boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
+// RUN: %diff "%s.p.expect" "%t"
+// RUN: %boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
+// RUN: %diff "%s.a.expect" "%t"
+
+
+axiom (forall x:bool :: x || !x);
+axiom (forall x:bool :: x == true || x == false);
+
+procedure P() returns () {
+  var i : int;
+  var j : bool;
+
+  assert i != 3 || i != 4;
+  assert j || !j;
+
+  assert false;
+}

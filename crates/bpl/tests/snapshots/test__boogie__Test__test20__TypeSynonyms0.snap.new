@@ -1,0 +1,510 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Set",
+                    type_params: [
+                        "a",
+                    ],
+                    type_: Some(
+                        Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "a",
+                                            tail: None,
+                                        },
+                                    ),
+                                ],
+                                value: Atom(
+                                    Bool,
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Field",
+                    type_params: [
+                        "a",
+                    ],
+                    type_: None,
+                },
+                TypeDecl {
+                    ident: "Heap",
+                    type_params: [],
+                    type_: Some(
+                        Map(
+                            MapType {
+                                type_params: [
+                                    "a",
+                                ],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "ref",
+                                            tail: None,
+                                        },
+                                    ),
+                                    App(
+                                        TypeApp {
+                                            head: "Field",
+                                            tail: Some(
+                                                App(
+                                                    TypeApp {
+                                                        head: "a",
+                                                        tail: None,
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ],
+                                value: App(
+                                    TypeApp {
+                                        head: "a",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "notAllParams",
+                    type_params: [
+                        "a",
+                        "b",
+                    ],
+                    type_: Some(
+                        App(
+                            TypeApp {
+                                head: "Field",
+                                tail: Some(
+                                    App(
+                                        TypeApp {
+                                            head: "b",
+                                            tail: None,
+                                        },
+                                    ),
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Cyclic0",
+                    type_params: [],
+                    type_: Some(
+                        App(
+                            TypeApp {
+                                head: "Cyclic1",
+                                tail: None,
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Cyclic1",
+                    type_params: [],
+                    type_: Some(
+                        App(
+                            TypeApp {
+                                head: "Cyclic0",
+                                tail: None,
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "AlsoCyclic",
+                    type_params: [
+                        "a",
+                    ],
+                    type_: Some(
+                        Map(
+                            MapType {
+                                type_params: [
+                                    "b",
+                                ],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "AlsoCyclic",
+                                            tail: Some(
+                                                App(
+                                                    TypeApp {
+                                                        head: "b",
+                                                        tail: None,
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ],
+                                value: Atom(
+                                    Int,
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "C",
+                    type_params: [
+                        "a",
+                        "b",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "C2",
+                    type_params: [
+                        "b",
+                        "a",
+                    ],
+                    type_: Some(
+                        App(
+                            TypeApp {
+                                head: "C",
+                                tail: Some(
+                                    App(
+                                        TypeApp {
+                                            head: "a",
+                                            tail: Some(
+                                                App(
+                                                    TypeApp {
+                                                        head: "b",
+                                                        tail: None,
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "f",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "C",
+                            tail: Some(
+                                AtomApp(
+                                    TypeApp {
+                                        head: Int,
+                                        tail: Some(
+                                            AtomApp(
+                                                TypeApp {
+                                                    head: Bool,
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "x",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "C2",
+                        tail: Some(
+                            AtomApp(
+                                TypeApp {
+                                    head: Bool,
+                                    tail: Some(
+                                        AtomApp(
+                                            TypeApp {
+                                                head: Int,
+                                                tail: None,
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "y",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Field",
+                        tail: Some(
+                            AtomApp(
+                                TypeApp {
+                                    head: Int,
+                                    tail: Some(
+                                        AtomApp(
+                                            TypeApp {
+                                                head: Bool,
+                                                tail: None,
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "z",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Set",
+                        tail: Some(
+                            AtomApp(
+                                TypeApp {
+                                    head: Int,
+                                    tail: Some(
+                                        AtomApp(
+                                            TypeApp {
+                                                head: Bool,
+                                                tail: None,
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "d",
+                ],
+                type_: Map(
+                    MapType {
+                        type_params: [
+                            "a",
+                            "b",
+                        ],
+                        keys: [
+                            App(
+                                TypeApp {
+                                    head: "notAllParams",
+                                    tail: Some(
+                                        App(
+                                            TypeApp {
+                                                head: "a",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "b",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ],
+                        value: Atom(
+                            Int,
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "ref",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+]
+
+[Printed]
+type Set a = [a]bool;
+
+type Field a,
+  Heap = <a>[ref, Field a]a;
+
+type notAllParams a b = Field b;
+
+type Cyclic0 = Cyclic1;
+
+type Cyclic1 = Cyclic0;
+
+type AlsoCyclic a = <b>[AlsoCyclic b]int;
+
+type C a b;
+
+type C2 b a = C a b;
+
+function f(C int bool): int;
+
+const x: C2 bool int;
+
+const y: Field int bool;
+
+const z: Set int bool;
+
+const d: <a, b>[notAllParams a b]int;
+
+type ref;
+
+[Input - ../../vendor/boogie/Test/test20/TypeSynonyms0.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// RUN: %boogie -noVerify -print:- -env:0 "%s" > "%t"
+// RUN: %diff "%s.print.expect" "%t"
+
+
+type Set a = [a]bool;
+
+type Field a, Heap = <a>[ref, Field a]a;
+
+type notAllParams a b = Field b;
+
+type Cyclic0 = Cyclic1;
+type Cyclic1 = Cyclic0;
+
+type AlsoCyclic a = <b>[AlsoCyclic b]int;
+
+type C a b;
+
+type C2 b a = C a b;
+
+function f(C int bool) returns (int);
+const x : C2 bool int;
+
+
+const y : Field int bool;       // wrong number of arguments
+const z : Set int bool;         // wrong number of arguments
+
+
+const d : <a,b>[notAllParams a b]int;         // error: not all parameters are used
+
+
+type ref;

@@ -1,0 +1,1035 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "add",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "set",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "elem",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "set'",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "set'",
+                                ),
+                                op: Eq,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "MapOr",
+                                        args: [
+                                            Var(
+                                                "set",
+                                            ),
+                                            Array(
+                                                ArrayExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "MapConst",
+                                                            args: [
+                                                                BoolLit(
+                                                                    false,
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "elem",
+                                                                ),
+                                                            ],
+                                                            value: Some(
+                                                                BoolLit(
+                                                                    true,
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "set'",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "set",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Var(
+                                                                "elem",
+                                                            ),
+                                                        ],
+                                                        value: Some(
+                                                            BoolLit(
+                                                                true,
+                                                            ),
+                                                        ),
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "Wrapper",
+                    type_params: [
+                        "_",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Set",
+            type_params: [
+                "E",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "set",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                App(
+                                    TypeApp {
+                                        head: "E",
+                                        tail: None,
+                                    },
+                                ),
+                            ],
+                            value: Atom(
+                                Bool,
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Wrapper",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "E",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Multiset",
+            type_params: [
+                "E",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "multiset",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                App(
+                                    TypeApp {
+                                        head: "E",
+                                        tail: None,
+                                    },
+                                ),
+                            ],
+                            value: Atom(
+                                Int,
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Wrapper",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "E",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "X",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "wrapper_add",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "w",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Wrapper",
+                                        tail: Some(
+                                            App(
+                                                TypeApp {
+                                                    head: "X",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "elem",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "w'",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Wrapper",
+                                        tail: Some(
+                                            App(
+                                                TypeApp {
+                                                    head: "X",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "is#Set",
+                                args: [
+                                    Var(
+                                        "w",
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "is#Set",
+                                args: [
+                                    Var(
+                                        "w'",
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "set#Set",
+                                        args: [
+                                            Var(
+                                                "w'",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "MapOr",
+                                        args: [
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "set#Set",
+                                                    args: [
+                                                        Var(
+                                                            "w",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            Array(
+                                                ArrayExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "MapConst",
+                                                            args: [
+                                                                BoolLit(
+                                                                    false,
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "elem",
+                                                                ),
+                                                            ],
+                                                            value: Some(
+                                                                BoolLit(
+                                                                    true,
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "xset",
+                                        ],
+                                        type_: Map(
+                                            MapType {
+                                                type_params: [],
+                                                keys: [
+                                                    App(
+                                                        TypeApp {
+                                                            head: "X",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ],
+                                                value: Atom(
+                                                    Bool,
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "xset",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "set#Set",
+                                                args: [
+                                                    Var(
+                                                        "w",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "xset",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "xset",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Var(
+                                                                "elem",
+                                                            ),
+                                                        ],
+                                                        value: Some(
+                                                            BoolLit(
+                                                                true,
+                                                            ),
+                                                        ),
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "w'",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Set",
+                                                args: [
+                                                    Var(
+                                                        "xset",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "wrapper_incr",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "w",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Wrapper",
+                                        tail: Some(
+                                            App(
+                                                TypeApp {
+                                                    head: "X",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "elem",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "X",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "w'",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Wrapper",
+                                        tail: Some(
+                                            App(
+                                                TypeApp {
+                                                    head: "X",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "is#Multiset",
+                                        args: [
+                                            Var(
+                                                "w",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: And,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: FuncCall(
+                                            FuncCall {
+                                                target: "multiset#Multiset",
+                                                args: [
+                                                    Var(
+                                                        "w",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        op: Eq,
+                                        rhs: FuncCall(
+                                            FuncCall {
+                                                target: "MapConst",
+                                                args: [
+                                                    Nat(
+                                                        "42",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "is#Multiset",
+                                args: [
+                                    Var(
+                                        "w'",
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "multiset#Multiset",
+                                        args: [
+                                            Var(
+                                                "w'",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "MapIte",
+                                        args: [
+                                            Array(
+                                                ArrayExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "MapConst",
+                                                            args: [
+                                                                BoolLit(
+                                                                    false,
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "elem",
+                                                                ),
+                                                            ],
+                                                            value: Some(
+                                                                BoolLit(
+                                                                    true,
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "MapConst",
+                                                    args: [
+                                                        Nat(
+                                                            "0",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "MapConst",
+                                                    args: [
+                                                        Nat(
+                                                            "42",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "xmultiset",
+                                        ],
+                                        type_: Map(
+                                            MapType {
+                                                type_params: [],
+                                                keys: [
+                                                    App(
+                                                        TypeApp {
+                                                            head: "X",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ],
+                                                value: Atom(
+                                                    Int,
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "xmultiset",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "multiset#Multiset",
+                                                args: [
+                                                    Var(
+                                                        "w",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "xmultiset",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "elem",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "w'",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Multiset",
+                                                args: [
+                                                    Var(
+                                                        "xmultiset",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure add(set: [int]bool, elem: int) returns (set': [int]bool)
+  ensures set' == MapOr(set, MapConst(false)[elem := true]);
+{
+  set' := set[elem := true];
+}
+
+type {:datatype} Wrapper _;
+
+function {:constructor} Set<E>(set: [E]bool): Wrapper E;
+
+function {:constructor} Multiset<E>(multiset: [E]int): Wrapper E;
+
+type X;
+
+procedure wrapper_add(w: Wrapper X, elem: X) returns (w': Wrapper X)
+  requires is#Set(w);
+  ensures is#Set(w');
+  ensures set#Set(w') == MapOr(set#Set(w), MapConst(false)[elem := true]);
+{
+  var xset: [X]bool;
+
+  xset := set#Set(w);
+  xset := xset[elem := true];
+  w' := Set(xset);
+}
+
+procedure wrapper_incr(w: Wrapper X, elem: X) returns (w': Wrapper X)
+  requires is#Multiset(w) && multiset#Multiset(w) == MapConst(42);
+  ensures is#Multiset(w');
+  ensures multiset#Multiset(w') == MapIte(MapConst(false)[elem := true], MapConst(0), MapConst(42));
+{
+  var xmultiset: [X]int;
+
+  xmultiset := multiset#Multiset(w);
+  xmultiset[elem] := 0;
+  w' := Multiset(xmultiset);
+}
+
+[Input - ../../vendor/boogie/Test/monomorphize/monomorphize1.bpl]
+// RUN: %boogie -lib -monomorphize -useArrayTheory "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+procedure add(set: [int]bool, elem: int) returns (set': [int]bool)
+ensures set' == MapOr(set, MapConst(false)[elem := true]);
+{
+    set' := set[elem := true];
+}
+
+type {:datatype} Wrapper _;
+function {:constructor} Set<E>(set: [E]bool): Wrapper E;
+function {:constructor} Multiset<E>(multiset: [E]int): Wrapper E;
+
+type X;
+procedure wrapper_add(w: Wrapper X, elem: X) returns (w': Wrapper X)
+requires is#Set(w);
+ensures is#Set(w');
+ensures set#Set(w') == MapOr(set#Set(w), MapConst(false)[elem := true]);
+{
+    var xset: [X]bool;
+    xset := set#Set(w);
+    xset := xset[elem := true];
+    w' := Set(xset);
+}
+
+procedure wrapper_incr(w: Wrapper X, elem: X) returns (w': Wrapper X)
+requires is#Multiset(w) && multiset#Multiset(w) == MapConst(42);
+ensures is#Multiset(w');
+ensures multiset#Multiset(w') == MapIte(MapConst(false)[elem := true], MapConst(0), MapConst(42));
+{
+    var xmultiset: [X]int;
+    xmultiset := multiset#Multiset(w);
+    xmultiset[elem] := 0;
+    w' := Multiset(xmultiset);
+}

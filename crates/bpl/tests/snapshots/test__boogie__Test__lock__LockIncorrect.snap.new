@@ -1,0 +1,533 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "LockingExample",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "LockingExample",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "x",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "y",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "held",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                ],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "start",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "held",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "0",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "x",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "0",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "LoopHead",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "LoopHead",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "held",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Term(
+                                        Term {
+                                            lhs: Var(
+                                                "held",
+                                            ),
+                                            op: Add,
+                                            rhs: Nat(
+                                                "6",
+                                            ),
+                                        },
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "held",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "held",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "1",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "y",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Var(
+                                        "x",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "UnlockNow",
+                                    "LoopEnd",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "UnlockNow",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "held",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "1",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "held",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "0",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "x",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Term(
+                                        Term {
+                                            lhs: Var(
+                                                "x",
+                                            ),
+                                            op: Add,
+                                            rhs: Nat(
+                                                "1",
+                                            ),
+                                        },
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "LoopEnd",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "LoopEnd",
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "ContinueIteration",
+                                    "EndIteration",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "ContinueIteration",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assume,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Neq,
+                                        rhs: Var(
+                                            "y",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "LoopHead",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "EndIteration",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assume,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "y",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "AfterLoop",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "AfterLoop",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "held",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "1",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "held",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "0",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+]
+
+[Printed]
+procedure LockingExample();
+
+implementation LockingExample() {
+  var x: int;
+  var y: int;
+  var held: int;
+
+  start:
+  held := 0;
+  x := 0;
+  goto LoopHead;
+  LoopHead:
+  held := held + 6;
+  assert held == 0;
+  held := 1;
+  y := x;
+  goto UnlockNow, LoopEnd;
+  UnlockNow:
+  assert held == 1;
+  held := 0;
+  x := x + 1;
+  goto LoopEnd;
+  LoopEnd:
+  goto ContinueIteration, EndIteration;
+  ContinueIteration:
+  assume x != y;
+  goto LoopHead;
+  EndIteration:
+  assume x == y;
+  goto AfterLoop;
+  AfterLoop:
+  assert held == 1;
+  held := 0;
+  return;
+}
+
+[Input - ../../vendor/boogie/Test/lock/LockIncorrect.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure LockingExample();
+
+implementation LockingExample()
+{
+var x: int;
+var y: int;
+var held: int;
+
+start:
+  held := 0;
+  x := 0;
+  goto LoopHead;
+
+LoopHead:
+  // Lock
+  held := held + 6;
+  assert held == 0;
+  held := 1;
+
+  y := x;
+  goto UnlockNow, LoopEnd;
+
+UnlockNow:
+  // Unlock
+  assert held == 1;
+  held := 0;
+
+  x := x + 1;
+  goto LoopEnd;
+
+LoopEnd:
+  goto ContinueIteration, EndIteration;
+
+ContinueIteration:
+  assume x != y;
+  goto LoopHead;
+
+EndIteration:
+  assume x == y;
+  goto AfterLoop;
+
+AfterLoop:
+  // Unlock
+  assert held == 1;
+  held := 0;
+
+  return;
+
+}

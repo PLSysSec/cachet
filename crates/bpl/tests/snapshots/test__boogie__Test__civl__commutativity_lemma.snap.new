@@ -1,0 +1,445 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "1",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "x",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "f",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "i",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [],
+                    },
+                ),
+                Attr(
+                    AttrContent {
+                        ident: "lemma",
+                        params: [],
+                    },
+                ),
+                Attr(
+                    AttrContent {
+                        ident: "commutativity",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "inc",
+                                },
+                            ),
+                            String(
+                                StringLit {
+                                    text: "inc",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "lemma",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "first_i",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "second_i",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Logical(
+                    LogicalExpr {
+                        lhs: Logical(
+                            LogicalExpr {
+                                lhs: Logical(
+                                    LogicalExpr {
+                                        lhs: Rel(
+                                            RelExpr {
+                                                lhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "f",
+                                                        args: [
+                                                            Var(
+                                                                "x",
+                                                            ),
+                                                            Var(
+                                                                "first_i",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                op: Eq,
+                                                rhs: Term(
+                                                    Term {
+                                                        lhs: Var(
+                                                            "x",
+                                                        ),
+                                                        op: Add,
+                                                        rhs: Var(
+                                                            "first_i",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                        op: And,
+                                        rhs: Rel(
+                                            RelExpr {
+                                                lhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "f",
+                                                        args: [
+                                                            Term(
+                                                                Term {
+                                                                    lhs: Var(
+                                                                        "x",
+                                                                    ),
+                                                                    op: Add,
+                                                                    rhs: Var(
+                                                                        "first_i",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            Var(
+                                                                "second_i",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                op: Eq,
+                                                rhs: Term(
+                                                    Term {
+                                                        lhs: Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "x",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Var(
+                                                                    "first_i",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        op: Add,
+                                                        rhs: Var(
+                                                            "second_i",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: FuncCall(
+                                            FuncCall {
+                                                target: "f",
+                                                args: [
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                    Var(
+                                                        "second_i",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        op: Eq,
+                                        rhs: Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Var(
+                                                    "second_i",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        op: And,
+                        rhs: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "f",
+                                        args: [
+                                            Term(
+                                                Term {
+                                                    lhs: Var(
+                                                        "x",
+                                                    ),
+                                                    op: Add,
+                                                    rhs: Var(
+                                                        "second_i",
+                                                    ),
+                                                },
+                                            ),
+                                            Var(
+                                                "first_i",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Term(
+                                    Term {
+                                        lhs: Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Var(
+                                                    "second_i",
+                                                ),
+                                            },
+                                        ),
+                                        op: Add,
+                                        rhs: Var(
+                                            "first_i",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "right",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "inc",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "f",
+                                                args: [
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var {:layer 0, 1} x: int;
+
+function f(x: int, i: int): int;
+
+function {:inline} {:lemma} {:commutativity "inc", "inc"} lemma(x: int, first_i: int, second_i: int): bool {
+  f(x, first_i) == x + first_i && f(x + first_i, second_i) == x + first_i + second_i && f(x, second_i) == x + second_i && f(x + second_i, first_i) == x + second_i + first_i
+}
+
+procedure {:right} {:layer 1} inc(i: int)
+  modifies x;
+{
+  x := f(x, i);
+}
+
+[Input - ../../vendor/boogie/Test/civl/commutativity-lemma.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+// Contrived example to illustrate the injection of lemmas into commutativity checks
+
+var {:layer 0,1} x : int;
+
+function f(x: int, i: int) : int;
+
+function {:inline}
+{:lemma}
+{:commutativity "inc", "inc"}
+lemma (x: int, first_i: int, second_i: int) : bool
+{
+  f(x, first_i) == x + first_i &&
+  f(x + first_i, second_i) == x + first_i + second_i &&
+  f(x, second_i) == x + second_i &&
+  f(x + second_i, first_i) == x + second_i + first_i
+}
+
+procedure {:right} {:layer 1} inc (i: int)
+modifies x;
+{ x := f(x, i); }

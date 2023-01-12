@@ -1,0 +1,664 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "sourcefile",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "test.ssc",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "T",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "source",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "test.scc",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "f",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "description",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "The largest integer value",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            is_unique: true,
+            consts: TypedIdents {
+                idents: [
+                    "MAXINT",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "naming",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "MyFavoriteAxiom",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [
+                            Trigger(
+                                [
+                                    FuncCall(
+                                        FuncCall {
+                                            target: "f",
+                                            args: [
+                                                Var(
+                                                    "i",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                ],
+                            ),
+                        ],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "f",
+                                        args: [
+                                            Var(
+                                                "i",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Term(
+                                    Term {
+                                        lhs: Var(
+                                            "i",
+                                        ),
+                                        op: Add,
+                                        rhs: Nat(
+                                            "1",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "description",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "memory",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "$Heap",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "ref",
+                                            tail: None,
+                                        },
+                                    ),
+                                    App(
+                                        TypeApp {
+                                            head: "name",
+                                            tail: None,
+                                        },
+                                    ),
+                                ],
+                                value: App(
+                                    TypeApp {
+                                        head: "any",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "sort_of_like_a_trigger",
+                        params: [
+                            Expr(
+                                Quant(
+                                    QuantExpr {
+                                        kind: ForAll,
+                                        body: QuantBody {
+                                            type_params: [],
+                                            bound_vars: [
+                                                AttrTypedIdentsWhere {
+                                                    attrs: [],
+                                                    typed_idents_where: TypedIdentsWhere {
+                                                        typed_idents: TypedIdents {
+                                                            idents: [
+                                                                "i",
+                                                            ],
+                                                            type_: Atom(
+                                                                Int,
+                                                            ),
+                                                        },
+                                                        where_: None,
+                                                    },
+                                                },
+                                            ],
+                                            attrs: [],
+                                            expr: BoolLit(
+                                                true,
+                                            ),
+                                        },
+                                    },
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "Bla",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "ref",
+                                            tail: None,
+                                        },
+                                    ),
+                                    App(
+                                        TypeApp {
+                                            head: "name",
+                                            tail: None,
+                                        },
+                                    ),
+                                ],
+                                value: App(
+                                    TypeApp {
+                                        head: "any",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "use_impl",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "foo",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "foo",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "block1",
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "2",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "foo",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "block1",
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "ref",
+                    type_params: [],
+                    type_: None,
+                },
+                TypeDecl {
+                    ident: "any",
+                    type_params: [],
+                    type_: None,
+                },
+                TypeDecl {
+                    ident: "name",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "myAttribute",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "h\\n\\\"ello\\\"",
+                                    },
+                                ),
+                                String(
+                                    StringLit {
+                                        text: "again",
+                                    },
+                                ),
+                                String(
+                                    StringLit {
+                                        text: "and\\\\\" a\\\"gain\\\"",
+                                    },
+                                ),
+                                Expr(
+                                    Var(
+                                        "again",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "again",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+]
+
+[Printed]
+type {:sourcefile "test.ssc"} T;
+
+function {:source "test.scc"} f(int): int;
+
+const {:description "The largest integer value"} unique MAXINT: int;
+
+axiom {:naming "MyFavoriteAxiom"} (forall i: int :: {f(i)} f(i) == i + 1);
+
+var {:description "memory"} $Heap: [ref, name]any;
+
+var {:sort_of_like_a_trigger (forall i: int :: true)} Bla: [ref, name]any;
+
+procedure {:use_impl 1} foo(x: int) returns (n: int);
+
+implementation {:id 1} foo(x: int) returns (n: int) {
+  block1:
+  return;
+}
+
+implementation {:id 2} foo(x: int) returns (n: int) {
+  block1:
+  return;
+}
+
+type ref,
+  any,
+  name;
+
+procedure {:myAttribute "h\n\"ello\"", "again", "and\\" a\"gain\"", again} P();
+
+const again: int;
+
+[Input - ../../vendor/boogie/Test/test0/AttributeParsing.bpl]
+// RUN: %boogie -noVerify -print:- -env:0 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+type {:sourcefile "test.ssc"} T; 
+
+function {:source "test.scc"} f(int) returns (int);
+
+const {:description "The largest integer value"} unique MAXINT: int;
+
+axiom {:naming "MyFavoriteAxiom"} (forall i: int :: {f(i)} f(i) == i+1);
+
+var {:description "memory"} $Heap: [ref, name]any;
+
+var {:sort_of_like_a_trigger (forall i: int :: true)} Bla: [ref, name]any;
+
+procedure {:use_impl 1} foo(x : int) returns(n : int);
+
+implementation {:id 1} foo(x : int) returns(n : int)
+{
+  block1: return;
+}
+
+implementation {:id 2} foo(x : int) returns(n : int)
+{
+  block1: return;
+}
+
+type ref, any, name;
+
+
+// allow \" and other backslashes rather liberally:
+
+procedure
+  {:myAttribute
+        "h\n\"ello\"",
+        "again",
+        "and\\" a\"gain\"",
+        again}
+P();
+
+const again: int;

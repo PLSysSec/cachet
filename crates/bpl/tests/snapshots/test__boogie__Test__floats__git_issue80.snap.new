@@ -1,0 +1,211 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Ref",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "Heap",
+                        ],
+                        type_: App(
+                            TypeApp {
+                                head: "HeapType",
+                                tail: None,
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Field",
+                    type_params: [
+                        "A",
+                        "B",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "HeapType",
+                    type_params: [],
+                    type_: Some(
+                        Map(
+                            MapType {
+                                type_params: [
+                                    "A",
+                                    "B",
+                                ],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "Ref",
+                                            tail: None,
+                                        },
+                                    ),
+                                    App(
+                                        TypeApp {
+                                            head: "Field",
+                                            tail: Some(
+                                                App(
+                                                    TypeApp {
+                                                        head: "A",
+                                                        tail: Some(
+                                                            App(
+                                                                TypeApp {
+                                                                    head: "B",
+                                                                    tail: None,
+                                                                },
+                                                            ),
+                                                        ),
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ],
+                                value: App(
+                                    TypeApp {
+                                        head: "B",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "mfl",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "one",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "float23e11",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "two",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "float23e11",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "two",
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "one",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type Ref;
+
+var Heap: HeapType;
+
+type Field A B;
+
+type HeapType = <A, B>[Ref, Field A B]B;
+
+procedure mfl(one: float23e11, two: float23e11) {
+  assert two == one;
+}
+
+[Input - ../../vendor/boogie/Test/floats/git-issue80.bpl]
+// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+type Ref;
+var Heap: HeapType;
+type Field A B;
+type HeapType = <A, B> [Ref, Field A B]B;
+
+procedure mfl(one: float23e11, two: float23e11) returns ()
+{
+  assert two == one; 
+}

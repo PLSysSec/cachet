@@ -1,0 +1,1024 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Wicket",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: true,
+            consts: TypedIdents {
+                idents: [
+                    "a",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Wicket",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [],
+                    is_complete: true,
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: true,
+            consts: TypedIdents {
+                idents: [
+                    "b",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Wicket",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: true,
+            consts: TypedIdents {
+                idents: [
+                    "c",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Wicket",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [
+                        OrderSpecParent {
+                            parent: "a",
+                            is_unique: false,
+                        },
+                        OrderSpecParent {
+                            parent: "b",
+                            is_unique: false,
+                        },
+                    ],
+                    is_complete: true,
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: true,
+            consts: TypedIdents {
+                idents: [
+                    "d",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Wicket",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [
+                        OrderSpecParent {
+                            parent: "c",
+                            is_unique: false,
+                        },
+                    ],
+                    is_complete: false,
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: true,
+            consts: TypedIdents {
+                idents: [
+                    "e",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Wicket",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Quant(
+                                                QuantExpr {
+                                                    kind: Exists,
+                                                    body: QuantBody {
+                                                        type_params: [],
+                                                        bound_vars: [
+                                                            AttrTypedIdentsWhere {
+                                                                attrs: [],
+                                                                typed_idents_where: TypedIdentsWhere {
+                                                                    typed_idents: TypedIdents {
+                                                                        idents: [
+                                                                            "x",
+                                                                        ],
+                                                                        type_: App(
+                                                                            TypeApp {
+                                                                                head: "Wicket",
+                                                                                tail: None,
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                    where_: None,
+                                                                },
+                                                            },
+                                                        ],
+                                                        attrs: [],
+                                                        expr: Logical(
+                                                            LogicalExpr {
+                                                                lhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "a",
+                                                                        ),
+                                                                        op: Subtype,
+                                                                        rhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                op: And,
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "a",
+                                                                        ),
+                                                                        op: Neq,
+                                                                        rhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "x",
+                                                                ],
+                                                                type_: App(
+                                                                    TypeApp {
+                                                                        head: "Wicket",
+                                                                        tail: None,
+                                                                    },
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Var(
+                                                                    "x",
+                                                                ),
+                                                                op: Subtype,
+                                                                rhs: Var(
+                                                                    "a",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        rhs: Logical(
+                                                            LogicalExpr {
+                                                                lhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                        op: Eq,
+                                                                        rhs: Var(
+                                                                            "a",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                op: Or,
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                        op: Subtype,
+                                                                        rhs: Var(
+                                                                            "c",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "c",
+                                                    ),
+                                                    op: Subtype,
+                                                    rhs: Var(
+                                                        "b",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Neg(
+                                                NegExpr {
+                                                    op: Logical,
+                                                    expr: Quant(
+                                                        QuantExpr {
+                                                            kind: Exists,
+                                                            body: QuantBody {
+                                                                type_params: [],
+                                                                bound_vars: [
+                                                                    AttrTypedIdentsWhere {
+                                                                        attrs: [],
+                                                                        typed_idents_where: TypedIdentsWhere {
+                                                                            typed_idents: TypedIdents {
+                                                                                idents: [
+                                                                                    "x",
+                                                                                ],
+                                                                                type_: App(
+                                                                                    TypeApp {
+                                                                                        head: "Wicket",
+                                                                                        tail: None,
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                            where_: None,
+                                                                        },
+                                                                    },
+                                                                ],
+                                                                attrs: [],
+                                                                expr: Logical(
+                                                                    LogicalExpr {
+                                                                        lhs: Logical(
+                                                                            LogicalExpr {
+                                                                                lhs: Logical(
+                                                                                    LogicalExpr {
+                                                                                        lhs: Rel(
+                                                                                            RelExpr {
+                                                                                                lhs: Var(
+                                                                                                    "c",
+                                                                                                ),
+                                                                                                op: Subtype,
+                                                                                                rhs: Var(
+                                                                                                    "x",
+                                                                                                ),
+                                                                                            },
+                                                                                        ),
+                                                                                        op: And,
+                                                                                        rhs: Rel(
+                                                                                            RelExpr {
+                                                                                                lhs: Var(
+                                                                                                    "x",
+                                                                                                ),
+                                                                                                op: Subtype,
+                                                                                                rhs: Var(
+                                                                                                    "b",
+                                                                                                ),
+                                                                                            },
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                                op: And,
+                                                                                rhs: Rel(
+                                                                                    RelExpr {
+                                                                                        lhs: Var(
+                                                                                            "x",
+                                                                                        ),
+                                                                                        op: Neq,
+                                                                                        rhs: Var(
+                                                                                            "c",
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                        op: And,
+                                                                        rhs: Rel(
+                                                                            RelExpr {
+                                                                                lhs: Var(
+                                                                                    "x",
+                                                                                ),
+                                                                                op: Neq,
+                                                                                rhs: Var(
+                                                                                    "b",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Neg(
+                                                NegExpr {
+                                                    op: Logical,
+                                                    expr: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "b",
+                                                            ),
+                                                            op: Subtype,
+                                                            rhs: Var(
+                                                                "a",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Neg(
+                                                NegExpr {
+                                                    op: Logical,
+                                                    expr: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "b",
+                                                            ),
+                                                            op: Subtype,
+                                                            rhs: Var(
+                                                                "c",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Logical(
+                                                LogicalExpr {
+                                                    lhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "c",
+                                                            ),
+                                                            op: Subtype,
+                                                            rhs: Var(
+                                                                "a",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: And,
+                                                    rhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "c",
+                                                            ),
+                                                            op: Subtype,
+                                                            rhs: Var(
+                                                                "b",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "d",
+                                                    ),
+                                                    op: Subtype,
+                                                    rhs: Var(
+                                                        "c",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "x",
+                                                                ],
+                                                                type_: App(
+                                                                    TypeApp {
+                                                                        head: "Wicket",
+                                                                        tail: None,
+                                                                    },
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Var(
+                                                                    "c",
+                                                                ),
+                                                                op: Subtype,
+                                                                rhs: Var(
+                                                                    "x",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        rhs: Logical(
+                                                            LogicalExpr {
+                                                                lhs: Logical(
+                                                                    LogicalExpr {
+                                                                        lhs: Rel(
+                                                                            RelExpr {
+                                                                                lhs: Var(
+                                                                                    "c",
+                                                                                ),
+                                                                                op: Eq,
+                                                                                rhs: Var(
+                                                                                    "x",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                        op: Or,
+                                                                        rhs: Rel(
+                                                                            RelExpr {
+                                                                                lhs: Var(
+                                                                                    "a",
+                                                                                ),
+                                                                                op: Subtype,
+                                                                                rhs: Var(
+                                                                                    "x",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                op: Or,
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "b",
+                                                                        ),
+                                                                        op: Subtype,
+                                                                        rhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "x",
+                                                                ],
+                                                                type_: App(
+                                                                    TypeApp {
+                                                                        head: "Wicket",
+                                                                        tail: None,
+                                                                    },
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Var(
+                                                                    "x",
+                                                                ),
+                                                                op: Subtype,
+                                                                rhs: Var(
+                                                                    "c",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        rhs: Logical(
+                                                            LogicalExpr {
+                                                                lhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "c",
+                                                                        ),
+                                                                        op: Eq,
+                                                                        rhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                op: Or,
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                        op: Subtype,
+                                                                        rhs: Var(
+                                                                            "d",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "d",
+                                            ),
+                                            op: Subtype,
+                                            rhs: Var(
+                                                "c",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Logical(
+                                                LogicalExpr {
+                                                    lhs: Neg(
+                                                        NegExpr {
+                                                            op: Logical,
+                                                            expr: Rel(
+                                                                RelExpr {
+                                                                    lhs: Var(
+                                                                        "a",
+                                                                    ),
+                                                                    op: Subtype,
+                                                                    rhs: Var(
+                                                                        "d",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: And,
+                                                    rhs: Neg(
+                                                        NegExpr {
+                                                            op: Logical,
+                                                            expr: Rel(
+                                                                RelExpr {
+                                                                    lhs: Var(
+                                                                        "b",
+                                                                    ),
+                                                                    op: Subtype,
+                                                                    rhs: Var(
+                                                                        "d",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Neg(
+                                                NegExpr {
+                                                    op: Logical,
+                                                    expr: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "c",
+                                                            ),
+                                                            op: Subtype,
+                                                            rhs: Var(
+                                                                "d",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: BoolLit(
+                                        false,
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "x",
+                                                                ],
+                                                                type_: App(
+                                                                    TypeApp {
+                                                                        head: "Wicket",
+                                                                        tail: None,
+                                                                    },
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: Logical(
+                                                            LogicalExpr {
+                                                                lhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                        op: Subtype,
+                                                                        rhs: Var(
+                                                                            "b",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                op: And,
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                        op: Neq,
+                                                                        rhs: Var(
+                                                                            "b",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                        rhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Var(
+                                                                    "x",
+                                                                ),
+                                                                op: Subtype,
+                                                                rhs: Var(
+                                                                    "c",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Quant(
+                                                QuantExpr {
+                                                    kind: Exists,
+                                                    body: QuantBody {
+                                                        type_params: [],
+                                                        bound_vars: [
+                                                            AttrTypedIdentsWhere {
+                                                                attrs: [],
+                                                                typed_idents_where: TypedIdentsWhere {
+                                                                    typed_idents: TypedIdents {
+                                                                        idents: [
+                                                                            "x",
+                                                                        ],
+                                                                        type_: App(
+                                                                            TypeApp {
+                                                                                head: "Wicket",
+                                                                                tail: None,
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                    where_: None,
+                                                                },
+                                                            },
+                                                        ],
+                                                        attrs: [],
+                                                        expr: Logical(
+                                                            LogicalExpr {
+                                                                lhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "b",
+                                                                        ),
+                                                                        op: Subtype,
+                                                                        rhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                op: And,
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Var(
+                                                                            "b",
+                                                                        ),
+                                                                        op: Neq,
+                                                                        rhs: Var(
+                                                                            "x",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type Wicket;
+
+const unique a: Wicket extends complete;
+
+const unique b: Wicket;
+
+const unique c: Wicket extends a, b complete;
+
+const unique d: Wicket extends c;
+
+const unique e: Wicket;
+
+procedure P() {
+  assert !(exists x: Wicket :: a <: x && a != x);
+  assert (forall x: Wicket :: x <: a ==> x == a || x <: c);
+  assert c <: b && !(exists x: Wicket :: c <: x && x <: b && x != c && x != b);
+  assert !(b <: a) && !(b <: c);
+  assert c <: a && c <: b && d <: c;
+  assert (forall x: Wicket :: c <: x ==> c == x || a <: x || b <: x);
+  assert (forall x: Wicket :: x <: c ==> c == x || x <: d);
+  assert d <: c;
+  assert !(a <: d) && !(b <: d) && !(c <: d);
+  assert false;
+}
+
+procedure Q() {
+  assert (forall x: Wicket :: x <: b && x != b ==> x <: c);
+  assert !(exists x: Wicket :: b <: x && b != x);
+}
+
+[Input - ../../vendor/boogie/Test/test21/Orderings3.bpl]
+// RUN: %boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
+// RUN: %diff "%s.p.expect" "%t"
+// RUN: %boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
+// RUN: %diff "%s.a.expect" "%t"
+// Example from the Boogie 2 language report
+
+
+type Wicket;
+
+
+const unique a: Wicket extends complete;
+const unique b: Wicket;
+const unique c: Wicket extends a, b complete;
+const unique d: Wicket extends c;
+const unique e: Wicket;
+
+procedure P() returns () {
+
+  assert !(exists x:Wicket :: a <: x && a != x);
+  assert (forall x:Wicket :: x <: a ==> x == a || x <: c);
+
+  assert c <: b && !(exists x:Wicket :: c <: x && x <: b && x != c && x != b);
+
+  assert !(b <: a) && !(b <: c);
+
+  assert c <: a && c <: b && d <: c;
+  assert (forall x:Wicket :: c <: x ==> c==x || a <: x || b <: x);
+  assert (forall x:Wicket :: x <: c ==> c==x || x <: d);
+
+  assert d <: c;
+  assert !(a <: d) && !(b <: d) && !(c <: d);
+
+  assert false;           // unprovable
+}
+
+procedure Q() returns () {
+
+  assert (forall x:Wicket :: x <: b && x != b ==> x <: c);   // unprovable
+
+  assert !(exists x:Wicket :: b <: x && b != x);             // unprovable
+
+}

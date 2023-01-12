@@ -1,0 +1,259 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "Q",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    Atom(
+                                        Int,
+                                    ),
+                                    Atom(
+                                        Int,
+                                    ),
+                                ],
+                                value: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "q",
+                                        ],
+                                        type_: Map(
+                                            MapType {
+                                                type_params: [],
+                                                keys: [
+                                                    Atom(
+                                                        Int,
+                                                    ),
+                                                ],
+                                                value: Atom(
+                                                    Int,
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "q",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "Q",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Nat(
+                                                                "5",
+                                                            ),
+                                                            Nat(
+                                                                "8",
+                                                            ),
+                                                        ],
+                                                        value: None,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "q",
+                                            subscripts: [
+                                                [
+                                                    Nat(
+                                                        "13",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "21",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "Q",
+                                            subscripts: [
+                                                [
+                                                    Nat(
+                                                        "5",
+                                                    ),
+                                                    Nat(
+                                                        "8",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "q",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "Q",
+                                            subscripts: [
+                                                [
+                                                    Nat(
+                                                        "5",
+                                                    ),
+                                                    Nat(
+                                                        "8",
+                                                    ),
+                                                ],
+                                                [
+                                                    Nat(
+                                                        "13",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "21",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var Q: [int, int][int]int;
+
+procedure P() {
+  var q: [int]int;
+
+  start:
+  q := Q[5, 8];
+  q[13] := 21;
+  Q[5, 8] := q;
+  Q[5, 8][13] := 21;
+  return;
+}
+
+[Input - ../../vendor/boogie/Test/test0/Arrays1.bpl]
+// RUN: %boogie -noVerify "%s" | %OutputCheck "%s"
+var Q: [int,int][int]int;
+
+procedure P()
+{
+  var q: [int]int;
+
+  start:
+    // here's how to do it:
+    q := Q[5,8];
+    q[13] := 21;
+
+    // CHECK-L: ${CHECKFILE_NAME}(${LINE:+1},11): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: Q
+    Q[5,8] := q;
+
+    // not like this:
+    // CHECK-L: ${CHECKFILE_NAME}(${LINE:+1},15): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: Q
+    Q[5,8][13] := 21;  // error: the updated array must be an identifier
+    return;
+}
+
+// CHECK-L: 2 type checking errors detected in ${CHECKFILE_NAME}

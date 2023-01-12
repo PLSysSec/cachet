@@ -1,0 +1,164 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Seq",
+                    type_params: [
+                        "T",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Seq#Length",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "Seq",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "T",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Seq#Empty",
+            type_params: [
+                "T",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Seq",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "T",
+                        ],
+                        bound_vars: [],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "Seq#Length",
+                                        args: [
+                                            Coercion(
+                                                CoercionExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "Seq#Empty",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    coercions: [
+                                                        Type(
+                                                            App(
+                                                                TypeApp {
+                                                                    head: "Seq",
+                                                                    tail: Some(
+                                                                        App(
+                                                                            TypeApp {
+                                                                                head: "T",
+                                                                                tail: None,
+                                                                            },
+                                                                        ),
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type Seq T;
+
+function Seq#Length<T>(Seq T): int;
+
+function Seq#Empty<T>(): Seq T;
+
+axiom (forall <T> :: Seq#Length(Seq#Empty() : Seq T) == 0);
+
+[Input - ../../vendor/boogie/Test/test20/EmptySeq.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+type Seq T;
+
+function Seq#Length<T>(Seq T) returns (int);
+function Seq#Empty<T>() returns (Seq T);
+
+axiom (forall<T> :: Seq#Length(Seq#Empty(): Seq T) == 0);

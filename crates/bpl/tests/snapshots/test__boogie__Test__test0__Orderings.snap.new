@@ -1,0 +1,346 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "C",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "c",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [
+                        OrderSpecParent {
+                            parent: "a",
+                            is_unique: false,
+                        },
+                    ],
+                    is_complete: false,
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "d",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [
+                        OrderSpecParent {
+                            parent: "a",
+                            is_unique: false,
+                        },
+                    ],
+                    is_complete: true,
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "e",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [
+                        OrderSpecParent {
+                            parent: "a",
+                            is_unique: true,
+                        },
+                        OrderSpecParent {
+                            parent: "b",
+                            is_unique: false,
+                        },
+                    ],
+                    is_complete: false,
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "f",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [],
+                    is_complete: true,
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "a",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "b",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "g",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [
+                        OrderSpecParent {
+                            parent: "x",
+                            is_unique: false,
+                        },
+                    ],
+                    is_complete: false,
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "c0",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "C",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "c1",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "C",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [
+                        OrderSpecParent {
+                            parent: "c0",
+                            is_unique: false,
+                        },
+                        OrderSpecParent {
+                            parent: "c0",
+                            is_unique: false,
+                        },
+                    ],
+                    is_complete: false,
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "c2",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "C",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [
+                        OrderSpecParent {
+                            parent: "c2",
+                            is_unique: false,
+                        },
+                    ],
+                    is_complete: false,
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "h",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: Some(
+                OrderSpec {
+                    parents: [
+                        OrderSpecParent {
+                            parent: "y",
+                            is_unique: false,
+                        },
+                    ],
+                    is_complete: false,
+                },
+            ),
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "y",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+]
+
+[Printed]
+type C;
+
+const c: int extends a;
+
+const d: int extends a complete;
+
+const e: int extends unique a, b;
+
+const f: int extends complete;
+
+const a: int;
+
+const b: int;
+
+const g: int extends x;
+
+const c0: C;
+
+const c1: C extends c0, c0;
+
+const c2: C extends c2;
+
+const h: int extends y;
+
+var y: int;
+
+[Input - ../../vendor/boogie/Test/test0/Orderings.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+type C;
+
+const c:int extends a;
+const d:int extends a complete;
+const e:int extends unique a, b;
+const f:int extends complete;
+
+const a:int;
+const b:int;
+
+const g:int extends x;        // error: undeclared parent
+
+const c0:C;
+const c1:C extends c0, c0;    // error: parent mentioned twice
+const c2:C extends c2;        // error: constant as its own parent
+
+const h:int extends y;        // error: variable cannot be parent
+
+var y:int;

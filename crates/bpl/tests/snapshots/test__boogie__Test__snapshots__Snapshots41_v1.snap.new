@@ -1,0 +1,774 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "M",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "M",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "1",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "M",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Logical(
+                                    LogicalExpr {
+                                        lhs: Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Lt,
+                                                rhs: Nat(
+                                                    "20",
+                                                ),
+                                            },
+                                        ),
+                                        op: Or,
+                                        rhs: Rel(
+                                            RelExpr {
+                                                lhs: Nat(
+                                                    "10",
+                                                ),
+                                                op: Le,
+                                                rhs: Var(
+                                                    "x",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Lt,
+                                        rhs: Nat(
+                                            "10",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Call(
+                            CallCmd {
+                                attrs: [],
+                                call_params: CallParams {
+                                    returns: [],
+                                    target: "Other",
+                                    params: [
+                                        Var(
+                                            "x",
+                                        ),
+                                    ],
+                                },
+                                is_async: false,
+                                is_free: false,
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "7",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "10",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Other",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "0",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "y",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "Other",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "11",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Other",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "20",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Posty",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "z",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "2",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "z",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "Posty",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "21",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Posty",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "z",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            impl_body: ImplBody {
+                local_vars: [
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "t",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                ],
+                stmt_list: [
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "t",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "20",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    StructuredCmd(
+                        If(
+                            IfCmd {
+                                guard: Expr(
+                                    Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "t",
+                                            ),
+                                            op: Lt,
+                                            rhs: Var(
+                                                "z",
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                then: [
+                                    LabelOrCmd(
+                                        Claim(
+                                            ClaimCmd {
+                                                kind: Assert,
+                                                attrs: [],
+                                                proposition: BoolLit(
+                                                    true,
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                ],
+                                else_: Some(
+                                    Else(
+                                        [],
+                                    ),
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "30",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "NoChangeWhazzoeva",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "u",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "NoChangeWhazzoeva",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "3",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "NoChangeWhazzoeva",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "u",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "u",
+                                        ),
+                                        op: Neq,
+                                        rhs: Nat(
+                                            "53",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "40",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "NoChangeAndCorrect",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "NoChangeAndCorrect",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "41",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "NoChangeAndCorrect",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: BoolLit(
+                                    true,
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+]
+
+[Printed]
+procedure {:checksum "0"} M(x: int);
+
+implementation {:id "M"} {:checksum "1"} M(x: int) {
+  assert x < 20 || 10 <= x;
+  assert x < 10;
+  call Other(x);
+  assert x == 7;
+}
+
+procedure {:checksum "10"} Other(y: int);
+  requires 0 <= y;
+
+implementation {:id "Other"} {:checksum "11"} Other(y: int) {
+}
+
+procedure {:checksum "20"} Posty() returns (z: int);
+  ensures 2 <= z;
+
+implementation {:id "Posty"} {:checksum "21"} Posty() returns (z: int) {
+  var t: int;
+
+  t := 20;
+  if (t < z) {
+    assert true;
+  } else {
+  }
+}
+
+procedure {:checksum "30"} NoChangeWhazzoeva(u: int);
+
+implementation {:id "NoChangeWhazzoeva"} {:checksum "3"} NoChangeWhazzoeva(u: int) {
+  assert u != 53;
+}
+
+procedure {:checksum "40"} NoChangeAndCorrect();
+
+implementation {:id "NoChangeAndCorrect"} {:checksum "41"} NoChangeAndCorrect() {
+  assert true;
+}
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots41.v1.bpl]
+procedure {:checksum "0"} M(x: int);
+implementation {:id "M"} {:checksum "1"} M(x: int)
+{
+assert x < 20 || 10 <= x;  // always true
+  
+       assert x < 10;  // error
+  call Other(x);  // error: precondition violation
+  assert x == 7;  // error: this is a new error in v1
+}
+
+
+       procedure {:checksum "10"} Other(y: int);
+         requires 0 <= y;
+       implementation {:id "Other"} {:checksum "11"} Other(y: int)
+       {
+       }
+
+
+
+procedure {:checksum "20"} Posty() returns (z: int);
+  ensures 2 <= z;  // error: postcondition violation
+implementation {:id "Posty"} {:checksum "21"} Posty() returns (z: int)
+{
+  var t: int;
+  t := 20;
+  if (t < z) {
+    assert true;  // this is a new assert
+  } else {  // the postcondition violation occurs on this 'else' branch
+  }
+}
+
+  procedure   {:checksum "30"} NoChangeWhazzoeva(u: int);
+  implementation {:id "NoChangeWhazzoeva"} {:checksum "3"} NoChangeWhazzoeva(u: int)
+  {
+       assert u != 53;  // error
+  }
+
+procedure {:checksum "40"} NoChangeAndCorrect();
+implementation {:id "NoChangeAndCorrect"} {:checksum "41"} NoChangeAndCorrect() { assert true; }

@@ -1,0 +1,845 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Uncallable",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "0",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "i",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: BoolLit(
+                            true,
+                        ),
+                        is_free: true,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: BoolLit(
+                            false,
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "UncallableReturn",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "0",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "i",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: BoolLit(
+                            true,
+                        ),
+                        is_free: true,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: BoolLit(
+                            false,
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "b",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "T",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "b",
+                    ),
+                    type_: Atom(
+                        Bool,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "b",
+                        ),
+                        op: Eq,
+                        rhs: BoolLit(
+                            true,
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "TestCallForall",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "T",
+                                args: [
+                                    Var(
+                                        "b",
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: BoolLit(
+                            true,
+                        ),
+                        is_free: true,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "T",
+                                args: [
+                                    Var(
+                                        "b",
+                                    ),
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "NormalCall0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Uncallable",
+                                        params: [
+                                            Nat(
+                                                "0",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "NormalCall1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Uncallable",
+                                        params: [
+                                            Neg(
+                                                NegExpr {
+                                                    op: Arith,
+                                                    expr: Nat(
+                                                        "1",
+                                                    ),
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "FreeCall0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Uncallable",
+                                        params: [
+                                            Nat(
+                                                "0",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: true,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "FreeCall1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Uncallable",
+                                        params: [
+                                            Neg(
+                                                NegExpr {
+                                                    op: Arith,
+                                                    expr: Nat(
+                                                        "1",
+                                                    ),
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: true,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "NormalCall2",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "b",
+                                        ],
+                                        target: "UncallableReturn",
+                                        params: [
+                                            Nat(
+                                                "0",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "NormalCall3",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "b",
+                                        ],
+                                        target: "UncallableReturn",
+                                        params: [
+                                            Neg(
+                                                NegExpr {
+                                                    op: Arith,
+                                                    expr: Nat(
+                                                        "1",
+                                                    ),
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "FreeCall3",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "b",
+                                        ],
+                                        target: "UncallableReturn",
+                                        params: [
+                                            Nat(
+                                                "0",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: true,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "FreeCall4",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "b",
+                                        ],
+                                        target: "UncallableReturn",
+                                        params: [
+                                            Neg(
+                                                NegExpr {
+                                                    op: Arith,
+                                                    expr: Nat(
+                                                        "1",
+                                                    ),
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: true,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure Uncallable(i: int)
+  requires 0 <= i;
+  free requires true;
+  requires false;
+{
+}
+
+procedure UncallableReturn(i: int) returns (b: bool)
+  requires 0 <= i;
+  free requires true;
+  requires false;
+{
+  b := true;
+}
+
+function T(b: bool): bool {
+  b == true
+}
+
+procedure TestCallForall(b: bool)
+  requires T(b);
+  free requires true;
+  ensures T(b);
+{
+}
+
+procedure NormalCall0() {
+  call Uncallable(0);
+}
+
+procedure NormalCall1() {
+  call Uncallable(-1);
+}
+
+procedure FreeCall0() {
+  free call Uncallable(0);
+}
+
+procedure FreeCall1() {
+  free call Uncallable(-1);
+}
+
+procedure NormalCall2() {
+  var b: bool;
+
+  call b := UncallableReturn(0);
+}
+
+procedure NormalCall3() {
+  var b: bool;
+
+  call b := UncallableReturn(-1);
+}
+
+procedure FreeCall3() {
+  var b: bool;
+
+  free call b := UncallableReturn(0);
+}
+
+procedure FreeCall4() {
+  var b: bool;
+
+  free call b := UncallableReturn(-1);
+}
+
+[Input - ../../vendor/boogie/Test/test2/FreeCall.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// Test the implementation of free calls. These calls don't check the preconditions of the
+// called procedure in the caller.
+
+
+procedure Uncallable(i: int)
+  requires 0 <= i;
+  free requires true;
+  requires false;
+{
+
+}
+
+procedure UncallableReturn(i: int) returns (b: bool)
+  requires 0 <= i;
+  free requires true;
+  requires false;
+{
+    b := true;
+}
+
+function T(b: bool) : bool
+{
+    b == true
+}
+
+procedure TestCallForall(b: bool)
+  requires T(b);
+  free requires true;
+  ensures T(b);
+{
+
+}
+
+
+procedure NormalCall0()
+{
+    call Uncallable(0); // error: precondition violation
+}
+
+procedure NormalCall1()
+{
+    call Uncallable(-1); // error: precondition violation
+}
+
+procedure FreeCall0()
+{
+    free call Uncallable(0);
+}
+
+procedure FreeCall1()
+{
+    free call Uncallable(-1);
+}
+
+procedure NormalCall2()
+{
+    var b: bool;
+
+    call b := UncallableReturn(0); // error: precondition violation
+}
+
+procedure NormalCall3()
+{
+    var b: bool;
+
+    call b := UncallableReturn(-1); // error: precondition violation
+}
+
+procedure FreeCall3()
+{
+    var b: bool;
+
+    free call b := UncallableReturn(0);
+}
+
+procedure FreeCall4()
+{
+    var b: bool;
+
+    free call b := UncallableReturn(-1);
+}

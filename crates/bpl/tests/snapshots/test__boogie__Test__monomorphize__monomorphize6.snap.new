@@ -1,0 +1,541 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "Cell",
+                    type_params: [
+                        "_",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Cell",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Cell",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "OtherCell",
+                    type_params: [
+                        "_",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "OtherCell",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "OtherCell",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "foo",
+            type_params: [
+                "T",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Cell",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "p",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Cell",
+                                                tail: Some(
+                                                    AtomApp(
+                                                        TypeApp {
+                                                            head: Paren(
+                                                                App(
+                                                                    TypeApp {
+                                                                        head: "OtherCell",
+                                                                        tail: Some(
+                                                                            AtomApp(
+                                                                                TypeApp {
+                                                                                    head: Int,
+                                                                                    tail: None,
+                                                                                },
+                                                                            ),
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            ),
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Cell",
+                                                args: [
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "OtherCell",
+                                                            args: [
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "print",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "x=",
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "x#OtherCell",
+                                                    args: [
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "x#Cell",
+                                                                args: [
+                                                                    Var(
+                                                                        "x",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "1",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "q",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Cell",
+                                                tail: Some(
+                                                    AtomApp(
+                                                        TypeApp {
+                                                            head: Paren(
+                                                                App(
+                                                                    TypeApp {
+                                                                        head: "OtherCell",
+                                                                        tail: Some(
+                                                                            AtomApp(
+                                                                                TypeApp {
+                                                                                    head: Int,
+                                                                                    tail: None,
+                                                                                },
+                                                                            ),
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            ),
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Cell",
+                                                args: [
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "OtherCell",
+                                                            args: [
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "print",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "x=",
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "x#OtherCell",
+                                                    args: [
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "x#Cell",
+                                                                args: [
+                                                                    Var(
+                                                                        "x",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type {:datatype} Cell _;
+
+function {:constructor} Cell<T>(x: T): Cell T;
+
+type {:datatype} OtherCell _;
+
+function {:constructor} OtherCell<T>(x: T): OtherCell T;
+
+function {:inline} foo<T>(): Cell T;
+
+procedure p() {
+  var x: Cell (OtherCell int);
+
+  x := Cell(OtherCell(1));
+  assume {:print "x=", x} true;
+  assert x#OtherCell(x#Cell(x)) == 1;
+}
+
+procedure q() {
+  var x: Cell (OtherCell int);
+
+  x := Cell(OtherCell(1));
+  assume {:print "x=", x} true;
+  assert x#OtherCell(x#Cell(x)) == 0;
+}
+
+[Input - ../../vendor/boogie/Test/monomorphize/monomorphize6.bpl]
+// RUN: %boogie -monomorphize -enhancedErrorMessages:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// Issue #361
+
+type {:datatype} Cell _;
+function {:constructor} Cell<T>(x: T): Cell T;
+
+type {:datatype} OtherCell _;
+function {:constructor} OtherCell<T>(x: T): OtherCell T;
+
+function {:inline} foo<T>(): Cell T;
+
+procedure p() {
+  var x: Cell (OtherCell int);
+  x := Cell(OtherCell(1));
+  assume {:print "x=", x} true;
+  assert x#OtherCell(x#Cell(x)) == 1;
+}
+
+procedure q() {
+  var x: Cell (OtherCell int);
+  x := Cell(OtherCell(1));
+  assume {:print "x=", x} true;
+  assert x#OtherCell(x#Cell(x)) == 0;
+}

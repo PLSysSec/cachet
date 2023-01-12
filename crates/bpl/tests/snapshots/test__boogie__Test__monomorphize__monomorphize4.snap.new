@@ -1,0 +1,237 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "List",
+                    type_params: [
+                        "_",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "cons",
+            type_params: [
+                "U",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "U",
+                            tail: None,
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "ls",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "List",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "U",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "List",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "U",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "nil",
+            type_params: [
+                "U",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "List",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "U",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "len",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "ls",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "List",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "T",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: Some(
+                IfThenElse(
+                    IfThenElseExpr {
+                        cond: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "ls",
+                                ),
+                                op: Eq,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "nil",
+                                        args: [],
+                                    },
+                                ),
+                            },
+                        ),
+                        then: Nat(
+                            "0",
+                        ),
+                        else_: FuncCall(
+                            FuncCall {
+                                target: "len",
+                                args: [
+                                    FuncCall(
+                                        FuncCall {
+                                            target: "cons",
+                                            args: [
+                                                Var(
+                                                    "ls",
+                                                ),
+                                                FuncCall(
+                                                    FuncCall {
+                                                        target: "nil",
+                                                        args: [],
+                                                    },
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                ],
+                            },
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+]
+
+[Printed]
+type {:datatype} List _;
+
+function {:constructor} cons<U>(x: U, ls: List U): List U;
+
+function {:constructor} nil<U>(): List U;
+
+function len<T>(ls: List T): int {
+  if ls == nil() then 0 else len(cons(ls, nil()))
+}
+
+[Input - ../../vendor/boogie/Test/monomorphize/monomorphize4.bpl]
+// RUN: %boogie -monomorphize "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+type {:datatype} List _;
+function {:constructor} cons<U>(x: U, ls: List U) : List U;
+function {:constructor} nil<U>() : List U;
+
+function len<T>(ls: List T): int {
+    if (ls == nil()) then 0 else len(cons(ls, nil()))
+}

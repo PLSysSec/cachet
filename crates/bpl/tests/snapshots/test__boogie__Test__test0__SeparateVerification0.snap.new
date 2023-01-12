@@ -1,0 +1,40 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parse Error]
+error: unexpected token `#if`; expected `axiom`, `const`, `function`, `implementation`, `procedure`, `type`, or `var`
+  ┌─ ../../vendor/boogie/Test/test0/SeparateVerification0.bpl:9:1
+  │
+9 │ #if FILE_0
+  │ ^^^
+
+[Input - ../../vendor/boogie/Test/test0/SeparateVerification0.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// RUN: %boogie -noVerify "%s" "%s" > "%t"
+// RUN: %diff NoErrors.expect "%t"
+// RUN: %boogie -noVerify "%s" "%s" SeparateVerification1.bpl > "%t"
+// RUN: %diff NoErrors.expect "%t"
+// need to include this file twice for it to include all necessary declarations
+
+#if FILE_0
+const x: int;
+#else
+const y: int;
+#endif
+
+#if FILE_1
+axiom x == 12;
+procedure Q();
+#else
+axiom y == 7;
+#endif
+
+// duplicates of :extern's are fine (Boogie keeps the non-:extern or chooses arbitrarily among the :extern's)
+type {:extern} T;
+const {:extern} C: int;
+function {:extern} F(): int;
+var {:extern} n: int;
+procedure {:extern} P(inconsistentParameterButThatIsOkayBecauseTheExternIsIgnored: int);

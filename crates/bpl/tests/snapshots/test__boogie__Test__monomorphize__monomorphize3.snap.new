@@ -1,0 +1,666 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "List",
+                    type_params: [
+                        "_",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "cons",
+            type_params: [
+                "U",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "U",
+                            tail: None,
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "ls",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "List",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "U",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "List",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "U",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "nil",
+            type_params: [
+                "U",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "List",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "U",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "len",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "ls",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "List",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "T",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: Some(
+                IfThenElse(
+                    IfThenElseExpr {
+                        cond: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "ls",
+                                ),
+                                op: Eq,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "nil",
+                                        args: [],
+                                    },
+                                ),
+                            },
+                        ),
+                        then: Nat(
+                            "0",
+                        ),
+                        else_: Term(
+                            Term {
+                                lhs: Nat(
+                                    "1",
+                                ),
+                                op: Add,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "len",
+                                        args: [
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "ls#cons",
+                                                    args: [
+                                                        Var(
+                                                            "ls",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "X",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "find_length_X",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "ls",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "List",
+                                        tail: Some(
+                                            App(
+                                                TypeApp {
+                                                    head: "X",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "length",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "length",
+                                ),
+                                op: Eq,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "len",
+                                        args: [
+                                            Var(
+                                                "ls",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "ls",
+                                                ),
+                                                op: Eq,
+                                                rhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "nil",
+                                                        args: [],
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "length",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Nat(
+                                                            "0",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: Some(
+                                        Else(
+                                            [
+                                                LabelOrCmd(
+                                                    Call(
+                                                        CallCmd {
+                                                            attrs: [],
+                                                            call_params: CallParams {
+                                                                returns: [
+                                                                    "length",
+                                                                ],
+                                                                target: "find_length_X",
+                                                                params: [
+                                                                    FuncCall(
+                                                                        FuncCall {
+                                                                            target: "ls#cons",
+                                                                            args: [
+                                                                                Var(
+                                                                                    "ls",
+                                                                                ),
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                            is_async: false,
+                                                            is_free: false,
+                                                        },
+                                                    ),
+                                                ),
+                                                LabelOrCmd(
+                                                    Assign(
+                                                        AssignCmd {
+                                                            lhs: [
+                                                                AssignLhs {
+                                                                    ident: "length",
+                                                                    subscripts: [],
+                                                                },
+                                                            ],
+                                                            rhs: [
+                                                                Term(
+                                                                    Term {
+                                                                        lhs: Var(
+                                                                            "length",
+                                                                        ),
+                                                                        op: Add,
+                                                                        rhs: Nat(
+                                                                            "1",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "find_length_int",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "ls",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "List",
+                                        tail: Some(
+                                            AtomApp(
+                                                TypeApp {
+                                                    head: Int,
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "length",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "length",
+                                ),
+                                op: Eq,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "len",
+                                        args: [
+                                            Var(
+                                                "ls",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "ls",
+                                                ),
+                                                op: Eq,
+                                                rhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "nil",
+                                                        args: [],
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "length",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Nat(
+                                                            "0",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: Some(
+                                        Else(
+                                            [
+                                                LabelOrCmd(
+                                                    Call(
+                                                        CallCmd {
+                                                            attrs: [],
+                                                            call_params: CallParams {
+                                                                returns: [
+                                                                    "length",
+                                                                ],
+                                                                target: "find_length_int",
+                                                                params: [
+                                                                    FuncCall(
+                                                                        FuncCall {
+                                                                            target: "ls#cons",
+                                                                            args: [
+                                                                                Var(
+                                                                                    "ls",
+                                                                                ),
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                            is_async: false,
+                                                            is_free: false,
+                                                        },
+                                                    ),
+                                                ),
+                                                LabelOrCmd(
+                                                    Assign(
+                                                        AssignCmd {
+                                                            lhs: [
+                                                                AssignLhs {
+                                                                    ident: "length",
+                                                                    subscripts: [],
+                                                                },
+                                                            ],
+                                                            rhs: [
+                                                                Term(
+                                                                    Term {
+                                                                        lhs: Var(
+                                                                            "length",
+                                                                        ),
+                                                                        op: Add,
+                                                                        rhs: Nat(
+                                                                            "1",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type {:datatype} List _;
+
+function {:constructor} cons<U>(x: U, ls: List U): List U;
+
+function {:constructor} nil<U>(): List U;
+
+function len<T>(ls: List T): int {
+  if ls == nil() then 0 else 1 + len(ls#cons(ls))
+}
+
+type X;
+
+procedure find_length_X(ls: List X) returns (length: int)
+  ensures length == len(ls);
+{
+  if (ls == nil()) {
+    length := 0;
+  } else {
+    call length := find_length_X(ls#cons(ls));
+    length := length + 1;
+  }
+}
+
+procedure find_length_int(ls: List int) returns (length: int)
+  ensures length == len(ls);
+{
+  if (ls == nil()) {
+    length := 0;
+  } else {
+    call length := find_length_int(ls#cons(ls));
+    length := length + 1;
+  }
+}
+
+[Input - ../../vendor/boogie/Test/monomorphize/monomorphize3.bpl]
+// RUN: %boogie -monomorphize "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+type {:datatype} List _;
+function {:constructor} cons<U>(x: U, ls: List U) : List U;
+function {:constructor} nil<U>() : List U;
+
+function len<T>(ls: List T): int {
+    if (ls == nil()) then 0 else 1 + len(ls#cons(ls))
+}
+
+type X;
+procedure find_length_X(ls: List X) returns (length: int)
+ensures length == len(ls);
+{
+    if (ls == nil()) {
+        length := 0;
+    } else {
+        call length := find_length_X(ls#cons(ls));
+        length := length + 1;
+    }
+}
+
+procedure find_length_int(ls: List int) returns (length: int)
+ensures length == len(ls);
+{
+    if (ls == nil()) {
+        length := 0;
+    } else {
+        call length := find_length_int(ls#cons(ls));
+        length := length + 1;
+    }
+}

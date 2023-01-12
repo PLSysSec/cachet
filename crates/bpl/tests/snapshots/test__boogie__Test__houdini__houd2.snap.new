@@ -1,0 +1,368 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Const(
+        ConstDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "existential",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "b1",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "existential",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "b2",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "myVar",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "bar",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "myVar",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "myVar",
+                                ),
+                                op: Gt,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "foo",
+                                        params: [
+                                            Nat(
+                                                "5",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "foo",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "myVar",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Var(
+                                    "b1",
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "myVar",
+                                        ),
+                                        op: Gt,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "myVar",
+                                ),
+                                op: Neq,
+                                rhs: Neg(
+                                    NegExpr {
+                                        op: Arith,
+                                        expr: Nat(
+                                            "1",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Gt,
+                                                rhs: Nat(
+                                                    "0",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "myVar",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Nat(
+                                                            "5",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: Some(
+                                        Else(
+                                            [
+                                                LabelOrCmd(
+                                                    Assign(
+                                                        AssignCmd {
+                                                            lhs: [
+                                                                AssignLhs {
+                                                                    ident: "myVar",
+                                                                    subscripts: [],
+                                                                },
+                                                            ],
+                                                            rhs: [
+                                                                Nat(
+                                                                    "0",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+const {:existential true} b1: bool;
+
+const {:existential true} b2: bool;
+
+var myVar: int;
+
+procedure bar(i: int)
+  modifies myVar;
+  ensures myVar > 0;
+{
+  call foo(5);
+}
+
+procedure foo(i: int)
+  modifies myVar;
+  ensures b1 ==> myVar > 0;
+  ensures myVar != -1;
+{
+  if (i > 0) {
+    myVar := 5;
+  } else {
+    myVar := 0;
+  }
+}
+
+[Input - ../../vendor/boogie/Test/houdini/houd2.bpl]
+// RUN: %boogie -contractInfer -printAssignment "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+const {:existential true} b1:bool;
+const {:existential true} b2:bool;
+
+
+var myVar: int;
+
+procedure bar(i:int) 
+modifies myVar;
+ensures myVar>0;
+{
+  call foo(5);
+}
+
+procedure foo (i:int)
+modifies myVar;
+ensures b1 ==> myVar>0;
+ensures myVar!=-1;
+{
+  if (i>0) {
+    myVar := 5;
+  } else {
+    myVar := 0;
+  }
+}
+
+// expected output: Errors
+// expected end assigment: b1->False b2->True

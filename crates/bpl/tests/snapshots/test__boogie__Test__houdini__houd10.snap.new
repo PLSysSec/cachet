@@ -1,0 +1,334 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Const(
+        ConstDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "existential",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "b1",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "existential",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "b2",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "existential",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "b3",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "fooVar",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "xVar",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "fooVar",
+                        ],
+                    },
+                ),
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "xVar",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Var(
+                                    "b1",
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "fooVar",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Var(
+                                    "b3",
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "xVar",
+                                        ),
+                                        op: Lt,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "fooVar",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "5",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "bar",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "bar",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "xVar",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "fooVar",
+                                ),
+                                op: Neq,
+                                rhs: Nat(
+                                    "5",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+const {:existential true} b1: bool;
+
+const {:existential true} b2: bool;
+
+const {:existential true} b3: bool;
+
+var fooVar: int;
+
+var xVar: int;
+
+procedure foo()
+  modifies fooVar;
+  modifies xVar;
+  ensures b1 ==> fooVar == 0;
+  ensures b3 ==> xVar < 0;
+{
+  fooVar := 5;
+  call bar();
+}
+
+procedure bar();
+  modifies xVar;
+  requires fooVar != 5;
+
+[Input - ../../vendor/boogie/Test/houdini/houd10.bpl]
+// RUN: %boogie -contractInfer -printAssignment "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+const {:existential true} b1:bool;
+const {:existential true} b2:bool;
+const {:existential true} b3:bool;
+
+var fooVar: int;
+var xVar: int;
+
+procedure foo() 
+modifies fooVar;
+modifies xVar;
+ensures b1 ==> fooVar==0;
+ensures b3 ==> xVar<0;
+{
+  fooVar:=5; 
+  call bar();
+}
+
+procedure bar(); 
+modifies xVar;
+requires fooVar!=5;
+
+// expected outcome: Errors
+// expected assigment: b1->True,b2->True,b3->True

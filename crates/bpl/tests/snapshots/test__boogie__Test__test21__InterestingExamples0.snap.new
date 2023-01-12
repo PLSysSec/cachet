@@ -1,0 +1,161 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                        ],
+                                        type_: Map(
+                                            MapType {
+                                                type_params: [
+                                                    "t",
+                                                ],
+                                                keys: [
+                                                    App(
+                                                        TypeApp {
+                                                            head: "t",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ],
+                                                value: Atom(
+                                                    Int,
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "a",
+                                            subscripts: [
+                                                [
+                                                    Nat(
+                                                        "5",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "a",
+                                            subscripts: [
+                                                [
+                                                    BoolLit(
+                                                        true,
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "1",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "a",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Nat(
+                                                                    "5",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure P() {
+  var a: <t>[t]int;
+
+  a[5] := 0;
+  a[true] := 1;
+  assert a[5] == 0;
+}
+
+[Input - ../../vendor/boogie/Test/test21/InterestingExamples0.bpl]
+// RUN: %boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
+// RUN: %diff "%s.p.expect" "%t"
+// RUN: %boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
+// RUN: %diff "%s.a.expect" "%t"
+
+procedure P() returns () {
+var a : <t>[t]int;
+
+a[5] := 0;
+a[true] := 1;
+assert a[5] == 0;
+}

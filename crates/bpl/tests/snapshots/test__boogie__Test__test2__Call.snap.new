@@ -1,0 +1,867 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Bar",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "barresult",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "ref",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "x",
+                                    ],
+                                    type_: App(
+                                        TypeApp {
+                                            head: "ref",
+                                            tail: None,
+                                        },
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                ],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "entry",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Call(
+                            CallCmd {
+                                attrs: [],
+                                call_params: CallParams {
+                                    returns: [
+                                        "x",
+                                    ],
+                                    target: "Bar",
+                                    params: [],
+                                },
+                                is_async: false,
+                                is_free: false,
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assume,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "null",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Call(
+                            CallCmd {
+                                attrs: [],
+                                call_params: CallParams {
+                                    returns: [
+                                        "x",
+                                    ],
+                                    target: "Bar",
+                                    params: [],
+                                },
+                                is_async: false,
+                                is_free: false,
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "null",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "DifferentFormalNames",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "z",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Lt,
+                                rhs: Var(
+                                    "y",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "z",
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "x",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "DifferentFormalNames",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "z",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "start",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Lt,
+                                        rhs: Var(
+                                            "y",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "z",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Var(
+                                        "x",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "DifferentFormalNames",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "w",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "start",
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Goto(
+                            GotoCmd {
+                                labels: [
+                                    "A",
+                                    "B",
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "A",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "y",
+                                        ),
+                                        op: Lt,
+                                        rhs: Var(
+                                            "x",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assume,
+                                attrs: [],
+                                proposition: BoolLit(
+                                    false,
+                                ),
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "B",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "w",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Var(
+                                        "y",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "DifferentFormalNames",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "w",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "start",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Lt,
+                                        rhs: Var(
+                                            "y",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "w",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Var(
+                                        "y",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "DifferentFormalNames",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "w",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Label(
+                            Label {
+                                ident: "start",
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "w",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Var(
+                                        "x",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "ref",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "null",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "ref",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+]
+
+[Printed]
+procedure Bar() returns (barresult: ref);
+
+procedure Foo();
+
+implementation Foo() {
+  var x: ref;
+
+  entry:
+  call x := Bar();
+  assume x == null;
+  call x := Bar();
+  assert x == null;
+  return;
+}
+
+procedure DifferentFormalNames(x: int, y: int) returns (z: int);
+  requires x < y;
+  ensures z == x;
+
+implementation DifferentFormalNames(x: int, y: int) returns (z: int) {
+  start:
+  assert x < y;
+  z := x;
+  return;
+}
+
+implementation DifferentFormalNames(y: int, x: int) returns (w: int) {
+  start:
+  goto A, B;
+  A:
+  assert y < x;
+  assume false;
+  return;
+  B:
+  w := y;
+  return;
+}
+
+implementation DifferentFormalNames(y: int, x: int) returns (w: int) {
+  start:
+  assert x < y;
+  w := y;
+  return;
+}
+
+implementation DifferentFormalNames(y: int, x: int) returns (w: int) {
+  start:
+  w := x;
+  return;
+}
+
+type ref;
+
+const null: ref;
+
+[Input - ../../vendor/boogie/Test/test2/Call.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure Bar() returns (barresult: ref);
+
+procedure Foo();
+
+implementation Foo()
+{
+  var x: ref;
+
+  entry:
+    call x := Bar();
+    assume x == null;
+    call x := Bar();
+    assert x == null;
+    return;
+
+}
+
+procedure DifferentFormalNames(x: int, y: int) returns (z: int);
+  requires x < y;
+  ensures z == x;
+
+implementation DifferentFormalNames(x: int, y: int) returns (z: int)
+{
+  start:
+    assert x < y;
+    z := x;
+    return;
+}
+
+implementation DifferentFormalNames(y: int, x: int) returns (w: int)
+{
+  start:
+    goto A, B;
+  A:
+    assert y < x;
+    assume false;
+    return;
+  B:
+    w := y;
+    return;
+}
+
+implementation DifferentFormalNames(y: int, x: int) returns (w: int)
+{
+  start:
+    assert x < y;  // error
+    w := y;
+    return;
+}
+
+implementation DifferentFormalNames(y: int, x: int) returns (w: int)
+{
+  start:
+    w := x;
+    return;  // error: postcondition violation
+}
+
+type ref;
+
+const null : ref;

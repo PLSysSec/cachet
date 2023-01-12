@@ -1,0 +1,1160 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "2",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "x",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "pending_async",
+                        params: [],
+                    },
+                ),
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "PA",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "ADD",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "i",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "PA",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "IS",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "MAIN'",
+                                    },
+                                ),
+                                String(
+                                    StringLit {
+                                        text: "INV",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "elim",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "ADD",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "SUM",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "pending_async",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "ADD",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "PAs",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            App(
+                                                TypeApp {
+                                                    head: "PA",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "add_to_pool",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "A",
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        Nat(
+                                                            "0",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "n",
+                                            ),
+                                            op: Ge,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "PAs",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Quant(
+                                            QuantExpr {
+                                                kind: Lambda,
+                                                body: QuantBody {
+                                                    type_params: [],
+                                                    bound_vars: [
+                                                        AttrTypedIdentsWhere {
+                                                            attrs: [],
+                                                            typed_idents_where: TypedIdentsWhere {
+                                                                typed_idents: TypedIdents {
+                                                                    idents: [
+                                                                        "pa",
+                                                                    ],
+                                                                    type_: App(
+                                                                        TypeApp {
+                                                                            head: "PA",
+                                                                            tail: None,
+                                                                        },
+                                                                    ),
+                                                                },
+                                                                where_: None,
+                                                            },
+                                                        },
+                                                    ],
+                                                    attrs: [],
+                                                    expr: IfThenElse(
+                                                        IfThenElseExpr {
+                                                            cond: Logical(
+                                                                LogicalExpr {
+                                                                    lhs: Logical(
+                                                                        LogicalExpr {
+                                                                            lhs: FuncCall(
+                                                                                FuncCall {
+                                                                                    target: "is#ADD",
+                                                                                    args: [
+                                                                                        Var(
+                                                                                            "pa",
+                                                                                        ),
+                                                                                    ],
+                                                                                },
+                                                                            ),
+                                                                            op: And,
+                                                                            rhs: Rel(
+                                                                                RelExpr {
+                                                                                    lhs: Nat(
+                                                                                        "1",
+                                                                                    ),
+                                                                                    op: Le,
+                                                                                    rhs: FuncCall(
+                                                                                        FuncCall {
+                                                                                            target: "i#ADD",
+                                                                                            args: [
+                                                                                                Var(
+                                                                                                    "pa",
+                                                                                                ),
+                                                                                            ],
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                    op: And,
+                                                                    rhs: Rel(
+                                                                        RelExpr {
+                                                                            lhs: FuncCall(
+                                                                                FuncCall {
+                                                                                    target: "i#ADD",
+                                                                                    args: [
+                                                                                        Var(
+                                                                                            "pa",
+                                                                                        ),
+                                                                                    ],
+                                                                                },
+                                                                            ),
+                                                                            op: Le,
+                                                                            rhs: Var(
+                                                                                "n",
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            then: Nat(
+                                                                "1",
+                                                            ),
+                                                            else_: Nat(
+                                                                "0",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "2",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "MAIN'",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "n",
+                                            ),
+                                            op: Ge,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Factor(
+                                                    Factor {
+                                                        lhs: Factor(
+                                                            Factor {
+                                                                lhs: Var(
+                                                                    "n",
+                                                                ),
+                                                                op: Mul,
+                                                                rhs: Term(
+                                                                    Term {
+                                                                        lhs: Var(
+                                                                            "n",
+                                                                        ),
+                                                                        op: Add,
+                                                                        rhs: Nat(
+                                                                            "1",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                        op: Div,
+                                                        rhs: Nat(
+                                                            "2",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "IS_invariant",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "INV",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "pending_async",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "ADD",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "PAs",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            App(
+                                                TypeApp {
+                                                    head: "PA",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "choice",
+                                    params: [],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "choice",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "PA",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [
+                                Attr(
+                                    AttrContent {
+                                        ident: "pool",
+                                        params: [
+                                            String(
+                                                StringLit {
+                                                    text: "A",
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "n",
+                                            ),
+                                            op: Ge,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "add_to_pool",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "A",
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        Var(
+                                                            "i",
+                                                        ),
+                                                    ),
+                                                    Expr(
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "i",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        Attr(
+                                            AttrContent {
+                                                ident: "add_to_pool",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "B",
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "ADD",
+                                                                args: [
+                                                                    Var(
+                                                                        "n",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Nat(
+                                                        "0",
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Var(
+                                                        "i",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "i",
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Var(
+                                                        "n",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Factor(
+                                                    Factor {
+                                                        lhs: Factor(
+                                                            Factor {
+                                                                lhs: Var(
+                                                                    "i",
+                                                                ),
+                                                                op: Mul,
+                                                                rhs: Term(
+                                                                    Term {
+                                                                        lhs: Var(
+                                                                            "i",
+                                                                        ),
+                                                                        op: Add,
+                                                                        rhs: Nat(
+                                                                            "1",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                        op: Div,
+                                                        rhs: Nat(
+                                                            "2",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "PAs",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Quant(
+                                            QuantExpr {
+                                                kind: Lambda,
+                                                body: QuantBody {
+                                                    type_params: [],
+                                                    bound_vars: [
+                                                        AttrTypedIdentsWhere {
+                                                            attrs: [
+                                                                Attr(
+                                                                    AttrContent {
+                                                                        ident: "pool",
+                                                                        params: [
+                                                                            String(
+                                                                                StringLit {
+                                                                                    text: "B",
+                                                                                },
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            ],
+                                                            typed_idents_where: TypedIdentsWhere {
+                                                                typed_idents: TypedIdents {
+                                                                    idents: [
+                                                                        "pa",
+                                                                    ],
+                                                                    type_: App(
+                                                                        TypeApp {
+                                                                            head: "PA",
+                                                                            tail: None,
+                                                                        },
+                                                                    ),
+                                                                },
+                                                                where_: None,
+                                                            },
+                                                        },
+                                                    ],
+                                                    attrs: [],
+                                                    expr: IfThenElse(
+                                                        IfThenElseExpr {
+                                                            cond: Logical(
+                                                                LogicalExpr {
+                                                                    lhs: Logical(
+                                                                        LogicalExpr {
+                                                                            lhs: FuncCall(
+                                                                                FuncCall {
+                                                                                    target: "is#ADD",
+                                                                                    args: [
+                                                                                        Var(
+                                                                                            "pa",
+                                                                                        ),
+                                                                                    ],
+                                                                                },
+                                                                            ),
+                                                                            op: And,
+                                                                            rhs: Rel(
+                                                                                RelExpr {
+                                                                                    lhs: Var(
+                                                                                        "i",
+                                                                                    ),
+                                                                                    op: Lt,
+                                                                                    rhs: FuncCall(
+                                                                                        FuncCall {
+                                                                                            target: "i#ADD",
+                                                                                            args: [
+                                                                                                Var(
+                                                                                                    "pa",
+                                                                                                ),
+                                                                                            ],
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                    op: And,
+                                                                    rhs: Rel(
+                                                                        RelExpr {
+                                                                            lhs: FuncCall(
+                                                                                FuncCall {
+                                                                                    target: "i#ADD",
+                                                                                    args: [
+                                                                                        Var(
+                                                                                            "pa",
+                                                                                        ),
+                                                                                    ],
+                                                                                },
+                                                                            ),
+                                                                            op: Le,
+                                                                            rhs: Var(
+                                                                                "n",
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            then: Nat(
+                                                                "1",
+                                                            ),
+                                                            else_: Nat(
+                                                                "0",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "choice",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "ADD",
+                                                args: [
+                                                    Term(
+                                                        Term {
+                                                            lhs: Var(
+                                                                "i",
+                                                            ),
+                                                            op: Add,
+                                                            rhs: Nat(
+                                                                "1",
+                                                            ),
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "left",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "ADD",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Var(
+                                                    "i",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var {:layer 0, 2} x: int;
+
+type {:pending_async} {:datatype} PA;
+
+function {:constructor} ADD(i: int): PA;
+
+procedure {:atomic} {:layer 1} {:IS "MAIN'", "INV"} {:elim "ADD"} SUM(n: int) returns ({:pending_async "ADD"} PAs: [PA]int)
+  modifies x;
+{
+  assert {:add_to_pool "A", 0} n >= 0;
+  PAs := (lambda pa: PA :: if is#ADD(pa) && 1 <= i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+}
+
+procedure {:atomic} {:layer 2} MAIN'(n: int)
+  modifies x;
+{
+  assert n >= 0;
+  x := x + n * (n + 1) div 2;
+}
+
+procedure {:IS_invariant} {:layer 1} INV(n: int) returns ({:pending_async "ADD"} PAs: [PA]int, {:choice} choice: PA)
+  modifies x;
+{
+  var {:pool "A"} i: int;
+
+  assert n >= 0;
+  assume {:add_to_pool "A", i, i + 1} {:add_to_pool "B", ADD(n)} 0 <= i && i <= n;
+  x := x + i * (i + 1) div 2;
+  PAs := (lambda {:pool "B"} pa: PA :: if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  choice := ADD(i + 1);
+}
+
+procedure {:left} {:layer 1} ADD(i: int)
+  modifies x;
+{
+  x := x + i;
+}
+
+[Input - ../../vendor/boogie/Test/civl/inductive-sequentialization/Gauss.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+var {:layer 0,2} x:int;
+
+type {:pending_async}{:datatype} PA;
+function {:constructor} ADD(i: int) : PA;
+
+////////////////////////////////////////////////////////////////////////////////
+
+procedure {:atomic}{:layer 1}
+{:IS "MAIN'","INV"}{:elim "ADD"}
+SUM (n: int)
+returns ({:pending_async "ADD"} PAs:[PA]int)
+modifies x;
+{
+  assert
+    {:add_to_pool "A", 0}
+    n >= 0;
+  PAs := (lambda pa: PA :: if is#ADD(pa) && 1 <= i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+}
+
+procedure {:atomic}{:layer 2}
+MAIN' (n: int)
+modifies x;
+{
+  assert n >= 0;
+  x := x + (n * (n+1)) div 2;
+}
+
+procedure {:IS_invariant}{:layer 1}
+INV (n: int)
+returns ({:pending_async "ADD"} PAs:[PA]int, {:choice} choice:PA)
+modifies x;
+{
+  var {:pool "A"} i: int;
+
+  assert n >= 0;
+
+  assume
+    {:add_to_pool "A", i, i+1}
+    {:add_to_pool "B", ADD(n)}
+    0 <= i && i <= n;
+  x := x + (i * (i+1)) div 2;
+  PAs := (lambda {:pool "B"} pa: PA :: if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  choice := ADD(i+1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+procedure {:left}{:layer 1}
+ADD (i: int)
+modifies x;
+{
+  x := x + i;
+}

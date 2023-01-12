@@ -1,0 +1,140 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "foo",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Gt,
+                        rhs: Nat(
+                            "0",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "foo",
+                                            args: [
+                                                Nat(
+                                                    "13",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "foo",
+                                            args: [
+                                                Neg(
+                                                    NegExpr {
+                                                        op: Arith,
+                                                        expr: Nat(
+                                                            "5",
+                                                        ),
+                                                    },
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+function {:inline true} foo(x: int): bool {
+  x > 0
+}
+
+procedure P() {
+  assert foo(13);
+  assert foo(-5);
+}
+
+[Input - ../../vendor/boogie/Test/inline/fundef2.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+function {:inline true} foo(x:int) returns(bool)
+  { x > 0 }
+
+procedure P() {
+  assert foo(13);
+  assert foo(-5);  // error
+}

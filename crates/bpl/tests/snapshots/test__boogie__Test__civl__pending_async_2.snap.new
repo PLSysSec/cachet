@@ -1,0 +1,534 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "n",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: Var(
+                        "n",
+                    ),
+                    op: Gt,
+                    rhs: Nat(
+                        "0",
+                    ),
+                },
+            ),
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "pending_async",
+                        params: [],
+                    },
+                ),
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "PA",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "A",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "PA",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "B",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "PA",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "NoPAs",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Map(
+                    MapType {
+                        type_params: [],
+                        keys: [
+                            App(
+                                TypeApp {
+                                    head: "PA",
+                                    tail: None,
+                                },
+                            ),
+                        ],
+                        value: Atom(
+                            Int,
+                        ),
+                    },
+                ),
+            },
+            body: Some(
+                Quant(
+                    QuantExpr {
+                        kind: Lambda,
+                        body: QuantBody {
+                            type_params: [],
+                            bound_vars: [
+                                AttrTypedIdentsWhere {
+                                    attrs: [],
+                                    typed_idents_where: TypedIdentsWhere {
+                                        typed_idents: TypedIdents {
+                                            idents: [
+                                                "pa",
+                                            ],
+                                            type_: App(
+                                                TypeApp {
+                                                    head: "PA",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        },
+                                        where_: None,
+                                    },
+                                },
+                            ],
+                            attrs: [],
+                            expr: Nat(
+                                "0",
+                            ),
+                        },
+                    },
+                ),
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "A",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "B",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "left",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "C",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "pending_async",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "A",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "PAs",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            App(
+                                                TypeApp {
+                                                    head: "PA",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "PAs",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: FuncCall(
+                                                    FuncCall {
+                                                        target: "NoPAs",
+                                                        args: [],
+                                                    },
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            FuncCall(
+                                                                FuncCall {
+                                                                    target: "A",
+                                                                    args: [],
+                                                                },
+                                                            ),
+                                                        ],
+                                                        value: Some(
+                                                            Nat(
+                                                                "1",
+                                                            ),
+                                                        ),
+                                                    },
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            FuncCall(
+                                                                FuncCall {
+                                                                    target: "B",
+                                                                    args: [],
+                                                                },
+                                                            ),
+                                                        ],
+                                                        value: Some(
+                                                            Nat(
+                                                                "1",
+                                                            ),
+                                                        ),
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "left",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "D",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "pending_async",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "A",
+                                            },
+                                        ),
+                                        String(
+                                            StringLit {
+                                                text: "B",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "PAs",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            App(
+                                                TypeApp {
+                                                    head: "PA",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+const n: int;
+
+axiom n > 0;
+
+type {:pending_async} {:datatype} PA;
+
+function {:constructor} A(): PA;
+
+function {:constructor} B(): PA;
+
+function {:inline} NoPAs(): [PA]int {
+  (lambda pa: PA :: 0)
+}
+
+procedure {:atomic} {:layer 1} A() {
+}
+
+procedure {:atomic} {:layer 1} B() {
+}
+
+procedure {:left} {:layer 1} C() returns ({:pending_async "A"} PAs: [PA]int) {
+  PAs := NoPAs()[A() := 1][B() := 1];
+}
+
+procedure {:left} {:layer 1} D() returns ({:pending_async "A", "B"} PAs: [PA]int) {
+}
+
+[Input - ../../vendor/boogie/Test/civl/pending-async-2.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+const n:int;
+axiom n > 0;
+
+type {:pending_async}{:datatype} PA;
+function {:constructor} A() : PA;
+function {:constructor} B() : PA;
+
+function {:inline} NoPAs () : [PA]int
+{ (lambda pa:PA :: 0) }
+
+////////////////////////////////////////////////////////////////////////////////
+
+procedure {:atomic}{:layer 1} A () {}
+procedure {:atomic}{:layer 1} B () {}
+
+procedure {:left}{:layer 1} C () returns ({:pending_async "A"} PAs:[PA]int)
+{
+  // create undeclared pending async to B
+  PAs := NoPAs()[A() := 1][B() := 1];
+}
+
+procedure {:left}{:layer 1} D () returns ({:pending_async "A","B"} PAs:[PA]int)
+{
+  // (nondeterministically) create negative pending asyncs
+}

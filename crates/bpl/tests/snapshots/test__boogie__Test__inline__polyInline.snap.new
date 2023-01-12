@@ -1,0 +1,933 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "C",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "D",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "empty",
+            type_params: [
+                "alpha",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "alpha",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "eqC",
+            type_params: [
+                "alpha",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "alpha",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Eq,
+                        rhs: Var(
+                            "C",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "giveEmpty",
+            type_params: [
+                "alpha",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "alpha",
+                        tail: None,
+                    },
+                ),
+            },
+            body: Some(
+                FuncCall(
+                    FuncCall {
+                        target: "empty",
+                        args: [],
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "eqC2",
+            type_params: [
+                "alpha",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "alpha",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Eq,
+                        rhs: Var(
+                            "C",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "giveEmpty2",
+            type_params: [
+                "alpha",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "alpha",
+                        tail: None,
+                    },
+                ),
+            },
+            body: Some(
+                FuncCall(
+                    FuncCall {
+                        target: "empty",
+                        args: [],
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "eqC3",
+            type_params: [
+                "alpha",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "alpha",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "alpha",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "alpha",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "eqC3",
+                                        args: [
+                                            Var(
+                                                "x",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "C",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "giveEmpty3",
+            type_params: [
+                "alpha",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "alpha",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "alpha",
+                        ],
+                        bound_vars: [],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: Coercion(
+                                    CoercionExpr {
+                                        expr: FuncCall(
+                                            FuncCall {
+                                                target: "giveEmpty3",
+                                                args: [],
+                                            },
+                                        ),
+                                        coercions: [
+                                            Type(
+                                                App(
+                                                    TypeApp {
+                                                        head: "alpha",
+                                                        tail: None,
+                                                    },
+                                                ),
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "empty",
+                                        args: [],
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "eqC",
+                                            args: [
+                                                Var(
+                                                    "C",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "eqC2",
+                                            args: [
+                                                Var(
+                                                    "C",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "eqC3",
+                                            args: [
+                                                Var(
+                                                    "C",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "eqC2",
+                                            args: [
+                                                Var(
+                                                    "D",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "giveEmpty",
+                                                    args: [],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "empty",
+                                                    args: [],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "giveEmpty",
+                                                    args: [],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Coercion(
+                                                CoercionExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "empty",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    coercions: [
+                                                        Type(
+                                                            Atom(
+                                                                Int,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Coercion(
+                                                CoercionExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "giveEmpty",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    coercions: [
+                                                        Type(
+                                                            Atom(
+                                                                Bool,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "empty",
+                                                    args: [],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "giveEmpty2",
+                                                    args: [],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "empty",
+                                                    args: [],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "giveEmpty2",
+                                                    args: [],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Coercion(
+                                                CoercionExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "empty",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    coercions: [
+                                                        Type(
+                                                            Atom(
+                                                                Int,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Coercion(
+                                                CoercionExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "giveEmpty2",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    coercions: [
+                                                        Type(
+                                                            Atom(
+                                                                Bool,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "empty",
+                                                    args: [],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "giveEmpty3",
+                                                    args: [],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "empty",
+                                                    args: [],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "giveEmpty3",
+                                                    args: [],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Coercion(
+                                                CoercionExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "empty",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    coercions: [
+                                                        Type(
+                                                            Atom(
+                                                                Int,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Coercion(
+                                                CoercionExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "giveEmpty3",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    coercions: [
+                                                        Type(
+                                                            Atom(
+                                                                Bool,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "empty",
+                                                    args: [],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "giveEmpty3",
+                                                    args: [],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "C",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+const C: int;
+
+const D: bool;
+
+function empty<alpha>(): alpha;
+
+function eqC<alpha>(x: alpha): bool {
+  x == C
+}
+
+function giveEmpty<alpha>(): alpha {
+  empty()
+}
+
+function {:inline true} eqC2<alpha>(x: alpha): bool {
+  x == C
+}
+
+function {:inline true} giveEmpty2<alpha>(): alpha {
+  empty()
+}
+
+function eqC3<alpha>(x: alpha): bool;
+
+axiom {:inline true} (forall <alpha> x: alpha :: eqC3(x) == (x == C));
+
+function giveEmpty3<alpha>(): alpha;
+
+axiom {:inline true} (forall <alpha> :: giveEmpty3() : alpha == empty());
+
+procedure P() {
+  assert eqC(C);
+  assert eqC2(C);
+  assert eqC3(C);
+  assert eqC2(D);
+}
+
+procedure Q() {
+  assert giveEmpty() == empty();
+  assert giveEmpty() == empty() : int;
+  assert giveEmpty() : bool == empty();
+  assert giveEmpty2() == empty();
+  assert giveEmpty2() == empty() : int;
+  assert giveEmpty2() : bool == empty();
+  assert giveEmpty3() == empty();
+  assert giveEmpty3() == empty() : int;
+  assert giveEmpty3() : bool == empty();
+  assert giveEmpty3() == C;
+}
+
+[Input - ../../vendor/boogie/Test/inline/polyInline.bpl]
+// RUN: %boogie /typeEncoding:predicates /logPrefix:p "%s" > "%t"
+// RUN: %boogie /typeEncoding:arguments /logPrefix:a "%s" >> "%t"
+// RUN: %diff "%s.expect" "%t"
+
+const C:int;
+const D:bool;
+
+function empty<alpha>() returns (alpha);
+
+function eqC<alpha>(x:alpha) returns (bool) { x == C }
+function giveEmpty<alpha>() returns (alpha) { empty() }
+
+function {:inline true} eqC2<alpha>(x:alpha) returns (bool) { x == C }
+function {:inline true} giveEmpty2<alpha>() returns (alpha) { empty() }
+
+function eqC3<alpha>(x:alpha) returns (bool);
+axiom {:inline true} (forall<alpha> x:alpha :: eqC3(x) == (x == C));
+
+function giveEmpty3<alpha>() returns (alpha);
+axiom {:inline true} (forall<alpha> :: giveEmpty3():alpha == empty());
+
+procedure P() {
+  assert eqC(C);
+  assert eqC2(C);
+  assert eqC3(C);
+  assert eqC2(D);  // should not be provable
+}
+
+procedure Q() {
+  assert giveEmpty() == empty();
+  assert giveEmpty() == empty():int;
+  assert giveEmpty():bool == empty();
+
+  assert giveEmpty2() == empty();
+  assert giveEmpty2() == empty():int;
+  assert giveEmpty2():bool == empty();
+
+  assert giveEmpty3() == empty();
+  assert giveEmpty3() == empty():int;
+  assert giveEmpty3():bool == empty();
+
+  assert giveEmpty3() == C;     // should not be provable
+}

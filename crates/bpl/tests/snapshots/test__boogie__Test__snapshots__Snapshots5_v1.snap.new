@@ -1,0 +1,194 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P0$proc#0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P0",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: Some(
+                                FuncCall(
+                                    FuncCall {
+                                        target: "F",
+                                        args: [
+                                            Var(
+                                                "n",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P0$impl#0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P0",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: BoolLit(
+                                    false,
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "checksum",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "F#0",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "F",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "n",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                BoolLit(
+                    true,
+                ),
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure {:checksum "P0$proc#0"} P0(n: int where F(n));
+
+implementation {:id "P0"} {:checksum "P0$impl#0"} P0(n: int) {
+  assert false;
+}
+
+function {:checksum "F#0"} F(n: int): bool {
+  true
+}
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots5.v1.bpl]
+procedure {:checksum "P0$proc#0"} P0(n: int where F(n));
+// Action: verify
+implementation {:id "P0"} {:checksum "P0$impl#0"} P0(n: int)
+{
+    assert false;
+}
+
+function {:checksum "F#0"} F(n: int) : bool
+{
+    true
+}

@@ -1,0 +1,88 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "p",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: BoolLit(
+                            false,
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "p",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    StructuredCmd(
+                        If(
+                            IfCmd {
+                                guard: Asterisk,
+                                then: [],
+                                else_: Some(
+                                    Else(
+                                        [],
+                                    ),
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+]
+
+[Printed]
+procedure p();
+  ensures false;
+
+implementation p() {
+  if (*) {
+  } else {
+  }
+}
+
+[Input - ../../vendor/boogie/Test/test2/BadLineNumber.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+procedure p();
+  ensures false;
+
+implementation p()
+{
+    if (*)
+    {
+    }
+    else
+    {
+    }
+}

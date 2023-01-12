@@ -1,0 +1,240 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "m",
+                                        ],
+                                        type_: Map(
+                                            MapType {
+                                                type_params: [
+                                                    "a",
+                                                ],
+                                                keys: [
+                                                    App(
+                                                        TypeApp {
+                                                            head: "a",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ],
+                                                value: Atom(
+                                                    Int,
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "m",
+                                            subscripts: [
+                                                [
+                                                    BvLit(
+                                                        BvLit {
+                                                            n: "23",
+                                                            width: "5",
+                                                        },
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "17",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "m",
+                                            subscripts: [
+                                                [
+                                                    BvLit(
+                                                        BvLit {
+                                                            n: "21",
+                                                            width: "5",
+                                                        },
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "19",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "m",
+                                            subscripts: [
+                                                [
+                                                    BvLit(
+                                                        BvLit {
+                                                            n: "21",
+                                                            width: "6",
+                                                        },
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Neg(
+                                            NegExpr {
+                                                op: Arith,
+                                                expr: Nat(
+                                                    "3",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "m",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                BvLit(
+                                                                    BvLit {
+                                                                        n: "23",
+                                                                        width: "5",
+                                                                    },
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "17",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "m",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                BvLit(
+                                                                    BvLit {
+                                                                        n: "21",
+                                                                        width: "6",
+                                                                    },
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "3",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure P() {
+  var m: <a>[a]int;
+
+  m[23bv5] := 17;
+  m[21bv5] := 19;
+  m[21bv6] := -3;
+  assert m[23bv5] == 17;
+  assert m[21bv6] == 3;
+}
+
+[Input - ../../vendor/boogie/Test/bitvectors/bv5.bpl]
+// RUN: %boogie  "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+procedure P() returns () {
+  var m : <a>[a]int;
+
+  m[23bv5] := 17;
+  m[21bv5] := 19;
+  m[21bv6] := -3;
+
+  assert m[23bv5] == 17;
+  assert m[21bv6] == 3; // should not be provable
+}

@@ -1,0 +1,186 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "Option",
+                    type_params: [
+                        "_",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "None",
+            type_params: [
+                "T",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Option",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "Some",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "t",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Option",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "B",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "i",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                FuncCall(
+                    FuncCall {
+                        target: "B",
+                        args: [
+                            FuncCall(
+                                FuncCall {
+                                    target: "Some",
+                                    args: [
+                                        Var(
+                                            "i",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ),
+        },
+    ),
+]
+
+[Printed]
+type {:datatype} Option _;
+
+function {:constructor} None<T>(): Option T;
+
+function {:constructor} Some<T>(t: T): Option T;
+
+function B<T>(i: T): bool {
+  B(Some(i))
+}
+
+[Input - ../../vendor/boogie/Test/monomorphize/finite-inst-error2.bpl]
+// RUN: %boogie /monomorphize "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// test for use of cycle of increasing types
+
+type {:datatype} Option _;
+function {:constructor} None<T>(): Option T;
+function {:constructor} Some<T>(t: T): Option T;
+
+function B<T>(i: T) : bool
+{
+    B(Some(i))
+}

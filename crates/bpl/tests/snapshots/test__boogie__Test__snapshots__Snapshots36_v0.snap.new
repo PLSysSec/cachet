@@ -1,0 +1,265 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "checksum",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "2",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "F",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                BoolLit(
+                    true,
+                ),
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "b",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "1",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "p",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "l",
+                                    ],
+                                    type_: Map(
+                                        MapType {
+                                            type_params: [],
+                                            keys: [
+                                                Atom(
+                                                    Int,
+                                                ),
+                                            ],
+                                            value: Atom(
+                                                Bool,
+                                            ),
+                                        },
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                ],
+                stmt_list: [
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "l",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Quant(
+                                        QuantExpr {
+                                            kind: Lambda,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "n",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Int,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: FuncCall(
+                                                    FuncCall {
+                                                        target: "F",
+                                                        args: [],
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Array(
+                                    ArrayExpr {
+                                        expr: Var(
+                                            "l",
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [
+                                                    Nat(
+                                                        "0",
+                                                    ),
+                                                ],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+]
+
+[Printed]
+function {:checksum "2"} F(): bool {
+  true
+}
+
+procedure {:checksum "0"} P(b: bool);
+
+implementation {:id "P"} {:checksum "1"} P(p: bool) {
+  var l: [int]bool;
+
+  l := (lambda n: int :: F());
+  assert l[0];
+}
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots36.v0.bpl]
+function {:checksum "2"} F() : bool
+{
+    true
+}
+
+procedure {:checksum "0"} P(b: bool);
+
+implementation {:id "P"} {:checksum "1"} P(p: bool)
+{
+    var l: [int]bool;
+
+    l := (lambda n: int :: F());
+    assert l[0];
+}

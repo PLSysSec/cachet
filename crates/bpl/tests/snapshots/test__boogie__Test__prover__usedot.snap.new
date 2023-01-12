@@ -1,0 +1,81 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            ".x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                ".x",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure foo() {
+  var .x: int;
+
+  assert .x == 0;
+}
+
+[Input - ../../vendor/boogie/Test/prover/usedot.bpl]
+// RUN: %boogie -proverLog:"%t.smt2" "%s"
+// RUN: %OutputCheck "%s" --file-to-check="%t.smt2"
+procedure foo() {
+  // . is an illegal starting character in SMT-LIBv2
+  // so test that we don't emit it as a symbol name.
+  // CHECK-L:(declare-fun q@.x () Int)
+  var .x:int;
+  assert .x == 0;
+}

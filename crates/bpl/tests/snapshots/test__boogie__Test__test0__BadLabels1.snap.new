@@ -1,0 +1,801 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "X",
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "Y",
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P1",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "X",
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "y",
+                                                ),
+                                                op: Lt,
+                                                rhs: Nat(
+                                                    "100",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Label(
+                                                Label {
+                                                    ident: "X",
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "Q",
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "y",
+                                                ),
+                                                op: Eq,
+                                                rhs: Nat(
+                                                    "102",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        LabelOrCmd(
+                                            Label(
+                                                Label {
+                                                    ident: "A",
+                                                },
+                                            ),
+                                        ),
+                                        TransferCmd(
+                                            Goto(
+                                                GotoCmd {
+                                                    labels: [
+                                                        "Q",
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: Some(
+                                        ElseIf(
+                                            IfCmd {
+                                                guard: Expr(
+                                                    Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "y",
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Nat(
+                                                                "104",
+                                                            ),
+                                                        },
+                                                    ),
+                                                ),
+                                                then: [
+                                                    LabelOrCmd(
+                                                        Label(
+                                                            Label {
+                                                                ident: "B",
+                                                            },
+                                                        ),
+                                                    ),
+                                                ],
+                                                else_: Some(
+                                                    Else(
+                                                        [
+                                                            LabelOrCmd(
+                                                                Label(
+                                                                    Label {
+                                                                        ident: "C",
+                                                                    },
+                                                                ),
+                                                            ),
+                                                            TransferCmd(
+                                                                Goto(
+                                                                    GotoCmd {
+                                                                        labels: [
+                                                                            "K",
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "y",
+                                                ),
+                                                op: Lt,
+                                                rhs: Nat(
+                                                    "1000",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Label(
+                                                Label {
+                                                    ident: "K",
+                                                },
+                                            ),
+                                        ),
+                                        TransferCmd(
+                                            Goto(
+                                                GotoCmd {
+                                                    labels: [
+                                                        "A",
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Expr(
+                                                        Rel(
+                                                            RelExpr {
+                                                                lhs: Factor(
+                                                                    Factor {
+                                                                        lhs: Var(
+                                                                            "y",
+                                                                        ),
+                                                                        op: Mod,
+                                                                        rhs: Nat(
+                                                                            "2",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                op: Eq,
+                                                                rhs: Nat(
+                                                                    "0",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    then: [
+                                                        TransferCmd(
+                                                            Goto(
+                                                                GotoCmd {
+                                                                    labels: [
+                                                                        "L",
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                        LabelOrCmd(
+                                                            Label(
+                                                                Label {
+                                                                    ident: "M",
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: None,
+                                                },
+                                            ),
+                                        ),
+                                        TransferCmd(
+                                            Goto(
+                                                GotoCmd {
+                                                    labels: [
+                                                        "K",
+                                                        "L",
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Label(
+                                                Label {
+                                                    ident: "L",
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Asterisk,
+                                                    then: [
+                                                        TransferCmd(
+                                                            Goto(
+                                                                GotoCmd {
+                                                                    labels: [
+                                                                        "M",
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: None,
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "B",
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Break",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        StructuredCmd(
+                            Break(
+                                BreakCmd {
+                                    label: None,
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Asterisk,
+                                    then: [
+                                        StructuredCmd(
+                                            Break(
+                                                BreakCmd {
+                                                    label: None,
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "A",
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Asterisk,
+                                    then: [
+                                        StructuredCmd(
+                                            Break(
+                                                BreakCmd {
+                                                    label: Some(
+                                                        "A",
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "B",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Nat(
+                                                "2",
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "n",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Asterisk,
+                                    invariants: [],
+                                    body: [
+                                        StructuredCmd(
+                                            Break(
+                                                BreakCmd {
+                                                    label: Some(
+                                                        "B",
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            Break(
+                                                BreakCmd {
+                                                    label: None,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Label(
+                                                Label {
+                                                    ident: "C",
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            While(
+                                                WhileCmd {
+                                                    guard: Asterisk,
+                                                    invariants: [],
+                                                    body: [
+                                                        LabelOrCmd(
+                                                            Claim(
+                                                                ClaimCmd {
+                                                                    kind: Assert,
+                                                                    attrs: [],
+                                                                    proposition: Rel(
+                                                                        RelExpr {
+                                                                            lhs: Var(
+                                                                                "n",
+                                                                            ),
+                                                                            op: Lt,
+                                                                            rhs: Nat(
+                                                                                "100",
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            Break(
+                                                BreakCmd {
+                                                    label: Some(
+                                                        "A",
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            Break(
+                                                BreakCmd {
+                                                    label: Some(
+                                                        "C",
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Label(
+                                                Label {
+                                                    ident: "F",
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            Break(
+                                                BreakCmd {
+                                                    label: Some(
+                                                        "F",
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "D",
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Asterisk,
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Label(
+                                                Label {
+                                                    ident: "E",
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            While(
+                                                WhileCmd {
+                                                    guard: Asterisk,
+                                                    invariants: [],
+                                                    body: [
+                                                        StructuredCmd(
+                                                            If(
+                                                                IfCmd {
+                                                                    guard: Asterisk,
+                                                                    then: [
+                                                                        StructuredCmd(
+                                                                            Break(
+                                                                                BreakCmd {
+                                                                                    label: None,
+                                                                                },
+                                                                            ),
+                                                                        ),
+                                                                    ],
+                                                                    else_: Some(
+                                                                        ElseIf(
+                                                                            IfCmd {
+                                                                                guard: Asterisk,
+                                                                                then: [
+                                                                                    StructuredCmd(
+                                                                                        If(
+                                                                                            IfCmd {
+                                                                                                guard: Asterisk,
+                                                                                                then: [
+                                                                                                    StructuredCmd(
+                                                                                                        Break(
+                                                                                                            BreakCmd {
+                                                                                                                label: Some(
+                                                                                                                    "E",
+                                                                                                                ),
+                                                                                                            },
+                                                                                                        ),
+                                                                                                    ),
+                                                                                                ],
+                                                                                                else_: None,
+                                                                                            },
+                                                                                        ),
+                                                                                    ),
+                                                                                ],
+                                                                                else_: Some(
+                                                                                    Else(
+                                                                                        [
+                                                                                            StructuredCmd(
+                                                                                                Break(
+                                                                                                    BreakCmd {
+                                                                                                        label: Some(
+                                                                                                            "D",
+                                                                                                        ),
+                                                                                                    },
+                                                                                                ),
+                                                                                            ),
+                                                                                        ],
+                                                                                    ),
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure P0() {
+  goto X;
+  goto Y;
+}
+
+procedure P1(y: int) {
+  goto X;
+  while (y < 100) {
+    X:
+  }
+  Q:
+  if (y == 102) {
+    A:
+    goto Q;
+  } else if (y == 104) {
+    B:
+  } else {
+    C:
+    goto K;
+  }
+  while (y < 1000) {
+    K:
+    goto A;
+    if (y mod 2 == 0) {
+      goto L;
+      M:
+    }
+    goto K, L;
+    L:
+    if (*) {
+      goto M;
+    }
+  }
+  goto B;
+}
+
+procedure Break(n: int) {
+  break;
+  if (*) {
+    break;
+  }
+  A:
+  if (*) {
+    break A;
+  }
+  B:
+  assert 2 <= n;
+  while (*) {
+    break B;
+    break;
+    C:
+    while (*) {
+      assert n < 100;
+    }
+    break A;
+    break C;
+    F:
+    break F;
+  }
+  D:
+  while (*) {
+    E:
+    while (*) {
+      if (*) {
+        break;
+      } else if (*) {
+        if (*) {
+          break E;
+        }
+      } else {
+        break D;
+      }
+    }
+  }
+}
+
+[Input - ../../vendor/boogie/Test/test0/BadLabels1.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure P0()
+{
+  // these labels don't exist at all
+  goto X;  // error: undefined label
+  goto Y;  // error: undefined label
+}
+
+procedure P1(y: int)
+{
+  goto X;  
+  while (y < 100)
+  {
+    X:
+  }
+
+  Q:
+  if (y == 102) {
+    A:
+    goto Q;
+  } else if (y == 104) {
+    B:
+  } else {
+    C:
+    goto K;  
+  }
+
+  while (y < 1000)
+  {
+    K:
+    goto A;  
+    if (y mod 2 == 0) {
+      goto L;
+      M:
+    }
+    goto K, L;
+    L:
+    if (*) {
+      goto M;  
+    }
+  }
+  goto B;  
+}
+
+
+procedure Break(n: int)
+{
+  break;  // error: break not inside a loop
+  if (*) {
+    break;  // error: label-less break not inside a loop
+  }
+  
+  A:
+  if (*) {
+    break A;  // this is fine, since the break statement uses a label
+  }
+
+  B:
+  assert 2 <= n;
+  while (*) {
+    break B;  // error: B does not label a loop
+    break;
+    C: while (*) { assert n < 100; }
+    break A;     // error: A does not label a loop
+    break C;     // error: A does not label an enclosing loop
+    F: break F;  // error: F does not label an enclosing loop
+  }
+
+  D:
+  while (*) {
+    E:
+    while (*) {
+      if (*) {
+        break;
+      } else if (*) {
+        if (*) { break E; }
+      } else {
+        break D;
+      }
+    }
+  }
+}

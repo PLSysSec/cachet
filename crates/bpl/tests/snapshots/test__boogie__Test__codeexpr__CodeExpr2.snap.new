@@ -1,0 +1,1456 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "T",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "zero",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "T",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "IsProperIndex",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "i",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "size",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Quant(
+                            QuantExpr {
+                                kind: ForAll,
+                                body: QuantBody {
+                                    type_params: [],
+                                    bound_vars: [
+                                        AttrTypedIdentsWhere {
+                                            attrs: [],
+                                            typed_idents_where: TypedIdentsWhere {
+                                                typed_idents: TypedIdents {
+                                                    idents: [
+                                                        "i",
+                                                    ],
+                                                    type_: Atom(
+                                                        Int,
+                                                    ),
+                                                },
+                                                where_: None,
+                                            },
+                                        },
+                                    ],
+                                    attrs: [],
+                                    expr: Implies(
+                                        ImpliesExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "IsProperIndex",
+                                                    args: [
+                                                        Var(
+                                                            "i",
+                                                        ),
+                                                        Var(
+                                                            "n",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "a",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "i",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: Var(
+                                                        "zero",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Q",
+                                        params: [
+                                            Var(
+                                                "a",
+                                            ),
+                                            Var(
+                                                "n",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Quant(
+                            QuantExpr {
+                                kind: ForAll,
+                                body: QuantBody {
+                                    type_params: [],
+                                    bound_vars: [
+                                        AttrTypedIdentsWhere {
+                                            attrs: [],
+                                            typed_idents_where: TypedIdentsWhere {
+                                                typed_idents: TypedIdents {
+                                                    idents: [
+                                                        "i",
+                                                    ],
+                                                    type_: Atom(
+                                                        Int,
+                                                    ),
+                                                },
+                                                where_: None,
+                                            },
+                                        },
+                                    ],
+                                    attrs: [],
+                                    expr: Implies(
+                                        ImpliesExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "IsProperIndex",
+                                                    args: [
+                                                        Var(
+                                                            "i",
+                                                        ),
+                                                        Var(
+                                                            "n",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            rhs: Code(
+                                                CodeExpr {
+                                                    local_vars: [],
+                                                    spec_blocks: [
+                                                        SpecBlock {
+                                                            label: "B",
+                                                            cmds: [],
+                                                            transfer: Return(
+                                                                SpecReturn {
+                                                                    value: Rel(
+                                                                        RelExpr {
+                                                                            lhs: Array(
+                                                                                ArrayExpr {
+                                                                                    expr: Var(
+                                                                                        "a",
+                                                                                    ),
+                                                                                    subscripts: [
+                                                                                        ArraySubscript {
+                                                                                            keys: [
+                                                                                                Var(
+                                                                                                    "i",
+                                                                                                ),
+                                                                                            ],
+                                                                                            value: None,
+                                                                                        },
+                                                                                    ],
+                                                                                },
+                                                                            ),
+                                                                            op: Eq,
+                                                                            rhs: Var(
+                                                                                "zero",
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "P",
+                                        params: [
+                                            Var(
+                                                "a",
+                                            ),
+                                            Var(
+                                                "n",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "A",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Implies(
+                                        ImpliesExpr {
+                                            lhs: Quant(
+                                                QuantExpr {
+                                                    kind: ForAll,
+                                                    body: QuantBody {
+                                                        type_params: [],
+                                                        bound_vars: [
+                                                            AttrTypedIdentsWhere {
+                                                                attrs: [],
+                                                                typed_idents_where: TypedIdentsWhere {
+                                                                    typed_idents: TypedIdents {
+                                                                        idents: [
+                                                                            "i",
+                                                                        ],
+                                                                        type_: Atom(
+                                                                            Int,
+                                                                        ),
+                                                                    },
+                                                                    where_: None,
+                                                                },
+                                                            },
+                                                        ],
+                                                        attrs: [],
+                                                        expr: Implies(
+                                                            ImpliesExpr {
+                                                                lhs: FuncCall(
+                                                                    FuncCall {
+                                                                        target: "IsProperIndex",
+                                                                        args: [
+                                                                            Var(
+                                                                                "i",
+                                                                            ),
+                                                                            Var(
+                                                                                "n",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Array(
+                                                                            ArrayExpr {
+                                                                                expr: Var(
+                                                                                    "a",
+                                                                                ),
+                                                                                subscripts: [
+                                                                                    ArraySubscript {
+                                                                                        keys: [
+                                                                                            Var(
+                                                                                                "i",
+                                                                                            ),
+                                                                                        ],
+                                                                                        value: None,
+                                                                                    },
+                                                                                ],
+                                                                            },
+                                                                        ),
+                                                                        op: Eq,
+                                                                        rhs: Var(
+                                                                            "zero",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                },
+                                            ),
+                                            rhs: Quant(
+                                                QuantExpr {
+                                                    kind: ForAll,
+                                                    body: QuantBody {
+                                                        type_params: [],
+                                                        bound_vars: [
+                                                            AttrTypedIdentsWhere {
+                                                                attrs: [],
+                                                                typed_idents_where: TypedIdentsWhere {
+                                                                    typed_idents: TypedIdents {
+                                                                        idents: [
+                                                                            "i",
+                                                                        ],
+                                                                        type_: Atom(
+                                                                            Int,
+                                                                        ),
+                                                                    },
+                                                                    where_: None,
+                                                                },
+                                                            },
+                                                        ],
+                                                        attrs: [],
+                                                        expr: Implies(
+                                                            ImpliesExpr {
+                                                                lhs: FuncCall(
+                                                                    FuncCall {
+                                                                        target: "IsProperIndex",
+                                                                        args: [
+                                                                            Var(
+                                                                                "i",
+                                                                            ),
+                                                                            Var(
+                                                                                "n",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                                rhs: Code(
+                                                                    CodeExpr {
+                                                                        local_vars: [],
+                                                                        spec_blocks: [
+                                                                            SpecBlock {
+                                                                                label: "B",
+                                                                                cmds: [],
+                                                                                transfer: Return(
+                                                                                    SpecReturn {
+                                                                                        value: Rel(
+                                                                                            RelExpr {
+                                                                                                lhs: Array(
+                                                                                                    ArrayExpr {
+                                                                                                        expr: Var(
+                                                                                                            "a",
+                                                                                                        ),
+                                                                                                        subscripts: [
+                                                                                                            ArraySubscript {
+                                                                                                                keys: [
+                                                                                                                    Var(
+                                                                                                                        "i",
+                                                                                                                    ),
+                                                                                                                ],
+                                                                                                                value: None,
+                                                                                                            },
+                                                                                                        ],
+                                                                                                    },
+                                                                                                ),
+                                                                                                op: Eq,
+                                                                                                rhs: Var(
+                                                                                                    "zero",
+                                                                                                ),
+                                                                                            },
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "B",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Implies(
+                                        ImpliesExpr {
+                                            lhs: Quant(
+                                                QuantExpr {
+                                                    kind: ForAll,
+                                                    body: QuantBody {
+                                                        type_params: [],
+                                                        bound_vars: [
+                                                            AttrTypedIdentsWhere {
+                                                                attrs: [],
+                                                                typed_idents_where: TypedIdentsWhere {
+                                                                    typed_idents: TypedIdents {
+                                                                        idents: [
+                                                                            "i",
+                                                                        ],
+                                                                        type_: Atom(
+                                                                            Int,
+                                                                        ),
+                                                                    },
+                                                                    where_: None,
+                                                                },
+                                                            },
+                                                        ],
+                                                        attrs: [],
+                                                        expr: Implies(
+                                                            ImpliesExpr {
+                                                                lhs: FuncCall(
+                                                                    FuncCall {
+                                                                        target: "IsProperIndex",
+                                                                        args: [
+                                                                            Var(
+                                                                                "i",
+                                                                            ),
+                                                                            Var(
+                                                                                "n",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                                rhs: Code(
+                                                                    CodeExpr {
+                                                                        local_vars: [],
+                                                                        spec_blocks: [
+                                                                            SpecBlock {
+                                                                                label: "B",
+                                                                                cmds: [],
+                                                                                transfer: Return(
+                                                                                    SpecReturn {
+                                                                                        value: Rel(
+                                                                                            RelExpr {
+                                                                                                lhs: Array(
+                                                                                                    ArrayExpr {
+                                                                                                        expr: Var(
+                                                                                                            "a",
+                                                                                                        ),
+                                                                                                        subscripts: [
+                                                                                                            ArraySubscript {
+                                                                                                                keys: [
+                                                                                                                    Var(
+                                                                                                                        "i",
+                                                                                                                    ),
+                                                                                                                ],
+                                                                                                                value: None,
+                                                                                                            },
+                                                                                                        ],
+                                                                                                    },
+                                                                                                ),
+                                                                                                op: Eq,
+                                                                                                rhs: Var(
+                                                                                                    "zero",
+                                                                                                ),
+                                                                                            },
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                },
+                                            ),
+                                            rhs: Quant(
+                                                QuantExpr {
+                                                    kind: ForAll,
+                                                    body: QuantBody {
+                                                        type_params: [],
+                                                        bound_vars: [
+                                                            AttrTypedIdentsWhere {
+                                                                attrs: [],
+                                                                typed_idents_where: TypedIdentsWhere {
+                                                                    typed_idents: TypedIdents {
+                                                                        idents: [
+                                                                            "i",
+                                                                        ],
+                                                                        type_: Atom(
+                                                                            Int,
+                                                                        ),
+                                                                    },
+                                                                    where_: None,
+                                                                },
+                                                            },
+                                                        ],
+                                                        attrs: [],
+                                                        expr: Implies(
+                                                            ImpliesExpr {
+                                                                lhs: FuncCall(
+                                                                    FuncCall {
+                                                                        target: "IsProperIndex",
+                                                                        args: [
+                                                                            Var(
+                                                                                "i",
+                                                                            ),
+                                                                            Var(
+                                                                                "n",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                                rhs: Rel(
+                                                                    RelExpr {
+                                                                        lhs: Array(
+                                                                            ArrayExpr {
+                                                                                expr: Var(
+                                                                                    "a",
+                                                                                ),
+                                                                                subscripts: [
+                                                                                    ArraySubscript {
+                                                                                        keys: [
+                                                                                            Var(
+                                                                                                "i",
+                                                                                            ),
+                                                                                        ],
+                                                                                        value: None,
+                                                                                    },
+                                                                                ],
+                                                                            },
+                                                                        ),
+                                                                        op: Eq,
+                                                                        rhs: Var(
+                                                                            "zero",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "C",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "Start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "i",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Int,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "IsProperIndex",
+                                                                args: [
+                                                                    Var(
+                                                                        "i",
+                                                                    ),
+                                                                    Var(
+                                                                        "n",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                        rhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Array(
+                                                                    ArrayExpr {
+                                                                        expr: Var(
+                                                                            "a",
+                                                                        ),
+                                                                        subscripts: [
+                                                                            ArraySubscript {
+                                                                                keys: [
+                                                                                    Var(
+                                                                                        "i",
+                                                                                    ),
+                                                                                ],
+                                                                                value: None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                                op: Eq,
+                                                                rhs: Var(
+                                                                    "zero",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "Next",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "Next",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "i",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Int,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "IsProperIndex",
+                                                                args: [
+                                                                    Var(
+                                                                        "i",
+                                                                    ),
+                                                                    Var(
+                                                                        "n",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                        rhs: Code(
+                                                            CodeExpr {
+                                                                local_vars: [],
+                                                                spec_blocks: [
+                                                                    SpecBlock {
+                                                                        label: "B",
+                                                                        cmds: [],
+                                                                        transfer: Return(
+                                                                            SpecReturn {
+                                                                                value: Rel(
+                                                                                    RelExpr {
+                                                                                        lhs: Array(
+                                                                                            ArrayExpr {
+                                                                                                expr: Var(
+                                                                                                    "a",
+                                                                                                ),
+                                                                                                subscripts: [
+                                                                                                    ArraySubscript {
+                                                                                                        keys: [
+                                                                                                            Var(
+                                                                                                                "i",
+                                                                                                            ),
+                                                                                                        ],
+                                                                                                        value: None,
+                                                                                                    },
+                                                                                                ],
+                                                                                            },
+                                                                                        ),
+                                                                                        op: Eq,
+                                                                                        rhs: Var(
+                                                                                            "zero",
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "D",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "a",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            Atom(
+                                                Int,
+                                            ),
+                                        ],
+                                        value: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "Start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "i",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Int,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "IsProperIndex",
+                                                                args: [
+                                                                    Var(
+                                                                        "i",
+                                                                    ),
+                                                                    Var(
+                                                                        "n",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                        rhs: Code(
+                                                            CodeExpr {
+                                                                local_vars: [],
+                                                                spec_blocks: [
+                                                                    SpecBlock {
+                                                                        label: "B",
+                                                                        cmds: [],
+                                                                        transfer: Return(
+                                                                            SpecReturn {
+                                                                                value: Rel(
+                                                                                    RelExpr {
+                                                                                        lhs: Array(
+                                                                                            ArrayExpr {
+                                                                                                expr: Var(
+                                                                                                    "a",
+                                                                                                ),
+                                                                                                subscripts: [
+                                                                                                    ArraySubscript {
+                                                                                                        keys: [
+                                                                                                            Var(
+                                                                                                                "i",
+                                                                                                            ),
+                                                                                                        ],
+                                                                                                        value: None,
+                                                                                                    },
+                                                                                                ],
+                                                                                            },
+                                                                                        ),
+                                                                                        op: Eq,
+                                                                                        rhs: Var(
+                                                                                            "zero",
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "Next",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "Next",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "i",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Int,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "IsProperIndex",
+                                                                args: [
+                                                                    Var(
+                                                                        "i",
+                                                                    ),
+                                                                    Var(
+                                                                        "n",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                        rhs: Rel(
+                                                            RelExpr {
+                                                                lhs: Array(
+                                                                    ArrayExpr {
+                                                                        expr: Var(
+                                                                            "a",
+                                                                        ),
+                                                                        subscripts: [
+                                                                            ArraySubscript {
+                                                                                keys: [
+                                                                                    Var(
+                                                                                        "i",
+                                                                                    ),
+                                                                                ],
+                                                                                value: None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                                op: Eq,
+                                                                rhs: Var(
+                                                                    "zero",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type T;
+
+const zero: T;
+
+function IsProperIndex(i: int, size: int): bool;
+
+procedure P(a: [int]T, n: int)
+  requires (forall i: int :: IsProperIndex(i, n) ==> a[i] == zero);
+{
+  call Q(a, n);
+}
+
+procedure Q(a: [int]T, n: int)
+  requires (forall i: int :: IsProperIndex(i, n) ==> |{
+    B:
+      return a[i] == zero;
+  }|);
+{
+  call P(a, n);
+}
+
+procedure A(a: [int]T, n: int) {
+  assert (forall i: int :: IsProperIndex(i, n) ==> a[i] == zero) ==> (forall i: int :: IsProperIndex(i, n) ==> |{
+    B:
+      return a[i] == zero;
+  }|);
+}
+
+procedure B(a: [int]T, n: int) {
+  assert (forall i: int :: IsProperIndex(i, n) ==> |{
+    B:
+      return a[i] == zero;
+  }|) ==> (forall i: int :: IsProperIndex(i, n) ==> a[i] == zero);
+}
+
+procedure C(a: [int]T, n: int) {
+  Start:
+  assume (forall i: int :: IsProperIndex(i, n) ==> a[i] == zero);
+  goto Next;
+  Next:
+  assert (forall i: int :: IsProperIndex(i, n) ==> |{
+    B:
+      return a[i] == zero;
+  }|);
+}
+
+procedure D(a: [int]T, n: int) {
+  Start:
+  assume (forall i: int :: IsProperIndex(i, n) ==> |{
+    B:
+      return a[i] == zero;
+  }|);
+  goto Next;
+  Next:
+  assert (forall i: int :: IsProperIndex(i, n) ==> a[i] == zero);
+}
+
+[Input - ../../vendor/boogie/Test/codeexpr/CodeExpr2.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+type T;
+const zero: T;
+
+function IsProperIndex(i: int, size: int): bool;
+
+procedure P(a: [int]T, n: int)
+  requires (forall i : int :: IsProperIndex(i, n) ==> a[i] == zero);
+{
+  call Q(a, n);
+}
+
+procedure Q(a: [int]T, n: int)
+  requires (forall i : int :: IsProperIndex(i, n) ==> |{ B: return a[i] == zero; }|);
+{
+  call P(a, n);
+}
+
+procedure A(a: [int]T, n: int)
+{
+  assert
+    (forall i : int :: IsProperIndex(i, n) ==> a[i] == zero)
+    ==>
+    (forall i : int :: IsProperIndex(i, n) ==> |{ B: return a[i] == zero; }|);
+}
+
+procedure B(a: [int]T, n: int)
+{
+  assert
+    (forall i : int :: IsProperIndex(i, n) ==> |{ B: return a[i] == zero; }|)
+    ==>
+    (forall i : int :: IsProperIndex(i, n) ==> a[i] == zero);
+}
+
+procedure C(a: [int]T, n: int)
+{
+  Start:
+    assume (forall i : int :: IsProperIndex(i, n) ==> a[i] == zero);
+    goto Next;
+  Next:
+    assert (forall i : int :: IsProperIndex(i, n) ==> |{ B: return a[i] == zero; }|);
+}
+
+procedure D(a: [int]T, n: int)
+{
+  Start:
+    assume (forall i : int :: IsProperIndex(i, n) ==> |{ B: return a[i] == zero; }|);
+    goto Next;
+  Next:
+    assert (forall i : int :: IsProperIndex(i, n) ==> a[i] == zero);
+}

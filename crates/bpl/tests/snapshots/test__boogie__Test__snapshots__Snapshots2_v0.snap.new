@@ -1,0 +1,134 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P0$proc#0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P0$impl#0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Call(
+                            CallCmd {
+                                attrs: [],
+                                call_params: CallParams {
+                                    returns: [],
+                                    target: "P0",
+                                    params: [],
+                                },
+                                is_async: false,
+                                is_free: false,
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "F0",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                BoolLit(
+                    true,
+                ),
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure {:checksum "P0$proc#0"} P0();
+
+implementation {:id "P0"} {:checksum "P0$impl#0"} P0() {
+  call P0();
+}
+
+function F0(): bool {
+  true
+}
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots2.v0.bpl]
+procedure {:checksum "P0$proc#0"} P0();
+// Action: verify
+implementation {:id "P0"} {:checksum "P0$impl#0"} P0()
+{
+    call P0();
+}
+
+
+function F0() : bool
+{
+    true
+}

@@ -1,0 +1,859 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "2",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "x",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "pending_async",
+                        params: [],
+                    },
+                ),
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "PA",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "A_Inc",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "PA",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "both",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "2",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "A_Add",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Nat(
+                                                "0",
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "n",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Var(
+                                                    "n",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "IS_invariant",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "INV",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "pending_async",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "A_Inc",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "PAs",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            App(
+                                                TypeApp {
+                                                    head: "PA",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [
+                                Attr(
+                                    AttrContent {
+                                        ident: "pool",
+                                        params: [
+                                            String(
+                                                StringLit {
+                                                    text: "A",
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Nat(
+                                                "0",
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "n",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "add_to_pool",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "A",
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        Var(
+                                                            "i",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        Attr(
+                                            AttrContent {
+                                                ident: "add_to_pool",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "A",
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "i",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Nat(
+                                                        "0",
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Var(
+                                                        "i",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "i",
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Var(
+                                                        "n",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Var(
+                                                    "i",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "PAs",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: FuncCall(
+                                                    FuncCall {
+                                                        target: "MapConst",
+                                                        args: [
+                                                            Nat(
+                                                                "0",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            FuncCall(
+                                                                FuncCall {
+                                                                    target: "A_Inc",
+                                                                    args: [],
+                                                                },
+                                                            ),
+                                                        ],
+                                                        value: Some(
+                                                            Term(
+                                                                Term {
+                                                                    lhs: Var(
+                                                                        "n",
+                                                                    ),
+                                                                    op: Sub,
+                                                                    rhs: Var(
+                                                                        "i",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        ),
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "IS",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "A_Add",
+                                    },
+                                ),
+                                String(
+                                    StringLit {
+                                        text: "INV",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "elim",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "A_Inc",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Async_Add",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "pending_async",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "A_Inc",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "PAs",
+                                ],
+                                type_: Map(
+                                    MapType {
+                                        type_params: [],
+                                        keys: [
+                                            App(
+                                                TypeApp {
+                                                    head: "PA",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        ],
+                                        value: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "add_to_pool",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "A",
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        Nat(
+                                                            "0",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Nat(
+                                                "0",
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "n",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "PAs",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: FuncCall(
+                                                    FuncCall {
+                                                        target: "MapConst",
+                                                        args: [
+                                                            Nat(
+                                                                "0",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            FuncCall(
+                                                                FuncCall {
+                                                                    target: "A_Inc",
+                                                                    args: [],
+                                                                },
+                                                            ),
+                                                        ],
+                                                        value: Some(
+                                                            Var(
+                                                                "n",
+                                                            ),
+                                                        ),
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "both",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                                Expr(
+                                    Nat(
+                                        "2",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "A_Inc",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var {:layer 0, 2} x: int;
+
+type {:pending_async} {:datatype} PA;
+
+function {:constructor} A_Inc(): PA;
+
+procedure {:both} {:layer 2} A_Add(n: int)
+  modifies x;
+{
+  assert 0 <= n;
+  x := x + n;
+}
+
+procedure {:IS_invariant} {:layer 1} INV(n: int) returns ({:pending_async "A_Inc"} PAs: [PA]int)
+  modifies x;
+{
+  var {:pool "A"} i: int;
+
+  assert 0 <= n;
+  assume {:add_to_pool "A", i} {:add_to_pool "A", i + 1} 0 <= i && i <= n;
+  x := x + i;
+  PAs := MapConst(0)[A_Inc() := n - i];
+}
+
+procedure {:atomic} {:layer 1} {:IS "A_Add", "INV"} {:elim "A_Inc"} Async_Add(n: int) returns ({:pending_async "A_Inc"} PAs: [PA]int) {
+  assert {:add_to_pool "A", 0} 0 <= n;
+  PAs := MapConst(0)[A_Inc() := n];
+}
+
+procedure {:both} {:layer 1, 2} A_Inc()
+  modifies x;
+{
+  x := x + 1;
+}
+
+[Input - ../../vendor/boogie/Test/civl/async/async4.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+var {:layer 0,2} x:int;
+
+type {:pending_async}{:datatype} PA;
+function {:constructor} A_Inc() : PA;
+
+procedure {:both}{:layer 2} A_Add (n: int)
+modifies x;
+{ assert 0 <= n; x := x + n; }
+
+procedure {:IS_invariant}{:layer 1} INV(n: int) returns ({:pending_async "A_Inc"} PAs: [PA]int)
+modifies x;
+{
+  var {:pool "A"} i: int;
+  assert 0 <= n;
+  assume {:add_to_pool "A", i} {:add_to_pool "A", i+1} 0 <= i && i <= n;
+  x := x + i;
+  PAs := MapConst(0)[A_Inc() := n - i];
+}
+
+procedure {:atomic}{:layer 1}
+{:IS "A_Add","INV"}{:elim "A_Inc"}
+Async_Add(n: int) returns ({:pending_async "A_Inc"} PAs: [PA]int)
+{
+  assert {:add_to_pool "A", 0} 0 <= n;
+  PAs := MapConst(0)[A_Inc() := n];
+}
+
+procedure {:both}{:layer 1,2} A_Inc ()
+modifies x;
+{ x := x + 1; }

@@ -1,0 +1,310 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "t",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "entrypoint",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "NestedLoops",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "t",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "j",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                        AssignLhs {
+                                            ident: "j",
+                                            subscripts: [],
+                                        },
+                                        AssignLhs {
+                                            ident: "t",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                        Nat(
+                                            "0",
+                                        ),
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Lt,
+                                                rhs: Nat(
+                                                    "2",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "j",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Nat(
+                                                            "0",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        StructuredCmd(
+                                            While(
+                                                WhileCmd {
+                                                    guard: Expr(
+                                                        Rel(
+                                                            RelExpr {
+                                                                lhs: Var(
+                                                                    "j",
+                                                                ),
+                                                                op: Lt,
+                                                                rhs: Nat(
+                                                                    "3",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    invariants: [],
+                                                    body: [
+                                                        LabelOrCmd(
+                                                            Assign(
+                                                                AssignCmd {
+                                                                    lhs: [
+                                                                        AssignLhs {
+                                                                            ident: "t",
+                                                                            subscripts: [],
+                                                                        },
+                                                                    ],
+                                                                    rhs: [
+                                                                        Term(
+                                                                            Term {
+                                                                                lhs: Var(
+                                                                                    "t",
+                                                                                ),
+                                                                                op: Add,
+                                                                                rhs: Nat(
+                                                                                    "1",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                        LabelOrCmd(
+                                                            Assign(
+                                                                AssignCmd {
+                                                                    lhs: [
+                                                                        AssignLhs {
+                                                                            ident: "j",
+                                                                            subscripts: [],
+                                                                        },
+                                                                    ],
+                                                                    rhs: [
+                                                                        Term(
+                                                                            Term {
+                                                                                lhs: Var(
+                                                                                    "j",
+                                                                                ),
+                                                                                op: Add,
+                                                                                rhs: Nat(
+                                                                                    "1",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "i",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "i",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: BoolLit(
+                                        true,
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var t: int;
+
+procedure {:entrypoint} NestedLoops()
+  modifies t;
+{
+  var i: int, j: int;
+
+  i, j, t := 0, 0, 0;
+  while (i < 2) {
+    j := 0;
+    while (j < 3) {
+      t := t + 1;
+      j := j + 1;
+    }
+    i := i + 1;
+  }
+  assume true;
+}
+
+[Input - ../../vendor/boogie/Test/extractloops/detLoopExtractNested.bpl]
+// RUN: %boogie  -stratifiedInline:1 -extractLoops -deterministicExtractLoops -recursionBound:100  "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+//This example checks the bug fix in the loop extract for http://symdiff.codeplex.com/workitem/1
+
+var t: int;
+procedure {:entrypoint} NestedLoops()
+modifies t;
+//ensures t == 6;
+{
+   var i:int, j:int;
+   i, j, t := 0, 0, 0;
+   while(i < 2) {
+     j := 0;
+     while (j < 3) {
+       t := t + 1;
+       j := j + 1;
+     }
+     i := i + 1;
+   }
+   assume true; //would be provable (!true) wihtout the fix
+}

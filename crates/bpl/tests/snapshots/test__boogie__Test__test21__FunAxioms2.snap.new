@@ -1,0 +1,298 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "T",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "f",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "g",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "T",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "c",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "T",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: FuncCall(
+                        FuncCall {
+                            target: "f",
+                            args: [],
+                        },
+                    ),
+                    op: Ge,
+                    rhs: Nat(
+                        "13",
+                    ),
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: FuncCall(
+                        FuncCall {
+                            target: "g",
+                            args: [],
+                        },
+                    ),
+                    op: Neq,
+                    rhs: Var(
+                        "c",
+                    ),
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "f",
+                                                args: [],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "x",
+                                                    ),
+                                                    op: Ge,
+                                                    rhs: Nat(
+                                                        "0",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "f",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    op: Ge,
+                                                    rhs: Nat(
+                                                        "7",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "g",
+                                                    args: [],
+                                                },
+                                            ),
+                                            op: Neq,
+                                            rhs: Var(
+                                                "c",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "f",
+                                                    args: [],
+                                                },
+                                            ),
+                                            op: Ge,
+                                            rhs: Nat(
+                                                "20",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type T;
+
+function f(): int;
+
+function g(): T;
+
+const c: T;
+
+axiom f() >= 13;
+
+axiom g() != c;
+
+procedure P() {
+  var x: int;
+
+  x := f();
+  assert x >= 0 && f() >= 7;
+  assert g() != c;
+  assert f() >= 20;
+}
+
+[Input - ../../vendor/boogie/Test/test21/FunAxioms2.bpl]
+// RUN: %boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
+// RUN: %diff "%s.p.expect" "%t"
+// RUN: %boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
+// RUN: %diff "%s.a.expect" "%t"
+
+type T;
+
+function f() returns (int);      // functions without arguments
+function g() returns (T);
+
+
+const c : T;
+
+axiom (f() >= 13);
+axiom (g() != c);
+
+procedure P() returns () {
+  var x : int;
+
+  x := f();
+
+  assert x >= 0 && f() >= 7;
+  assert g() != c;
+  assert f() >= 20;            // should not be provable
+}

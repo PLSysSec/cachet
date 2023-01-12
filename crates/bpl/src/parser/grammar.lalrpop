@@ -1,0 +1,608 @@
+// vim: set tw=99 ts=4 sts=4 sw=4 et:
+
+use crate::ast::*;
+
+use crate::parser::helpers::*;
+
+// `#[prefer_shifts]` is needed to resolve the ambiguity in `CoercionExpr`; see
+// its definition in the `ast` module for more information.
+#[prefer_shifts]
+grammar;
+
+extern {
+  type Error = UserParseError;
+}
+
+pub BoogieProgram: BoogieProgram =
+    <decls:Spanned<Decl>*> => decls.into();
+
+Decl: Decl = {
+    <axiom_decl:AxiomDecl> => axiom_decl.into(),
+    <const_decl:ConstDecl> => const_decl.into(),
+    <func_decl:FuncDecl> => func_decl.into(),
+    <impl_decl:ImplDecl> => impl_decl.into(),
+    <proc_decl:ProcDecl> => proc_decl.into(),
+    <type_decls:TypeDecls> => type_decls.into(),
+    <var_decl:VarDecl> => var_decl.into(),
+};
+
+AxiomDecl: AxiomDecl =
+    "axiom" <attrs:Attr*> <proposition:Proposition> ";" => AxiomDecl { attrs, proposition };
+
+ConstDecl: ConstDecl =
+    "const" <attrs:Attr*> <unique:"unique"?> <consts:TypedIdents> <order_spec:OrderSpec?> ";" =>
+        ConstDecl { attrs, is_unique: unique.is_some(), consts, order_spec };
+
+FuncDecl: FuncDecl =
+    "function" <attrs:Attr*> <ident:Ident> <type_params:TypeParams0> "("
+    <var_params:Comma0<VarOrType>> ")" <returns:FuncReturn> <body:FuncBody> =>
+        FuncDecl { attrs, ident, type_params, var_params, returns, body };
+
+#[inline]
+FuncReturn: VarOrType = {
+    "returns" "(" <VarOrType> ")",
+    ":" <type_:Type> => type_.into(),
+};
+
+#[inline]
+FuncBody: Option<Expr> = {
+    "{" <Some<Expr>> "}",
+    ";" => None,
+};
+
+ImplDecl: ImplDecl =
+    "implementation" <proc_sign:ProcSign> <impl_body:ImplBody> =>
+        ImplDecl { proc_sign, impl_body };
+
+ProcDecl: ProcDecl =
+    "procedure" <proc_sign:ProcSign> <proc_body:ProcBody> => {
+        let (specs, impl_body) = proc_body;
+        ProcDecl { proc_sign, specs, impl_body }
+    };
+
+#[inline]
+ProcBody: (Vec<Spec>, Option<ImplBody>) = {
+    ";" <specs:Spec*> => (specs, None),
+    <specs:Spec*> <impl_body:Some<ImplBody>> => (specs, impl_body),
+};
+
+TypeDecls: TypeDecls =
+    "type" <attrs:Attr*> <decls:Comma1<Spanned<TypeDecl>>> ";" => TypeDecls { attrs, decls };
+
+#[inline]
+TypeDecl: TypeDecl =
+    <ident:Ident> <type_params:Ident*> <type_:("=" <Type>)?> =>
+        TypeDecl { ident, type_params, type_ };
+
+VarDecl: VarDecl =
+    "var" <attrs:Attr*> <vars:TypedIdentsWheres1> ";" => VarDecl { attrs, vars };
+
+OrderSpec: OrderSpec =
+    "extends" <parents:Comma0<OrderSpecParent>> <complete:"complete"?> =>
+        OrderSpec { parents, is_complete: complete.is_some() };
+
+#[inline]
+OrderSpecParent: OrderSpecParent =
+    <unique:"unique"?> <parent:Ident> => OrderSpecParent { is_unique: unique.is_some(), parent };
+
+VarOrType: VarOrType =
+    <attrs:Attr*> <var:(<Ident> ":")?> <type_:Type> => VarOrType { attrs, var, type_ };
+
+ProcSign: ProcSign =
+    <attrs:Attr*> <ident:Ident> <type_params:TypeParams0> "(" <var_params:AttrTypedIdentsWheres0>
+    ")" <returns:("returns" "(" <AttrTypedIdentsWheres0> ")")?> =>
+        ProcSign { attrs, ident, type_params, var_params, returns: returns.unwrap_or_default() };
+
+ImplBody: ImplBody =
+    "{" <local_vars:LocalVars*> <stmt_list:StmtList> "}" => ImplBody { local_vars, stmt_list };
+
+StmtList: StmtList =
+    <stmts:Stmt*> => stmts.into();
+
+#[inline]
+Stmt: Stmt = {
+    <label_or_cmd:LabelOrCmd> => label_or_cmd.into(),
+    <transfer_cmd:TransferCmd> => transfer_cmd.into(),
+    <structured_cmd:StructuredCmd> => structured_cmd.into(),
+};
+
+LocalVars: LocalVars =
+    "var" <attrs:Attr*> <vars:TypedIdentsWheres1> ";" => LocalVars { attrs, vars };
+
+Spec: Spec = {
+    <modifies_spec:ModifiesSpec> => modifies_spec.into(),
+    <contract_spec:ContractSpec> => contract_spec.into(),
+};
+
+ModifiesSpec: ModifiesSpec =
+    "modifies" <vars:Idents0> ";" => ModifiesSpec { vars };
+
+ContractSpec: ContractSpec =
+    <free:"free"?> <kind:ContractKind> <attrs:Attr*> <proposition:Proposition> ";" =>
+        ContractSpec { kind, attrs, proposition, is_free: free.is_some() };
+
+#[inline]
+ContractKind: ContractKind = {
+    "requires" => ContractKind::Requires,
+    "ensures" => ContractKind::Ensures,
+};
+
+LabelOrCmd: LabelOrCmd = {
+    <assign_cmd:AssignCmd> => assign_cmd.into(),
+    <call_cmd:CallCmd> => call_cmd.into(),
+    <claim_cmd:ClaimCmd> => claim_cmd.into(),
+    <havoc_cmd:HavocCmd> => havoc_cmd.into(),
+    <label:Label> => label.into(),
+    <par_call_cmd:ParCallCmd> => par_call_cmd.into(),
+    <yield_cmd:YieldCmd> => yield_cmd.into(),
+};
+
+TransferCmd: TransferCmd = {
+    <goto_cmd:GotoCmd> => goto_cmd.into(),
+    <return_cmd:ReturnCmd> => return_cmd.into(),
+};
+
+StructuredCmd: StructuredCmd = {
+    <break_cmd:BreakCmd> => break_cmd.into(),
+    <if_cmd:IfCmd> => if_cmd.into(),
+    <while_cmd:WhileCmd> => while_cmd.into(),
+};
+
+AssignCmd: AssignCmd =
+    <lhs:Comma1<AssignLhs>> ":=" <rhs:Exprs1> ";" => AssignCmd { lhs, rhs }; 
+
+#[inline]
+AssignLhs: AssignLhs =
+    <ident:Ident> <subscripts:("[" <Exprs0> "]")*> => AssignLhs { ident, subscripts };
+
+BreakCmd: BreakCmd =
+    "break" <label:Ident?> ";" => BreakCmd { label };
+
+CallCmd: CallCmd =
+    <async_:"async"?> <free:"free"?> "call" <attrs:Attr*> <call_params:CallParams> ";" =>
+        CallCmd { attrs, call_params, is_async: async_.is_some(), is_free: free.is_some() };
+
+ClaimCmd: ClaimCmd =
+    <kind:ClaimKind> <attrs:Attr*> <proposition:Proposition> ";" =>
+        ClaimCmd { kind, attrs, proposition };
+
+#[inline]
+ClaimKind: ClaimKind = {
+    "assert" => ClaimKind::Assert,
+    "assume" => ClaimKind::Assume,
+};
+
+GotoCmd: GotoCmd =
+    "goto" <labels:Idents1> ";" => GotoCmd { labels };
+
+HavocCmd: HavocCmd =
+    "havoc" <vars:Idents1> ";" => HavocCmd { vars };
+
+IfCmd: IfCmd =
+    "if" <guard:Guard> "{" <then:StmtList> "}" <else_:ElseClause?> => IfCmd { guard, then, else_ };
+
+#[inline]
+ElseClause: ElseClause = {
+    "else" <if_cmd:IfCmd> => if_cmd.into(),
+    "else" "{" <stmt_list:StmtList> "}" => stmt_list.into(),
+};
+
+Label: Label =
+    <ident:Ident> ":" => Label { ident };
+
+ParCallCmd: ParCallCmd =
+    "par" <attrs:Attr*> <calls:SepBy1<CallParams, "|">> ";" => ParCallCmd { attrs, calls };
+
+ReturnCmd: ReturnCmd =
+    "return" ";" => ReturnCmd;
+
+WhileCmd: WhileCmd =
+    "while" <guard:Guard> <invariants:Invariant*> "{" <body:StmtList> "}" =>
+        WhileCmd { guard, invariants, body };
+
+#[inline]
+Invariant: Invariant =
+    <free:"free"?> "invariant" <attrs:Attr*> <expr:Expr> ";" =>
+        Invariant { attrs, expr, is_free: free.is_some() };
+
+YieldCmd: YieldCmd =
+    "yield" ";" => YieldCmd;
+
+CallParams: CallParams = {
+    <target:Ident> "(" <params:Exprs0> ")" =>
+        CallParams { returns: Idents::default(), target, params },
+    <returns:Idents1> ":=" <target:Ident> "(" <params:Exprs0> ")" =>
+        CallParams { returns, target, params },
+};
+
+Guard: Guard = {
+    "(" "*" ")" => Guard::Asterisk,
+    "(" <expr:Expr> ")" => expr.into(),
+};
+
+Type: Type = {
+    <type_atom:TypeAtom> => type_atom.into(),
+    <type_app:TypeApp<Ident>> => type_app.into(),
+    <map_type:MapType> => map_type.into(),
+};
+
+#[inline]
+TypeApp<Rule>: TypeApp<Rule> =
+    <head:Rule> <tail:Box<TypeArgs>?> => TypeApp { head, tail };
+
+TypeArgs: TypeArgs = {
+    <atom_app:TypeApp<TypeAtom>> => atom_app.into(),
+    <type_app:TypeApp<Ident>> => type_app.into(),
+    <map_type:MapType> => map_type.into(),
+};
+
+TypeAtom: TypeAtom = {
+    "int" => TypeAtom::Int,
+    "real" => TypeAtom::Real,
+    "bool" => TypeAtom::Bool,
+    "(" <type_:Type> ")" => type_.into(),
+};
+
+MapType: MapType =
+    <type_params:TypeParams0> "[" <keys:Comma0<Type>> "]" <value:Box<Type>> =>
+        MapType { type_params, keys, value };
+
+#[inline]
+Exprs1: Exprs =
+    <exprs:Comma1<Expr>> => Exprs { exprs };
+
+#[inline]
+Exprs0: Exprs =
+    <exprs:Comma0<Expr>> => Exprs { exprs };
+
+#[inline]
+Proposition = Expr;
+
+#[inline]
+Expr = EquivExpr;
+
+EquivExpr: Expr = {
+    <lhs:EquivExpr> EquivOp <rhs:ImpliesExpr> => EquivExpr { lhs, rhs }.into(),
+    ImpliesExpr,
+};
+
+EquivOp = { "<==>", "⇔" };
+
+ImpliesExpr: Expr = {
+    <lhs:LogicalExpr> ImpliesOp <rhs:ImpliesExpr> => ImpliesExpr { lhs, rhs }.into(),
+    ExpliesExpr,
+};
+
+ExpliesExpr: Expr = {
+    <lhs:ExpliesExpr> ExpliesOp <rhs:LogicalExpr> => ExpliesExpr { lhs, rhs }.into(),
+    LogicalExpr,
+};
+
+ImpliesOp = { "==>", "⇒" }
+ExpliesOp = { "<==", "⇐" }
+
+LogicalExpr = { AndExpr, OrExpr, RelExpr };
+
+AndExpr: Expr = {
+    <lhs:AndExpr> AndOp <rhs:RelExpr> => LogicalExpr { op: LogicalOp::And, lhs, rhs }.into(),
+    <lhs:RelExpr> AndOp <rhs:RelExpr> => LogicalExpr { op: LogicalOp::And, lhs, rhs }.into(),
+};
+
+OrExpr: Expr = {
+    <lhs:OrExpr> OrOp <rhs:RelExpr> => LogicalExpr { op: LogicalOp::Or, lhs, rhs }.into(),
+    <lhs:RelExpr> OrOp <rhs:RelExpr> => LogicalExpr { op: LogicalOp::Or, lhs, rhs }.into(),
+};
+
+AndOp = { "&&", "∧" }
+OrOp = { "||", "∨" }
+
+RelExpr: Expr = {
+    <lhs:BvTerm> <op:RelOp> <rhs:BvTerm> => RelExpr { op, lhs, rhs }.into(),
+    BvTerm,
+};
+
+RelOp: RelOp = {
+    "==" => RelOp::Eq,
+    "<" => RelOp::Lt,
+    ">" => RelOp::Gt,
+    "<=" => RelOp::Le,
+    ">=" => RelOp::Ge,
+    "!=" => RelOp::Neq,
+    "<:" => RelOp::Subtype,
+    "≠" => RelOp::Neq,
+    "≤" => RelOp::Le,
+    "≥" => RelOp::Ge,
+};
+
+BvTerm: Expr = {
+    <lhs:BvTerm> "++" <rhs:Term> => BvTerm { lhs, rhs }.into(),
+    Term,
+};
+
+Term: Expr = {
+    <lhs:Term> <op:AddOp> <rhs:Factor> => Term { op, lhs, rhs }.into(),
+    Factor,
+};
+
+AddOp: AddOp = {
+    "+" => AddOp::Add,
+    "-" => AddOp::Sub,
+};
+
+Factor: Expr = {
+    <lhs:Factor> <op:MulOp> <rhs:Power> => Factor { op, lhs, rhs }.into(),
+    Power,
+};
+
+MulOp: MulOp = {
+    "*" => MulOp::Mul,
+    "div" => MulOp::Div,
+    "mod" => MulOp::Mod,
+    "/" => MulOp::RealDiv,
+};
+
+Power: Expr = {
+    <lhs:UnaryExpr> "**" <rhs:Power> => Power { lhs, rhs }.into(),
+    UnaryExpr,
+};
+
+UnaryExpr: Expr = {
+    <neg_expr:NegExpr> => neg_expr.into(),
+    CoercionExpr,
+};
+
+#[inline]
+NegExpr: NegExpr =
+    <op:NegOp> <expr:UnaryExpr> => NegExpr { op, expr }.into();
+
+NegOp: NegOp = {
+    "-" => NegOp::Arith,
+    "!" => NegOp::Logical,
+    "¬" => NegOp::Logical,
+};
+
+CoercionExpr: Expr = {
+    <expr:ArrayExpr> <coercions:(":" <Coercion>)+> => CoercionExpr { expr, coercions }.into(),
+    ArrayExpr,
+};
+
+#[inline]
+Coercion: Coercion = {
+    <type_:Type> => type_.into(),
+    <nat:Nat> => nat.into(),
+};
+
+ArrayExpr: Expr = {
+    <expr:AtomExpr> <subscripts:ArraySubscript+> => ArrayExpr { expr, subscripts }.into(),
+    AtomExpr,
+};
+
+#[inline]
+ArraySubscript: ArraySubscript =
+    "[" <keys:Exprs0> <value:(":=" <Expr>)?> "]" => ArraySubscript { keys, value };
+
+AtomExpr: Expr = {
+    <bool_lit:BoolLit> => bool_lit.into(),
+    <nat:Nat> => Expr::Nat(nat),
+    <dec:Dec> => dec.into(),
+    <float:Float> => float.into(),
+    <bv_lit:BvLit> => bv_lit.into(),
+    <var:Ident> => Expr::Var(var),
+    <func_call:FuncCall> => func_call.into(),
+    <old_expr:OldExpr> => old_expr.into(),
+    <arith_coercion_expr:ArithCoercionExpr> => arith_coercion_expr.into(),
+    ParenExpr,
+    <quant_expr:QuantExpr> => quant_expr.into(),
+    <if_then_else_expr:IfThenElseExpr> => if_then_else_expr.into(),
+    <code_expr:CodeExpr> => code_expr.into(),
+};
+
+BoolLit: bool = {
+    "false" => false,
+    "true" => true,
+};
+
+#[inline]
+FuncCall: FuncCall =
+    <target:Ident> "(" <args:Exprs0> ")" => FuncCall { target, args };
+
+OldExpr: OldExpr =
+    "old" "(" <expr:Expr> ")" => OldExpr { expr };
+
+ArithCoercionExpr: ArithCoercionExpr =
+    <kind:ArithCoercionKind> "(" <expr:Expr> ")" => ArithCoercionExpr { kind, expr };
+
+#[inline]
+ArithCoercionKind: ArithCoercionKind = {
+    "int" => ArithCoercionKind::Int,
+    "real" => ArithCoercionKind::Real,
+};
+
+QuantExpr: QuantExpr =
+    "(" <kind:QuantKind> <body:QuantBody> ")" => QuantExpr { kind, body };
+
+#[inline]
+QuantKind: QuantKind = {
+    "forall" => QuantKind::ForAll,
+    "exists" => QuantKind::Exists,
+    "lambda" => QuantKind::Lambda,
+    "∀" => QuantKind::ForAll,
+    "∃" => QuantKind::Exists,
+    "λ" => QuantKind::Lambda,
+};
+
+QuantBody: QuantBody =
+    <bindings:QuantBindings> QSep <attrs:AttrOrTrigger*> <expr:Expr> => {
+        let (type_params, bound_vars) = bindings;
+        QuantBody { type_params, bound_vars, attrs, expr }
+    };
+
+#[inline]
+QuantBindings: (TypeParams, BoundVars) = {
+    <type_params:TypeParams1> <bound_vars:BoundVars0> => (type_params, bound_vars),
+    <bound_vars:BoundVars1> => (TypeParams::default(), bound_vars),
+};
+
+QSep = { "::", "•" };
+
+#[inline]
+BoundVars1 = AttrTypedIdentsWheres1;
+
+#[inline]
+BoundVars0 = AttrTypedIdentsWheres0;
+
+IfThenElseExpr: IfThenElseExpr =
+    "if" <cond:Expr> "then" <then:Expr> "else" <else_:Expr> =>
+        IfThenElseExpr { cond, then, else_ };
+
+CodeExpr: CodeExpr =
+    "|{" <local_vars:LocalVars*> <spec_blocks:SpecBlock+> "}|" =>
+        CodeExpr { local_vars, spec_blocks };
+
+SpecBlock: SpecBlock =
+    <label:Ident> ":" <cmds:LabelOrCmd*> <transfer:SpecTransfer> ";" =>
+        SpecBlock { label, cmds, transfer };
+
+#[inline]
+SpecTransfer: SpecTransfer = {
+    <spec_goto:SpecGoto> => spec_goto.into(),
+    <spec_return:SpecReturn> => spec_return.into(),
+};
+
+#[inline]
+SpecGoto: SpecGoto =
+    "goto" <labels:Idents1> => SpecGoto { labels };
+
+#[inline]
+SpecReturn: SpecReturn =
+    "return" <value:Expr> => SpecReturn { value };
+
+#[inline]
+Nat = Digits;
+
+// This ends up being a bit annoying because we need to prevent whitespace from
+// being matched between the sub-tokens, so the whole thing really needs to be
+// parsed as one token. We then have to effectively re-parse that token to pull
+// it apart.
+Dec: Dec =
+    <dec:r"[0-9]+(e-?[0-9]+|\.[0-9]+(e-?[0-9]+)?)"> => decode_dec(dec);
+
+// Same for this.
+Float: Float =
+    <float:r"(-?0x[0-9A-Fa-f]+\.[0-9A-Fa-f]+e-?[0-9]+f|0(NaN|nan|[+-]oo))[0-9]+e[0-9]+"> =>
+        decode_float(float);
+
+// And for this. Boy, it'd be nice of we could use capture groups in LALRPOP.
+BvLit: BvLit =
+    <bv_lit:r"[0-9]+bv[0-9]+"> => decode_bv_lit(bv_lit);
+
+ParenExpr: Expr = "(" <Expr> ")";
+
+#[inline]
+AttrTypedIdentsWheres1: AttrTypedIdentsWheres =
+    <items:Comma1<Spanned<AttrTypedIdentsWhere>>> => AttrTypedIdentsWheres { items };
+
+#[inline]
+AttrTypedIdentsWheres0: AttrTypedIdentsWheres =
+    <items:Comma0<Spanned<AttrTypedIdentsWhere>>> => AttrTypedIdentsWheres { items };
+
+AttrTypedIdentsWhere: AttrTypedIdentsWhere =
+    <attrs:Attr*> <typed_idents_where:TypedIdentsWhere> =>
+        AttrTypedIdentsWhere { attrs, typed_idents_where };
+
+#[inline]
+TypedIdentsWheres1: TypedIdentsWheres =
+    <items:Comma1<Spanned<TypedIdentsWhere>>> => TypedIdentsWheres { items };
+
+#[inline]
+TypedIdentsWheres0: TypedIdentsWheres =
+    <items:Comma0<Spanned<TypedIdentsWhere>>> => TypedIdentsWheres { items };
+
+TypedIdentsWhere: TypedIdentsWhere =
+    <typed_idents:TypedIdents> <where_:("where" <Expr>)?> =>
+        TypedIdentsWhere { typed_idents, where_ };
+
+TypedIdents: TypedIdents =
+    <idents:Idents1> ":" <type_:Type> => TypedIdents { idents, type_ };
+
+#[inline]
+Idents1: Idents =
+    <idents:Comma1<Spanned<Ident>>> => Idents { idents };
+
+#[inline]
+Idents0: Idents =
+    <idents:Comma0<Spanned<Ident>>> => Idents { idents };
+
+TypeParams1: TypeParams =
+    "<" <params:Idents1> ">" => TypeParams { params };
+
+#[inline]
+TypeParams0: TypeParams = {
+    => TypeParams::default(),
+    TypeParams1,
+};
+
+#[inline]
+Attr = AttrOrTrigger;
+
+AttrOrTrigger: AttrOrTrigger = {
+    "{" <attr_content:AttrContent> "}" => attr_content.into(),
+    "{" <exprs:Exprs1> "}" => AttrOrTrigger::Trigger(exprs),
+};
+
+#[inline]
+AttrContent: AttrContent =
+    ":" <ident:Ident> <params:Comma0<AttrParam>> => AttrContent { ident, params };
+
+AttrParam: AttrParam = {
+    <string_lit:StringLit> => string_lit.into(),
+    <expr:Expr> => expr.into(),
+};
+
+StringLit: StringLit =
+    <string_lit:r#""(\\"|[^\n"])*""#> => 
+        StringLit { text: string_lit[1..string_lit.len() - 1].to_owned() };
+
+Ident: Ident =
+    <ident:r"\\?[A-Za-z'~#$^_.?`][A-Za-z0-9'~#$^_.?`]*"> => Ident::from(ident);
+
+Digits: Digits =
+    <digits:r"[0-9]+"> => digits.to_owned();
+
+Spanned<Rule>: Spanned<Rule> =
+    <start: @L> <value: Rule> <end: @R> =>
+        Spanned::new(Span::new(start as RawIndex, end as RawIndex), value);
+
+SepBy1<Item, Sep>: Vec<Item> =
+    <mut xs:(<Item> Sep)*> <x:Item> => {
+        xs.push(x);
+        xs
+    };
+
+SepBy0<Item, Sep>: Vec<Item> = {
+    => Vec::new(),
+    SepBy1<Item, Sep>,
+};
+
+#[inline]
+Comma1<Rule> = SepBy1<Rule, ",">;
+
+#[inline]
+Comma0<Rule> = SepBy0<Rule, ",">;
+
+Box<Rule>: Box<Rule> =
+    <value: Rule> =>
+        Box::new(value);
+
+Some<T>: Option<T> =
+    <x:T> => Some(x);
+
+match {
+    // Skip whitespace.
+    r"\s*" => {},
+    // Skip line comments.
+    r"//[^\n\r]*[\n\r]*" => {},
+    // Skip block comments.
+    r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/" => {},
+    _
+}

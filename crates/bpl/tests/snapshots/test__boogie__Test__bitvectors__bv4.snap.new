@@ -1,0 +1,330 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "a",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "bv32",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: FuncCall(
+                        FuncCall {
+                            target: "a",
+                            args: [],
+                        },
+                    ),
+                    op: Eq,
+                    rhs: FuncCall(
+                        FuncCall {
+                            target: "a",
+                            args: [],
+                        },
+                    ),
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: BvLit(
+                        BvLit {
+                            n: "0",
+                            width: "5",
+                        },
+                    ),
+                    op: Neq,
+                    rhs: BvLit(
+                        BvLit {
+                            n: "1",
+                            width: "5",
+                        },
+                    ),
+                },
+            ),
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "$x",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "g",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "$x",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Field",
+                    type_params: [
+                        "x",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "$gmem",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [
+                                    "x",
+                                ],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "ref",
+                                            tail: None,
+                                        },
+                                    ),
+                                    App(
+                                        TypeApp {
+                                            head: "Field",
+                                            tail: Some(
+                                                App(
+                                                    TypeApp {
+                                                        head: "x",
+                                                        tail: None,
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ],
+                                value: App(
+                                    TypeApp {
+                                        head: "x",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: true,
+            consts: TypedIdents {
+                idents: [
+                    "f",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Field",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "$x",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "qq",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "$gmem",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "$gmem",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "null",
+                                                    ),
+                                                    Var(
+                                                        "f",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "g",
+                                                args: [],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "ref",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "null",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "ref",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+]
+
+[Printed]
+function a(): bv32;
+
+axiom a() == a();
+
+axiom 0bv5 != 1bv5;
+
+type $x;
+
+function g(): $x;
+
+type Field x;
+
+var $gmem: <x>[ref, Field x]x;
+
+const unique f: Field $x;
+
+procedure qq()
+  modifies $gmem;
+{
+  $gmem[null, f] := g();
+}
+
+type ref;
+
+const null: ref;
+
+[Input - ../../vendor/boogie/Test/bitvectors/bv4.bpl]
+// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+function a() returns(bv32);
+axiom a() == a();
+
+axiom 0bv5 != 1bv5;
+
+
+// -------------------------
+type $x;
+function g() returns($x);
+type Field x;
+var $gmem : <x>[ref, Field x] x;
+const unique f : Field $x;
+
+procedure qq()
+  modifies $gmem;
+{ 
+   $gmem[null, f] := g();
+}
+
+
+type ref;
+const null : ref;

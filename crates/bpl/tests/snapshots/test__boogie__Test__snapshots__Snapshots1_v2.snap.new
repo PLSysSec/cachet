@@ -1,0 +1,217 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P1$proc#0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P1",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P1$impl#0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Call(
+                            CallCmd {
+                                attrs: [],
+                                call_params: CallParams {
+                                    returns: [],
+                                    target: "P2",
+                                    params: [],
+                                },
+                                is_async: false,
+                                is_free: false,
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P2$proc#1",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P2",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: BoolLit(
+                            false,
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P2",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P2$impl#1",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P2",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Nat(
+                                            "2",
+                                        ),
+                                        op: Neq,
+                                        rhs: Nat(
+                                            "2",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+]
+
+[Printed]
+procedure {:checksum "P1$proc#0"} P1();
+
+implementation {:id "P1"} {:checksum "P1$impl#0"} P1() {
+  call P2();
+}
+
+procedure {:checksum "P2$proc#1"} P2();
+  requires false;
+
+implementation {:id "P2"} {:checksum "P2$impl#1"} P2() {
+  assert 2 != 2;
+}
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots1.v2.bpl]
+procedure {:checksum "P1$proc#0"} P1();
+// Action: verify
+implementation {:id "P1"} {:checksum "P1$impl#0"} P1()
+{
+    call P2();
+}
+
+
+procedure {:checksum "P2$proc#1"} P2();
+  requires false;
+// Action: verify
+implementation {:id "P2"} {:checksum "P2$impl#1"} P2()
+{
+    assert 2 != 2;
+}

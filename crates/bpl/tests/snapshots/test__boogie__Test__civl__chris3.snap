@@ -1,0 +1,232 @@
+---
+source: crates/bpl/tests/test.rs
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "95",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "skip",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "94",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "skip",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "H",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "94",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "skip",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "A",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "95",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            ParCall(
+                                ParCallCmd {
+                                    attrs: [],
+                                    calls: [
+                                        CallParams {
+                                            returns: [],
+                                            target: "A",
+                                            params: [],
+                                        },
+                                        CallParams {
+                                            returns: [],
+                                            target: "H",
+                                            params: [],
+                                        },
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure {:atomic} {:layer 95} skip() {
+}
+
+procedure {:yields} {:layer 94} {:refines "skip"} H() {
+}
+
+procedure {:yields} {:layer 94} {:refines "skip"} A() {
+}
+
+procedure {:yields} {:layer 95} P() {
+  par A() | H();
+}
+
+[Input - ../../vendor/boogie/Test/civl/chris3.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+procedure{:atomic}{:layer 95} skip() { }
+
+procedure{:yields}{:layer 94} {:refines "skip"} H()
+{
+}
+
+procedure{:yields}{:layer 94} {:refines "skip"} A()
+{
+}
+
+procedure{:yields}{:layer 95} P()
+{
+  par A() | H();
+}

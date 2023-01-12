@@ -1,0 +1,539 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "g",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "h",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                            "h",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Var(
+                                    "b0",
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Old(
+                                            OldExpr {
+                                                expr: Var(
+                                                    "g",
+                                                ),
+                                            },
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "g",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "AcquireLock",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "ReleaseLock",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "AcquireLock",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                            "h",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Var(
+                                    "b1",
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Old(
+                                            OldExpr {
+                                                expr: Var(
+                                                    "g",
+                                                ),
+                                            },
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "g",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "h",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "g",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "g",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "1",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "ReleaseLock",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                            "h",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Implies(
+                            ImpliesExpr {
+                                lhs: Var(
+                                    "b2",
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Old(
+                                            OldExpr {
+                                                expr: Var(
+                                                    "g",
+                                                ),
+                                            },
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "g",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "g",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "h",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "main",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                            "h",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "g",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "foo",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "g",
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "0",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "existential",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "b0",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "existential",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "b1",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "existential",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "b2",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+]
+
+[Printed]
+var g: int;
+
+var h: int;
+
+procedure foo()
+  modifies g, h;
+  ensures b0 ==> old (g) == g;
+{
+  call AcquireLock();
+  call ReleaseLock();
+}
+
+procedure AcquireLock()
+  modifies g, h;
+  ensures b1 ==> old (g) == g;
+{
+  h := g;
+  g := 1;
+}
+
+procedure ReleaseLock()
+  modifies g, h;
+  ensures b2 ==> old (g) == g;
+{
+  g := h;
+}
+
+procedure main()
+  modifies g, h;
+{
+  g := 0;
+  call foo();
+  assert g == 0;
+}
+
+const {:existential true} b0: bool;
+
+const {:existential true} b1: bool;
+
+const {:existential true} b2: bool;
+
+[Input - ../../vendor/boogie/Test/houdini/test2.bpl]
+// RUN: %boogie -contractInfer -printAssignment -inlineDepth:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+var g: int;
+var h: int;
+
+procedure foo() 
+modifies g, h;
+ensures b0 ==> old(g) == g;
+{
+  call AcquireLock();
+  call ReleaseLock();
+}
+
+procedure AcquireLock()
+modifies g, h;
+ensures b1 ==> old(g) == g;
+{
+  h := g;
+  g := 1;
+}
+
+procedure ReleaseLock()
+modifies g, h;
+ensures b2 ==> old(g) == g;
+{
+  g := h;
+}
+
+procedure main()
+modifies g, h;
+{
+  g := 0;
+  call foo();
+  assert g == 0;
+}
+
+const {:existential true} b0: bool;
+const {:existential true} b1: bool;
+const {:existential true } b2: bool;

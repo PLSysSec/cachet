@@ -1,0 +1,703 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "float32",
+                    type_params: [],
+                    type_: Some(
+                        App(
+                            TypeApp {
+                                head: "float24e8",
+                                tail: None,
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "fp.add",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "ADD",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "rmode",
+                            tail: None,
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "float32",
+                            tail: None,
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "float32",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "float32",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "fp.eq",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "EQ",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "float32",
+                            tail: None,
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "float32",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "roundingTest",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "f1",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "float32",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "f2",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "float32",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "rm",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "rmode",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "rneSum",
+                                            "rtnSum",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float32",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "rm",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "RNE",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "rneSum",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "f1",
+                                                ),
+                                                op: Add,
+                                                rhs: Var(
+                                                    "f2",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "EQ",
+                                            args: [
+                                                Var(
+                                                    "rneSum",
+                                                ),
+                                                Float(
+                                                    Float {
+                                                        value: Plain(
+                                                            PlainFloatValue {
+                                                                is_neg: false,
+                                                                whole: "1",
+                                                                fract: "000002",
+                                                                exp: Exp {
+                                                                    is_neg: false,
+                                                                    digits: "0",
+                                                                },
+                                                            },
+                                                        ),
+                                                        sig_size: "24",
+                                                        exp_size: "8",
+                                                    },
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "rm",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "RTN",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "rtnSum",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "ADD",
+                                                args: [
+                                                    Var(
+                                                        "rm",
+                                                    ),
+                                                    Var(
+                                                        "f1",
+                                                    ),
+                                                    Var(
+                                                        "f2",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "EQ",
+                                            args: [
+                                                Var(
+                                                    "rtnSum",
+                                                ),
+                                                Float(
+                                                    Float {
+                                                        value: Plain(
+                                                            PlainFloatValue {
+                                                                is_neg: false,
+                                                                whole: "1",
+                                                                fract: "0",
+                                                                exp: Exp {
+                                                                    is_neg: false,
+                                                                    digits: "0",
+                                                                },
+                                                            },
+                                                        ),
+                                                        sig_size: "24",
+                                                        exp_size: "8",
+                                                    },
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Main",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "f1",
+                                            "f2",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float32",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "roundingTest",
+                                        params: [
+                                            Float(
+                                                Float {
+                                                    value: Plain(
+                                                        PlainFloatValue {
+                                                            is_neg: false,
+                                                            whole: "1",
+                                                            fract: "0",
+                                                            exp: Exp {
+                                                                is_neg: false,
+                                                                digits: "0",
+                                                            },
+                                                        },
+                                                    ),
+                                                    sig_size: "24",
+                                                    exp_size: "8",
+                                                },
+                                            ),
+                                            Float(
+                                                Float {
+                                                    value: Plain(
+                                                        PlainFloatValue {
+                                                            is_neg: false,
+                                                            whole: "1",
+                                                            fract: "8",
+                                                            exp: Exp {
+                                                                is_neg: true,
+                                                                digits: "6",
+                                                            },
+                                                        },
+                                                    ),
+                                                    sig_size: "24",
+                                                    exp_size: "8",
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Float(
+                                                        Float {
+                                                            value: Plain(
+                                                                PlainFloatValue {
+                                                                    is_neg: false,
+                                                                    whole: "0",
+                                                                    fract: "ffffff",
+                                                                    exp: Exp {
+                                                                        is_neg: false,
+                                                                        digits: "0",
+                                                                    },
+                                                                },
+                                                            ),
+                                                            sig_size: "24",
+                                                            exp_size: "8",
+                                                        },
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Var(
+                                                        "f1",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "f1",
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Float(
+                                                        Float {
+                                                            value: Plain(
+                                                                PlainFloatValue {
+                                                                    is_neg: false,
+                                                                    whole: "1",
+                                                                    fract: "000002",
+                                                                    exp: Exp {
+                                                                        is_neg: false,
+                                                                        digits: "0",
+                                                                    },
+                                                                },
+                                                            ),
+                                                            sig_size: "24",
+                                                            exp_size: "8",
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Float(
+                                                        Float {
+                                                            value: Plain(
+                                                                PlainFloatValue {
+                                                                    is_neg: false,
+                                                                    whole: "1",
+                                                                    fract: "7ffffe",
+                                                                    exp: Exp {
+                                                                        is_neg: true,
+                                                                        digits: "6",
+                                                                    },
+                                                                },
+                                                            ),
+                                                            sig_size: "24",
+                                                            exp_size: "8",
+                                                        },
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Var(
+                                                        "f2",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "f2",
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Float(
+                                                        Float {
+                                                            value: Plain(
+                                                                PlainFloatValue {
+                                                                    is_neg: false,
+                                                                    whole: "1",
+                                                                    fract: "800002",
+                                                                    exp: Exp {
+                                                                        is_neg: true,
+                                                                        digits: "6",
+                                                                    },
+                                                                },
+                                                            ),
+                                                            sig_size: "24",
+                                                            exp_size: "8",
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "roundingTest",
+                                        params: [
+                                            Var(
+                                                "f1",
+                                            ),
+                                            Var(
+                                                "f2",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type float32 = float24e8;
+
+function {:builtin "fp.add"} ADD(rmode, float32, float32): float32;
+
+function {:builtin "fp.eq"} EQ(float32, float32): bool;
+
+procedure {:inline 1} roundingTest(f1: float32, f2: float32) {
+  var rm: rmode;
+  var rneSum, rtnSum: float32;
+
+  rm := RNE;
+  rneSum := f1 + f2;
+  assert EQ(rneSum, 0x1.000002e0f24e8);
+  rm := RTN;
+  rtnSum := ADD(rm, f1, f2);
+  assert EQ(rtnSum, 0x1.0e0f24e8);
+}
+
+procedure Main() {
+  var f1, f2: float32;
+
+  call roundingTest(0x1.0e0f24e8, 0x1.8e-6f24e8);
+  assume 0x0.ffffffe0f24e8 < f1 && f1 < 0x1.000002e0f24e8;
+  assume 0x1.7ffffee-6f24e8 < f2 && f2 < 0x1.800002e-6f24e8;
+  call roundingTest(f1, f2);
+}
+
+[Input - ../../vendor/boogie/Test/floats/RoundingMode1.bpl]
+// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+type float32 = float24e8;
+
+function {:builtin "fp.add"} ADD(rmode, float32, float32) returns (float32);
+function {:builtin "fp.eq"} EQ(float32, float32) returns (bool);
+
+procedure {:inline 1} roundingTest(f1: float32, f2: float32)
+{
+  var rm: rmode;
+  var rneSum, rtnSum: float32;
+
+  rm := RNE;
+  rneSum := f1 + f2;
+  assert EQ(rneSum,0x1.000002e0f24e8);
+
+  rm := RTN;
+  rtnSum := ADD(rm,f1,f2);
+  assert EQ(rtnSum,0x1.0e0f24e8);
+}
+
+procedure Main()
+{
+  var f1,f2: float32;
+
+  call roundingTest(0x1.0e0f24e8, 0x1.8e-6f24e8);
+
+  assume 0x0.ffffffe0f24e8 < f1 && f1 < 0x1.000002e0f24e8;
+  assume 0x1.7ffffee-6f24e8 < f2 && f2 < 0x1.800002e-6f24e8;
+  call roundingTest(f1, f2);
+}

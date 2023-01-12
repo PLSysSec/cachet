@@ -1,0 +1,989 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "layer",
+                        params: [
+                            Expr(
+                                Nat(
+                                    "0",
+                                ),
+                            ),
+                            Expr(
+                                Nat(
+                                    "2",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "x",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "atomic",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "2",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "MAIN",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Havoc(
+                                HavocCmd {
+                                    vars: [
+                                        "x",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "x",
+                                                    ),
+                                                    op: Gt,
+                                                    rhs: Old(
+                                                        OldExpr {
+                                                            expr: Var(
+                                                                "x",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Factor(
+                                                        Factor {
+                                                            lhs: Term(
+                                                                Term {
+                                                                    lhs: Var(
+                                                                        "x",
+                                                                    ),
+                                                                    op: Sub,
+                                                                    rhs: Old(
+                                                                        OldExpr {
+                                                                            expr: Var(
+                                                                                "x",
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            op: Mod,
+                                                            rhs: Nat(
+                                                                "6",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: Nat(
+                                                        "0",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "MAIN",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "main",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "sync",
+                                                params: [],
+                                            },
+                                        ),
+                                    ],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "a",
+                                        params: [],
+                                    },
+                                    is_async: true,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "left",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "cooperates",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "a",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Gt,
+                                        rhs: Old(
+                                            OldExpr {
+                                                expr: Var(
+                                                    "x",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Factor(
+                                            Factor {
+                                                lhs: Term(
+                                                    Term {
+                                                        lhs: Var(
+                                                            "x",
+                                                        ),
+                                                        op: Sub,
+                                                        rhs: Old(
+                                                            OldExpr {
+                                                                expr: Var(
+                                                                    "x",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                                op: Mod,
+                                                rhs: Nat(
+                                                    "6",
+                                                ),
+                                            },
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "add",
+                                        params: [
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "sync",
+                                                params: [],
+                                            },
+                                        ),
+                                    ],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "b",
+                                        params: [],
+                                    },
+                                    is_async: true,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "left",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "cooperates",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "b",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Gt,
+                                        rhs: Old(
+                                            OldExpr {
+                                                expr: Var(
+                                                    "x",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Factor(
+                                            Factor {
+                                                lhs: Term(
+                                                    Term {
+                                                        lhs: Var(
+                                                            "x",
+                                                        ),
+                                                        op: Sub,
+                                                        rhs: Old(
+                                                            OldExpr {
+                                                                expr: Var(
+                                                                    "x",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                                op: Mod,
+                                                rhs: Nat(
+                                                    "6",
+                                                ),
+                                            },
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "5",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "add",
+                                        params: [
+                                            Nat(
+                                                "2",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "sync",
+                                                params: [],
+                                            },
+                                        ),
+                                    ],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "c",
+                                        params: [],
+                                    },
+                                    is_async: true,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "left",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "cooperates",
+                            params: [],
+                        },
+                    ),
+                ],
+                ident: "c",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "layer",
+                                    params: [
+                                        Expr(
+                                            Nat(
+                                                "1",
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Gt,
+                                        rhs: Old(
+                                            OldExpr {
+                                                expr: Var(
+                                                    "x",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                                op: And,
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Factor(
+                                            Factor {
+                                                lhs: Term(
+                                                    Term {
+                                                        lhs: Var(
+                                                            "x",
+                                                        ),
+                                                        op: Sub,
+                                                        rhs: Old(
+                                                            OldExpr {
+                                                                expr: Var(
+                                                                    "x",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                                op: Mod,
+                                                rhs: Nat(
+                                                    "6",
+                                                ),
+                                            },
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "3",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "add",
+                                        params: [
+                                            Nat(
+                                                "3",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Asterisk,
+                                    then: [
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [
+                                                        Attr(
+                                                            AttrContent {
+                                                                ident: "sync",
+                                                                params: [],
+                                                            },
+                                                        ),
+                                                    ],
+                                                    call_params: CallParams {
+                                                        returns: [],
+                                                        target: "a",
+                                                        params: [],
+                                                    },
+                                                    is_async: true,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "left",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "ADD",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "x",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "x",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "x",
+                                                ),
+                                                op: Add,
+                                                rhs: Var(
+                                                    "n",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "0",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "refines",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "ADD",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "add",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+var {:layer 0, 2} x: int;
+
+procedure {:atomic} {:layer 2} MAIN()
+  modifies x;
+{
+  havoc x;
+  assume x > old (x) && (x - old (x)) mod 6 == 0;
+}
+
+procedure {:yields} {:layer 1} {:refines "MAIN"} main() {
+  async call {:sync} a();
+}
+
+procedure {:yields} {:layer 1} {:left} {:cooperates} a()
+  modifies x;
+  ensures {:layer 1} x > old (x) && (x - old (x)) mod 6 == 0;
+{
+  call add(1);
+  async call {:sync} b();
+}
+
+procedure {:yields} {:layer 1} {:left} {:cooperates} b()
+  modifies x;
+  ensures {:layer 1} x > old (x) && (x - old (x)) mod 6 == 5;
+{
+  call add(2);
+  async call {:sync} c();
+}
+
+procedure {:yields} {:layer 1} {:left} {:cooperates} c()
+  modifies x;
+  ensures {:layer 1} x > old (x) && (x - old (x)) mod 6 == 3;
+{
+  call add(3);
+  if (*) {
+    async call {:sync} a();
+  }
+}
+
+procedure {:left} {:layer 1} ADD(n: int)
+  modifies x;
+{
+  x := x + n;
+}
+
+procedure {:yields} {:layer 0} {:refines "ADD"} add(n: int);
+
+[Input - ../../vendor/boogie/Test/civl/cyclic-concur.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+var {:layer 0,2} x : int;
+
+procedure {:atomic} {:layer 2} MAIN ()
+modifies x;
+{
+  havoc x;
+  assume x > old(x) && (x - old(x)) mod 6 == 0;
+}
+
+
+procedure {:yields} {:layer 1} {:refines "MAIN"} main ()
+{
+  async call {:sync} a();
+}
+
+procedure {:yields} {:layer 1} {:left} {:cooperates} a ()
+modifies x;
+ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 0;
+{
+  call add(1);
+  async call {:sync} b();
+}
+
+procedure {:yields} {:layer 1} {:left} {:cooperates} b ()
+modifies x;
+ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 5;
+{
+  call add(2);
+  async call {:sync} c();
+}
+
+procedure {:yields} {:layer 1} {:left} {:cooperates} c ()
+modifies x;
+ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 3;
+{
+  call add(3);
+  if (*) {
+    async call {:sync} a();
+  }
+}
+
+// ###########################################################################
+// Low level atomic actions
+
+procedure {:left} {:layer 1} ADD (n:int)
+modifies x;
+{ x := x + n; }
+
+procedure {:yields} {:layer 0} {:refines "ADD"} add (n:int);

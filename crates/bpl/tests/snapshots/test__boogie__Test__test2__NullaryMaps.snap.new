@@ -1,0 +1,1074 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "m",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [],
+                                value: Atom(
+                                    Int,
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "p",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [
+                                    "a",
+                                ],
+                                keys: [],
+                                value: App(
+                                    TypeApp {
+                                        head: "a",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "ref",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "null",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "ref",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Array(
+                                    ArrayExpr {
+                                        expr: Var(
+                                            "m",
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "5",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "m",
+                        ],
+                    },
+                ),
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "p",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Array(
+                                    ArrayExpr {
+                                        expr: Var(
+                                            "m",
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "30",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Array(
+                                    ArrayExpr {
+                                        expr: Var(
+                                            "p",
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "null",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "m",
+                                            subscripts: [
+                                                [],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "12",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "p",
+                                            subscripts: [
+                                                [],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "12",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "p",
+                                            subscripts: [
+                                                [],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "p",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "m",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Array(
+                                        ArrayExpr {
+                                            expr: Var(
+                                                "p",
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "m",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "m",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [],
+                                                        value: Some(
+                                                            Nat(
+                                                                "30",
+                                                            ),
+                                                        ),
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "p",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "p",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [],
+                                                        value: Some(
+                                                            Var(
+                                                                "null",
+                                                            ),
+                                                        ),
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "m",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "m",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "5",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "m",
+                                            subscripts: [
+                                                [],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "30",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "m",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "5",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "R",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "p",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "p",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            op: Lt,
+                                            rhs: Nat(
+                                                "3",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Field",
+                    type_params: [
+                        "a",
+                    ],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "HeapType",
+                    type_params: [],
+                    type_: Some(
+                        Map(
+                            MapType {
+                                type_params: [
+                                    "a",
+                                ],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "ref",
+                                            tail: None,
+                                        },
+                                    ),
+                                    App(
+                                        TypeApp {
+                                            head: "Field",
+                                            tail: Some(
+                                                App(
+                                                    TypeApp {
+                                                        head: "a",
+                                                        tail: None,
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ],
+                                value: App(
+                                    TypeApp {
+                                        head: "a",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "F0",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Field",
+                        tail: Some(
+                            AtomApp(
+                                TypeApp {
+                                    head: Int,
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "F1",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Field",
+                        tail: Some(
+                            AtomApp(
+                                TypeApp {
+                                    head: Bool,
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "alloc",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "Field",
+                        tail: Some(
+                            AtomApp(
+                                TypeApp {
+                                    head: Bool,
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "Heap",
+                        ],
+                        type_: App(
+                            TypeApp {
+                                head: "HeapType",
+                                tail: None,
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "FrameCondition",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "this",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "ref",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "Heap",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Quant(
+                            QuantExpr {
+                                kind: ForAll,
+                                body: QuantBody {
+                                    type_params: [
+                                        "a",
+                                    ],
+                                    bound_vars: [
+                                        AttrTypedIdentsWhere {
+                                            attrs: [],
+                                            typed_idents_where: TypedIdentsWhere {
+                                                typed_idents: TypedIdents {
+                                                    idents: [
+                                                        "o",
+                                                    ],
+                                                    type_: App(
+                                                        TypeApp {
+                                                            head: "ref",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                },
+                                                where_: None,
+                                            },
+                                        },
+                                        AttrTypedIdentsWhere {
+                                            attrs: [],
+                                            typed_idents_where: TypedIdentsWhere {
+                                                typed_idents: TypedIdents {
+                                                    idents: [
+                                                        "f",
+                                                    ],
+                                                    type_: App(
+                                                        TypeApp {
+                                                            head: "Field",
+                                                            tail: Some(
+                                                                App(
+                                                                    TypeApp {
+                                                                        head: "a",
+                                                                        tail: None,
+                                                                    },
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                                where_: None,
+                                            },
+                                        },
+                                    ],
+                                    attrs: [],
+                                    expr: Logical(
+                                        LogicalExpr {
+                                            lhs: Logical(
+                                                LogicalExpr {
+                                                    lhs: Logical(
+                                                        LogicalExpr {
+                                                            lhs: Rel(
+                                                                RelExpr {
+                                                                    lhs: Array(
+                                                                        ArrayExpr {
+                                                                            expr: Var(
+                                                                                "Heap",
+                                                                            ),
+                                                                            subscripts: [
+                                                                                ArraySubscript {
+                                                                                    keys: [
+                                                                                        Var(
+                                                                                            "o",
+                                                                                        ),
+                                                                                        Var(
+                                                                                            "f",
+                                                                                        ),
+                                                                                    ],
+                                                                                    value: None,
+                                                                                },
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                    op: Eq,
+                                                                    rhs: Array(
+                                                                        ArrayExpr {
+                                                                            expr: Old(
+                                                                                OldExpr {
+                                                                                    expr: Var(
+                                                                                        "Heap",
+                                                                                    ),
+                                                                                },
+                                                                            ),
+                                                                            subscripts: [
+                                                                                ArraySubscript {
+                                                                                    keys: [
+                                                                                        Var(
+                                                                                            "o",
+                                                                                        ),
+                                                                                        Var(
+                                                                                            "f",
+                                                                                        ),
+                                                                                    ],
+                                                                                    value: None,
+                                                                                },
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            op: Or,
+                                                            rhs: Neg(
+                                                                NegExpr {
+                                                                    op: Logical,
+                                                                    expr: Array(
+                                                                        ArrayExpr {
+                                                                            expr: Old(
+                                                                                OldExpr {
+                                                                                    expr: Var(
+                                                                                        "Heap",
+                                                                                    ),
+                                                                                },
+                                                                            ),
+                                                                            subscripts: [
+                                                                                ArraySubscript {
+                                                                                    keys: [
+                                                                                        Var(
+                                                                                            "o",
+                                                                                        ),
+                                                                                        Var(
+                                                                                            "alloc",
+                                                                                        ),
+                                                                                    ],
+                                                                                    value: None,
+                                                                                },
+                                                                            ],
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: Or,
+                                                    rhs: Logical(
+                                                        LogicalExpr {
+                                                            lhs: Rel(
+                                                                RelExpr {
+                                                                    lhs: Var(
+                                                                        "o",
+                                                                    ),
+                                                                    op: Eq,
+                                                                    rhs: Var(
+                                                                        "this",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            op: And,
+                                                            rhs: Rel(
+                                                                RelExpr {
+                                                                    lhs: Var(
+                                                                        "f",
+                                                                    ),
+                                                                    op: Eq,
+                                                                    rhs: Var(
+                                                                        "F0",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: Or,
+                                            rhs: Logical(
+                                                LogicalExpr {
+                                                    lhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "o",
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Var(
+                                                                "this",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: And,
+                                                    rhs: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "f",
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Var(
+                                                                "F1",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var m: []int;
+
+var p: <a>[]a;
+
+type ref;
+
+const null: ref;
+
+procedure P()
+  requires m[] == 5;
+  modifies m;
+  modifies p;
+  ensures m[] == 30;
+  ensures p[] == null;
+{
+  m[] := 12;
+  p[] := 12;
+  p[] := true;
+  assert p[] == m[];
+  assert p[];
+  m := m[:= 30];
+  p := p[:= null];
+}
+
+procedure Q()
+  modifies m;
+{
+  assert m[] == 5;
+  m[] := 30;
+  assert m[] == 5;
+}
+
+procedure R()
+  modifies p;
+{
+  assert p[] < 3;
+}
+
+type Field a;
+
+type HeapType = <a>[ref, Field a]a;
+
+const F0: Field int;
+
+const F1: Field bool;
+
+const alloc: Field bool;
+
+var Heap: HeapType;
+
+procedure FrameCondition(this: ref)
+  modifies Heap;
+  ensures (forall <a> o: ref, f: Field a :: Heap[o, f] == old (Heap)[o, f] || !old (Heap)[o, alloc] || (o == this && f == F0) || (o == this && f == F1));
+{
+}
+
+[Input - ../../vendor/boogie/Test/test2/NullaryMaps.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// aren't these cool!
+
+var m: []int;
+var p: <a>[]a;
+
+type ref;
+const null: ref;
+
+procedure P()
+  requires m[] == 5;
+  modifies m;
+  modifies p;
+  ensures m[] == 30;
+  ensures p[] == null;
+{
+  m[] := 12;
+  p[] := 12;
+  p[] := true;
+  assert p[] == m[];
+  assert p[];
+  m := m[:= 30];
+  p := p[:=null];
+}
+
+procedure Q()
+  modifies m;
+{
+  assert m[] == 5;  // error
+  m[] := 30;
+  assert m[] == 5;  // error
+}
+
+procedure R()
+  modifies p;
+{
+  assert p[] < 3;  // error
+}
+
+// ----
+
+type Field a;
+type HeapType = <a>[ref, Field a]a;
+const F0: Field int;
+const F1: Field bool;
+const alloc: Field bool;
+var Heap: HeapType;
+procedure FrameCondition(this: ref)
+  modifies Heap;
+  ensures (forall<a> o: ref, f: Field a ::
+    Heap[o,f] == old(Heap)[o,f] ||
+    !old(Heap)[o,alloc] ||
+    (o == this && f == F0) ||
+    (o == this && f == F1)
+    );
+{
+}

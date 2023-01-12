@@ -1,0 +1,16 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parse Error]
+error: unexpected token `where`; expected `;` or `extends`
+  ┌─ ../../vendor/boogie/Test/test0/WhereParsing2.bpl:3:14
+  │
+3 │ const x: int where x < 0;  // error: where clauses not allowed on constants
+  │              ^^^^^
+
+[Input - ../../vendor/boogie/Test/test0/WhereParsing2.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+const x: int where x < 0;  // error: where clauses not allowed on constants

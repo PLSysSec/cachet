@@ -1,0 +1,812 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "x",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "R",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Even",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "y",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: Some(
+                        FuncCall(
+                            FuncCall {
+                                target: "R",
+                                args: [
+                                    Var(
+                                        "y",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "g",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: Some(
+                        Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "g",
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "12",
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: Some(
+                                Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Gt,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: Some(
+                                Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "y",
+                                        ),
+                                        op: Lt,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Lt,
+                                rhs: Nat(
+                                    "100",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Neg(
+                                    NegExpr {
+                                        op: Arith,
+                                        expr: Nat(
+                                            "100",
+                                        ),
+                                    },
+                                ),
+                                op: Lt,
+                                rhs: Var(
+                                    "y",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: Some(
+                                Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Gt,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "y",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: Some(
+                                Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "y",
+                                        ),
+                                        op: Lt,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Lt,
+                                rhs: Nat(
+                                    "100",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Logical(
+                            LogicalExpr {
+                                lhs: Quant(
+                                    QuantExpr {
+                                        kind: ForAll,
+                                        body: QuantBody {
+                                            type_params: [],
+                                            bound_vars: [
+                                                AttrTypedIdentsWhere {
+                                                    attrs: [],
+                                                    typed_idents_where: TypedIdentsWhere {
+                                                        typed_idents: TypedIdents {
+                                                            idents: [
+                                                                "t",
+                                                            ],
+                                                            type_: Atom(
+                                                                Int,
+                                                            ),
+                                                        },
+                                                        where_: Some(
+                                                            FuncCall(
+                                                                FuncCall {
+                                                                    target: "Even",
+                                                                    args: [
+                                                                        Var(
+                                                                            "t",
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                    },
+                                                },
+                                            ],
+                                            attrs: [],
+                                            expr: Rel(
+                                                RelExpr {
+                                                    lhs: Neg(
+                                                        NegExpr {
+                                                            op: Arith,
+                                                            expr: Nat(
+                                                                "100",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Term(
+                                                        Term {
+                                                            lhs: Var(
+                                                                "y",
+                                                            ),
+                                                            op: Add,
+                                                            rhs: Var(
+                                                                "t",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    },
+                                ),
+                                op: Or,
+                                rhs: Quant(
+                                    QuantExpr {
+                                        kind: Exists,
+                                        body: QuantBody {
+                                            type_params: [],
+                                            bound_vars: [
+                                                AttrTypedIdentsWhere {
+                                                    attrs: [],
+                                                    typed_idents_where: TypedIdentsWhere {
+                                                        typed_idents: TypedIdents {
+                                                            idents: [
+                                                                "t",
+                                                            ],
+                                                            type_: Atom(
+                                                                Int,
+                                                            ),
+                                                        },
+                                                        where_: Some(
+                                                            FuncCall(
+                                                                FuncCall {
+                                                                    target: "Even",
+                                                                    args: [
+                                                                        Var(
+                                                                            "t",
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                    },
+                                                },
+                                            ],
+                                            attrs: [],
+                                            expr: Rel(
+                                                RelExpr {
+                                                    lhs: Neg(
+                                                        NegExpr {
+                                                            op: Arith,
+                                                            expr: Nat(
+                                                                "100",
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Term(
+                                                        Term {
+                                                            lhs: Var(
+                                                                "y",
+                                                            ),
+                                                            op: Add,
+                                                            rhs: Var(
+                                                                "t",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "a",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "x",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "b",
+                                        ],
+                                        target: "P",
+                                        params: [
+                                            Var(
+                                                "a",
+                                            ),
+                                        ],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "y",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "b",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "yu",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                            AttrTypedIdentsWhere {
+                                attrs: [
+                                    Attr(
+                                        AttrContent {
+                                            ident: "myAttr",
+                                            params: [],
+                                        },
+                                    ),
+                                ],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Lt,
+                                rhs: Nat(
+                                    "100",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [
+                                    Attr(
+                                        AttrContent {
+                                            ident: "myAttr",
+                                            params: [],
+                                        },
+                                    ),
+                                ],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Lt,
+                                rhs: Nat(
+                                    "100",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "T",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [
+                                    Attr(
+                                        AttrContent {
+                                            ident: "myAttr",
+                                            params: [],
+                                        },
+                                    ),
+                                ],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Eq,
+                                rhs: Var(
+                                    "x",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+const x: int;
+
+function R(int): bool;
+
+function Even(int): bool;
+
+var y: int where R(y);
+
+var g: int where g == 12;
+
+procedure P(x: int where x > 0) returns (y: int where y < 0);
+  requires x < 100;
+  modifies g;
+  ensures -100 < y;
+
+procedure Q(x: int where x > 0) returns (y: int where y < 0)
+  requires x < 100;
+  modifies g;
+  ensures (forall t: int where Even(t) :: -100 < y + t) || (exists t: int where Even(t) :: -100 < y + t);
+{
+  var a: int;
+  var b: int;
+
+  start:
+  a := x;
+  call b := P(a);
+  y := b;
+  return;
+}
+
+axiom (forall yu: bool, {:myAttr} x: int :: x < 100);
+
+axiom (forall {:myAttr} x: int :: x < 100);
+
+axiom (forall <T> {:myAttr} x: T :: x == x);
+
+[Input - ../../vendor/boogie/Test/test0/WhereParsing0.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+const x: int;
+
+function R(int) returns (bool);
+function Even(int) returns (bool);
+
+var y: int where R(y);
+var g: int where g == 12;
+
+procedure P(x: int where x > 0) returns (y: int where y < 0);
+  requires x < 100;
+  modifies g;
+  ensures -100 < y;
+
+procedure Q(x: int where x > 0) returns (y: int where y < 0)
+  requires x < 100;
+  modifies g;
+  ensures (forall t: int where Even(t) :: -100 < y + t) ||  // error: where not allowed in quant
+          (exists t: int where Even(t) :: -100 < y + t);    // error: where not allowed in quant
+{
+  var a: int;
+  var b: int;
+
+  start:
+    a := x;
+    call b := P(a);
+    y := b;
+    return;
+}
+
+axiom (forall yu: bool, {:myAttr} x: int :: x < 100);
+axiom (forall {:myAttr} x: int :: x < 100);
+axiom (forall <T> {:myAttr} x: T :: x == x);

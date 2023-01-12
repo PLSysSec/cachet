@@ -1,0 +1,23 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parse Error]
+error: unexpected token `:`; expected `)` or `,`
+  ┌─ ../../vendor/boogie/Test/test0/Types0.bpl:8:18
+  │
+8 │ function h([U,V]T: int, y: int) returns (z: U);  // parse error
+  │                  ^
+
+[Input - ../../vendor/boogie/Test/test0/Types0.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+type T, U;
+type V;
+
+function f([U,V]T, int) returns (U);
+function g(x: [U,V]T, y: int) returns (z: U);
+function h([U,V]T: int, y: int) returns (z: U);  // parse error
+function k(T: int, y: int) returns (U: [any]int);
+function l(x) returns (int);  // resolve error

@@ -1,0 +1,185 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "2",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [
+                    LocalVars {
+                        attrs: [],
+                        vars: [
+                            TypedIdentsWhere {
+                                typed_idents: TypedIdents {
+                                    idents: [
+                                        "i",
+                                    ],
+                                    type_: Atom(
+                                        Int,
+                                    ),
+                                },
+                                where_: None,
+                            },
+                        ],
+                    },
+                ],
+                stmt_list: [
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "i",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "0",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    StructuredCmd(
+                        While(
+                            WhileCmd {
+                                guard: Asterisk,
+                                invariants: [],
+                                body: [
+                                    LabelOrCmd(
+                                        Assign(
+                                            AssignCmd {
+                                                lhs: [
+                                                    AssignLhs {
+                                                        ident: "i",
+                                                        subscripts: [],
+                                                    },
+                                                ],
+                                                rhs: [
+                                                    Nat(
+                                                        "1",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "i",
+                                        ),
+                                        op: Eq,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+]
+
+[Printed]
+procedure {:checksum "0"} P();
+
+implementation {:id "P"} {:checksum "2"} P() {
+  var i: int;
+
+  i := 0;
+  while (*) {
+    i := 1;
+  }
+  assert i == 0;
+}
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots29.v1.bpl]
+procedure {:checksum "0"} P();
+
+implementation {:id "P"} {:checksum "2"} P()
+{
+    var i: int;
+
+    i := 0;
+
+    while (*)
+    {
+        i := 1;
+    }
+
+    assert i == 0;
+}

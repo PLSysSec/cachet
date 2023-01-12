@@ -1,0 +1,1731 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "set",
+                    type_params: [
+                        "a",
+                    ],
+                    type_: Some(
+                        Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "a",
+                                            tail: None,
+                                        },
+                                    ),
+                                ],
+                                value: Atom(
+                                    Bool,
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "union",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "a",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "set",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "T",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "b",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "set",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "T",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "set",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "T",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                            "b",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "set",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "T",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "union",
+                                        args: [
+                                            Var(
+                                                "a",
+                                            ),
+                                            Var(
+                                                "b",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Quant(
+                                    QuantExpr {
+                                        kind: Lambda,
+                                        body: QuantBody {
+                                            type_params: [],
+                                            bound_vars: [
+                                                AttrTypedIdentsWhere {
+                                                    attrs: [],
+                                                    typed_idents_where: TypedIdentsWhere {
+                                                        typed_idents: TypedIdents {
+                                                            idents: [
+                                                                "x",
+                                                            ],
+                                                            type_: App(
+                                                                TypeApp {
+                                                                    head: "T",
+                                                                    tail: None,
+                                                                },
+                                                            ),
+                                                        },
+                                                        where_: None,
+                                                    },
+                                                },
+                                            ],
+                                            attrs: [],
+                                            expr: Logical(
+                                                LogicalExpr {
+                                                    lhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "a",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "x",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Or,
+                                                    rhs: Array(
+                                                        ArrayExpr {
+                                                            expr: Var(
+                                                                "b",
+                                                            ),
+                                                            subscripts: [
+                                                                ArraySubscript {
+                                                                    keys: [
+                                                                        Var(
+                                                                            "x",
+                                                                        ),
+                                                                    ],
+                                                                    value: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "diff",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "a",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "set",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "T",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "b",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "set",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "T",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "set",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: Some(
+                Quant(
+                    QuantExpr {
+                        kind: Lambda,
+                        body: QuantBody {
+                            type_params: [],
+                            bound_vars: [
+                                AttrTypedIdentsWhere {
+                                    attrs: [],
+                                    typed_idents_where: TypedIdentsWhere {
+                                        typed_idents: TypedIdents {
+                                            idents: [
+                                                "x",
+                                            ],
+                                            type_: App(
+                                                TypeApp {
+                                                    head: "T",
+                                                    tail: None,
+                                                },
+                                            ),
+                                        },
+                                        where_: None,
+                                    },
+                                },
+                            ],
+                            attrs: [],
+                            expr: Logical(
+                                LogicalExpr {
+                                    lhs: Array(
+                                        ArrayExpr {
+                                            expr: Var(
+                                                "a",
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                    op: And,
+                                    rhs: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "b",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "x",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        },
+                    },
+                ),
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "a",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "set",
+                                                tail: Some(
+                                                    AtomApp(
+                                                        TypeApp {
+                                                            head: Int,
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "set",
+                                                tail: Some(
+                                                    AtomApp(
+                                                        TypeApp {
+                                                            head: Int,
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Array(
+                                        ArrayExpr {
+                                            expr: Var(
+                                                "a",
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Nat(
+                                                            "1",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Array(
+                                        ArrayExpr {
+                                            expr: Var(
+                                                "b",
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Nat(
+                                                            "2",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Array(
+                                        ArrayExpr {
+                                            expr: FuncCall(
+                                                FuncCall {
+                                                    target: "union",
+                                                    args: [
+                                                        Var(
+                                                            "a",
+                                                        ),
+                                                        Var(
+                                                            "b",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Nat(
+                                                            "1",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Array(
+                                        ArrayExpr {
+                                            expr: FuncCall(
+                                                FuncCall {
+                                                    target: "union",
+                                                    args: [
+                                                        Var(
+                                                            "a",
+                                                        ),
+                                                        Var(
+                                                            "b",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Nat(
+                                                            "2",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "b",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Nat(
+                                                                    "1",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Array(
+                                        ArrayExpr {
+                                            expr: FuncCall(
+                                                FuncCall {
+                                                    target: "diff",
+                                                    args: [
+                                                        Var(
+                                                            "a",
+                                                        ),
+                                                        Var(
+                                                            "b",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Nat(
+                                                            "1",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Array(
+                                                ArrayExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "diff",
+                                                            args: [
+                                                                Var(
+                                                                    "a",
+                                                                ),
+                                                                Var(
+                                                                    "b",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Nat(
+                                                                    "2",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Polly",
+                type_params: [
+                    "Cracker",
+                ],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "c",
+                                    "d",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "Cracker",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "e",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Cracker",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "e",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "c",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Asterisk,
+                                    then: [
+                                        LabelOrCmd(
+                                            Claim(
+                                                ClaimCmd {
+                                                    kind: Assert,
+                                                    attrs: [],
+                                                    proposition: Quant(
+                                                        QuantExpr {
+                                                            kind: ForAll,
+                                                            body: QuantBody {
+                                                                type_params: [
+                                                                    "T",
+                                                                ],
+                                                                bound_vars: [
+                                                                    AttrTypedIdentsWhere {
+                                                                        attrs: [],
+                                                                        typed_idents_where: TypedIdentsWhere {
+                                                                            typed_idents: TypedIdents {
+                                                                                idents: [
+                                                                                    "t",
+                                                                                ],
+                                                                                type_: App(
+                                                                                    TypeApp {
+                                                                                        head: "T",
+                                                                                        tail: None,
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                            where_: None,
+                                                                        },
+                                                                    },
+                                                                ],
+                                                                attrs: [],
+                                                                expr: Array(
+                                                                    ArrayExpr {
+                                                                        expr: Quant(
+                                                                            QuantExpr {
+                                                                                kind: Lambda,
+                                                                                body: QuantBody {
+                                                                                    type_params: [
+                                                                                        "beta",
+                                                                                    ],
+                                                                                    bound_vars: [
+                                                                                        AttrTypedIdentsWhere {
+                                                                                            attrs: [],
+                                                                                            typed_idents_where: TypedIdentsWhere {
+                                                                                                typed_idents: TypedIdents {
+                                                                                                    idents: [
+                                                                                                        "b",
+                                                                                                    ],
+                                                                                                    type_: App(
+                                                                                                        TypeApp {
+                                                                                                            head: "beta",
+                                                                                                            tail: None,
+                                                                                                        },
+                                                                                                    ),
+                                                                                                },
+                                                                                                where_: None,
+                                                                                            },
+                                                                                        },
+                                                                                        AttrTypedIdentsWhere {
+                                                                                            attrs: [],
+                                                                                            typed_idents_where: TypedIdentsWhere {
+                                                                                                typed_idents: TypedIdents {
+                                                                                                    idents: [
+                                                                                                        "s",
+                                                                                                    ],
+                                                                                                    type_: App(
+                                                                                                        TypeApp {
+                                                                                                            head: "T",
+                                                                                                            tail: None,
+                                                                                                        },
+                                                                                                    ),
+                                                                                                },
+                                                                                                where_: None,
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                    attrs: [],
+                                                                                    expr: Logical(
+                                                                                        LogicalExpr {
+                                                                                            lhs: Rel(
+                                                                                                RelExpr {
+                                                                                                    lhs: Var(
+                                                                                                        "b",
+                                                                                                    ),
+                                                                                                    op: Eq,
+                                                                                                    rhs: Var(
+                                                                                                        "c",
+                                                                                                    ),
+                                                                                                },
+                                                                                            ),
+                                                                                            op: And,
+                                                                                            rhs: Rel(
+                                                                                                RelExpr {
+                                                                                                    lhs: Var(
+                                                                                                        "s",
+                                                                                                    ),
+                                                                                                    op: Eq,
+                                                                                                    rhs: Var(
+                                                                                                        "t",
+                                                                                                    ),
+                                                                                                },
+                                                                                            ),
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            },
+                                                                        ),
+                                                                        subscripts: [
+                                                                            ArraySubscript {
+                                                                                keys: [
+                                                                                    Var(
+                                                                                        "c",
+                                                                                    ),
+                                                                                    Var(
+                                                                                        "t",
+                                                                                    ),
+                                                                                ],
+                                                                                value: None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            },
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Claim(
+                                                ClaimCmd {
+                                                    kind: Assert,
+                                                    attrs: [],
+                                                    proposition: Quant(
+                                                        QuantExpr {
+                                                            kind: ForAll,
+                                                            body: QuantBody {
+                                                                type_params: [
+                                                                    "U",
+                                                                ],
+                                                                bound_vars: [
+                                                                    AttrTypedIdentsWhere {
+                                                                        attrs: [],
+                                                                        typed_idents_where: TypedIdentsWhere {
+                                                                            typed_idents: TypedIdents {
+                                                                                idents: [
+                                                                                    "u",
+                                                                                ],
+                                                                                type_: App(
+                                                                                    TypeApp {
+                                                                                        head: "U",
+                                                                                        tail: None,
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                            where_: None,
+                                                                        },
+                                                                    },
+                                                                ],
+                                                                attrs: [],
+                                                                expr: Array(
+                                                                    ArrayExpr {
+                                                                        expr: Quant(
+                                                                            QuantExpr {
+                                                                                kind: Lambda,
+                                                                                body: QuantBody {
+                                                                                    type_params: [
+                                                                                        "beta",
+                                                                                    ],
+                                                                                    bound_vars: [
+                                                                                        AttrTypedIdentsWhere {
+                                                                                            attrs: [],
+                                                                                            typed_idents_where: TypedIdentsWhere {
+                                                                                                typed_idents: TypedIdents {
+                                                                                                    idents: [
+                                                                                                        "b",
+                                                                                                    ],
+                                                                                                    type_: App(
+                                                                                                        TypeApp {
+                                                                                                            head: "beta",
+                                                                                                            tail: None,
+                                                                                                        },
+                                                                                                    ),
+                                                                                                },
+                                                                                                where_: None,
+                                                                                            },
+                                                                                        },
+                                                                                        AttrTypedIdentsWhere {
+                                                                                            attrs: [],
+                                                                                            typed_idents_where: TypedIdentsWhere {
+                                                                                                typed_idents: TypedIdents {
+                                                                                                    idents: [
+                                                                                                        "s",
+                                                                                                    ],
+                                                                                                    type_: App(
+                                                                                                        TypeApp {
+                                                                                                            head: "U",
+                                                                                                            tail: None,
+                                                                                                        },
+                                                                                                    ),
+                                                                                                },
+                                                                                                where_: None,
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                    attrs: [],
+                                                                                    expr: Logical(
+                                                                                        LogicalExpr {
+                                                                                            lhs: Rel(
+                                                                                                RelExpr {
+                                                                                                    lhs: Var(
+                                                                                                        "b",
+                                                                                                    ),
+                                                                                                    op: Eq,
+                                                                                                    rhs: Var(
+                                                                                                        "c",
+                                                                                                    ),
+                                                                                                },
+                                                                                            ),
+                                                                                            op: And,
+                                                                                            rhs: Rel(
+                                                                                                RelExpr {
+                                                                                                    lhs: Var(
+                                                                                                        "s",
+                                                                                                    ),
+                                                                                                    op: Eq,
+                                                                                                    rhs: Var(
+                                                                                                        "u",
+                                                                                                    ),
+                                                                                                },
+                                                                                            ),
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            },
+                                                                        ),
+                                                                        subscripts: [
+                                                                            ArraySubscript {
+                                                                                keys: [
+                                                                                    Var(
+                                                                                        "u",
+                                                                                    ),
+                                                                                    Var(
+                                                                                        "u",
+                                                                                    ),
+                                                                                ],
+                                                                                value: None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            },
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: Some(
+                                        ElseIf(
+                                            IfCmd {
+                                                guard: Asterisk,
+                                                then: [
+                                                    LabelOrCmd(
+                                                        Claim(
+                                                            ClaimCmd {
+                                                                kind: Assert,
+                                                                attrs: [],
+                                                                proposition: Array(
+                                                                    ArrayExpr {
+                                                                        expr: Quant(
+                                                                            QuantExpr {
+                                                                                kind: Lambda,
+                                                                                body: QuantBody {
+                                                                                    type_params: [
+                                                                                        "V",
+                                                                                    ],
+                                                                                    bound_vars: [
+                                                                                        AttrTypedIdentsWhere {
+                                                                                            attrs: [],
+                                                                                            typed_idents_where: TypedIdentsWhere {
+                                                                                                typed_idents: TypedIdents {
+                                                                                                    idents: [
+                                                                                                        "v",
+                                                                                                    ],
+                                                                                                    type_: App(
+                                                                                                        TypeApp {
+                                                                                                            head: "V",
+                                                                                                            tail: None,
+                                                                                                        },
+                                                                                                    ),
+                                                                                                },
+                                                                                                where_: None,
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                    attrs: [],
+                                                                                    expr: Array(
+                                                                                        ArrayExpr {
+                                                                                            expr: Quant(
+                                                                                                QuantExpr {
+                                                                                                    kind: Lambda,
+                                                                                                    body: QuantBody {
+                                                                                                        type_params: [
+                                                                                                            "beta",
+                                                                                                        ],
+                                                                                                        bound_vars: [
+                                                                                                            AttrTypedIdentsWhere {
+                                                                                                                attrs: [],
+                                                                                                                typed_idents_where: TypedIdentsWhere {
+                                                                                                                    typed_idents: TypedIdents {
+                                                                                                                        idents: [
+                                                                                                                            "b",
+                                                                                                                        ],
+                                                                                                                        type_: App(
+                                                                                                                            TypeApp {
+                                                                                                                                head: "beta",
+                                                                                                                                tail: None,
+                                                                                                                            },
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                    where_: None,
+                                                                                                                },
+                                                                                                            },
+                                                                                                            AttrTypedIdentsWhere {
+                                                                                                                attrs: [],
+                                                                                                                typed_idents_where: TypedIdentsWhere {
+                                                                                                                    typed_idents: TypedIdents {
+                                                                                                                        idents: [
+                                                                                                                            "s",
+                                                                                                                        ],
+                                                                                                                        type_: App(
+                                                                                                                            TypeApp {
+                                                                                                                                head: "V",
+                                                                                                                                tail: None,
+                                                                                                                            },
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                    where_: None,
+                                                                                                                },
+                                                                                                            },
+                                                                                                        ],
+                                                                                                        attrs: [],
+                                                                                                        expr: Logical(
+                                                                                                            LogicalExpr {
+                                                                                                                lhs: Rel(
+                                                                                                                    RelExpr {
+                                                                                                                        lhs: Var(
+                                                                                                                            "b",
+                                                                                                                        ),
+                                                                                                                        op: Eq,
+                                                                                                                        rhs: Var(
+                                                                                                                            "c",
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                ),
+                                                                                                                op: And,
+                                                                                                                rhs: Rel(
+                                                                                                                    RelExpr {
+                                                                                                                        lhs: Var(
+                                                                                                                            "s",
+                                                                                                                        ),
+                                                                                                                        op: Eq,
+                                                                                                                        rhs: Var(
+                                                                                                                            "v",
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                ),
+                                                                                                            },
+                                                                                                        ),
+                                                                                                    },
+                                                                                                },
+                                                                                            ),
+                                                                                            subscripts: [
+                                                                                                ArraySubscript {
+                                                                                                    keys: [
+                                                                                                        Var(
+                                                                                                            "v",
+                                                                                                        ),
+                                                                                                        Var(
+                                                                                                            "v",
+                                                                                                        ),
+                                                                                                    ],
+                                                                                                    value: None,
+                                                                                                },
+                                                                                            ],
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            },
+                                                                        ),
+                                                                        subscripts: [
+                                                                            ArraySubscript {
+                                                                                keys: [
+                                                                                    Var(
+                                                                                        "e",
+                                                                                    ),
+                                                                                ],
+                                                                                value: None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    LabelOrCmd(
+                                                        Claim(
+                                                            ClaimCmd {
+                                                                kind: Assert,
+                                                                attrs: [],
+                                                                proposition: Array(
+                                                                    ArrayExpr {
+                                                                        expr: Quant(
+                                                                            QuantExpr {
+                                                                                kind: Lambda,
+                                                                                body: QuantBody {
+                                                                                    type_params: [
+                                                                                        "W",
+                                                                                    ],
+                                                                                    bound_vars: [
+                                                                                        AttrTypedIdentsWhere {
+                                                                                            attrs: [],
+                                                                                            typed_idents_where: TypedIdentsWhere {
+                                                                                                typed_idents: TypedIdents {
+                                                                                                    idents: [
+                                                                                                        "w",
+                                                                                                    ],
+                                                                                                    type_: App(
+                                                                                                        TypeApp {
+                                                                                                            head: "W",
+                                                                                                            tail: None,
+                                                                                                        },
+                                                                                                    ),
+                                                                                                },
+                                                                                                where_: None,
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                    attrs: [],
+                                                                                    expr: Array(
+                                                                                        ArrayExpr {
+                                                                                            expr: Quant(
+                                                                                                QuantExpr {
+                                                                                                    kind: Lambda,
+                                                                                                    body: QuantBody {
+                                                                                                        type_params: [
+                                                                                                            "beta",
+                                                                                                        ],
+                                                                                                        bound_vars: [
+                                                                                                            AttrTypedIdentsWhere {
+                                                                                                                attrs: [],
+                                                                                                                typed_idents_where: TypedIdentsWhere {
+                                                                                                                    typed_idents: TypedIdents {
+                                                                                                                        idents: [
+                                                                                                                            "b",
+                                                                                                                        ],
+                                                                                                                        type_: App(
+                                                                                                                            TypeApp {
+                                                                                                                                head: "beta",
+                                                                                                                                tail: None,
+                                                                                                                            },
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                    where_: None,
+                                                                                                                },
+                                                                                                            },
+                                                                                                            AttrTypedIdentsWhere {
+                                                                                                                attrs: [],
+                                                                                                                typed_idents_where: TypedIdentsWhere {
+                                                                                                                    typed_idents: TypedIdents {
+                                                                                                                        idents: [
+                                                                                                                            "s",
+                                                                                                                        ],
+                                                                                                                        type_: App(
+                                                                                                                            TypeApp {
+                                                                                                                                head: "W",
+                                                                                                                                tail: None,
+                                                                                                                            },
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                    where_: None,
+                                                                                                                },
+                                                                                                            },
+                                                                                                        ],
+                                                                                                        attrs: [],
+                                                                                                        expr: Logical(
+                                                                                                            LogicalExpr {
+                                                                                                                lhs: Rel(
+                                                                                                                    RelExpr {
+                                                                                                                        lhs: Var(
+                                                                                                                            "b",
+                                                                                                                        ),
+                                                                                                                        op: Eq,
+                                                                                                                        rhs: Var(
+                                                                                                                            "c",
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                ),
+                                                                                                                op: And,
+                                                                                                                rhs: Rel(
+                                                                                                                    RelExpr {
+                                                                                                                        lhs: Var(
+                                                                                                                            "s",
+                                                                                                                        ),
+                                                                                                                        op: Eq,
+                                                                                                                        rhs: Var(
+                                                                                                                            "w",
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                ),
+                                                                                                            },
+                                                                                                        ),
+                                                                                                    },
+                                                                                                },
+                                                                                            ),
+                                                                                            subscripts: [
+                                                                                                ArraySubscript {
+                                                                                                    keys: [
+                                                                                                        Var(
+                                                                                                            "w",
+                                                                                                        ),
+                                                                                                        Var(
+                                                                                                            "w",
+                                                                                                        ),
+                                                                                                    ],
+                                                                                                    value: None,
+                                                                                                },
+                                                                                            ],
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            },
+                                                                        ),
+                                                                        subscripts: [
+                                                                            ArraySubscript {
+                                                                                keys: [
+                                                                                    Var(
+                                                                                        "d",
+                                                                                    ),
+                                                                                ],
+                                                                                value: None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    LabelOrCmd(
+                                                        Assign(
+                                                            AssignCmd {
+                                                                lhs: [
+                                                                    AssignLhs {
+                                                                        ident: "e",
+                                                                        subscripts: [],
+                                                                    },
+                                                                ],
+                                                                rhs: [
+                                                                    Var(
+                                                                        "d",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ),
+                                                ],
+                                                else_: Some(
+                                                    Else(
+                                                        [
+                                                            LabelOrCmd(
+                                                                Claim(
+                                                                    ClaimCmd {
+                                                                        kind: Assume,
+                                                                        attrs: [],
+                                                                        proposition: FuncCall(
+                                                                            FuncCall {
+                                                                                target: "TriggerHappy",
+                                                                                args: [
+                                                                                    Var(
+                                                                                        "c",
+                                                                                    ),
+                                                                                ],
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            ),
+                                                            LabelOrCmd(
+                                                                Claim(
+                                                                    ClaimCmd {
+                                                                        kind: Assert,
+                                                                        attrs: [],
+                                                                        proposition: Quant(
+                                                                            QuantExpr {
+                                                                                kind: Exists,
+                                                                                body: QuantBody {
+                                                                                    type_params: [],
+                                                                                    bound_vars: [
+                                                                                        AttrTypedIdentsWhere {
+                                                                                            attrs: [],
+                                                                                            typed_idents_where: TypedIdentsWhere {
+                                                                                                typed_idents: TypedIdents {
+                                                                                                    idents: [
+                                                                                                        "k",
+                                                                                                    ],
+                                                                                                    type_: App(
+                                                                                                        TypeApp {
+                                                                                                            head: "Cracker",
+                                                                                                            tail: None,
+                                                                                                        },
+                                                                                                    ),
+                                                                                                },
+                                                                                                where_: None,
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                    attrs: [
+                                                                                        Trigger(
+                                                                                            [
+                                                                                                FuncCall(
+                                                                                                    FuncCall {
+                                                                                                        target: "TriggerHappy",
+                                                                                                        args: [
+                                                                                                            Var(
+                                                                                                                "k",
+                                                                                                            ),
+                                                                                                        ],
+                                                                                                    },
+                                                                                                ),
+                                                                                            ],
+                                                                                        ),
+                                                                                    ],
+                                                                                    expr: Array(
+                                                                                        ArrayExpr {
+                                                                                            expr: Quant(
+                                                                                                QuantExpr {
+                                                                                                    kind: Lambda,
+                                                                                                    body: QuantBody {
+                                                                                                        type_params: [
+                                                                                                            "beta",
+                                                                                                        ],
+                                                                                                        bound_vars: [
+                                                                                                            AttrTypedIdentsWhere {
+                                                                                                                attrs: [],
+                                                                                                                typed_idents_where: TypedIdentsWhere {
+                                                                                                                    typed_idents: TypedIdents {
+                                                                                                                        idents: [
+                                                                                                                            "b",
+                                                                                                                        ],
+                                                                                                                        type_: App(
+                                                                                                                            TypeApp {
+                                                                                                                                head: "beta",
+                                                                                                                                tail: None,
+                                                                                                                            },
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                    where_: None,
+                                                                                                                },
+                                                                                                            },
+                                                                                                            AttrTypedIdentsWhere {
+                                                                                                                attrs: [],
+                                                                                                                typed_idents_where: TypedIdentsWhere {
+                                                                                                                    typed_idents: TypedIdents {
+                                                                                                                        idents: [
+                                                                                                                            "m",
+                                                                                                                        ],
+                                                                                                                        type_: App(
+                                                                                                                            TypeApp {
+                                                                                                                                head: "Cracker",
+                                                                                                                                tail: None,
+                                                                                                                            },
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                    where_: None,
+                                                                                                                },
+                                                                                                            },
+                                                                                                        ],
+                                                                                                        attrs: [],
+                                                                                                        expr: Logical(
+                                                                                                            LogicalExpr {
+                                                                                                                lhs: Rel(
+                                                                                                                    RelExpr {
+                                                                                                                        lhs: Var(
+                                                                                                                            "b",
+                                                                                                                        ),
+                                                                                                                        op: Eq,
+                                                                                                                        rhs: Var(
+                                                                                                                            "k",
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                ),
+                                                                                                                op: And,
+                                                                                                                rhs: Rel(
+                                                                                                                    RelExpr {
+                                                                                                                        lhs: Var(
+                                                                                                                            "m",
+                                                                                                                        ),
+                                                                                                                        op: Eq,
+                                                                                                                        rhs: Var(
+                                                                                                                            "c",
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                ),
+                                                                                                            },
+                                                                                                        ),
+                                                                                                    },
+                                                                                                },
+                                                                                            ),
+                                                                                            subscripts: [
+                                                                                                ArraySubscript {
+                                                                                                    keys: [
+                                                                                                        Var(
+                                                                                                            "c",
+                                                                                                        ),
+                                                                                                        Var(
+                                                                                                            "c",
+                                                                                                        ),
+                                                                                                    ],
+                                                                                                    value: None,
+                                                                                                },
+                                                                                            ],
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            ),
+                                                            LabelOrCmd(
+                                                                Claim(
+                                                                    ClaimCmd {
+                                                                        kind: Assert,
+                                                                        attrs: [],
+                                                                        proposition: Quant(
+                                                                            QuantExpr {
+                                                                                kind: ForAll,
+                                                                                body: QuantBody {
+                                                                                    type_params: [],
+                                                                                    bound_vars: [
+                                                                                        AttrTypedIdentsWhere {
+                                                                                            attrs: [],
+                                                                                            typed_idents_where: TypedIdentsWhere {
+                                                                                                typed_idents: TypedIdents {
+                                                                                                    idents: [
+                                                                                                        "k",
+                                                                                                    ],
+                                                                                                    type_: App(
+                                                                                                        TypeApp {
+                                                                                                            head: "Cracker",
+                                                                                                            tail: None,
+                                                                                                        },
+                                                                                                    ),
+                                                                                                },
+                                                                                                where_: None,
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                    attrs: [],
+                                                                                    expr: Array(
+                                                                                        ArrayExpr {
+                                                                                            expr: Quant(
+                                                                                                QuantExpr {
+                                                                                                    kind: Lambda,
+                                                                                                    body: QuantBody {
+                                                                                                        type_params: [
+                                                                                                            "beta",
+                                                                                                        ],
+                                                                                                        bound_vars: [
+                                                                                                            AttrTypedIdentsWhere {
+                                                                                                                attrs: [],
+                                                                                                                typed_idents_where: TypedIdentsWhere {
+                                                                                                                    typed_idents: TypedIdents {
+                                                                                                                        idents: [
+                                                                                                                            "b",
+                                                                                                                        ],
+                                                                                                                        type_: App(
+                                                                                                                            TypeApp {
+                                                                                                                                head: "beta",
+                                                                                                                                tail: None,
+                                                                                                                            },
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                    where_: None,
+                                                                                                                },
+                                                                                                            },
+                                                                                                            AttrTypedIdentsWhere {
+                                                                                                                attrs: [],
+                                                                                                                typed_idents_where: TypedIdentsWhere {
+                                                                                                                    typed_idents: TypedIdents {
+                                                                                                                        idents: [
+                                                                                                                            "m",
+                                                                                                                        ],
+                                                                                                                        type_: App(
+                                                                                                                            TypeApp {
+                                                                                                                                head: "Cracker",
+                                                                                                                                tail: None,
+                                                                                                                            },
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                    where_: None,
+                                                                                                                },
+                                                                                                            },
+                                                                                                        ],
+                                                                                                        attrs: [],
+                                                                                                        expr: Logical(
+                                                                                                            LogicalExpr {
+                                                                                                                lhs: Rel(
+                                                                                                                    RelExpr {
+                                                                                                                        lhs: Var(
+                                                                                                                            "b",
+                                                                                                                        ),
+                                                                                                                        op: Eq,
+                                                                                                                        rhs: Var(
+                                                                                                                            "k",
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                ),
+                                                                                                                op: And,
+                                                                                                                rhs: Rel(
+                                                                                                                    RelExpr {
+                                                                                                                        lhs: Var(
+                                                                                                                            "m",
+                                                                                                                        ),
+                                                                                                                        op: Eq,
+                                                                                                                        rhs: Var(
+                                                                                                                            "c",
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                ),
+                                                                                                            },
+                                                                                                        ),
+                                                                                                    },
+                                                                                                },
+                                                                                            ),
+                                                                                            subscripts: [
+                                                                                                ArraySubscript {
+                                                                                                    keys: [
+                                                                                                        Var(
+                                                                                                            "c",
+                                                                                                        ),
+                                                                                                        Var(
+                                                                                                            "c",
+                                                                                                        ),
+                                                                                                    ],
+                                                                                                    value: None,
+                                                                                                },
+                                                                                            ],
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "TriggerHappy",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+]
+
+[Printed]
+type set a = [a]bool;
+
+function union<T>(a: set T, b: set T): set T;
+
+axiom (forall <T> a, b: set T :: union(a, b) == (lambda x: T :: a[x] || b[x]));
+
+function diff<T>(a: set T, b: set T): set T {
+  (lambda x: T :: a[x] && !b[x])
+}
+
+procedure a() {
+  var a: set int, b: set int;
+
+  assume a[1];
+  assume b[2];
+  assert union(a, b)[1];
+  assert union(a, b)[2];
+  assume !b[1];
+  assert diff(a, b)[1];
+  assert !diff(a, b)[2];
+}
+
+procedure Polly<Cracker>(c, d: Cracker) {
+  var e: Cracker;
+
+  e := c;
+  if (*) {
+    assert (forall <T> t: T :: (lambda <beta> b: beta, s: T :: b == c && s == t)[c, t]);
+    assert (forall <U> u: U :: (lambda <beta> b: beta, s: U :: b == c && s == u)[u, u]);
+  } else if (*) {
+    assert (lambda <V> v: V :: (lambda <beta> b: beta, s: V :: b == c && s == v)[v, v])[e];
+    assert (lambda <W> w: W :: (lambda <beta> b: beta, s: W :: b == c && s == w)[w, w])[d];
+    e := d;
+  } else {
+    assume TriggerHappy(c);
+    assert (exists k: Cracker :: {TriggerHappy(k)} (lambda <beta> b: beta, m: Cracker :: b == k && m == c)[c, c]);
+    assert (forall k: Cracker :: (lambda <beta> b: beta, m: Cracker :: b == k && m == c)[c, c]);
+  }
+}
+
+function TriggerHappy<T>(T): bool;
+
+[Input - ../../vendor/boogie/Test/test2/LambdaPoly.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+type set a = [a]bool;
+function union<T>(a:set T, b:set T) : set T;
+axiom (forall<T> a,b:set T :: union(a,b) == (lambda x:T :: a[x] || b[x]));
+
+function diff<T>(a:set T, b:set T) : set T {(lambda x:T :: a[x] && !b[x]) }
+
+procedure a()
+{
+  var a:set int, b:set int;
+  assume a[1];
+  assume b[2];
+  assert union(a,b)[1];
+  assert union(a,b)[2];
+  assume !b[1];
+  assert diff(a,b)[1];
+  assert !diff(a,b)[2];
+}
+
+// -----------------------
+
+procedure Polly<Cracker>(c,d: Cracker)
+{
+  var e: Cracker;
+  e := c;
+
+  if (*) {
+    assert (forall<T> t: T :: (lambda<beta> b: beta, s: T :: b==c && s==t)[c,t]);
+    assert (forall<U> u: U :: (lambda<beta> b: beta, s: U :: b==c && s==u)[u,u]);  // error
+  } else if (*) {
+    assert (lambda<V> v: V :: (lambda<beta> b: beta, s: V :: b==c && s==v)[v,v])[e];
+    assert (lambda<W> w: W :: (lambda<beta> b: beta, s: W :: b==c && s==w)[w,w])[d];  // error
+    e := d;
+  } else {
+    assume TriggerHappy(c);
+    assert (exists k: Cracker :: { TriggerHappy(k) } (lambda<beta> b: beta, m: Cracker :: b==k && m==c)[c,c]);
+    assert (forall k: Cracker :: (lambda<beta> b: beta, m: Cracker :: b==k && m==c)[c,c]);  // error
+  }
+}
+
+function TriggerHappy<T>(T): bool;

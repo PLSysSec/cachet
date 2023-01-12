@@ -1,0 +1,273 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "M",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "M",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "1",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "M",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    StructuredCmd(
+                        While(
+                            WhileCmd {
+                                guard: Expr(
+                                    BoolLit(
+                                        true,
+                                    ),
+                                ),
+                                invariants: [],
+                                body: [
+                                    LabelOrCmd(
+                                        Claim(
+                                            ClaimCmd {
+                                                kind: Assert,
+                                                attrs: [],
+                                                proposition: Rel(
+                                                    RelExpr {
+                                                        lhs: Nat(
+                                                            "0",
+                                                        ),
+                                                        op: Eq,
+                                                        rhs: Nat(
+                                                            "0",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    LabelOrCmd(
+                                        Call(
+                                            CallCmd {
+                                                attrs: [],
+                                                call_params: CallParams {
+                                                    returns: [],
+                                                    target: "N",
+                                                    params: [],
+                                                },
+                                                is_async: false,
+                                                is_free: false,
+                                            },
+                                        ),
+                                    ),
+                                    LabelOrCmd(
+                                        Call(
+                                            CallCmd {
+                                                attrs: [],
+                                                call_params: CallParams {
+                                                    returns: [],
+                                                    target: "N",
+                                                    params: [],
+                                                },
+                                                is_async: false,
+                                                is_free: false,
+                                            },
+                                        ),
+                                    ),
+                                    StructuredCmd(
+                                        If(
+                                            IfCmd {
+                                                guard: Asterisk,
+                                                then: [
+                                                    StructuredCmd(
+                                                        Break(
+                                                            BreakCmd {
+                                                                label: None,
+                                                            },
+                                                        ),
+                                                    ),
+                                                ],
+                                                else_: None,
+                                            },
+                                        ),
+                                    ),
+                                    LabelOrCmd(
+                                        Claim(
+                                            ClaimCmd {
+                                                kind: Assert,
+                                                attrs: [],
+                                                proposition: Rel(
+                                                    RelExpr {
+                                                        lhs: Nat(
+                                                            "1",
+                                                        ),
+                                                        op: Neq,
+                                                        rhs: Nat(
+                                                            "1",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    LabelOrCmd(
+                        Claim(
+                            ClaimCmd {
+                                kind: Assert,
+                                attrs: [],
+                                proposition: Rel(
+                                    RelExpr {
+                                        lhs: Nat(
+                                            "2",
+                                        ),
+                                        op: Neq,
+                                        rhs: Nat(
+                                            "2",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "2",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "N",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: BoolLit(
+                            false,
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+]
+
+[Printed]
+procedure {:checksum "0"} M();
+
+implementation {:id "M"} {:checksum "1"} M() {
+  while (true) {
+    assert 0 == 0;
+    call N();
+    call N();
+    if (*) {
+      break;
+    }
+    assert 1 != 1;
+  }
+  assert 2 != 2;
+}
+
+procedure {:checksum "2"} N();
+  ensures false;
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots18.v0.bpl]
+procedure {:checksum "0"} M();
+
+implementation {:id "M"} {:checksum "1"} M()
+{
+    while (true)
+    {
+        assert 0 == 0;
+        
+        call N();
+        call N();
+
+        if (*)
+        {
+            break;
+        }
+
+        assert 1 != 1;
+    }
+
+    assert 2 != 2;
+}
+
+procedure {:checksum "2"} N();
+  ensures false;

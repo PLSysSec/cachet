@@ -1,0 +1,2253 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "floors",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    Atom(
+                                        Int,
+                                    ),
+                                ],
+                                value: Atom(
+                                    Bool,
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "DoorsOpen",
+                        ],
+                        type_: Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    Atom(
+                                        Int,
+                                    ),
+                                ],
+                                value: Atom(
+                                    Bool,
+                                ),
+                            },
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "liftDoorOpen",
+                        ],
+                        type_: Atom(
+                            Bool,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "liftLevel",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "moving",
+                        ],
+                        type_: Atom(
+                            Bool,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "headingTo",
+                        ],
+                        type_: Atom(
+                            Int,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Main_Error",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "floors",
+                            "DoorsOpen",
+                            "liftDoorOpen",
+                            "liftLevel",
+                            "moving",
+                            "headingTo",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Initialize",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ),
+                                    invariants: [
+                                        Invariant {
+                                            attrs: [],
+                                            expr: Neg(
+                                                NegExpr {
+                                                    op: Logical,
+                                                    expr: Logical(
+                                                        LogicalExpr {
+                                                            lhs: Var(
+                                                                "liftDoorOpen",
+                                                            ),
+                                                            op: And,
+                                                            rhs: Var(
+                                                                "moving",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            is_free: false,
+                                        },
+                                    ],
+                                    body: [
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Asterisk,
+                                                    then: [
+                                                        LabelOrCmd(
+                                                            Havoc(
+                                                                HavocCmd {
+                                                                    vars: [
+                                                                        "i",
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                        LabelOrCmd(
+                                                            Call(
+                                                                CallCmd {
+                                                                    attrs: [],
+                                                                    call_params: CallParams {
+                                                                        returns: [],
+                                                                        target: "ButtonPress",
+                                                                        params: [
+                                                                            Var(
+                                                                                "i",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                    is_async: false,
+                                                                    is_free: false,
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: Some(
+                                                        ElseIf(
+                                                            IfCmd {
+                                                                guard: Asterisk,
+                                                                then: [
+                                                                    LabelOrCmd(
+                                                                        Call(
+                                                                            CallCmd {
+                                                                                attrs: [],
+                                                                                call_params: CallParams {
+                                                                                    returns: [],
+                                                                                    target: "MoveUp",
+                                                                                    params: [],
+                                                                                },
+                                                                                is_async: false,
+                                                                                is_free: false,
+                                                                            },
+                                                                        ),
+                                                                    ),
+                                                                ],
+                                                                else_: Some(
+                                                                    ElseIf(
+                                                                        IfCmd {
+                                                                            guard: Asterisk,
+                                                                            then: [
+                                                                                LabelOrCmd(
+                                                                                    Call(
+                                                                                        CallCmd {
+                                                                                            attrs: [],
+                                                                                            call_params: CallParams {
+                                                                                                returns: [],
+                                                                                                target: "MoveDown_Error",
+                                                                                                params: [],
+                                                                                            },
+                                                                                            is_async: false,
+                                                                                            is_free: false,
+                                                                                        },
+                                                                                    ),
+                                                                                ),
+                                                                            ],
+                                                                            else_: Some(
+                                                                                ElseIf(
+                                                                                    IfCmd {
+                                                                                        guard: Asterisk,
+                                                                                        then: [
+                                                                                            LabelOrCmd(
+                                                                                                Call(
+                                                                                                    CallCmd {
+                                                                                                        attrs: [],
+                                                                                                        call_params: CallParams {
+                                                                                                            returns: [],
+                                                                                                            target: "Stop",
+                                                                                                            params: [],
+                                                                                                        },
+                                                                                                        is_async: false,
+                                                                                                        is_free: false,
+                                                                                                    },
+                                                                                                ),
+                                                                                            ),
+                                                                                        ],
+                                                                                        else_: Some(
+                                                                                            ElseIf(
+                                                                                                IfCmd {
+                                                                                                    guard: Asterisk,
+                                                                                                    then: [
+                                                                                                        LabelOrCmd(
+                                                                                                            Call(
+                                                                                                                CallCmd {
+                                                                                                                    attrs: [],
+                                                                                                                    call_params: CallParams {
+                                                                                                                        returns: [],
+                                                                                                                        target: "OpenLiftDoor",
+                                                                                                                        params: [],
+                                                                                                                    },
+                                                                                                                    is_async: false,
+                                                                                                                    is_free: false,
+                                                                                                                },
+                                                                                                            ),
+                                                                                                        ),
+                                                                                                    ],
+                                                                                                    else_: Some(
+                                                                                                        ElseIf(
+                                                                                                            IfCmd {
+                                                                                                                guard: Asterisk,
+                                                                                                                then: [
+                                                                                                                    LabelOrCmd(
+                                                                                                                        Call(
+                                                                                                                            CallCmd {
+                                                                                                                                attrs: [],
+                                                                                                                                call_params: CallParams {
+                                                                                                                                    returns: [],
+                                                                                                                                    target: "CloseLiftDoor",
+                                                                                                                                    params: [],
+                                                                                                                                },
+                                                                                                                                is_async: false,
+                                                                                                                                is_free: false,
+                                                                                                                            },
+                                                                                                                        ),
+                                                                                                                    ),
+                                                                                                                ],
+                                                                                                                else_: Some(
+                                                                                                                    ElseIf(
+                                                                                                                        IfCmd {
+                                                                                                                            guard: Asterisk,
+                                                                                                                            then: [
+                                                                                                                                LabelOrCmd(
+                                                                                                                                    Havoc(
+                                                                                                                                        HavocCmd {
+                                                                                                                                            vars: [
+                                                                                                                                                "i",
+                                                                                                                                            ],
+                                                                                                                                        },
+                                                                                                                                    ),
+                                                                                                                                ),
+                                                                                                                                LabelOrCmd(
+                                                                                                                                    Call(
+                                                                                                                                        CallCmd {
+                                                                                                                                            attrs: [],
+                                                                                                                                            call_params: CallParams {
+                                                                                                                                                returns: [],
+                                                                                                                                                target: "OpenFloorDoor",
+                                                                                                                                                params: [
+                                                                                                                                                    Var(
+                                                                                                                                                        "i",
+                                                                                                                                                    ),
+                                                                                                                                                ],
+                                                                                                                                            },
+                                                                                                                                            is_async: false,
+                                                                                                                                            is_free: false,
+                                                                                                                                        },
+                                                                                                                                    ),
+                                                                                                                                ),
+                                                                                                                            ],
+                                                                                                                            else_: Some(
+                                                                                                                                Else(
+                                                                                                                                    [
+                                                                                                                                        LabelOrCmd(
+                                                                                                                                            Havoc(
+                                                                                                                                                HavocCmd {
+                                                                                                                                                    vars: [
+                                                                                                                                                        "i",
+                                                                                                                                                    ],
+                                                                                                                                                },
+                                                                                                                                            ),
+                                                                                                                                        ),
+                                                                                                                                        LabelOrCmd(
+                                                                                                                                            Call(
+                                                                                                                                                CallCmd {
+                                                                                                                                                    attrs: [],
+                                                                                                                                                    call_params: CallParams {
+                                                                                                                                                        returns: [],
+                                                                                                                                                        target: "CloseFloorDoor",
+                                                                                                                                                        params: [
+                                                                                                                                                            Var(
+                                                                                                                                                                "i",
+                                                                                                                                                            ),
+                                                                                                                                                        ],
+                                                                                                                                                    },
+                                                                                                                                                    is_async: false,
+                                                                                                                                                    is_free: false,
+                                                                                                                                                },
+                                                                                                                                            ),
+                                                                                                                                        ),
+                                                                                                                                    ],
+                                                                                                                                ),
+                                                                                                                            ),
+                                                                                                                        },
+                                                                                                                    ),
+                                                                                                                ),
+                                                                                                            },
+                                                                                                        ),
+                                                                                                    ),
+                                                                                                },
+                                                                                            ),
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Main_Correct",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "floors",
+                            "DoorsOpen",
+                            "liftDoorOpen",
+                            "liftLevel",
+                            "moving",
+                            "headingTo",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Initialize",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ),
+                                    invariants: [
+                                        Invariant {
+                                            attrs: [],
+                                            expr: Neg(
+                                                NegExpr {
+                                                    op: Logical,
+                                                    expr: Logical(
+                                                        LogicalExpr {
+                                                            lhs: Var(
+                                                                "liftDoorOpen",
+                                                            ),
+                                                            op: And,
+                                                            rhs: Var(
+                                                                "moving",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            is_free: false,
+                                        },
+                                    ],
+                                    body: [
+                                        StructuredCmd(
+                                            If(
+                                                IfCmd {
+                                                    guard: Asterisk,
+                                                    then: [
+                                                        LabelOrCmd(
+                                                            Havoc(
+                                                                HavocCmd {
+                                                                    vars: [
+                                                                        "i",
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        ),
+                                                        LabelOrCmd(
+                                                            Call(
+                                                                CallCmd {
+                                                                    attrs: [],
+                                                                    call_params: CallParams {
+                                                                        returns: [],
+                                                                        target: "ButtonPress",
+                                                                        params: [
+                                                                            Var(
+                                                                                "i",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                    is_async: false,
+                                                                    is_free: false,
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    else_: Some(
+                                                        ElseIf(
+                                                            IfCmd {
+                                                                guard: Asterisk,
+                                                                then: [
+                                                                    LabelOrCmd(
+                                                                        Call(
+                                                                            CallCmd {
+                                                                                attrs: [],
+                                                                                call_params: CallParams {
+                                                                                    returns: [],
+                                                                                    target: "MoveUp",
+                                                                                    params: [],
+                                                                                },
+                                                                                is_async: false,
+                                                                                is_free: false,
+                                                                            },
+                                                                        ),
+                                                                    ),
+                                                                ],
+                                                                else_: Some(
+                                                                    ElseIf(
+                                                                        IfCmd {
+                                                                            guard: Asterisk,
+                                                                            then: [
+                                                                                LabelOrCmd(
+                                                                                    Call(
+                                                                                        CallCmd {
+                                                                                            attrs: [],
+                                                                                            call_params: CallParams {
+                                                                                                returns: [],
+                                                                                                target: "MoveDown_Correct",
+                                                                                                params: [],
+                                                                                            },
+                                                                                            is_async: false,
+                                                                                            is_free: false,
+                                                                                        },
+                                                                                    ),
+                                                                                ),
+                                                                            ],
+                                                                            else_: Some(
+                                                                                ElseIf(
+                                                                                    IfCmd {
+                                                                                        guard: Asterisk,
+                                                                                        then: [
+                                                                                            LabelOrCmd(
+                                                                                                Call(
+                                                                                                    CallCmd {
+                                                                                                        attrs: [],
+                                                                                                        call_params: CallParams {
+                                                                                                            returns: [],
+                                                                                                            target: "Stop",
+                                                                                                            params: [],
+                                                                                                        },
+                                                                                                        is_async: false,
+                                                                                                        is_free: false,
+                                                                                                    },
+                                                                                                ),
+                                                                                            ),
+                                                                                        ],
+                                                                                        else_: Some(
+                                                                                            ElseIf(
+                                                                                                IfCmd {
+                                                                                                    guard: Asterisk,
+                                                                                                    then: [
+                                                                                                        LabelOrCmd(
+                                                                                                            Call(
+                                                                                                                CallCmd {
+                                                                                                                    attrs: [],
+                                                                                                                    call_params: CallParams {
+                                                                                                                        returns: [],
+                                                                                                                        target: "OpenLiftDoor",
+                                                                                                                        params: [],
+                                                                                                                    },
+                                                                                                                    is_async: false,
+                                                                                                                    is_free: false,
+                                                                                                                },
+                                                                                                            ),
+                                                                                                        ),
+                                                                                                    ],
+                                                                                                    else_: Some(
+                                                                                                        ElseIf(
+                                                                                                            IfCmd {
+                                                                                                                guard: Asterisk,
+                                                                                                                then: [
+                                                                                                                    LabelOrCmd(
+                                                                                                                        Call(
+                                                                                                                            CallCmd {
+                                                                                                                                attrs: [],
+                                                                                                                                call_params: CallParams {
+                                                                                                                                    returns: [],
+                                                                                                                                    target: "CloseLiftDoor",
+                                                                                                                                    params: [],
+                                                                                                                                },
+                                                                                                                                is_async: false,
+                                                                                                                                is_free: false,
+                                                                                                                            },
+                                                                                                                        ),
+                                                                                                                    ),
+                                                                                                                ],
+                                                                                                                else_: Some(
+                                                                                                                    ElseIf(
+                                                                                                                        IfCmd {
+                                                                                                                            guard: Asterisk,
+                                                                                                                            then: [
+                                                                                                                                LabelOrCmd(
+                                                                                                                                    Havoc(
+                                                                                                                                        HavocCmd {
+                                                                                                                                            vars: [
+                                                                                                                                                "i",
+                                                                                                                                            ],
+                                                                                                                                        },
+                                                                                                                                    ),
+                                                                                                                                ),
+                                                                                                                                LabelOrCmd(
+                                                                                                                                    Call(
+                                                                                                                                        CallCmd {
+                                                                                                                                            attrs: [],
+                                                                                                                                            call_params: CallParams {
+                                                                                                                                                returns: [],
+                                                                                                                                                target: "OpenFloorDoor",
+                                                                                                                                                params: [
+                                                                                                                                                    Var(
+                                                                                                                                                        "i",
+                                                                                                                                                    ),
+                                                                                                                                                ],
+                                                                                                                                            },
+                                                                                                                                            is_async: false,
+                                                                                                                                            is_free: false,
+                                                                                                                                        },
+                                                                                                                                    ),
+                                                                                                                                ),
+                                                                                                                            ],
+                                                                                                                            else_: Some(
+                                                                                                                                Else(
+                                                                                                                                    [
+                                                                                                                                        LabelOrCmd(
+                                                                                                                                            Havoc(
+                                                                                                                                                HavocCmd {
+                                                                                                                                                    vars: [
+                                                                                                                                                        "i",
+                                                                                                                                                    ],
+                                                                                                                                                },
+                                                                                                                                            ),
+                                                                                                                                        ),
+                                                                                                                                        LabelOrCmd(
+                                                                                                                                            Call(
+                                                                                                                                                CallCmd {
+                                                                                                                                                    attrs: [],
+                                                                                                                                                    call_params: CallParams {
+                                                                                                                                                        returns: [],
+                                                                                                                                                        target: "CloseFloorDoor",
+                                                                                                                                                        params: [
+                                                                                                                                                            Var(
+                                                                                                                                                                "i",
+                                                                                                                                                            ),
+                                                                                                                                                        ],
+                                                                                                                                                    },
+                                                                                                                                                    is_async: false,
+                                                                                                                                                    is_free: false,
+                                                                                                                                                },
+                                                                                                                                            ),
+                                                                                                                                        ),
+                                                                                                                                    ],
+                                                                                                                                ),
+                                                                                                                            ),
+                                                                                                                        },
+                                                                                                                    ),
+                                                                                                                ),
+                                                                                                            },
+                                                                                                        ),
+                                                                                                    ),
+                                                                                                },
+                                                                                            ),
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Initialize",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "floors",
+                            "DoorsOpen",
+                            "liftDoorOpen",
+                            "liftLevel",
+                            "moving",
+                            "headingTo",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "DoorsOpen",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "EmptySet",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "liftDoorOpen",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            false,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "liftLevel",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "1",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "moving",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            false,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "headingTo",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "ButtonPress",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "headingTo",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Array(
+                                        ArrayExpr {
+                                            expr: Var(
+                                                "floors",
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Var(
+                                                            "i",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "headingTo",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "i",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "MoveUp",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "moving",
+                            "liftLevel",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Neg(
+                                                NegExpr {
+                                                    op: Logical,
+                                                    expr: Var(
+                                                        "liftDoorOpen",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "liftLevel",
+                                                    ),
+                                                    op: Lt,
+                                                    rhs: Var(
+                                                        "headingTo",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "DoorsOpen",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "liftLevel",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "moving",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "liftLevel",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "liftLevel",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "MoveDown_Error",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "moving",
+                            "liftLevel",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "liftLevel",
+                                                    ),
+                                                    op: Gt,
+                                                    rhs: Var(
+                                                        "headingTo",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "headingTo",
+                                                    ),
+                                                    op: Gt,
+                                                    rhs: Nat(
+                                                        "0",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "DoorsOpen",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "liftLevel",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "moving",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "liftLevel",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "liftLevel",
+                                                ),
+                                                op: Sub,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "MoveDown_Correct",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "moving",
+                            "liftLevel",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Var(
+                                                "liftDoorOpen",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "liftLevel",
+                                                    ),
+                                                    op: Gt,
+                                                    rhs: Var(
+                                                        "headingTo",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "headingTo",
+                                                    ),
+                                                    op: Gt,
+                                                    rhs: Nat(
+                                                        "0",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Array(
+                                                ArrayExpr {
+                                                    expr: Var(
+                                                        "DoorsOpen",
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "liftLevel",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "moving",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "liftLevel",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "liftLevel",
+                                                ),
+                                                op: Sub,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Stop",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "moving",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "liftLevel",
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "headingTo",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "moving",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            false,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "OpenLiftDoor",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "liftDoorOpen",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Var(
+                                                "moving",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "liftDoorOpen",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "CloseLiftDoor",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "liftDoorOpen",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "liftDoorOpen",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            false,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "OpenFloorDoor",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "DoorsOpen",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "liftLevel",
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "i",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "DoorsOpen",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "CloseFloorDoor",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "i",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "DoorsOpen",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "DoorsOpen",
+                                            subscripts: [
+                                                [
+                                                    Var(
+                                                        "i",
+                                                    ),
+                                                ],
+                                            ],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            false,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "EmptySet",
+                ],
+                type_: Map(
+                    MapType {
+                        type_params: [],
+                        keys: [
+                            Atom(
+                                Int,
+                            ),
+                        ],
+                        value: Atom(
+                            Bool,
+                        ),
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "o",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [
+                            Trigger(
+                                [
+                                    Array(
+                                        ArrayExpr {
+                                            expr: Var(
+                                                "EmptySet",
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Var(
+                                                            "o",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                ],
+                            ),
+                        ],
+                        expr: Neg(
+                            NegExpr {
+                                op: Logical,
+                                expr: Array(
+                                    ArrayExpr {
+                                        expr: Var(
+                                            "EmptySet",
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [
+                                                    Var(
+                                                        "o",
+                                                    ),
+                                                ],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var floors: [int]bool;
+
+var DoorsOpen: [int]bool;
+
+var liftDoorOpen: bool;
+
+var liftLevel: int;
+
+var moving: bool;
+
+var headingTo: int;
+
+procedure Main_Error()
+  modifies floors, DoorsOpen, liftDoorOpen, liftLevel, moving, headingTo;
+{
+  var i: int;
+
+  call Initialize();
+  while (true)
+    invariant !(liftDoorOpen && moving);
+  {
+    if (*) {
+      havoc i;
+      call ButtonPress(i);
+    } else if (*) {
+      call MoveUp();
+    } else if (*) {
+      call MoveDown_Error();
+    } else if (*) {
+      call Stop();
+    } else if (*) {
+      call OpenLiftDoor();
+    } else if (*) {
+      call CloseLiftDoor();
+    } else if (*) {
+      havoc i;
+      call OpenFloorDoor(i);
+    } else {
+      havoc i;
+      call CloseFloorDoor(i);
+    }
+  }
+}
+
+procedure Main_Correct()
+  modifies floors, DoorsOpen, liftDoorOpen, liftLevel, moving, headingTo;
+{
+  var i: int;
+
+  call Initialize();
+  while (true)
+    invariant !(liftDoorOpen && moving);
+  {
+    if (*) {
+      havoc i;
+      call ButtonPress(i);
+    } else if (*) {
+      call MoveUp();
+    } else if (*) {
+      call MoveDown_Correct();
+    } else if (*) {
+      call Stop();
+    } else if (*) {
+      call OpenLiftDoor();
+    } else if (*) {
+      call CloseLiftDoor();
+    } else if (*) {
+      havoc i;
+      call OpenFloorDoor(i);
+    } else {
+      havoc i;
+      call CloseFloorDoor(i);
+    }
+  }
+}
+
+procedure {:inline 1} Initialize()
+  modifies floors, DoorsOpen, liftDoorOpen, liftLevel, moving, headingTo;
+{
+  DoorsOpen := EmptySet;
+  liftDoorOpen := false;
+  liftLevel := 1;
+  moving := false;
+  headingTo := 0;
+}
+
+procedure {:inline 1} ButtonPress(i: int)
+  modifies headingTo;
+{
+  assume floors[i];
+  headingTo := i;
+}
+
+procedure {:inline 1} MoveUp()
+  modifies moving, liftLevel;
+{
+  assume !liftDoorOpen && liftLevel < headingTo;
+  assume !DoorsOpen[liftLevel];
+  moving := true;
+  liftLevel := liftLevel + 1;
+}
+
+procedure {:inline 1} MoveDown_Error()
+  modifies moving, liftLevel;
+{
+  assume liftLevel > headingTo && headingTo > 0;
+  assume !DoorsOpen[liftLevel];
+  moving := true;
+  liftLevel := liftLevel - 1;
+}
+
+procedure {:inline 1} MoveDown_Correct()
+  modifies moving, liftLevel;
+{
+  assume !liftDoorOpen;
+  assume liftLevel > headingTo && headingTo > 0;
+  assume !DoorsOpen[liftLevel];
+  moving := true;
+  liftLevel := liftLevel - 1;
+}
+
+procedure {:inline 1} Stop()
+  modifies moving;
+{
+  assume liftLevel == headingTo;
+  moving := false;
+}
+
+procedure {:inline 1} OpenLiftDoor()
+  modifies liftDoorOpen;
+{
+  assume !moving;
+  liftDoorOpen := true;
+}
+
+procedure {:inline 1} CloseLiftDoor()
+  modifies liftDoorOpen;
+{
+  liftDoorOpen := false;
+}
+
+procedure {:inline 1} OpenFloorDoor(i: int)
+  modifies DoorsOpen;
+{
+  assume liftLevel == i;
+  DoorsOpen[i] := true;
+}
+
+procedure {:inline 1} CloseFloorDoor(i: int)
+  modifies DoorsOpen;
+{
+  DoorsOpen[i] := false;
+}
+
+const EmptySet: [int]bool;
+
+axiom (forall o: int :: {EmptySet[o]} !EmptySet[o]);
+
+[Input - ../../vendor/boogie/Test/inline/Elevator.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %boogie -removeEmptyBlocks:0 "%s" >> "%t"
+// RUN: %diff "%s.expect" "%t"
+// A Boogie version of Elevator.asml (see Boogie/Test/inline/Elevator.asml)
+
+var floors: [int]bool;  // set of integer
+var DoorsOpen: [int]bool;
+var liftDoorOpen: bool;
+var liftLevel: int;
+var moving: bool;
+var headingTo: int;
+
+procedure Main_Error()
+  modifies floors, DoorsOpen, liftDoorOpen, liftLevel, moving, headingTo;
+{
+  var i: int;
+
+  call Initialize();
+  while (true)
+    invariant !(liftDoorOpen && moving);
+  {
+    if (*) {
+      havoc i;  call ButtonPress(i);
+    } else if (*) {
+      call MoveUp();
+    } else if (*) {
+      call MoveDown_Error();
+    } else if (*) {
+      call Stop();
+    } else if (*) {
+      call OpenLiftDoor();
+    } else if (*) {
+      call CloseLiftDoor();
+    } else if (*) {
+      havoc i;  call OpenFloorDoor(i);
+    } else {
+      havoc i;  call CloseFloorDoor(i);
+    }
+  }
+}
+
+procedure Main_Correct()
+  modifies floors, DoorsOpen, liftDoorOpen, liftLevel, moving, headingTo;
+{
+  var i: int;
+
+  call Initialize();
+  while (true)
+    invariant !(liftDoorOpen && moving);
+  {
+    if (*) {
+      havoc i;  call ButtonPress(i);
+    } else if (*) {
+      call MoveUp();
+    } else if (*) {
+      call MoveDown_Correct();
+    } else if (*) {
+      call Stop();
+    } else if (*) {
+      call OpenLiftDoor();
+    } else if (*) {
+      call CloseLiftDoor();
+    } else if (*) {
+      havoc i;  call OpenFloorDoor(i);
+    } else {
+      havoc i;  call CloseFloorDoor(i);
+    }
+  }
+}
+
+procedure {:inline 1} Initialize()
+  modifies floors, DoorsOpen, liftDoorOpen, liftLevel, moving, headingTo;
+{
+  DoorsOpen := EmptySet;
+  liftDoorOpen := false;
+  liftLevel := 1;
+  moving := false;
+  headingTo := 0;
+}
+
+procedure {:inline 1} ButtonPress(i: int)
+  modifies headingTo;
+{
+  assume floors[i];
+  headingTo := i;
+}
+
+procedure {:inline 1} MoveUp()
+  modifies moving, liftLevel;
+{
+  assume !liftDoorOpen && liftLevel < headingTo;
+  assume !DoorsOpen[liftLevel];
+  moving := true;
+  liftLevel:= liftLevel + 1;
+}
+
+procedure {:inline 1} MoveDown_Error()
+  modifies moving, liftLevel;
+{
+  //bug, should require that liftDoorOpen = false
+  // assume !liftDoorOpen;
+  assume liftLevel > headingTo && headingTo > 0;
+  assume !DoorsOpen[liftLevel];
+  moving := true;
+  liftLevel := liftLevel - 1;
+}
+
+procedure {:inline 1} MoveDown_Correct()
+  modifies moving, liftLevel;
+{
+  assume !liftDoorOpen;
+  assume liftLevel > headingTo && headingTo > 0;
+  assume !DoorsOpen[liftLevel];
+  moving := true;
+  liftLevel := liftLevel - 1;
+}
+
+procedure {:inline 1} Stop()
+  modifies moving;
+{
+  assume liftLevel == headingTo;
+  moving := false;
+}
+  
+procedure {:inline 1} OpenLiftDoor()
+  modifies liftDoorOpen;
+{
+  assume !moving;
+  liftDoorOpen := true;
+}
+  
+procedure {:inline 1} CloseLiftDoor()
+  modifies liftDoorOpen;
+{
+  liftDoorOpen := false;
+}
+
+procedure {:inline 1} OpenFloorDoor(i: int)
+  modifies DoorsOpen;
+{
+  assume liftLevel == i;
+  DoorsOpen[i] := true;  // DoorsOpen := DoorsOpen union {i};
+}
+
+procedure {:inline 1} CloseFloorDoor(i: int)
+  modifies DoorsOpen;
+{
+  DoorsOpen[i] := false;  // DoorsOpen := DoorsOpen - {i}
+}
+
+// ---------------------------------------------------------------
+
+const EmptySet: [int]bool;
+axiom (forall o: int :: { EmptySet[o] } !EmptySet[o]);
+
+// ---------------------------------------------------------------

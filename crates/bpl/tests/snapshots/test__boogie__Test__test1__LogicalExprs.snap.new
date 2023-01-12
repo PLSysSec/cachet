@@ -1,0 +1,163 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "P",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "Q",
+                ],
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "x",
+                                ),
+                                op: Lt,
+                                rhs: Nat(
+                                    "0",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Implies(
+                ImpliesExpr {
+                    lhs: Var(
+                        "Q",
+                    ),
+                    rhs: Var(
+                        "P",
+                    ),
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Implies(
+                ImpliesExpr {
+                    lhs: Quant(
+                        QuantExpr {
+                            kind: ForAll,
+                            body: QuantBody {
+                                type_params: [],
+                                bound_vars: [
+                                    AttrTypedIdentsWhere {
+                                        attrs: [],
+                                        typed_idents_where: TypedIdentsWhere {
+                                            typed_idents: TypedIdents {
+                                                idents: [
+                                                    "x",
+                                                ],
+                                                type_: Atom(
+                                                    Int,
+                                                ),
+                                            },
+                                            where_: None,
+                                        },
+                                    },
+                                ],
+                                attrs: [],
+                                expr: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "x",
+                                        ),
+                                        op: Lt,
+                                        rhs: Nat(
+                                            "0",
+                                        ),
+                                    },
+                                ),
+                            },
+                        },
+                    ),
+                    rhs: Var(
+                        "P",
+                    ),
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+const P: bool;
+
+const Q: bool;
+
+axiom (forall x: int :: x < 0);
+
+axiom Q ==> P;
+
+axiom (forall x: int :: x < 0) ==> P;
+
+[Input - ../../vendor/boogie/Test/test1/LogicalExprs.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+const P: bool;
+const Q: bool;
+
+axiom (forall x: int :: x < 0);
+axiom Q ==> P;
+axiom (forall x: int :: x < 0) ==> P;

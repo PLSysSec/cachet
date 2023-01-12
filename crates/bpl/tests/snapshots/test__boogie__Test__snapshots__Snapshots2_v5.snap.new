@@ -1,0 +1,178 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P0$proc#5",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "F0",
+                                args: [],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: FuncCall(
+                            FuncCall {
+                                target: "F0",
+                                args: [],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "id",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "checksum",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "P0$impl#0",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "P0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Call(
+                            CallCmd {
+                                attrs: [],
+                                call_params: CallParams {
+                                    returns: [],
+                                    target: "P0",
+                                    params: [],
+                                },
+                                is_async: false,
+                                is_free: false,
+                            },
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "checksum",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "F0#1",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "F0",
+            type_params: [],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                BoolLit(
+                    false,
+                ),
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure {:checksum "P0$proc#5"} P0();
+  requires F0();
+  ensures F0();
+
+implementation {:id "P0"} {:checksum "P0$impl#0"} P0() {
+  call P0();
+}
+
+function {:checksum "F0#1"} F0(): bool {
+  false
+}
+
+[Input - ../../vendor/boogie/Test/snapshots/Snapshots2.v5.bpl]
+procedure {:checksum "P0$proc#5"} P0();
+requires F0();
+ensures F0();
+// Action: verify (procedure changed)
+implementation {:id "P0"} {:checksum "P0$impl#0"} P0()
+{
+    call P0();
+}
+
+
+function {:checksum "F0#1"} F0() : bool
+{
+    false
+}

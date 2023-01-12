@@ -1,0 +1,293 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "fp.sqrt",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "SQRT",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "rmode",
+                            tail: None,
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "float24e8",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "float24e8",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "r",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "rmode",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float24e8",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float24e8",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "a",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Float(
+                                            Float {
+                                                value: Plain(
+                                                    PlainFloatValue {
+                                                        is_neg: false,
+                                                        whole: "1",
+                                                        fract: "0",
+                                                        exp: Exp {
+                                                            is_neg: false,
+                                                            digits: "0",
+                                                        },
+                                                    },
+                                                ),
+                                                sig_size: "24",
+                                                exp_size: "8",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "r",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "RTN",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "b",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "SQRT",
+                                                args: [
+                                                    Var(
+                                                        "r",
+                                                    ),
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "r",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "RTZ",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "b",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "SQRT",
+                                                args: [
+                                                    Var(
+                                                        "r",
+                                                    ),
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+function {:builtin "fp.sqrt"} SQRT(rmode, float24e8): float24e8;
+
+procedure foo() {
+  var r: rmode;
+  var a: float24e8;
+  var b: float24e8;
+
+  a := 0x1.0e0f24e8;
+  r := RTN;
+  b := SQRT(r, a);
+  r := RTZ;
+  b := SQRT(r, a);
+}
+
+[Input - ../../vendor/boogie/Test/roundingmodes/FloatOperators2.bpl]
+// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+function {:builtin "fp.sqrt"} SQRT(rmode, float24e8) returns (float24e8);
+
+procedure foo()
+{
+  var r : rmode;
+  var a : float24e8;
+  var b : float24e8;
+
+  a := 0x1.0e0f24e8;
+
+  r := RTN;
+  b := SQRT(r, a);
+
+  r := RTZ;
+  b := SQRT(r, a);
+}

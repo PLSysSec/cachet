@@ -1,0 +1,253 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "p",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "$r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Code(
+                            CodeExpr {
+                                local_vars: [],
+                                spec_blocks: [
+                                    SpecBlock {
+                                        label: "$bb0",
+                                        cmds: [],
+                                        transfer: Return(
+                                            SpecReturn {
+                                                value: Rel(
+                                                    RelExpr {
+                                                        lhs: Var(
+                                                            "$r",
+                                                        ),
+                                                        op: Eq,
+                                                        rhs: Nat(
+                                                            "1",
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: None,
+        },
+    ),
+    Impl(
+        ImplDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "p",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "$x",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            impl_body: ImplBody {
+                local_vars: [],
+                stmt_list: [
+                    LabelOrCmd(
+                        Assign(
+                            AssignCmd {
+                                lhs: [
+                                    AssignLhs {
+                                        ident: "$x",
+                                        subscripts: [],
+                                    },
+                                ],
+                                rhs: [
+                                    Nat(
+                                        "1",
+                                    ),
+                                ],
+                            },
+                        ),
+                    ),
+                    TransferCmd(
+                        Return(
+                            ReturnCmd,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "q",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Code(
+                            CodeExpr {
+                                local_vars: [
+                                    LocalVars {
+                                        attrs: [],
+                                        vars: [
+                                            TypedIdentsWhere {
+                                                typed_idents: TypedIdents {
+                                                    idents: [
+                                                        "$b",
+                                                    ],
+                                                    type_: Atom(
+                                                        Bool,
+                                                    ),
+                                                },
+                                                where_: None,
+                                            },
+                                        ],
+                                    },
+                                ],
+                                spec_blocks: [
+                                    SpecBlock {
+                                        label: "$0",
+                                        cmds: [
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "$b",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        BoolLit(
+                                                            true,
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ],
+                                        transfer: Goto(
+                                            SpecGoto {
+                                                labels: [
+                                                    "$1",
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                    SpecBlock {
+                                        label: "$1",
+                                        cmds: [],
+                                        transfer: Return(
+                                            SpecReturn {
+                                                value: Var(
+                                                    "$b",
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure p() returns ($r: int);
+  ensures |{
+    $bb0:
+      return $r == 1;
+  }|;
+
+implementation p() returns ($x: int) {
+  $x := 1;
+  return;
+}
+
+procedure q()
+  ensures |{
+    var $b: bool;
+
+    $0:
+      $b := true;
+      goto $1;
+    $1:
+      return $b;
+  }|;
+{
+}
+
+[Input - ../../vendor/boogie/Test/codeexpr/codeExprBug.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure p() returns ($r: int);
+  ensures |{ $bb0: return ($r == 1); }|;
+
+implementation p() returns ($x: int)
+{
+  $x := 1;
+  return;
+}
+
+procedure q()
+  ensures |{ var $b: bool; $0: $b := true; goto $1; $1: return $b; }|;
+{
+}

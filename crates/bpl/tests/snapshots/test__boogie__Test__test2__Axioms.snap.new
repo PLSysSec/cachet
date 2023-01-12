@@ -1,0 +1,510 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "Seven",
+                ],
+                type_: Atom(
+                    Int,
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: Var(
+                        "Seven",
+                    ),
+                    op: Eq,
+                    rhs: Nat(
+                        "7",
+                    ),
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "inc",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "j",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "inc",
+                                        args: [
+                                            Var(
+                                                "j",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Term(
+                                    Term {
+                                        lhs: Var(
+                                            "j",
+                                        ),
+                                        op: Add,
+                                        rhs: Nat(
+                                            "1",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Nat(
+                                                "4",
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "Seven",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "Seven",
+                                            ),
+                                            op: Lt,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "inc",
+                                                    args: [
+                                                        Var(
+                                                            "Seven",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Term(
+                                                Term {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "inc",
+                                                            args: [
+                                                                Nat(
+                                                                    "5",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Add,
+                                                    rhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "inc",
+                                                            args: [
+                                                                FuncCall(
+                                                                    FuncCall {
+                                                                        target: "inc",
+                                                                        args: [
+                                                                            Nat(
+                                                                                "2",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Term(
+                                                Term {
+                                                    lhs: Var(
+                                                        "Seven",
+                                                    ),
+                                                    op: Add,
+                                                    rhs: Nat(
+                                                        "3",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Q",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "start",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Term(
+                                                Term {
+                                                    lhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "inc",
+                                                            args: [
+                                                                Nat(
+                                                                    "5",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                    op: Add,
+                                                    rhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "inc",
+                                                            args: [
+                                                                FuncCall(
+                                                                    FuncCall {
+                                                                        target: "inc",
+                                                                        args: [
+                                                                            Nat(
+                                                                                "2",
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Var(
+                                                "Seven",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Return(
+                                ReturnCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "inc2",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: Some(
+                Term(
+                    Term {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Add,
+                        rhs: Nat(
+                            "2",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "ExpandTest",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "q",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: FuncCall(
+                                                FuncCall {
+                                                    target: "inc",
+                                                    args: [
+                                                        FuncCall(
+                                                            FuncCall {
+                                                                target: "inc",
+                                                                args: [
+                                                                    Var(
+                                                                        "q",
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "inc2",
+                                                    args: [
+                                                        Var(
+                                                            "q",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+const Seven: int;
+
+axiom Seven == 7;
+
+function inc(int): int;
+
+axiom (forall j: int :: inc(j) == j + 1);
+
+procedure P() {
+  start:
+  assert 4 <= Seven;
+  assert Seven < inc(Seven);
+  assert inc(5) + inc(inc(2)) == Seven + 3;
+  return;
+}
+
+procedure Q() {
+  start:
+  assert inc(5) + inc(inc(2)) == Seven;
+  return;
+}
+
+function inc2(x: int): int {
+  x + 2
+}
+
+procedure ExpandTest() {
+  var q: int;
+
+  assert inc(inc(q)) == inc2(q);
+}
+
+[Input - ../../vendor/boogie/Test/test2/Axioms.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+const Seven: int;
+axiom Seven == 7;
+
+function inc(int) returns (int);
+axiom (forall j: int :: inc(j) == j+1);
+
+procedure P()
+{
+  start:
+    assert 4 <= Seven;
+    assert Seven < inc(Seven);
+    assert inc(5) + inc(inc(2)) == Seven + 3;
+    return;
+}
+
+procedure Q()
+{
+  start:
+    assert inc(5) + inc(inc(2)) == Seven;  // error
+    return;
+}
+
+function inc2(x:int) returns(int) { x + 2 }
+
+procedure ExpandTest()
+{
+  var q:int;
+  assert inc(inc(q)) == inc2(q);
+}

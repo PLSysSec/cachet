@@ -1,0 +1,1605 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Var(
+        VarDecl {
+            attrs: [],
+            vars: [
+                TypedIdentsWhere {
+                    typed_idents: TypedIdents {
+                        idents: [
+                            "g",
+                        ],
+                        type_: Atom(
+                            Bool,
+                        ),
+                    },
+                    where_: None,
+                },
+            ],
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "bar",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "l",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "l",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "g",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "baz",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "l",
+                                ],
+                                type_: Atom(
+                                    Bool,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [
+                                            "l",
+                                        ],
+                                        target: "bar",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "A1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "g",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Code(
+                                        CodeExpr {
+                                            local_vars: [
+                                                LocalVars {
+                                                    attrs: [],
+                                                    vars: [
+                                                        TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "l",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ],
+                                            spec_blocks: [
+                                                SpecBlock {
+                                                    label: "A",
+                                                    cmds: [
+                                                        Call(
+                                                            CallCmd {
+                                                                attrs: [],
+                                                                call_params: CallParams {
+                                                                    returns: [
+                                                                        "l",
+                                                                    ],
+                                                                    target: "bar",
+                                                                    params: [],
+                                                                },
+                                                                is_async: false,
+                                                                is_free: false,
+                                                            },
+                                                        ),
+                                                    ],
+                                                    transfer: Return(
+                                                        SpecReturn {
+                                                            value: Var(
+                                                                "l",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: Exists,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "p",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Code(
+                                                    CodeExpr {
+                                                        local_vars: [
+                                                            LocalVars {
+                                                                attrs: [],
+                                                                vars: [
+                                                                    TypedIdentsWhere {
+                                                                        typed_idents: TypedIdents {
+                                                                            idents: [
+                                                                                "l",
+                                                                            ],
+                                                                            type_: Atom(
+                                                                                Bool,
+                                                                            ),
+                                                                        },
+                                                                        where_: None,
+                                                                    },
+                                                                ],
+                                                            },
+                                                        ],
+                                                        spec_blocks: [
+                                                            SpecBlock {
+                                                                label: "A",
+                                                                cmds: [
+                                                                    Call(
+                                                                        CallCmd {
+                                                                            attrs: [],
+                                                                            call_params: CallParams {
+                                                                                returns: [
+                                                                                    "l",
+                                                                                ],
+                                                                                target: "bar",
+                                                                                params: [],
+                                                                            },
+                                                                            is_async: false,
+                                                                            is_free: false,
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                                transfer: Return(
+                                                                    SpecReturn {
+                                                                        value: Var(
+                                                                            "l",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ],
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "p",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Code(
+                                                    CodeExpr {
+                                                        local_vars: [
+                                                            LocalVars {
+                                                                attrs: [],
+                                                                vars: [
+                                                                    TypedIdentsWhere {
+                                                                        typed_idents: TypedIdents {
+                                                                            idents: [
+                                                                                "l",
+                                                                            ],
+                                                                            type_: Atom(
+                                                                                Bool,
+                                                                            ),
+                                                                        },
+                                                                        where_: None,
+                                                                    },
+                                                                ],
+                                                            },
+                                                        ],
+                                                        spec_blocks: [
+                                                            SpecBlock {
+                                                                label: "A",
+                                                                cmds: [
+                                                                    Call(
+                                                                        CallCmd {
+                                                                            attrs: [],
+                                                                            call_params: CallParams {
+                                                                                returns: [
+                                                                                    "l",
+                                                                                ],
+                                                                                target: "bar",
+                                                                                params: [],
+                                                                            },
+                                                                            is_async: false,
+                                                                            is_free: false,
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                                transfer: Return(
+                                                                    SpecReturn {
+                                                                        value: Var(
+                                                                            "l",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ],
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "A2",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Code(
+                                        CodeExpr {
+                                            local_vars: [
+                                                LocalVars {
+                                                    attrs: [],
+                                                    vars: [
+                                                        TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "l",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ],
+                                            spec_blocks: [
+                                                SpecBlock {
+                                                    label: "A",
+                                                    cmds: [
+                                                        Claim(
+                                                            ClaimCmd {
+                                                                kind: Assume,
+                                                                attrs: [],
+                                                                proposition: Var(
+                                                                    "g",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        Call(
+                                                            CallCmd {
+                                                                attrs: [],
+                                                                call_params: CallParams {
+                                                                    returns: [
+                                                                        "l",
+                                                                    ],
+                                                                    target: "bar",
+                                                                    params: [],
+                                                                },
+                                                                is_async: false,
+                                                                is_free: false,
+                                                            },
+                                                        ),
+                                                    ],
+                                                    transfer: Return(
+                                                        SpecReturn {
+                                                            value: Var(
+                                                                "l",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Implies(
+                                        ImpliesExpr {
+                                            lhs: Var(
+                                                "g",
+                                            ),
+                                            rhs: Code(
+                                                CodeExpr {
+                                                    local_vars: [
+                                                        LocalVars {
+                                                            attrs: [],
+                                                            vars: [
+                                                                TypedIdentsWhere {
+                                                                    typed_idents: TypedIdents {
+                                                                        idents: [
+                                                                            "l",
+                                                                        ],
+                                                                        type_: Atom(
+                                                                            Bool,
+                                                                        ),
+                                                                    },
+                                                                    where_: None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    ],
+                                                    spec_blocks: [
+                                                        SpecBlock {
+                                                            label: "A",
+                                                            cmds: [
+                                                                Call(
+                                                                    CallCmd {
+                                                                        attrs: [],
+                                                                        call_params: CallParams {
+                                                                            returns: [
+                                                                                "l",
+                                                                            ],
+                                                                            target: "bar",
+                                                                            params: [],
+                                                                        },
+                                                                        is_async: false,
+                                                                        is_free: false,
+                                                                    },
+                                                                ),
+                                                            ],
+                                                            transfer: Return(
+                                                                SpecReturn {
+                                                                    value: Var(
+                                                                        "l",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: Exists,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "p",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: Var(
+                                                            "g",
+                                                        ),
+                                                        rhs: Code(
+                                                            CodeExpr {
+                                                                local_vars: [
+                                                                    LocalVars {
+                                                                        attrs: [],
+                                                                        vars: [
+                                                                            TypedIdentsWhere {
+                                                                                typed_idents: TypedIdents {
+                                                                                    idents: [
+                                                                                        "l",
+                                                                                    ],
+                                                                                    type_: Atom(
+                                                                                        Bool,
+                                                                                    ),
+                                                                                },
+                                                                                where_: None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ],
+                                                                spec_blocks: [
+                                                                    SpecBlock {
+                                                                        label: "A",
+                                                                        cmds: [
+                                                                            Call(
+                                                                                CallCmd {
+                                                                                    attrs: [],
+                                                                                    call_params: CallParams {
+                                                                                        returns: [
+                                                                                            "l",
+                                                                                        ],
+                                                                                        target: "bar",
+                                                                                        params: [],
+                                                                                    },
+                                                                                    is_async: false,
+                                                                                    is_free: false,
+                                                                                },
+                                                                            ),
+                                                                        ],
+                                                                        transfer: Return(
+                                                                            SpecReturn {
+                                                                                value: Var(
+                                                                                    "l",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "p",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Implies(
+                                                    ImpliesExpr {
+                                                        lhs: Var(
+                                                            "g",
+                                                        ),
+                                                        rhs: Code(
+                                                            CodeExpr {
+                                                                local_vars: [
+                                                                    LocalVars {
+                                                                        attrs: [],
+                                                                        vars: [
+                                                                            TypedIdentsWhere {
+                                                                                typed_idents: TypedIdents {
+                                                                                    idents: [
+                                                                                        "l",
+                                                                                    ],
+                                                                                    type_: Atom(
+                                                                                        Bool,
+                                                                                    ),
+                                                                                },
+                                                                                where_: None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ],
+                                                                spec_blocks: [
+                                                                    SpecBlock {
+                                                                        label: "A",
+                                                                        cmds: [
+                                                                            Call(
+                                                                                CallCmd {
+                                                                                    attrs: [],
+                                                                                    call_params: CallParams {
+                                                                                        returns: [
+                                                                                            "l",
+                                                                                        ],
+                                                                                        target: "bar",
+                                                                                        params: [],
+                                                                                    },
+                                                                                    is_async: false,
+                                                                                    is_free: false,
+                                                                                },
+                                                                            ),
+                                                                        ],
+                                                                        transfer: Return(
+                                                                            SpecReturn {
+                                                                                value: Var(
+                                                                                    "l",
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "A3",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: Code(
+                                        CodeExpr {
+                                            local_vars: [
+                                                LocalVars {
+                                                    attrs: [],
+                                                    vars: [
+                                                        TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "l",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ],
+                                            spec_blocks: [
+                                                SpecBlock {
+                                                    label: "A",
+                                                    cmds: [
+                                                        Call(
+                                                            CallCmd {
+                                                                attrs: [],
+                                                                call_params: CallParams {
+                                                                    returns: [
+                                                                        "l",
+                                                                    ],
+                                                                    target: "bar",
+                                                                    params: [],
+                                                                },
+                                                                is_async: false,
+                                                                is_free: false,
+                                                            },
+                                                        ),
+                                                    ],
+                                                    transfer: Return(
+                                                        SpecReturn {
+                                                            value: Var(
+                                                                "l",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Code(
+                                        CodeExpr {
+                                            local_vars: [
+                                                LocalVars {
+                                                    attrs: [],
+                                                    vars: [
+                                                        TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "l",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ],
+                                            spec_blocks: [
+                                                SpecBlock {
+                                                    label: "A",
+                                                    cmds: [
+                                                        Call(
+                                                            CallCmd {
+                                                                attrs: [],
+                                                                call_params: CallParams {
+                                                                    returns: [
+                                                                        "l",
+                                                                    ],
+                                                                    target: "bar",
+                                                                    params: [],
+                                                                },
+                                                                is_async: false,
+                                                                is_free: false,
+                                                            },
+                                                        ),
+                                                    ],
+                                                    transfer: Return(
+                                                        SpecReturn {
+                                                            value: Var(
+                                                                "l",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "A4",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "g",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Code(
+                                        CodeExpr {
+                                            local_vars: [
+                                                LocalVars {
+                                                    attrs: [],
+                                                    vars: [
+                                                        TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "l",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ],
+                                            spec_blocks: [
+                                                SpecBlock {
+                                                    label: "A",
+                                                    cmds: [
+                                                        Call(
+                                                            CallCmd {
+                                                                attrs: [],
+                                                                call_params: CallParams {
+                                                                    returns: [
+                                                                        "l",
+                                                                    ],
+                                                                    target: "bar",
+                                                                    params: [],
+                                                                },
+                                                                is_async: false,
+                                                                is_free: false,
+                                                            },
+                                                        ),
+                                                    ],
+                                                    transfer: Return(
+                                                        SpecReturn {
+                                                            value: Neg(
+                                                                NegExpr {
+                                                                    op: Logical,
+                                                                    expr: Var(
+                                                                        "l",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "A5",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "m",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "g",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "m",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Code(
+                                            CodeExpr {
+                                                local_vars: [
+                                                    LocalVars {
+                                                        attrs: [],
+                                                        vars: [
+                                                            TypedIdentsWhere {
+                                                                typed_idents: TypedIdents {
+                                                                    idents: [
+                                                                        "l",
+                                                                    ],
+                                                                    type_: Atom(
+                                                                        Bool,
+                                                                    ),
+                                                                },
+                                                                where_: None,
+                                                            },
+                                                        ],
+                                                    },
+                                                ],
+                                                spec_blocks: [
+                                                    SpecBlock {
+                                                        label: "A",
+                                                        cmds: [
+                                                            Call(
+                                                                CallCmd {
+                                                                    attrs: [],
+                                                                    call_params: CallParams {
+                                                                        returns: [
+                                                                            "l",
+                                                                        ],
+                                                                        target: "bar",
+                                                                        params: [],
+                                                                    },
+                                                                    is_async: false,
+                                                                    is_free: false,
+                                                                },
+                                                            ),
+                                                        ],
+                                                        transfer: Return(
+                                                            SpecReturn {
+                                                                value: Var(
+                                                                    "l",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Var(
+                                        "m",
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "A6",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Modifies(
+                    ModifiesSpec {
+                        vars: [
+                            "g",
+                        ],
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "g",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        BoolLit(
+                                            true,
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Code(
+                                        CodeExpr {
+                                            local_vars: [
+                                                LocalVars {
+                                                    attrs: [],
+                                                    vars: [
+                                                        TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "l",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ],
+                                            spec_blocks: [
+                                                SpecBlock {
+                                                    label: "A",
+                                                    cmds: [
+                                                        Call(
+                                                            CallCmd {
+                                                                attrs: [],
+                                                                call_params: CallParams {
+                                                                    returns: [
+                                                                        "l",
+                                                                    ],
+                                                                    target: "baz",
+                                                                    params: [],
+                                                                },
+                                                                is_async: false,
+                                                                is_free: false,
+                                                            },
+                                                        ),
+                                                    ],
+                                                    transfer: Return(
+                                                        SpecReturn {
+                                                            value: Var(
+                                                                "l",
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: Exists,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "p",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Code(
+                                                    CodeExpr {
+                                                        local_vars: [
+                                                            LocalVars {
+                                                                attrs: [],
+                                                                vars: [
+                                                                    TypedIdentsWhere {
+                                                                        typed_idents: TypedIdents {
+                                                                            idents: [
+                                                                                "l",
+                                                                            ],
+                                                                            type_: Atom(
+                                                                                Bool,
+                                                                            ),
+                                                                        },
+                                                                        where_: None,
+                                                                    },
+                                                                ],
+                                                            },
+                                                        ],
+                                                        spec_blocks: [
+                                                            SpecBlock {
+                                                                label: "A",
+                                                                cmds: [
+                                                                    Call(
+                                                                        CallCmd {
+                                                                            attrs: [],
+                                                                            call_params: CallParams {
+                                                                                returns: [
+                                                                                    "l",
+                                                                                ],
+                                                                                target: "baz",
+                                                                                params: [],
+                                                                            },
+                                                                            is_async: false,
+                                                                            is_free: false,
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                                transfer: Return(
+                                                                    SpecReturn {
+                                                                        value: Var(
+                                                                            "l",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ],
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Quant(
+                                        QuantExpr {
+                                            kind: ForAll,
+                                            body: QuantBody {
+                                                type_params: [],
+                                                bound_vars: [
+                                                    AttrTypedIdentsWhere {
+                                                        attrs: [],
+                                                        typed_idents_where: TypedIdentsWhere {
+                                                            typed_idents: TypedIdents {
+                                                                idents: [
+                                                                    "p",
+                                                                ],
+                                                                type_: Atom(
+                                                                    Bool,
+                                                                ),
+                                                            },
+                                                            where_: None,
+                                                        },
+                                                    },
+                                                ],
+                                                attrs: [],
+                                                expr: Code(
+                                                    CodeExpr {
+                                                        local_vars: [
+                                                            LocalVars {
+                                                                attrs: [],
+                                                                vars: [
+                                                                    TypedIdentsWhere {
+                                                                        typed_idents: TypedIdents {
+                                                                            idents: [
+                                                                                "l",
+                                                                            ],
+                                                                            type_: Atom(
+                                                                                Bool,
+                                                                            ),
+                                                                        },
+                                                                        where_: None,
+                                                                    },
+                                                                ],
+                                                            },
+                                                        ],
+                                                        spec_blocks: [
+                                                            SpecBlock {
+                                                                label: "A",
+                                                                cmds: [
+                                                                    Call(
+                                                                        CallCmd {
+                                                                            attrs: [],
+                                                                            call_params: CallParams {
+                                                                                returns: [
+                                                                                    "l",
+                                                                                ],
+                                                                                target: "baz",
+                                                                                params: [],
+                                                                            },
+                                                                            is_async: false,
+                                                                            is_free: false,
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                                transfer: Return(
+                                                                    SpecReturn {
+                                                                        value: Var(
+                                                                            "l",
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ],
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+var g: bool;
+
+procedure {:inline 1} bar() returns (l: bool) {
+  l := g;
+}
+
+procedure {:inline 1} baz() returns (l: bool) {
+  call l := bar();
+}
+
+procedure A1()
+  modifies g;
+{
+  g := true;
+  assert |{
+    var l: bool;
+
+    A:
+      call l := bar();
+      return l;
+  }|;
+  assert (exists p: bool :: |{
+    var l: bool;
+
+    A:
+      call l := bar();
+      return l;
+  }|);
+  assert (forall p: bool :: |{
+    var l: bool;
+
+    A:
+      call l := bar();
+      return l;
+  }|);
+}
+
+procedure A2() {
+  assert |{
+    var l: bool;
+
+    A:
+      assume g;
+      call l := bar();
+      return l;
+  }|;
+  assert g ==> |{
+    var l: bool;
+
+    A:
+      call l := bar();
+      return l;
+  }|;
+  assert (exists p: bool :: g ==> |{
+    var l: bool;
+
+    A:
+      call l := bar();
+      return l;
+  }|);
+  assert (forall p: bool :: g ==> |{
+    var l: bool;
+
+    A:
+      call l := bar();
+      return l;
+  }|);
+}
+
+procedure A3() {
+  assume |{
+    var l: bool;
+
+    A:
+      call l := bar();
+      return l;
+  }|;
+  assert |{
+    var l: bool;
+
+    A:
+      call l := bar();
+      return l;
+  }|;
+}
+
+procedure A4()
+  modifies g;
+{
+  g := true;
+  assert |{
+    var l: bool;
+
+    A:
+      call l := bar();
+      return !l;
+  }|;
+}
+
+procedure A5()
+  modifies g;
+{
+  var m: bool;
+
+  g := true;
+  m := |{
+    var l: bool;
+
+    A:
+      call l := bar();
+      return l;
+  }|;
+  assert m;
+}
+
+procedure A6()
+  modifies g;
+{
+  g := true;
+  assert |{
+    var l: bool;
+
+    A:
+      call l := baz();
+      return l;
+  }|;
+  assert (exists p: bool :: |{
+    var l: bool;
+
+    A:
+      call l := baz();
+      return l;
+  }|);
+  assert (forall p: bool :: |{
+    var l: bool;
+
+    A:
+      call l := baz();
+      return l;
+  }|);
+}
+
+[Input - ../../vendor/boogie/Test/inline/codeexpr.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+var g: bool;
+
+procedure {:inline 1} bar() returns (l: bool) 
+{
+  l := g;
+}
+
+procedure {:inline 1} baz() returns (l: bool)
+{
+  call l := bar();
+}
+
+procedure A1() 
+modifies g;
+{
+    g := true;
+    assert |{ var l: bool; A: call l := bar(); return l; }|;
+    assert (exists p: bool :: |{ var l: bool; A: call l := bar(); return l; }|);
+    assert (forall p: bool :: |{ var l: bool; A: call l := bar(); return l; }|);
+}
+
+procedure A2() 
+{
+    assert |{ var l: bool; A: assume g; call l := bar(); return l; }|;
+    assert g ==> |{ var l: bool; A: call l := bar(); return l; }|;
+    assert (exists p: bool :: g ==> |{ var l: bool; A: call l := bar(); return l; }|);
+    assert (forall p: bool :: g ==> |{ var l: bool; A: call l := bar(); return l; }|);
+}
+
+procedure A3() 
+{
+    assume |{ var l: bool; A: call l := bar(); return l; }|;
+    assert |{ var l: bool; A: call l := bar(); return l; }|;
+}
+
+procedure A4()
+modifies g;
+{
+    g := true;
+    assert |{ var l: bool; A: call l := bar(); return !l; }|;
+}
+
+procedure A5() 
+modifies g;
+{
+    var m: bool;
+
+    g := true;
+    m := |{ var l: bool; A: call l := bar(); return l; }|;
+    assert m;
+}
+
+procedure A6() 
+modifies g;
+{
+    g := true;
+    assert |{ var l: bool; A: call l := baz(); return l; }|;
+    assert (exists p: bool :: |{ var l: bool; A: call l := baz(); return l; }|);
+    assert (forall p: bool :: |{ var l: bool; A: call l := baz(); return l; }|);
+}

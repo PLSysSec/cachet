@@ -1,0 +1,190 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "94",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Test",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Yield(
+                                YieldCmd,
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "L",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Yield(
+                                YieldCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "yields",
+                            params: [],
+                        },
+                    ),
+                    Attr(
+                        AttrContent {
+                            ident: "layer",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "94",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Test2",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Yield(
+                                YieldCmd,
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "layer",
+                                                params: [
+                                                    Expr(
+                                                        Nat(
+                                                            "94",
+                                                        ),
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Term(
+                                                Term {
+                                                    lhs: Nat(
+                                                        "2",
+                                                    ),
+                                                    op: Add,
+                                                    rhs: Nat(
+                                                        "2",
+                                                    ),
+                                                },
+                                            ),
+                                            op: Eq,
+                                            rhs: Nat(
+                                                "3",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "L",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Yield(
+                                YieldCmd,
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure {:yields} {:layer 94} Test() {
+  yield;
+  L:
+  yield;
+}
+
+procedure {:yields} {:layer 94} Test2() {
+  yield;
+  assert {:layer 94} 2 + 2 == 3;
+  L:
+  yield;
+}
+
+[Input - ../../vendor/boogie/Test/civl/chris4.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure{:yields}{:layer 94} Test()
+{
+  yield;
+  L:
+  yield;
+}
+
+procedure{:yields}{:layer 94} Test2()
+{
+  yield;
+  assert{:layer 94} 2 + 2 == 3;
+  L:
+  yield;
+}

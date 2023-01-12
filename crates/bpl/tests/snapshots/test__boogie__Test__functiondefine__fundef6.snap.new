@@ -1,0 +1,222 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "define",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "foo",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Gt,
+                        rhs: Nat(
+                            "0",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "define",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "foo1",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Gt,
+                        rhs: Nat(
+                            "0",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "define",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    false,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "foo2",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Gt,
+                        rhs: Nat(
+                            "0",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "foo3",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Gt,
+                        rhs: Nat(
+                            "0",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+]
+
+[Printed]
+function {:define} foo(x: int): bool {
+  x > 0
+}
+
+function {:define true} foo1(x: int): bool {
+  x > 0
+}
+
+function {:define false} foo2(x: int): bool {
+  x > 0
+}
+
+function foo3(x: int): bool {
+  x > 0
+}
+
+[Input - ../../vendor/boogie/Test/functiondefine/fundef6.bpl]
+// RUN: %boogie -print:- -env:0 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+function {:define} foo(x:int) returns(bool)
+  { x > 0 }
+function {:define true} foo1(x:int) returns(bool)
+  { x > 0 }
+function {:define false} foo2(x:int) returns(bool)
+  { x > 0 }
+function foo3(x:int) returns(bool)
+  { x > 0 }

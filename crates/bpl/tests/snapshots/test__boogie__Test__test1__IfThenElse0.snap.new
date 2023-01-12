@@ -1,0 +1,157 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "foo",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "b",
+                                        ],
+                                        type_: Atom(
+                                            Bool,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "b",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        IfThenElse(
+                                            IfThenElseExpr {
+                                                cond: Var(
+                                                    "i",
+                                                ),
+                                                then: Var(
+                                                    "b",
+                                                ),
+                                                else_: Var(
+                                                    "b",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "b",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        IfThenElse(
+                                            IfThenElseExpr {
+                                                cond: Var(
+                                                    "b",
+                                                ),
+                                                then: Var(
+                                                    "b",
+                                                ),
+                                                else_: Var(
+                                                    "i",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "b",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        IfThenElse(
+                                            IfThenElseExpr {
+                                                cond: Var(
+                                                    "b",
+                                                ),
+                                                then: Var(
+                                                    "i",
+                                                ),
+                                                else_: Var(
+                                                    "i",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure foo() {
+  var b: bool, i: int;
+
+  b := if i then b else b;
+  b := if b then b else i;
+  b := if b then i else i;
+}
+
+[Input - ../../vendor/boogie/Test/test1/IfThenElse0.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure foo()
+{
+  var b:bool, i:int;
+
+  b := if i then b else b;
+  b := if b then b else i;
+  b := if b then i else i;
+}

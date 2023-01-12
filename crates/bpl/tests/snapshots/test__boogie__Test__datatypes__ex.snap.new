@@ -1,0 +1,308 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "finite_map",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "finite_map",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "dom",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                Atom(
+                                    Int,
+                                ),
+                            ],
+                            value: Atom(
+                                Bool,
+                            ),
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "map",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                Atom(
+                                    Int,
+                                ),
+                            ],
+                            value: Atom(
+                                Int,
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "finite_map",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "datatype",
+                        params: [],
+                    },
+                ),
+            ],
+            decls: [
+                TypeDecl {
+                    ident: "partition",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "constructor",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "partition",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "owners",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                Atom(
+                                    Int,
+                                ),
+                            ],
+                            value: Atom(
+                                Int,
+                            ),
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "vars",
+                    ),
+                    type_: Map(
+                        MapType {
+                            type_params: [],
+                            keys: [
+                                Atom(
+                                    Int,
+                                ),
+                            ],
+                            value: App(
+                                TypeApp {
+                                    head: "finite_map",
+                                    tail: None,
+                                },
+                            ),
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "partition",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "arr",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "finite_map",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Array(
+                            ArrayExpr {
+                                expr: FuncCall(
+                                    FuncCall {
+                                        target: "dom#finite_map",
+                                        args: [
+                                            Var(
+                                                "arr",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                subscripts: [
+                                    ArraySubscript {
+                                        keys: [
+                                            Nat(
+                                                "0",
+                                            ),
+                                        ],
+                                        value: None,
+                                    },
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Array(
+                            ArrayExpr {
+                                expr: FuncCall(
+                                    FuncCall {
+                                        target: "dom#finite_map",
+                                        args: [
+                                            Var(
+                                                "arr",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                subscripts: [
+                                    ArraySubscript {
+                                        keys: [
+                                            Nat(
+                                                "0",
+                                            ),
+                                        ],
+                                        value: None,
+                                    },
+                                ],
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type {:datatype} finite_map;
+
+function {:constructor} finite_map(dom: [int]bool, map: [int]int): finite_map;
+
+type {:datatype} partition;
+
+function {:constructor} partition(owners: [int]int, vars: [int]finite_map): partition;
+
+procedure P(arr: finite_map)
+  requires dom#finite_map(arr)[0];
+  ensures dom#finite_map(arr)[0];
+{
+}
+
+[Input - ../../vendor/boogie/Test/datatypes/ex.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+type{:datatype} finite_map;
+function{:constructor} finite_map(dom:[int]bool, map:[int]int):finite_map;
+
+type{:datatype} partition;
+function{:constructor} partition(owners:[int]int, vars:[int]finite_map):partition;
+
+procedure P(arr:finite_map)
+  requires dom#finite_map(arr)[0];
+  ensures  dom#finite_map(arr)[0];
+{
+}

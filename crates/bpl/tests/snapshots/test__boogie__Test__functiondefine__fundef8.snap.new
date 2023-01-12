@@ -1,0 +1,117 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "define",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "eqC2",
+            type_params: [
+                "alpha",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "alpha",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Eq,
+                        rhs: Nat(
+                            "2",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "P",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "eqC2",
+                                            args: [
+                                                Nat(
+                                                    "2",
+                                                ),
+                                                Nat(
+                                                    "2",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+function {:define} eqC2<alpha>(x: alpha): bool {
+  x == 2
+}
+
+procedure P() {
+  assert eqC2(2, 2);
+}
+
+[Input - ../../vendor/boogie/Test/functiondefine/fundef8.bpl]
+// RUN: %boogie  "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+function {:define} eqC2<alpha>(x:alpha) returns (bool) { x == 2 }
+
+procedure P() {
+  assert eqC2(2, 2);
+}

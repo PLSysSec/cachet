@@ -1,0 +1,893 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "ref",
+                    type_params: [],
+                    type_: None,
+                },
+            ],
+        },
+    ),
+    Const(
+        ConstDecl {
+            attrs: [],
+            is_unique: false,
+            consts: TypedIdents {
+                idents: [
+                    "null",
+                ],
+                type_: App(
+                    TypeApp {
+                        head: "ref",
+                        tail: None,
+                    },
+                ),
+            },
+            order_spec: None,
+        },
+    ),
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "Set",
+                    type_params: [
+                        "T",
+                    ],
+                    type_: Some(
+                        Map(
+                            MapType {
+                                type_params: [],
+                                keys: [
+                                    App(
+                                        TypeApp {
+                                            head: "T",
+                                            tail: None,
+                                        },
+                                    ),
+                                ],
+                                value: Atom(
+                                    Bool,
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Set#Empty",
+            type_params: [
+                "T",
+            ],
+            var_params: [],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Set",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "T",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "o",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [
+                            Trigger(
+                                [
+                                    Array(
+                                        ArrayExpr {
+                                            expr: FuncCall(
+                                                FuncCall {
+                                                    target: "Set#Empty",
+                                                    args: [],
+                                                },
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Var(
+                                                            "o",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                ],
+                            ),
+                        ],
+                        expr: Neg(
+                            NegExpr {
+                                op: Logical,
+                                expr: Array(
+                                    ArrayExpr {
+                                        expr: FuncCall(
+                                            FuncCall {
+                                                target: "Set#Empty",
+                                                args: [],
+                                            },
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [
+                                                    Var(
+                                                        "o",
+                                                    ),
+                                                ],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Set#Singleton",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Set",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "T",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "r",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [
+                            Trigger(
+                                [
+                                    FuncCall(
+                                        FuncCall {
+                                            target: "Set#Singleton",
+                                            args: [
+                                                Var(
+                                                    "r",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                ],
+                            ),
+                        ],
+                        expr: Array(
+                            ArrayExpr {
+                                expr: FuncCall(
+                                    FuncCall {
+                                        target: "Set#Singleton",
+                                        args: [
+                                            Var(
+                                                "r",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                subscripts: [
+                                    ArraySubscript {
+                                        keys: [
+                                            Var(
+                                                "r",
+                                            ),
+                                        ],
+                                        value: None,
+                                    },
+                                ],
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "T",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "r",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "o",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [
+                            Trigger(
+                                [
+                                    Array(
+                                        ArrayExpr {
+                                            expr: FuncCall(
+                                                FuncCall {
+                                                    target: "Set#Singleton",
+                                                    args: [
+                                                        Var(
+                                                            "r",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Var(
+                                                            "o",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                ],
+                            ),
+                        ],
+                        expr: Equiv(
+                            EquivExpr {
+                                lhs: Array(
+                                    ArrayExpr {
+                                        expr: FuncCall(
+                                            FuncCall {
+                                                target: "Set#Singleton",
+                                                args: [
+                                                    Var(
+                                                        "r",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [
+                                                    Var(
+                                                        "o",
+                                                    ),
+                                                ],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: Var(
+                                            "r",
+                                        ),
+                                        op: Eq,
+                                        rhs: Var(
+                                            "o",
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Set#UnionOne",
+            type_params: [
+                "T",
+            ],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "Set",
+                            tail: Some(
+                                App(
+                                    TypeApp {
+                                        head: "T",
+                                        tail: None,
+                                    },
+                                ),
+                            ),
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "T",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "Set",
+                        tail: Some(
+                            App(
+                                TypeApp {
+                                    head: "T",
+                                    tail: None,
+                                },
+                            ),
+                        ),
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [
+                            "T",
+                        ],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "a",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Set",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "T",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "o",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "T",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [
+                            Trigger(
+                                [
+                                    Array(
+                                        ArrayExpr {
+                                            expr: FuncCall(
+                                                FuncCall {
+                                                    target: "Set#UnionOne",
+                                                    args: [
+                                                        Var(
+                                                            "a",
+                                                        ),
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Var(
+                                                            "o",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                ],
+                            ),
+                        ],
+                        expr: Equiv(
+                            EquivExpr {
+                                lhs: Array(
+                                    ArrayExpr {
+                                        expr: FuncCall(
+                                            FuncCall {
+                                                target: "Set#UnionOne",
+                                                args: [
+                                                    Var(
+                                                        "a",
+                                                    ),
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        subscripts: [
+                                            ArraySubscript {
+                                                keys: [
+                                                    Var(
+                                                        "o",
+                                                    ),
+                                                ],
+                                                value: None,
+                                            },
+                                        ],
+                                    },
+                                ),
+                                rhs: Logical(
+                                    LogicalExpr {
+                                        lhs: Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "o",
+                                                ),
+                                                op: Eq,
+                                                rhs: Var(
+                                                    "x",
+                                                ),
+                                            },
+                                        ),
+                                        op: Or,
+                                        rhs: Array(
+                                            ArrayExpr {
+                                                expr: Var(
+                                                    "a",
+                                                ),
+                                                subscripts: [
+                                                    ArraySubscript {
+                                                        keys: [
+                                                            Var(
+                                                                "o",
+                                                            ),
+                                                        ],
+                                                        value: None,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Test",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "this",
+                                ],
+                                type_: App(
+                                    TypeApp {
+                                        head: "ref",
+                                        tail: None,
+                                    },
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "s",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "Set",
+                                                tail: Some(
+                                                    App(
+                                                        TypeApp {
+                                                            head: "ref",
+                                                            tail: None,
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "s",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "Set#UnionOne",
+                                                args: [
+                                                    FuncCall(
+                                                        FuncCall {
+                                                            target: "Set#Empty",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    Var(
+                                                        "this",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Array(
+                                        ArrayExpr {
+                                            expr: Var(
+                                                "s",
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Var(
+                                                            "this",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: Array(
+                                                ArrayExpr {
+                                                    expr: FuncCall(
+                                                        FuncCall {
+                                                            target: "Set#Empty",
+                                                            args: [],
+                                                        },
+                                                    ),
+                                                    subscripts: [
+                                                        ArraySubscript {
+                                                            keys: [
+                                                                Var(
+                                                                    "this",
+                                                                ),
+                                                            ],
+                                                            value: None,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Array(
+                                        ArrayExpr {
+                                            expr: FuncCall(
+                                                FuncCall {
+                                                    target: "Set#Singleton",
+                                                    args: [
+                                                        Var(
+                                                            "this",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                            subscripts: [
+                                                ArraySubscript {
+                                                    keys: [
+                                                        Var(
+                                                            "null",
+                                                        ),
+                                                    ],
+                                                    value: None,
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type ref;
+
+const null: ref;
+
+type Set T = [T]bool;
+
+function Set#Empty<T>(): Set T;
+
+axiom (forall <T> o: T :: {Set#Empty()[o]} !Set#Empty()[o]);
+
+function Set#Singleton<T>(T): Set T;
+
+axiom (forall <T> r: T :: {Set#Singleton(r)} Set#Singleton(r)[r]);
+
+axiom (forall <T> r: T, o: T :: {Set#Singleton(r)[o]} Set#Singleton(r)[o] <==> r == o);
+
+function Set#UnionOne<T>(Set T, T): Set T;
+
+axiom (forall <T> a: Set T, x: T, o: T :: {Set#UnionOne(a, x)[o]} Set#UnionOne(a, x)[o] <==> o == x || a[o]);
+
+procedure Test(this: ref) {
+  var s: Set ref;
+
+  s := Set#UnionOne(Set#Empty(), this);
+  assert s[this];
+  assert !Set#Empty()[this];
+  assert Set#Singleton(this)[null];
+}
+
+[Input - ../../vendor/boogie/Test/test21/EmptySetBug.bpl]
+// RUN: %boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
+// RUN: %diff "%s.p.expect" "%t"
+// RUN: %boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
+// RUN: %diff "%s.a.expect" "%t"
+type ref;
+
+const null: ref;
+
+type Set T = [T]bool;
+
+function Set#Empty<T>() returns (Set T);
+
+axiom (forall<T> o: T :: { Set#Empty()[o] } !Set#Empty()[o]);
+
+function Set#Singleton<T>(T) returns (Set T);
+
+axiom (forall<T> r: T :: { Set#Singleton(r) } Set#Singleton(r)[r]);
+
+axiom (forall<T> r: T, o: T :: { Set#Singleton(r)[o] } Set#Singleton(r)[o] <==> r == o);
+
+function Set#UnionOne<T>(Set T, T) returns (Set T);
+
+axiom (forall<T> a: Set T, x: T, o: T :: { Set#UnionOne(a, x)[o] } Set#UnionOne(a, x)[o] <==> o == x || a[o]);
+
+procedure Test(this: ref)
+{
+  var s: Set ref;
+
+  s := Set#UnionOne(Set#Empty(), this);
+  assert s[this];
+  assert !Set#Empty()[this];
+
+  assert Set#Singleton(this)[null];         // should not be provable
+}

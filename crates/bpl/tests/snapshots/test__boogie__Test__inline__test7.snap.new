@@ -1,0 +1,31 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parse Error]
+error: unexpected token `var`; expected `!`, `(`, `-`, `exists`, `false`, `forall`, `if`, `int`, `lambda`, `old`, `real`, `true`, `|{`, `¬`, `λ`, `∀`, `∃`, float, digits, decimal, bitvector literal, or identifier
+   ┌─ ../../vendor/boogie/Test/inline/test7.bpl:12:11
+   │
+12 │   assert (var a := 42; a == 42);
+   │           ^^^
+
+[Input - ../../vendor/boogie/Test/inline/test7.bpl]
+// RUN: %boogie -inline:spec -print:- -env:0 -printInlined "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+type ref;
+var arr:[int]int;
+
+procedure {:inline 1} b()
+modifies arr;
+ensures (forall a:int  :: {arr[a]} a < 10 ==> arr[a] == 0);
+{
+  assert (forall a:int  :: {arr[a]} a < 10 ==> arr[a] == 0);
+  assert arr == (lambda a: int :: 10);
+  assert (var a := 42; a == 42);
+}
+procedure foo(a:ref)
+modifies arr;
+{
+   call b();
+}

@@ -1,0 +1,384 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "(_ to_fp 8 24) RNE",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "TO_FLOAT32_INT",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "float24e8",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "(_ to_fp 8 24) RNE",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "TO_FLOAT32_REAL",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Real,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "float24e8",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "main",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "tick",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float24e8",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "time",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float24e8",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "i",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "tick",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Factor(
+                                            Factor {
+                                                lhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "TO_FLOAT32_INT",
+                                                        args: [
+                                                            Nat(
+                                                                "1",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                                op: RealDiv,
+                                                rhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "TO_FLOAT32_INT",
+                                                        args: [
+                                                            Nat(
+                                                                "10",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "time",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "TO_FLOAT32_INT",
+                                                args: [
+                                                    Nat(
+                                                        "0",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "i",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "i",
+                                                ),
+                                                op: Lt,
+                                                rhs: Nat(
+                                                    "10",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "time",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "time",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Var(
+                                                                    "tick",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "i",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "i",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "time",
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "TO_FLOAT32_INT",
+                                                    args: [
+                                                        Nat(
+                                                            "1",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+function {:builtin "(_ to_fp 8 24) RNE"} TO_FLOAT32_INT(int): float24e8;
+
+function {:builtin "(_ to_fp 8 24) RNE"} TO_FLOAT32_REAL(real): float24e8;
+
+procedure main() {
+  var tick: float24e8;
+  var time: float24e8;
+  var i: int;
+
+  tick := TO_FLOAT32_INT(1) / TO_FLOAT32_INT(10);
+  time := TO_FLOAT32_INT(0);
+  i := 0;
+  while (i < 10) {
+    time := time + tick;
+    i := i + 1;
+  }
+  assert time == TO_FLOAT32_INT(1);
+}
+
+[Input - ../../vendor/boogie/Test/floats/RoundoffError.bpl]
+// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+function {:builtin "(_ to_fp 8 24) RNE"} TO_FLOAT32_INT(int) returns (float24e8);
+function {:builtin "(_ to_fp 8 24) RNE"} TO_FLOAT32_REAL(real) returns (float24e8);
+
+procedure main() returns () {
+  var tick : float24e8;
+  var time : float24e8;
+  var i: int;
+  
+  tick := TO_FLOAT32_INT(1)/TO_FLOAT32_INT(10);
+  time := TO_FLOAT32_INT(0);
+  
+  i := 0;
+  while (i < 10)
+  {
+    time := time + tick;
+    i := i + 1;
+  }
+  assert time == TO_FLOAT32_INT(1);
+}

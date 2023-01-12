@@ -1,0 +1,249 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Type(
+        TypeDecls {
+            attrs: [],
+            decls: [
+                TypeDecl {
+                    ident: "float",
+                    type_params: [],
+                    type_: Some(
+                        App(
+                            TypeApp {
+                                head: "float24e8",
+                                tail: None,
+                            },
+                        ),
+                    ),
+                },
+            ],
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "fp.isNaN",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "isNaN",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "float",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [],
+                    },
+                ),
+            ],
+            ident: "id",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "f",
+                    ),
+                    type_: App(
+                        TypeApp {
+                            head: "float",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "float",
+                        tail: None,
+                    },
+                ),
+            },
+            body: Some(
+                Var(
+                    "f",
+                ),
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Main",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "nan1",
+                                            "nan2",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assume,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "isNaN",
+                                            args: [
+                                                Var(
+                                                    "nan1",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "nan2",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        FuncCall(
+                                            FuncCall {
+                                                target: "id",
+                                                args: [
+                                                    Var(
+                                                        "nan1",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Neg(
+                                        NegExpr {
+                                            op: Logical,
+                                            expr: FuncCall(
+                                                FuncCall {
+                                                    target: "isNaN",
+                                                    args: [
+                                                        Var(
+                                                            "nan2",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+type float = float24e8;
+
+function {:builtin "fp.isNaN"} isNaN(float): bool;
+
+function {:inline} id(f: float): float {
+  f
+}
+
+procedure Main() {
+  var nan1, nan2: float;
+
+  assume isNaN(nan1);
+  nan2 := id(nan1);
+  assert !isNaN(nan2);
+}
+
+[Input - ../../vendor/boogie/Test/floats/Equal1.bpl]
+// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+type float = float24e8;
+
+function {:builtin "fp.isNaN"} isNaN(float) returns (bool);
+function {:inline} id(f:float) returns (float) {f}
+
+procedure Main()
+{
+  var nan1, nan2: float;
+  assume isNaN(nan1);
+  nan2 := id(nan1);
+  assert !isNaN(nan2);
+}

@@ -1,0 +1,89 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: Nat(
+                        "1234567890987654321",
+                    ),
+                    op: Eq,
+                    rhs: Nat(
+                        "1234567890987654321",
+                    ),
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "f",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: FuncCall(
+                        FuncCall {
+                            target: "f",
+                            args: [
+                                Nat(
+                                    "1234567890987654321",
+                                ),
+                            ],
+                        },
+                    ),
+                    op: Eq,
+                    rhs: Nat(
+                        "0",
+                    ),
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+axiom 1234567890987654321 == 1234567890987654321;
+
+function f(int): int;
+
+axiom f(1234567890987654321) == 0;
+
+[Input - ../../vendor/boogie/Test/test0/LargeLiterals0.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff NoErrors.expect "%t"
+// Test to parse large integer literals
+
+axiom 1234567890987654321 == 1234567890987654321;
+
+function f(int) returns (int);
+
+axiom f(1234567890987654321) == 0;

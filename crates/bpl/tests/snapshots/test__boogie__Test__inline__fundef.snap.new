@@ -1,0 +1,171 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    true,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "foo",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Gt,
+                        rhs: Nat(
+                            "0",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "inline",
+                        params: [
+                            Expr(
+                                BoolLit(
+                                    false,
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "foo2",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Gt,
+                        rhs: Nat(
+                            "0",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "foo3",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: Some(
+                        "x",
+                    ),
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: Some(
+                Rel(
+                    RelExpr {
+                        lhs: Var(
+                            "x",
+                        ),
+                        op: Gt,
+                        rhs: Nat(
+                            "0",
+                        ),
+                    },
+                ),
+            ),
+        },
+    ),
+]
+
+[Printed]
+function {:inline true} foo(x: int): bool {
+  x > 0
+}
+
+function {:inline false} foo2(x: int): bool {
+  x > 0
+}
+
+function foo3(x: int): bool {
+  x > 0
+}
+
+[Input - ../../vendor/boogie/Test/inline/fundef.bpl]
+// RUN: %boogie -print:- -env:0 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+function {:inline true} foo(x:int) returns(bool)
+  { x > 0 }
+function {:inline false} foo2(x:int) returns(bool)
+  { x > 0 }
+function foo3(x:int) returns(bool)
+  { x > 0 }

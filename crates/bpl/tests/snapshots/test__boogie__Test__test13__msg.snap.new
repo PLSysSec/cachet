@@ -1,0 +1,267 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Foo0",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [
+                                        Attr(
+                                            AttrContent {
+                                                ident: "msg",
+                                                params: [
+                                                    String(
+                                                        StringLit {
+                                                            text: "My error message for assertion failure",
+                                                        },
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                    proposition: BoolLit(
+                                        false,
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Foo1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "msg",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "My error message for precondition failure",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: BoolLit(
+                            false,
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "CallerFoo1",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Foo1",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "Foo2",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "msg",
+                                    params: [
+                                        String(
+                                            StringLit {
+                                                text: "My error message for postcondition failure",
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        proposition: BoolLit(
+                            false,
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Call(
+                                CallCmd {
+                                    attrs: [],
+                                    call_params: CallParams {
+                                        returns: [],
+                                        target: "Foo1",
+                                        params: [],
+                                    },
+                                    is_async: false,
+                                    is_free: false,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "msg_if_verifies",
+                            params: [
+                                String(
+                                    StringLit {
+                                        text: "Are you sure this procedure should verify?",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "Foo3",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [],
+                    stmt_list: [],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure Foo0() {
+  assert {:msg "My error message for assertion failure"} false;
+}
+
+procedure Foo1()
+  requires {:msg "My error message for precondition failure"} false;
+{
+}
+
+procedure CallerFoo1() {
+  call Foo1();
+}
+
+procedure Foo2()
+  ensures {:msg "My error message for postcondition failure"} false;
+{
+  call Foo1();
+}
+
+procedure {:msg_if_verifies "Are you sure this procedure should verify?"} Foo3() {
+}
+
+[Input - ../../vendor/boogie/Test/test13/msg.bpl]
+// RUN: %boogie -errorTrace:0 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure Foo0()
+{
+    assert {:msg "My error message for assertion failure"} false;
+}
+
+procedure Foo1()
+requires {:msg "My error message for precondition failure"} false;
+{
+
+}
+
+procedure CallerFoo1()
+{
+    call Foo1();
+}
+
+procedure Foo2()
+ensures {:msg "My error message for postcondition failure"} false;
+{
+    call Foo1();
+}
+
+procedure {:msg_if_verifies "Are you sure this procedure should verify?"} Foo3()
+{
+
+}

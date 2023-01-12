@@ -1,0 +1,837 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "ComputeFactorial",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "n",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "u",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Nat(
+                                    "1",
+                                ),
+                                op: Le,
+                                rhs: Var(
+                                    "n",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+                Contract(
+                    ContractSpec {
+                        kind: Ensures,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "u",
+                                ),
+                                op: Eq,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "Factorial",
+                                        args: [
+                                            Var(
+                                                "n",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "r",
+                                            "v",
+                                            "s",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "r",
+                                            subscripts: [],
+                                        },
+                                        AssignLhs {
+                                            ident: "u",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "1",
+                                        ),
+                                        Nat(
+                                            "1",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "TOP",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Nat(
+                                                        "1",
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Var(
+                                                        "r",
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "r",
+                                                    ),
+                                                    op: Le,
+                                                    rhs: Var(
+                                                        "n",
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Nat(
+                                                "1",
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "u",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "u",
+                                            ),
+                                            op: Eq,
+                                            rhs: FuncCall(
+                                                FuncCall {
+                                                    target: "Factorial",
+                                                    args: [
+                                                        Var(
+                                                            "r",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "v",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "u",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "n",
+                                                ),
+                                                op: Le,
+                                                rhs: Var(
+                                                    "r",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        TransferCmd(
+                                            Return(
+                                                ReturnCmd,
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "s",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "1",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Label(
+                                Label {
+                                    ident: "INNER",
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Var(
+                                                "s",
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "r",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Logical(
+                                        LogicalExpr {
+                                            lhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "v",
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: FuncCall(
+                                                        FuncCall {
+                                                            target: "Factorial",
+                                                            args: [
+                                                                Var(
+                                                                    "r",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: And,
+                                            rhs: Rel(
+                                                RelExpr {
+                                                    lhs: Var(
+                                                        "u",
+                                                    ),
+                                                    op: Eq,
+                                                    rhs: Factor(
+                                                        Factor {
+                                                            lhs: Var(
+                                                                "s",
+                                                            ),
+                                                            op: Mul,
+                                                            rhs: FuncCall(
+                                                                FuncCall {
+                                                                    target: "Factorial",
+                                                                    args: [
+                                                                        Var(
+                                                                            "r",
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "u",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "u",
+                                                ),
+                                                op: Add,
+                                                rhs: Var(
+                                                    "v",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "s",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "s",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: Rel(
+                                        RelExpr {
+                                            lhs: Term(
+                                                Term {
+                                                    lhs: Var(
+                                                        "s",
+                                                    ),
+                                                    op: Sub,
+                                                    rhs: Nat(
+                                                        "1",
+                                                    ),
+                                                },
+                                            ),
+                                            op: Le,
+                                            rhs: Var(
+                                                "r",
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "s",
+                                                ),
+                                                op: Le,
+                                                rhs: Var(
+                                                    "r",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        TransferCmd(
+                                            Goto(
+                                                GotoCmd {
+                                                    labels: [
+                                                        "INNER",
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "r",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Term(
+                                            Term {
+                                                lhs: Var(
+                                                    "r",
+                                                ),
+                                                op: Add,
+                                                rhs: Nat(
+                                                    "1",
+                                                ),
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        TransferCmd(
+                            Goto(
+                                GotoCmd {
+                                    labels: [
+                                        "TOP",
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Factorial",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Rel(
+                RelExpr {
+                    lhs: FuncCall(
+                        FuncCall {
+                            target: "Factorial",
+                            args: [
+                                Nat(
+                                    "0",
+                                ),
+                            ],
+                        },
+                    ),
+                    op: Eq,
+                    rhs: Nat(
+                        "1",
+                    ),
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "n",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [
+                            Trigger(
+                                [
+                                    FuncCall(
+                                        FuncCall {
+                                            target: "Factorial",
+                                            args: [
+                                                Var(
+                                                    "n",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                ],
+                            ),
+                        ],
+                        expr: Implies(
+                            ImpliesExpr {
+                                lhs: Rel(
+                                    RelExpr {
+                                        lhs: Nat(
+                                            "1",
+                                        ),
+                                        op: Le,
+                                        rhs: Var(
+                                            "n",
+                                        ),
+                                    },
+                                ),
+                                rhs: Rel(
+                                    RelExpr {
+                                        lhs: FuncCall(
+                                            FuncCall {
+                                                target: "Factorial",
+                                                args: [
+                                                    Var(
+                                                        "n",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                        op: Eq,
+                                        rhs: Factor(
+                                            Factor {
+                                                lhs: Var(
+                                                    "n",
+                                                ),
+                                                op: Mul,
+                                                rhs: FuncCall(
+                                                    FuncCall {
+                                                        target: "Factorial_Aux",
+                                                        args: [
+                                                            Term(
+                                                                Term {
+                                                                    lhs: Var(
+                                                                        "n",
+                                                                    ),
+                                                                    op: Sub,
+                                                                    rhs: Nat(
+                                                                        "1",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "Factorial_Aux",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "n",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [
+                            Trigger(
+                                [
+                                    FuncCall(
+                                        FuncCall {
+                                            target: "Factorial",
+                                            args: [
+                                                Var(
+                                                    "n",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                ],
+                            ),
+                        ],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "Factorial",
+                                        args: [
+                                            Var(
+                                                "n",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: FuncCall(
+                                    FuncCall {
+                                        target: "Factorial_Aux",
+                                        args: [
+                                            Var(
+                                                "n",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure ComputeFactorial(n: int) returns (u: int)
+  requires 1 <= n;
+  ensures u == Factorial(n);
+{
+  var r, v, s: int;
+
+  r, u := 1, 1;
+  TOP:
+  assert 1 <= r && r <= n;
+  assert 1 <= u;
+  assert u == Factorial(r);
+  v := u;
+  if (n <= r) {
+    return;
+  }
+  s := 1;
+  INNER:
+  assert s <= r;
+  assert v == Factorial(r) && u == s * Factorial(r);
+  u := u + v;
+  s := s + 1;
+  assert s - 1 <= r;
+  if (s <= r) {
+    goto INNER;
+  }
+  r := r + 1;
+  goto TOP;
+}
+
+function Factorial(int): int;
+
+axiom Factorial(0) == 1;
+
+axiom (forall n: int :: {Factorial(n)} 1 <= n ==> Factorial(n) == n * Factorial_Aux(n - 1));
+
+function Factorial_Aux(int): int;
+
+axiom (forall n: int :: {Factorial(n)} Factorial(n) == Factorial_Aux(n));
+
+[Input - ../../vendor/boogie/Test/textbook/TuringFactorial.bpl]
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// A Boogie version of Turing's additive factorial program, from "Checking a large routine"
+// published in the "Report of a Conference of High Speed Automatic Calculating Machines",
+// pp. 67-69, 1949.
+
+procedure ComputeFactorial(n: int) returns (u: int)
+  requires 1 <= n;
+  ensures u == Factorial(n);
+{
+  var r, v, s: int;
+  r, u := 1, 1;
+TOP:  // B
+  assert 1 <= r && r <= n;
+  assert 1 <= u;
+  assert u == Factorial(r);
+  v := u;
+  if (n <= r) { return; }
+  s := 1;
+INNER:  // E
+  assert s <= r;
+  assert v == Factorial(r) && u == s * Factorial(r);
+  u := u + v;
+  s := s + 1;
+  assert s - 1 <= r;
+  if (s <= r) { goto INNER; }
+  r := r + 1;
+  goto TOP;
+}
+
+function Factorial(int): int;
+axiom Factorial(0) == 1;
+axiom (forall n: int :: {Factorial(n)}  1 <= n ==> Factorial(n) == n * Factorial_Aux(n-1));
+
+function Factorial_Aux(int): int;
+axiom (forall n: int :: {Factorial(n)} Factorial(n) == Factorial_Aux(n));

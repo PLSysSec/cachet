@@ -1,0 +1,283 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "f",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Int,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [],
+            ident: "P",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Int,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "nopats",
+                                    params: [
+                                        Expr(
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "f",
+                                                    args: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                        Nat(
+                                                            "10",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                            Attr(
+                                AttrContent {
+                                    ident: "nopats",
+                                    params: [
+                                        Expr(
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "f",
+                                                    args: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                        Nat(
+                                                            "10",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "f",
+                                        args: [
+                                            Var(
+                                                "x",
+                                            ),
+                                            Nat(
+                                                "10",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "3",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+    Axiom(
+        AxiomDecl {
+            attrs: [],
+            proposition: Quant(
+                QuantExpr {
+                    kind: ForAll,
+                    body: QuantBody {
+                        type_params: [],
+                        bound_vars: [
+                            AttrTypedIdentsWhere {
+                                attrs: [],
+                                typed_idents_where: TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            },
+                        ],
+                        attrs: [
+                            Attr(
+                                AttrContent {
+                                    ident: "nopats",
+                                    params: [
+                                        Expr(
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "f",
+                                                    args: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                        Nat(
+                                                            "10",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        Expr(
+                                            FuncCall(
+                                                FuncCall {
+                                                    target: "f",
+                                                    args: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                        expr: Rel(
+                            RelExpr {
+                                lhs: FuncCall(
+                                    FuncCall {
+                                        target: "f",
+                                        args: [
+                                            Var(
+                                                "x",
+                                            ),
+                                            Nat(
+                                                "10",
+                                            ),
+                                        ],
+                                    },
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "3",
+                                ),
+                            },
+                        ),
+                    },
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+function f(int, int): int;
+
+function P(int, int): bool;
+
+axiom (forall x: int :: {:nopats f(x, 10)} {:nopats f(x, 10)} f(x, 10) == 3);
+
+axiom (forall x: int :: {:nopats f(x, 10), f(x, x)} f(x, 10) == 3);
+
+[Input - ../../vendor/boogie/Test/test0/Triggers0.bpl]
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// Trigger errors
+
+function f(int, int) returns (int);
+function P(int, int) returns (bool);
+
+// -------------- tests specific to pattern exclusions
+
+axiom (forall x: int ::
+       {:nopats f(x,10) }
+       { :   nopats   f(x,10) }
+       f(x,10) == 3);
+
+axiom (forall x: int ::
+       {:nopats f(x,10), f(x,x) }  // error: a pattern exclusion can only mention one expression
+       f(x,10) == 3);

@@ -1,0 +1,354 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "(_ to_fp 11 53) RNE",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "TO_FLOAT64_REAL",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: Atom(
+                        Real,
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: App(
+                    TypeApp {
+                        head: "float53e11",
+                        tail: None,
+                    },
+                ),
+            },
+            body: None,
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "double_range_true",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float53e11",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Havoc(
+                                HavocCmd {
+                                    vars: [
+                                        "x",
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Logical(
+                                            LogicalExpr {
+                                                lhs: Rel(
+                                                    RelExpr {
+                                                        lhs: Var(
+                                                            "x",
+                                                        ),
+                                                        op: Ge,
+                                                        rhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "TO_FLOAT64_REAL",
+                                                                args: [
+                                                                    Neg(
+                                                                        NegExpr {
+                                                                            op: Arith,
+                                                                            expr: Dec(
+                                                                                Dec {
+                                                                                    whole: "1",
+                                                                                    fract: None,
+                                                                                    exp: Some(
+                                                                                        Exp {
+                                                                                            is_neg: false,
+                                                                                            digits: "307",
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                                op: And,
+                                                rhs: Rel(
+                                                    RelExpr {
+                                                        lhs: Var(
+                                                            "x",
+                                                        ),
+                                                        op: Le,
+                                                        rhs: FuncCall(
+                                                            FuncCall {
+                                                                target: "TO_FLOAT64_REAL",
+                                                                args: [
+                                                                    Dec(
+                                                                        Dec {
+                                                                            whole: "1",
+                                                                            fract: None,
+                                                                            exp: Some(
+                                                                                Exp {
+                                                                                    is_neg: false,
+                                                                                    digits: "307",
+                                                                                },
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        LabelOrCmd(
+                                            Claim(
+                                                ClaimCmd {
+                                                    kind: Assert,
+                                                    attrs: [],
+                                                    proposition: FuncCall(
+                                                        FuncCall {
+                                                            target: "EQ",
+                                                            args: [
+                                                                Var(
+                                                                    "x",
+                                                                ),
+                                                                Var(
+                                                                    "x",
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "double_range_false",
+                type_params: [],
+                var_params: [],
+                returns: [],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: App(
+                                            TypeApp {
+                                                head: "float53e11",
+                                                tail: None,
+                                            },
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Havoc(
+                                HavocCmd {
+                                    vars: [
+                                        "x",
+                                    ],
+                                },
+                            ),
+                        ),
+                        LabelOrCmd(
+                            Claim(
+                                ClaimCmd {
+                                    kind: Assert,
+                                    attrs: [],
+                                    proposition: FuncCall(
+                                        FuncCall {
+                                            target: "EQ",
+                                            args: [
+                                                Var(
+                                                    "x",
+                                                ),
+                                                Var(
+                                                    "x",
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Func(
+        FuncDecl {
+            attrs: [
+                Attr(
+                    AttrContent {
+                        ident: "builtin",
+                        params: [
+                            String(
+                                StringLit {
+                                    text: "fp.eq",
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+            ident: "EQ",
+            type_params: [],
+            var_params: [
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "float53e11",
+                            tail: None,
+                        },
+                    ),
+                },
+                VarOrType {
+                    attrs: [],
+                    var: None,
+                    type_: App(
+                        TypeApp {
+                            head: "float53e11",
+                            tail: None,
+                        },
+                    ),
+                },
+            ],
+            returns: VarOrType {
+                attrs: [],
+                var: None,
+                type_: Atom(
+                    Bool,
+                ),
+            },
+            body: None,
+        },
+    ),
+]
+
+[Printed]
+function {:builtin "(_ to_fp 11 53) RNE"} TO_FLOAT64_REAL(real): float53e11;
+
+procedure double_range_true() {
+  var x: float53e11;
+
+  havoc x;
+  if (x >= TO_FLOAT64_REAL(-1e307) && x <= TO_FLOAT64_REAL(1e307)) {
+    assert EQ(x, x);
+  }
+}
+
+procedure double_range_false() {
+  var x: float53e11;
+
+  havoc x;
+  assert EQ(x, x);
+}
+
+function {:builtin "fp.eq"} EQ(float53e11, float53e11): bool;
+
+[Input - ../../vendor/boogie/Test/floats/Havoc.bpl]
+// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+function {:builtin "(_ to_fp 11 53) RNE"} TO_FLOAT64_REAL(real) returns (float53e11);
+
+procedure double_range_true() returns () {
+  var x : float53e11;
+  havoc x;
+  if (x >= TO_FLOAT64_REAL(-1e307) && x <= TO_FLOAT64_REAL(1e307)) {  
+    assert(EQ(x,x));
+  }
+}
+
+procedure double_range_false() returns () {
+  var x : float53e11;
+  havoc x;
+  assert(EQ(x,x));
+}
+
+function {:builtin "fp.eq"} EQ(float53e11,float53e11) returns (bool);

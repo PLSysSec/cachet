@@ -1,0 +1,358 @@
+---
+source: crates/bpl/tests/test.rs
+assertion_line: 41
+expression: snapshot_report
+---
+[Parsed]
+[
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [],
+                ident: "foo",
+                type_params: [],
+                var_params: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "N",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+                returns: [],
+            },
+            specs: [
+                Contract(
+                    ContractSpec {
+                        kind: Requires,
+                        attrs: [],
+                        proposition: Rel(
+                            RelExpr {
+                                lhs: Var(
+                                    "N",
+                                ),
+                                op: Eq,
+                                rhs: Nat(
+                                    "2",
+                                ),
+                            },
+                        ),
+                        is_free: false,
+                    },
+                ),
+            ],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "n",
+                                            "sum",
+                                            "recent",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "n",
+                                            subscripts: [],
+                                        },
+                                        AssignLhs {
+                                            ident: "sum",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Nat(
+                                            "0",
+                                        ),
+                                        Nat(
+                                            "0",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            While(
+                                WhileCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "n",
+                                                ),
+                                                op: Lt,
+                                                rhs: Var(
+                                                    "N",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    invariants: [],
+                                    body: [
+                                        LabelOrCmd(
+                                            Call(
+                                                CallCmd {
+                                                    attrs: [],
+                                                    call_params: CallParams {
+                                                        returns: [
+                                                            "recent",
+                                                        ],
+                                                        target: "bar",
+                                                        params: [],
+                                                    },
+                                                    is_async: false,
+                                                    is_free: false,
+                                                },
+                                            ),
+                                        ),
+                                        LabelOrCmd(
+                                            Assign(
+                                                AssignCmd {
+                                                    lhs: [
+                                                        AssignLhs {
+                                                            ident: "sum",
+                                                            subscripts: [],
+                                                        },
+                                                        AssignLhs {
+                                                            ident: "n",
+                                                            subscripts: [],
+                                                        },
+                                                    ],
+                                                    rhs: [
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "sum",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Var(
+                                                                    "recent",
+                                                                ),
+                                                            },
+                                                        ),
+                                                        Term(
+                                                            Term {
+                                                                lhs: Var(
+                                                                    "n",
+                                                                ),
+                                                                op: Add,
+                                                                rhs: Nat(
+                                                                    "1",
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                        StructuredCmd(
+                            If(
+                                IfCmd {
+                                    guard: Expr(
+                                        Rel(
+                                            RelExpr {
+                                                lhs: Var(
+                                                    "n",
+                                                ),
+                                                op: Eq,
+                                                rhs: Nat(
+                                                    "2",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    then: [
+                                        LabelOrCmd(
+                                            Claim(
+                                                ClaimCmd {
+                                                    kind: Assert,
+                                                    attrs: [],
+                                                    proposition: Rel(
+                                                        RelExpr {
+                                                            lhs: Var(
+                                                                "sum",
+                                                            ),
+                                                            op: Eq,
+                                                            rhs: Term(
+                                                                Term {
+                                                                    lhs: Var(
+                                                                        "recent",
+                                                                    ),
+                                                                    op: Add,
+                                                                    rhs: Var(
+                                                                        "recent",
+                                                                    ),
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                    else_: None,
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+    Proc(
+        ProcDecl {
+            proc_sign: ProcSign {
+                attrs: [
+                    Attr(
+                        AttrContent {
+                            ident: "inline",
+                            params: [
+                                Expr(
+                                    Nat(
+                                        "1",
+                                    ),
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+                ident: "bar",
+                type_params: [],
+                var_params: [],
+                returns: [
+                    AttrTypedIdentsWhere {
+                        attrs: [],
+                        typed_idents_where: TypedIdentsWhere {
+                            typed_idents: TypedIdents {
+                                idents: [
+                                    "r",
+                                ],
+                                type_: Atom(
+                                    Int,
+                                ),
+                            },
+                            where_: None,
+                        },
+                    },
+                ],
+            },
+            specs: [],
+            impl_body: Some(
+                ImplBody {
+                    local_vars: [
+                        LocalVars {
+                            attrs: [],
+                            vars: [
+                                TypedIdentsWhere {
+                                    typed_idents: TypedIdents {
+                                        idents: [
+                                            "x",
+                                        ],
+                                        type_: Atom(
+                                            Int,
+                                        ),
+                                    },
+                                    where_: None,
+                                },
+                            ],
+                        },
+                    ],
+                    stmt_list: [
+                        LabelOrCmd(
+                            Assign(
+                                AssignCmd {
+                                    lhs: [
+                                        AssignLhs {
+                                            ident: "r",
+                                            subscripts: [],
+                                        },
+                                    ],
+                                    rhs: [
+                                        Var(
+                                            "x",
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ),
+                    ],
+                },
+            ),
+        },
+    ),
+]
+
+[Printed]
+procedure foo(N: int)
+  requires N == 2;
+{
+  var n, sum, recent: int;
+
+  n, sum := 0, 0;
+  while (n < N) {
+    call recent := bar();
+    sum, n := sum + recent, n + 1;
+  }
+  if (n == 2) {
+    assert sum == recent + recent;
+  }
+}
+
+procedure {:inline 1} bar() returns (r: int) {
+  var x: int;
+
+  r := x;
+}
+
+[Input - ../../vendor/boogie/Test/inline/InliningAndLoops.bpl]
+// RUN: %boogie -loopUnroll:3 -soundLoopUnrolling "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+procedure foo(N: int)
+  requires N == 2;
+{
+  var n, sum, recent: int;
+  n, sum := 0, 0;
+  while (n < N)
+  {
+    call recent := bar();
+    sum, n := sum + recent, n + 1;
+  }
+  if (n == 2) {
+    assert sum == recent + recent;  // no reason to believe this always to be true
+  }
+}
+
+procedure {:inline 1} bar() returns (r: int)
+{
+  var x: int;
+  r := x;
+}
