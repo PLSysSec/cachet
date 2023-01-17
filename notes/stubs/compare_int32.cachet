@@ -1,5 +1,5 @@
-import "../cacheir.cachet"
-import "../utils.cachet"
+import "../cacheir.cachet";
+import "../utils.cachet";
 
 ir CacheStub emits CacheIR {
     op CompareInt32(
@@ -8,8 +8,13 @@ ir CacheStub emits CacheIR {
         jsop: JSOp,
     ) {
         initRegState();
-        initValueInput(lhsId);
-        initValueInput(rhsId);
+
+        initOperandId(lhsId);
+        initInputValueId(lhsId);
+
+        initOperandId(rhsId);
+        initInputValueId(rhsId);
+
         initTypedOutput(MIRType::Boolean);
 
         assume (
@@ -20,9 +25,9 @@ ir CacheStub emits CacheIR {
         );
 
         emit CacheIR::GuardToInt32(lhsId);
-        let lhsInt32Id = ValueId::toInt32Id(lhsId);
+        let lhsInt32Id = OperandId::toInt32Id(lhsId);
         emit CacheIR::GuardToInt32(rhsId);
-        let rhsInt32Id = ValueId::toInt32Id(rhsId);
+        let rhsInt32Id = OperandId::toInt32Id(rhsId);
         emit CacheIR::CompareInt32Result(jsop, lhsInt32Id, rhsInt32Id);
     }
 }

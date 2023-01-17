@@ -1535,9 +1535,6 @@ ir CacheIR emits MASM {
         CacheIR::allocateAvailableFloatReg(FloatReg::doubleScratchReg())
     }
 
-    fn defineReg(typedId: TypedId) -> Reg;
-    fn defineValueReg(valueId: ValueId) -> ValueReg;
-
     fn defineValueId(valueId: ValueId) -> ValueReg;
     fn defineTypedId(typedId: TypedId) -> Reg;
 
@@ -1586,7 +1583,7 @@ ir CacheIR emits MASM {
     #[refined]
     fn defineValueTagId(id: ValueTagId) -> Reg {
         let typedId = TypedId::fromValueTagId(id);
-        CacheIR::defineReg(typedId)
+        CacheIR::defineTypedId(typedId)
     }
 
     fn getOperandLocation(id: OperandId) -> OperandLocation;

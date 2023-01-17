@@ -1,16 +1,19 @@
-import "../cacheir.cachet"
-import "../utils.cachet"
+import "../cacheir.cachet";
+import "../utils.cachet";
 
 ir CacheStub emits CacheIR {
     op GetArrayLength(
         valueId: ValueId,
     ) {
         initRegState();
-        initValueInput(valueId);
+
+        initOperandId(valueId);
+        initInputValueId(valueId);
+
         initValueOutput();
 
         emit CacheIR::GuardToObject(valueId);
-        let objectId = ValueId::toObjectId(valueId);
+        let objectId = OperandId::toObjectId(valueId);
         emit CacheIR::GuardClass(objectId, GuardClassKind::Array);
         emit CacheIR::LoadInt32ArrayLengthResult(objectId);
     }

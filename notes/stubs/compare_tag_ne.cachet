@@ -1,5 +1,5 @@
-import "../cacheir.cachet"
-import "../utils.cachet"
+import "../cacheir.cachet";
+import "../utils.cachet";
 
 ir CacheStub emits CacheIR {
     op CompareTagNe(
@@ -9,10 +9,17 @@ ir CacheStub emits CacheIR {
         rhsTagId: ValueTagId,
     ) {
         initRegState();
-        initValueInput(lhsId);
-        initValueInput(rhsId);
-        initValueTagInputOperandLocation(lhsTagId);
-        initValueTagInputOperandLocation(rhsTagId);
+
+        initOperandId(lhsId);
+        initInputValueId(lhsId);
+
+        initOperandId(rhsId);
+        initInputValueId(rhsId);
+
+        initOperandId(lhsTagId);
+
+        initOperandId(rhsTagId);
+
         initTypedOutput(MIRType::Boolean);
 
         emit CacheIR::LoadValueTag(lhsId, lhsTagId);

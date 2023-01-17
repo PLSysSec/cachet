@@ -1,5 +1,5 @@
-import "../cacheir.cachet"
-import "../utils.cachet"
+import "../cacheir.cachet";
+import "../utils.cachet";
 
 ir CacheStub emits CacheIR {
     op GetElem(
@@ -9,18 +9,23 @@ ir CacheStub emits CacheIR {
         shapeField: ShapeField,
     ) {
         initRegState();
-        initValueInput(valueId);
-        initValueInput(indexId);
-        initInt32InputOperandLocation(indexInt32Id);
+
+        initOperandId(valueId);
+        initInputValueId(valueId);
+
+        initOperandId(indexId);
+        initInputValueId(indexId);
+
+        initOperandId(indexInt32Id);
+
         initValueOutput();
 
         let shape = CacheIR::readShapeField(shapeField);
-
         assume Class::isNativeObject(Shape::classOf(shape));
 
         emit CacheIR::GuardToObject(valueId);
         emit CacheIR::GuardToInt32Index(indexId, indexInt32Id);
-        let objectId = ValueId::toObjectId(valueId);
+        let objectId = OperandId::toObjectId(valueId);
         emit CacheIR::GuardShape(objectId, shapeField);
         emit CacheIR::LoadDenseElementResult(objectId, indexInt32Id);
     }
