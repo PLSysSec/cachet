@@ -1,6 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-#![feature(is_some_with)]
+#![feature(is_some_and)]
 
 use std::error::Error;
 
