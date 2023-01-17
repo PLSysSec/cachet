@@ -14,7 +14,7 @@ use bpl::ast::*;
 use bpl::parser::parse_boogie_program;
 pub use bpl::parser::ParseError;
 
-pub fn shake_tree(src: &str) -> Result<Cow<'_, str>, ParseError> {
+pub fn shake_tree(src: &str, retain_idents: impl IntoIterator<Item = NamespacedIdent>) -> Result<Cow<'_, str>, ParseError> {
     let program = parse_boogie_program(src)?;
 
     let mut reachability_visitor = ReachabilityVisitor::default();
@@ -22,44 +22,42 @@ pub fn shake_tree(src: &str) -> Result<Cow<'_, str>, ParseError> {
     let reachability_graph = reachability_visitor.graph;
 
     let mut reachability_map = ReachabilityMap::new(&reachability_graph);
-    // TODO(spinda): For now, we assume all axioms are required. A future
-    // improvement might be to figure out how to prune those.
-    for entry_point_decl_index in find_entry_points(&program).chain(find_axiom_decls(&program)) {
-        let entry_point_node_index = reachability_graph.decl_node_indexes[entry_point_decl_index];
-        reachability_map.mark_reachable(&reachability_graph, entry_point_node_index);
+    for ident in retain_idents.into_iter() {
+        if let Some(ident_node_index) = reachability_graph.lookup_node_with_ident(ident) {
+            reachability_map.mark_reachable(&reachability_graph, ident_node_index);
+        }
+    }
+    for (decl_index, decl) in program.iter().enumerate() {
+        // TODO(spinda): For now, we assume all axioms are required. A future
+        // improvement might be to figure out how to prune those.
+        if decl_is_entry_point(&decl.value) || decl_is_axiom(&decl.value) {
+            let decl_node_index = reachability_graph.decl_node_indexes[decl_index];
+            reachability_map.mark_reachable(&reachability_graph, decl_node_index);
+        }
     }
 
     let spans_to_eliminate = find_spans_to_eliminate(&reachability_graph, &reachability_map);
     Ok(eliminate_spans(src, &spans_to_eliminate))
 }
 
-fn find_axiom_decls(program: &BoogieProgram) -> impl Iterator<Item = usize> + '_ {
-    program
-        .iter()
-        .enumerate()
-        .filter_map(|(decl_index, decl)| match decl.value {
-            Decl::Axiom(_) => Some(decl_index),
-            _ => None,
-        })
-}
-
-fn find_entry_points(program: &BoogieProgram) -> impl Iterator<Item = usize> + '_ {
+fn decl_is_entry_point(decl: &Decl) -> bool {
     lazy_static! {
         static ref ENTRY_POINT_ATTR_IDENT: Ident = Ident::from("entrypoint");
     }
 
-    program.iter().enumerate().filter_map(|(decl_index, decl)| {
-        let proc_decl = match &decl.value {
-            Decl::Proc(proc_decl) => proc_decl,
-            _ => return None,
-        };
+    let proc_decl = match decl {
+        Decl::Proc(proc_decl) => proc_decl,
+        _ => return false,
+    };
 
-        if has_attr(&proc_decl.proc_sign.attrs, *ENTRY_POINT_ATTR_IDENT) {
-            Some(decl_index)
-        } else {
-            None
-        }
-    })
+    has_attr(&proc_decl.proc_sign.attrs, *ENTRY_POINT_ATTR_IDENT)
+}
+
+fn decl_is_axiom(decl: &Decl) -> bool {
+    match decl {
+        Decl::Axiom(_) => true,
+        _ => false,
+    }
 }
 
 fn has_attr(attrs: &[Attr], attr_ident: Ident) -> bool {
@@ -160,8 +158,8 @@ fn eliminate_spans<'a>(src: &'a str, spans_to_eliminate: &[Span]) -> Cow<'a, str
     )
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
-enum Namespace {
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum Namespace {
     Func,
     Proc,
     Type,
@@ -181,8 +179,8 @@ enum OccurrenceKind {
     Ref,
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
-struct NamespacedIdent(Ident, Namespace);
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct NamespacedIdent(pub Ident, pub Namespace);
 
 struct ReachabilityNode {
     span: Span,
@@ -202,6 +200,10 @@ impl ReachabilityGraph {
     fn reserve_decls(&mut self, additional: usize) {
         self.graph.reserve_nodes(additional);
         self.decl_node_indexes.reserve(additional);
+    }
+
+    fn lookup_node_with_ident(&self, ident: NamespacedIdent) -> Option<NodeIndex> {
+        self.ident_indexes.get(&ident).copied()
     }
 
     fn get_node_with_ident(&mut self, ident: Spanned<NamespacedIdent>) -> NodeIndex {

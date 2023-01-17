@@ -16,7 +16,9 @@ use lazy_static::lazy_static;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
-use bpl_tree_shaker::{shake_tree, ParseError};
+use bpl::ast::Ident;
+
+use bpl_tree_shaker::{shake_tree, Namespace, NamespacedIdent, ParseError};
 
 /// A dead-code eliminator for the Boogie intermediate verification language.
 #[derive(StructOpt)]
@@ -34,6 +36,9 @@ struct Opt {
     /// to stdout.
     #[structopt(short, long, conflicts_with("output"))]
     in_place: bool,
+    /// Additional type declarations to retain.
+    #[structopt(short("t"), long("type"), value_name("identifier"))]
+    retain_types: Vec<Ident>,
 }
 
 fn main() -> Result<(), Error> {
@@ -51,7 +56,8 @@ fn main() -> Result<(), Error> {
     }
     .with_context(|| format!("Failed to read {}", opt.input.display()))?;
 
-    let remaining_src = match shake_tree(&src) {
+    let retain_idents = opt.retain_types.into_iter().map(|type_ident| NamespacedIdent(type_ident, Namespace::Type));
+    let remaining_src = match shake_tree(&src, retain_idents) {
         Ok(remaining_src) => remaining_src,
         Err(parse_error) => {
             report_parse_error(&opt.input, &src, &parse_error)?;

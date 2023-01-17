@@ -22,4 +22,4 @@ cargo run --bin cachet-compiler -- "${cachet_file}" \
   --bpl "${bpl_file}" \
   "${@}"
 cat "${hacks_bpl_file}" "${bpl_file}" | sponge "${bpl_file}"
-cargo run --bin bpl-tree-shaker -- -i "${bpl_file}"
+cargo run --bin bpl-tree-shaker -- -i "${bpl_file}" -t '#JSOp'

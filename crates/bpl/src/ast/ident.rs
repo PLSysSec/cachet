@@ -1,6 +1,8 @@
 use std::borrow::Borrow;
+use std::convert::Infallible;
 use std::fmt::{self, Debug};
 use std::ops::Deref;
+use std::str::FromStr;
 
 use derive_more::Display;
 use internment::Intern;
@@ -75,5 +77,13 @@ impl From<&mut str> for Ident {
 impl From<Ident> for String {
     fn from(ident: Ident) -> Self {
         (*ident).clone()
+    }
+}
+
+impl FromStr for Ident {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(s.into())
     }
 }
