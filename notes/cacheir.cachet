@@ -639,6 +639,10 @@ ir CacheIR emits MASM {
     }
 
     op GuardToObject(valueId: ValueId) {
+        if CacheIR::knownType(valueId) == ValueType::Object {
+            return;
+        }
+
         let valueReg = CacheIR::useValueId(valueId);
 
         CacheIR::addFailurePath(out label failure);
@@ -1588,6 +1592,23 @@ ir CacheIR emits MASM {
 
     fn getOperandLocation(id: OperandId) -> OperandLocation;
     fn setOperandLocation(id: OperandId, loc: OperandLocation);
+
+    fn knownType(valueId: ValueId) -> ValueType {
+        let operandId = valueId as OperandId; 
+        let location = CacheIR::getOperandLocation(operandId);
+        let locationKind = OperandLocation::kind(location);
+
+        assert locationKind == OperandLocationKind::ValueReg ||
+               locationKind == OperandLocationKind::PayloadReg ||
+               locationKind == OperandLocationKind::FloatReg;
+        if locationKind == OperandLocationKind::PayloadReg {
+            return OperandLocation::getPayloadType(location);
+        } else if locationKind == OperandLocationKind::FloatReg {
+            return ValueType::Double;
+        } else {
+            return ValueType::Unknown;
+        }
+    }
 
     #[refined]
     fn useValueId(valueId: ValueId) emits MASM -> ValueReg {
