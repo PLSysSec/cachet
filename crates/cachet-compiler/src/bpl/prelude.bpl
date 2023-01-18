@@ -297,7 +297,7 @@ function {:builtin "MapAnd"} #Set~intersect<a>(lhs: #Set a, rhs: #Set a): #Set a
 
 function {:builtin "MapNot"} #Set~complement<a>(set: #Set a): #Set a;
 
-function {:inline} #Set~difference<a>(lhs: #Set a, rhs: #Set a) : #Set a
+function {:inline} #Set~difference<a>(lhs: #Set a, rhs: #Set a): #Set a
 {
   #Set~intersect(lhs, #Set~complement(rhs))
 }
