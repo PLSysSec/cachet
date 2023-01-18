@@ -10,7 +10,7 @@ use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, alphanumeric1, hex_digit1, multispace0};
 //use nom::character::complete::char;
-use nom::combinator::{complete, map, recognize, value};
+use nom::combinator::{complete, map, opt, recognize, value};
 use nom::error::{ErrorKind as ParseErrorKind, ParseError as ParseErrorTrait};
 use nom::multi::{many0, many0_count, many_till, separated_list0};
 use nom::sequence::{delimited, pair, preceded, terminated};
@@ -35,7 +35,9 @@ trait Parser<'a, O> = nom::Parser<&'a str, O, ParseError<'a>>;
 fn parse_stub(input: &str) -> ParseResult<Stub> {
     let (input, kind) = parse_ident(input)?;
     let (input, engine) = parse_engine(input)?;
-    let (input, (input_operands, _)) = many_till(parse_input_operand, terminator)(input)?;
+    let (input, input_operands) = many0(parse_input_operand)(input)?;
+    let (input, output) = opt(parse_output)(input)?;
+    let (input, _) = terminator(input)?;
     let (input, (ops, _)) = many_till(parse_op, terminator)(input)?;
     let (input, (fields, _)) = many_till(parse_field, terminator)(input)?;
     let (input, facts) = many0(parse_fact)(input)?;
@@ -45,6 +47,7 @@ fn parse_stub(input: &str) -> ParseResult<Stub> {
             kind,
             engine,
             input_operands,
+            output,
             ops,
             fields,
             facts,
@@ -65,6 +68,10 @@ fn parse_input_operand(input: &str) -> ParseResult<InputOperand> {
             move |input| parse_operand_id(input, type_)
         })
     })(input)
+}
+
+fn parse_output(input: &str) -> ParseResult<MirType> {
+    preceded(symbol("Output"), parse_mir_type)(input)
 }
 
 fn parse_op(input: &str) -> ParseResult<Op> {
@@ -160,6 +167,10 @@ fn parse_value_type(input: &str) -> ParseResult<ValueType> {
     alt_enum(enum_symbol::<ValueType>)(input)
 }
 
+fn parse_mir_type(input: &str) -> ParseResult<MirType> {
+    alt_enum(enum_symbol::<MirType>)(input)
+}
+
 fn parse_call_flags(input: &str) -> ParseResult<CallFlags> {
     let (input, arg_format) = parse_ident(input)?;
 
@@ -239,6 +250,7 @@ fn parse_fact(input: &str) -> ParseResult<Fact> {
         map(parse_tagged_proto_is_object_fact, Into::into),
         map(parse_tagged_proto_is_lazy_fact, Into::into),
         map(parse_tagged_proto_is_null_fact, Into::into),
+        map(parse_string_is_atom_fact, Into::into),
     ))(input)
 }
 
@@ -305,6 +317,12 @@ fn parse_tagged_proto_is_null_fact(input: &str) -> ParseResult<TaggedProtoIsNull
     let (input, _) = symbol("TaggedProtoIsNull")(input)?;
     let (input, tagged_proto) = addr(input)?;
     Ok((input, TaggedProtoIsNullFact { tagged_proto }))
+}
+
+fn parse_string_is_atom_fact(input: &str) -> ParseResult<StringIsAtomFact> {
+    let (input, _) = symbol("StringIsAtom")(input)?;
+    let (input, string) = addr(input)?;
+    Ok((input, StringIsAtomFact { string }))
 }
 
 fn parse_ident(input: &str) -> ParseResult<Ident> {

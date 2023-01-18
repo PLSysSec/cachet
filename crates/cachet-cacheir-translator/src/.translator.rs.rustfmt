@@ -187,36 +187,9 @@ pub fn translate(stub: &stub::Stub) -> Mod {
         ]
     }));
 
-    if let Some(output) = &stub.output {
-        stmts.extend([
-            Spanned::internal(
-                Comment {
-                    text: format!("Output {output}"),
-                }
-                .into(),
-            ),
-            Spanned::internal(
-                Expr::Invoke(match output {
-                    stub::MirType::Value => Call {
-                        target: Spanned::internal(*INIT_VALUE_OUTPUT_PATH),
-                        args: Spanned::internal(vec![]),
-                    },
-                    _ => Call {
-                        target: Spanned::internal(*INIT_TYPED_OUTPUT_PATH),
-                        args: Spanned::internal(vec![Spanned::internal(
-                            Expr::from(Spanned::internal(var_path_for_mir_type(*output))).into(),
-                        )]),
-                    },
-                })
-                .into(),
-            ),
-        ]);
-    }
-
     for field in &stub.fields {
         let data_expr = match field.data {
             stub::FieldData::Shape(shape) => Some(generate_from_addr_call(*SHAPE_PATH, shape)),
-            stub::FieldData::String(string) => Some(generate_from_addr_call(*STRING_PATH, string)),
             stub::FieldData::RawInt32(n) => Some(Literal::Int32(n).into()),
             stub::FieldData::RawInt64(n) => Some(Literal::Int64(n).into()),
             _ => None,
@@ -439,21 +412,6 @@ pub fn translate(stub: &stub::Stub) -> Mod {
                     .into(),
                 ));
             }
-            stub::Fact::StringIsAtom(fact) => {
-                stmts.push(Spanned::internal(
-                    CheckStmt {
-                        kind: CheckKind::Assume,
-                        cond: Spanned::internal(Expr::Invoke(Call {
-                            target: Spanned::internal(STRING_PATH.nest("isAtom")),
-                            args: Spanned::internal(vec![Spanned::internal(
-                                generate_from_addr_call(*STRING_PATH, fact.string)
-                                    .into(),
-                            )]),
-                        })),
-                    }
-                    .into(),
-                ));
-            }
         }
     }
 
@@ -605,6 +563,36 @@ fn generate_from_addr_call(type_path: Path, addr: stub::Addr) -> Expr {
     })
 }
 
+fn type_path_for_mir_type(mir_type: stub::MirType) -> Path {
+    match mir_type {
+        stub::MirType::Undefined => *UNDEFINED_MIR_TYPE_PATH,
+        stub::MirType::Null => *NULL_MIR_TYPE_PATH,
+        stub::MirType::Boolean => *BOOLEAN_MIR_TYPE_PATH,
+        stub::MirType::Int32 => *INT32_MIR_TYPE_PATH,
+        stub::MirType::Int64 => *INT64_MIR_TYPE_PATH,
+        stub::MirType::IntPtr => *INT_PTR_MIR_TYPE_PATH,
+        stub::MirType::Double => *DOUBLE_MIR_TYPE_PATH,
+        stub::MirType::Float32 => *FLOAT32_MIR_TYPE_PATH,
+        stub::MirType::String => *STRING_MIR_TYPE_PATH,
+        stub::MirType::Symbol => *SYMBOL_MIR_TYPE_PATH,
+        stub::MirType::BigInt => *BIG_INT_MIR_TYPE_PATH,
+        stub::MirType::Simd128 => *SIMD128_MIR_TYPE_PATH,
+        stub::MirType::Object => *OBJECT_MIR_TYPE_PATH,
+        stub::MirType::MagicOptimizedOut => *MAGIC_OPTIMIZED_OUT_MIR_TYPE_PATH,
+        stub::MirType::MagicHole => *MAGIC_HOLE_MIR_TYPE_PATH,
+        stub::MirType::MagicIsConstructing => *MAGIC_IS_CONSTRUCTING_MIR_TYPE_PATH,
+        stub::MirType::MagicUninitializedLexical => *MAGIC_UNINITIALIZED_LEXICAL_MIR_TYPE_PATH,
+        stub::MirType::Value => *VALUE_MIR_TYPE_PATH,
+        stub::MirType::None => *NONE_MIR_TYPE_PATH,
+        stub::MirType::Slots => *SLOTS_MIR_TYPE_PATH,
+        stub::MirType::Elements => *ELEMENTS_MIR_TYPE_PATH,
+        stub::MirType::Pointer => *POINTER_MIR_TYPE_PATH,
+        stub::MirType::RefOrNull => *REF_OR_NULL_MIR_TYPE_PATH,
+        stub::MirType::StackResults => *STACK_RESULTS_MIR_TYPE_PATH,
+        stub::MirType::Shape => *SHAPE_MIR_TYPE_PATH,
+    }
+}
+
 fn type_path_for_operand_id_type(operand_type: stub::OperandIdType) -> Path {
     match operand_type {
         stub::OperandIdType::ValId => *VALUE_ID_PATH,
@@ -656,35 +644,5 @@ fn var_path_for_value_type(value_type: stub::ValueType) -> Path {
         stub::ValueType::BigInt => *BIG_INT_VALUE_TYPE_PATH,
         stub::ValueType::Object => *OBJECT_VALUE_TYPE_PATH,
         stub::ValueType::Unknown => *UNKNOWN_VALUE_TYPE_PATH,
-    }
-}
-
-fn var_path_for_mir_type(mir_type: stub::MirType) -> Path {
-    match mir_type {
-        stub::MirType::Undefined => *UNDEFINED_MIR_TYPE_PATH,
-        stub::MirType::Null => *NULL_MIR_TYPE_PATH,
-        stub::MirType::Bool => *BOOLEAN_MIR_TYPE_PATH,
-        stub::MirType::Int32 => *INT32_MIR_TYPE_PATH,
-        stub::MirType::Int64 => *INT64_MIR_TYPE_PATH,
-        stub::MirType::IntPtr => *INT_PTR_MIR_TYPE_PATH,
-        stub::MirType::Double => *DOUBLE_MIR_TYPE_PATH,
-        stub::MirType::Float32 => *FLOAT32_MIR_TYPE_PATH,
-        stub::MirType::String => *STRING_MIR_TYPE_PATH,
-        stub::MirType::Symbol => *SYMBOL_MIR_TYPE_PATH,
-        stub::MirType::BigInt => *BIG_INT_MIR_TYPE_PATH,
-        stub::MirType::Simd128 => *SIMD128_MIR_TYPE_PATH,
-        stub::MirType::Object => *OBJECT_MIR_TYPE_PATH,
-        stub::MirType::MagicOptimizedOut => *MAGIC_OPTIMIZED_OUT_MIR_TYPE_PATH,
-        stub::MirType::MagicHole => *MAGIC_HOLE_MIR_TYPE_PATH,
-        stub::MirType::MagicIsConstructing => *MAGIC_IS_CONSTRUCTING_MIR_TYPE_PATH,
-        stub::MirType::MagicUninitializedLexical => *MAGIC_UNINITIALIZED_LEXICAL_MIR_TYPE_PATH,
-        stub::MirType::Value => *VALUE_MIR_TYPE_PATH,
-        stub::MirType::None => *NONE_MIR_TYPE_PATH,
-        stub::MirType::Slots => *SLOTS_MIR_TYPE_PATH,
-        stub::MirType::Elements => *ELEMENTS_MIR_TYPE_PATH,
-        stub::MirType::Pointer => *POINTER_MIR_TYPE_PATH,
-        stub::MirType::RefOrNull => *REF_OR_NULL_MIR_TYPE_PATH,
-        stub::MirType::StackResults => *STACK_RESULTS_MIR_TYPE_PATH,
-        stub::MirType::Shape => *SHAPE_MIR_TYPE_PATH,
     }
 }

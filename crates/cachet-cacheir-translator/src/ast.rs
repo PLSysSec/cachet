@@ -16,6 +16,7 @@ pub struct Stub {
     pub kind: Ident,
     pub engine: Engine,
     pub input_operands: Vec<InputOperand>,
+    pub output: Option<MirType>,
     pub ops: Vec<Op>,
     pub fields: Vec<Field>,
     pub facts: Vec<Fact>,
@@ -333,6 +334,35 @@ pub enum ValueType {
     Unknown,
 }
 
+#[derive(Clone, Copy, Debug, Display, EnumIter, Eq, Hash, IntoStaticStr, PartialEq)]
+pub enum MirType {
+  Undefined,
+  Null,
+  Bool,
+  Int32,
+  Int64,
+  IntPtr,
+  Double,
+  Float32,
+  String,
+  Symbol,
+  BigInt,
+  Simd128,
+  Object,
+  MagicOptimizedOut,
+  MagicHole,
+  MagicIsConstructing,
+  MagicUninitializedLexical,
+  Value,
+  None,
+  Slots,
+  Elements,
+  Pointer,
+  RefOrNull,
+  StackResults,
+  Shape,
+}
+
 #[derive(Clone, Debug)]
 pub struct CallFlags {
     pub arg_format: Ident,
@@ -368,6 +398,7 @@ pub enum Fact {
     TaggedProtoIsObject(TaggedProtoIsObjectFact),
     TaggedProtoIsLazy(TaggedProtoIsLazyFact),
     TaggedProtoIsNull(TaggedProtoIsNullFact),
+    StringIsAtom(StringIsAtomFact),
 }
 
 #[derive(Clone, Debug, Display)]
@@ -427,4 +458,10 @@ pub struct TaggedProtoIsLazyFact {
 #[display(fmt = "TaggedProtoIsNull {tagged_proto:x}")]
 pub struct TaggedProtoIsNullFact {
     pub tagged_proto: Addr,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "StringIsAtom {string:x}")]
+pub struct StringIsAtomFact {
+    pub string: Addr,
 }
