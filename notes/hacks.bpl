@@ -377,6 +377,7 @@ procedure #CacheIR~setOperandLocation($operandId: #OperandId, $loc: #OperandLoca
 }
 
 var #CacheIR~allocatedRegs: #Set #Reg;
+var #CacheIR~numAvailableRegs: int;
 
 procedure #CacheIR~allocateValueReg()
   returns (ret: #ValueReg)
@@ -411,6 +412,7 @@ procedure #CacheIR~allocateReg()
   assume !tmp'2;
 
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, ret);
+  #CacheIR~numAvailableRegs := #CacheIR~numAvailableRegs - 1;
 }
 
 procedure #CacheIR~allocateKnownReg($reg: #Reg)
@@ -419,10 +421,14 @@ procedure #CacheIR~allocateKnownReg($reg: #Reg)
   var tmp'0: #Bool;
   
   // register should not already be allocated
-  tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
-  assert !tmp'0;
+  assert !#Set~contains(#CacheIR~allocatedRegs, $reg);
 
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
+
+  call tmp'0 := #CacheIR~isAllocatableReg($reg);
+  if (tmp'0) {
+    #CacheIR~numAvailableRegs := #CacheIR~numAvailableRegs - 1;
+  }
 }
 
 function #CacheIR~allocateRegUnchecked($allocatedRegs: #Set #Reg): #Reg;
@@ -431,12 +437,18 @@ procedure #CacheIR~releaseReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
   var tmp'0: #Bool;
+  var tmp'1: #Bool;
 
   // register should already be allocated
   tmp'0 := #Set~contains(#CacheIR~allocatedRegs, $reg);
   assert tmp'0;
 
   #CacheIR~allocatedRegs := #Set~remove(#CacheIR~allocatedRegs, $reg);
+
+  call tmp'1 := #CacheIR~isAllocatableReg($reg);
+  if (tmp'1) {
+    #CacheIR~numAvailableRegs := #CacheIR~numAvailableRegs + 1;
+  }
 }
 
 var #CacheIR~allocatedFloatRegs: #Set #PhyFloatReg;
@@ -481,6 +493,9 @@ procedure #initRegState()
   // All registers are initially unallocated.
   #CacheIR~allocatedRegs := #Set~empty(); 
   #CacheIR~allocatedFloatRegs := #Set~empty(); 
+
+  #CacheIR~numAvailableRegs := 13;
+  // => rax, rbx, rcx, rdx, rsi, rdi, r8, r9, r10, r12, r13, r14, r15
 
   call value := #Value~fromInt32(0bv32);
   call regData := #RegData~fromUnboxedValue(value);
@@ -537,6 +552,7 @@ procedure {:inline 1} #CacheIR~hasAvailableReg()
 {
   // True if there is at least one allocatable register that is not already
   // allocated.
+  /*
   ret := !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rax()) ||
     !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rbx()) ||
     !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~Rcx()) ||
@@ -550,6 +566,8 @@ procedure {:inline 1} #CacheIR~hasAvailableReg()
     !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R13()) ||
     !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R14()) ||
     !#Set~contains(#CacheIR~allocatedRegs, #Reg^Variant~R15());
+  */
+  ret := #CacheIR~numAvailableRegs > 0;
 }
 
 procedure {:inline 1} #CacheIR~isAllocatedValueReg($valueReg: #ValueReg)
