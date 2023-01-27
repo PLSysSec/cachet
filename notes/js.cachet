@@ -569,11 +569,15 @@ impl Object {
 
     unsafe fn shapeOfUnchecked(heap: Heap, object: Object) -> Shape;
 
+    fn isNativeObject(object: Object) -> Bool {
+      let shape = Object::shapeOf(object);
+      let class = Shape::classOf(shape);
+      Class::isNativeObject(class)
+    }
+
     fn toNativeObject(object: Object) -> NativeObject {
-        let shape = Object::shapeOf(object);
-        let class = Shape::classOf(shape);
-        assert Class::isNativeObject(class);
-        (unsafe { object as NativeObject })
+      assert Object::isNativeObject(object);
+      (unsafe { object as NativeObject })
     }
 
     fn toArgumentsObject(object: Object) -> ArgumentsObject {
@@ -607,9 +611,16 @@ struct NativeObject <: Object;
 
 impl NativeObject {
     var maxFixedSlots: UInt64 = 16_u64;
+    // FIXME(spinda): Don't know the actual value for this.
+    var maxSlotSpan: UInt64 = 1024_u64;
     var sizeOf: UInt64 = 24_u64;
+    var offsetOfFixedSlots: UInt64 = NativeObject::sizeOf;
     var offsetOfSlots: UInt64 = 8_u64;
     var offsetOfElements: UInt64 = 16_u64;
+
+    fn offsetOfFixedSlot(slot: UInt32) -> UInt64 {
+      NativeObject::offsetOfFixedSlots + slot * Value::sizeOf
+    }
 
     fn getFixedSlot(nativeObject: NativeObject, slot: UInt32) -> Value {
         let shape = Object::shapeOf(nativeObject);
@@ -647,7 +658,7 @@ impl NativeObject {
             // object elements
             let elements = NativeObject::getElementsHeader(nativeObject); 
             return RegData::fromNativeObjectElements(elements);
-        } else if offset >= NativeObject::sizeOf as Int64 {
+        } else if offset >= NativeObject::offsetOfFixedSlots as Int64 {
             // fixed slots
             let slotOffset = offset as UInt64 - NativeObject::sizeOf;
             assert slotOffset % Value::sizeOf == 0_u64;
@@ -665,6 +676,10 @@ impl NativeObject {
 struct NativeObjectSlots;
 
 impl NativeObjectSlots {
+    fn offsetOfSlot(slot: UInt32) -> UInt64 {
+      slot * Value::sizeOf
+    }
+
     fn length(slots: NativeObjectSlots) -> UInt32;
 
     fn getDynamicSlot(slots: NativeObjectSlots, slot: UInt32) -> Value {
@@ -923,8 +938,16 @@ impl Shape {
     fn numFixedSlots(shape: Shape) -> UInt32;
     fn slotSpan(shape: Shape) -> UInt32;
 
+    fn hasSlot(shape: Shape, slot: UInt32) -> Bool {
+      slot < NativeObject::maxSlotSpan && slot < Shape::slotSpan(shape)
+    }
+
     fn hasFixedSlot(shape: Shape, slot: UInt32) -> Bool {
-        slot < Shape::numFixedSlots(shape)
+      slot < NativeObject::maxFixedSlots && slot < Shape::numFixedSlots(shape)
+    }
+
+    fn hasDynamicSlot(shape: Shape, slot: UInt32) -> Bool {
+      Shape::hasSlot(shape, slot) && slot >= Shape::numFixedSlots(shape)
     }
 }
 
