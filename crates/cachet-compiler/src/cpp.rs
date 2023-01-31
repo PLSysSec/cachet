@@ -398,6 +398,52 @@ impl<'a> Compiler<'a> {
                     .into(),
             ]);
         }
+
+        // add declarations for struct field accessor functions
+        let field_decls: Vec<_> = struct_item
+            .fields
+            .iter()
+            .map(|field| {
+                let path = TypeMemberFnPath {
+                    parent: struct_item.ident.value,
+                    ident: FieldAccessTypeMemberFnIdent {
+                        field: field.ident.value,
+                    }
+                    .into(),
+                }
+                .into();
+
+                let this = Param {
+                    ident: ParamVarIdent::In,
+                    type_: TypeMemberTypePath {
+                        parent: struct_item.ident.value,
+                        ident: ExprTag::Ref.into(),
+                    }
+                    .into(),
+                };
+
+                let ret = TypeMemberTypePath {
+                    parent: self.get_type_ident(field.type_),
+                    ident: ExprTag::Ref.into(),
+                }
+                .into();
+
+                FnItem {
+                    path,
+                    is_fully_qualified: false,
+                    //TODO(abhishekc-sharma): can/should this be inline ?
+                    is_inline: false,
+                    params: vec![CONTEXT_PARAM, this],
+                    ret,
+                    body: None,
+                }
+                .into()
+            })
+            .collect();
+
+        self.external_decls
+            .bucket_for_struct(struct_index)
+            .extend(field_decls);
     }
 
     fn compile_global_var_item(&mut self, global_var_index: normalizer::GlobalVarIndex) {
@@ -1020,47 +1066,53 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let body = self.compile_block(&for_in_stmt.body);
 
-        let iteration_stmts: Vec<_> = enum_item.variants.iter().map(|variant_path| {
-            let loop_var_index = for_in_stmt.var;
+        let iteration_stmts: Vec<_> = enum_item
+            .variants
+            .iter()
+            .map(|variant_path| {
+                let loop_var_index = for_in_stmt.var;
 
-            let lhs = LocalVarIdent {
-                ident: self.scope.local(loop_var_index).ident.value,
-                index: loop_var_index,
-            }
-            .into();
+                let lhs = LocalVarIdent {
+                    ident: self.scope.local(loop_var_index).ident.value,
+                    index: loop_var_index,
+                }
+                .into();
 
-            let type_ = TypeMemberTypePath {
-                parent: self.get_type_ident(for_in_stmt.target.into()),
-                ident: ExprTag::Local.into(),
-            }
-            .into();
+                let type_ = TypeMemberTypePath {
+                    parent: self.get_type_ident(for_in_stmt.target.into()),
+                    ident: ExprTag::Local.into(),
+                }
+                .into();
 
-            let rhs = Some(
-                self.use_expr(
-                    TaggedExpr {
-                        expr: CallExpr {
-                            target: TypeMemberFnPath {
-                                parent: enum_item.ident.value,
-                                ident: VariantTypeMemberFnIdent::from(variant_path.value.ident())
+                let rhs = Some(
+                    self.use_expr(
+                        TaggedExpr {
+                            expr: CallExpr {
+                                target: TypeMemberFnPath {
+                                    parent: enum_item.ident.value,
+                                    ident: VariantTypeMemberFnIdent::from(
+                                        variant_path.value.ident(),
+                                    )
                                     .into(),
+                                }
+                                .into(),
+                                args: vec![CONTEXT_ARG],
                             }
                             .into(),
-                            args: vec![CONTEXT_ARG],
-                        }
-                        .into(),
-                        type_: for_in_stmt.target.into(),
-                        tags: ExprTag::Ref.into(),
-                    },
-                    ExprTag::Local.into(),
-                ),
-            );
+                            type_: for_in_stmt.target.into(),
+                            tags: ExprTag::Ref.into(),
+                        },
+                        ExprTag::Local.into(),
+                    ),
+                );
 
-            let body_stmts = body.stmts.iter().cloned();
-            Stmt::from(BlockStmt::from_iter(iterate![
-                LetStmt { lhs, type_, rhs }.into(),
-                ..body_stmts,
-            ]))
-        }).collect();
+                let body_stmts = body.stmts.iter().cloned();
+                Stmt::from(BlockStmt::from_iter(iterate![
+                    LetStmt { lhs, type_, rhs }.into(),
+                    ..body_stmts,
+                ]))
+            })
+            .collect();
 
         match for_in_stmt.order {
             ForInOrder::Ascending => self.stmts.extend(iteration_stmts),
@@ -1419,25 +1471,28 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_field_access_expr<E: CompileExpr + Typed>(
         &self,
         field_access_expr: &normalizer::FieldAccessExpr<E>,
-    ) -> TaggedExpr<ArrowExpr> {
+    ) -> TaggedExpr<Expr> {
         let parent_expr = field_access_expr.parent.compile(self).expr;
         let parent_type = field_access_expr.parent.type_();
 
+        let target = TypeMemberFnPath {
+            parent: self.get_type_ident(parent_type),
+            ident: FieldAccessTypeMemberFnIdent {
+                field: self.env[field_access_expr.field].ident.value,
+            }
+            .into(),
+        }
+        .into();
+
         TaggedExpr {
-            expr: ArrowExpr {
-                parent: CallExpr {
-                    target: TypeMemberFnPath {
-                        parent: self.get_type_ident(parent_type),
-                        ident: TypeMemberFnIdent::Fields,
-                    }
-                    .into(),
-                    args: vec![parent_expr],
-                }
-                .into(),
-                member: self.env[field_access_expr.field].ident.value,
-            },
+            expr: CallExpr {
+                target,
+                args: vec![CONTEXT_ARG, parent_expr],
+            }
+            .into(),
             type_: field_access_expr.type_(),
-            tags: ExprTag::Val.into(),
+            //TODO(abhishekc-sharma): should this be only Ref ?
+            tags: ExprTag::Ref | ExprTag::Val,
         }
     }
 
