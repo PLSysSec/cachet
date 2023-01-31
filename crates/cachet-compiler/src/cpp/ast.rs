@@ -330,8 +330,7 @@ pub enum TypeMemberFnIdent {
     ToTag(ToTagTypeMemberFnIdent),
     #[display(fmt = "SetMutRef")]
     SetMutRef,
-    #[display(fmt = "Fields")]
-    Fields,
+    FieldAccess(FieldAccessTypeMemberFnIdent),
     Negate(NegateTypeMemberFnIdent),
     Cast(CastTypeMemberFnIdent),
     Variant(VariantTypeMemberFnIdent),
@@ -341,9 +340,10 @@ pub enum TypeMemberFnIdent {
 impl TypeMemberFnIdent {
     pub const fn parent_namespace_kind(self) -> NamespaceKind {
         match self {
-            TypeMemberFnIdent::EmptyLocal
-            | TypeMemberFnIdent::SetMutRef
-            | TypeMemberFnIdent::Fields => NamespaceKind::Type,
+            TypeMemberFnIdent::EmptyLocal | TypeMemberFnIdent::SetMutRef => NamespaceKind::Type,
+            TypeMemberFnIdent::FieldAccess(_) => {
+                FieldAccessTypeMemberFnIdent::PARENT_NAMESPACE_KIND
+            }
             TypeMemberFnIdent::ToTag(_) => ToTagTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Negate(_) => NegateTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
             TypeMemberFnIdent::Cast(_) => CastTypeMemberFnIdent::PARENT_NAMESPACE_KIND,
@@ -361,6 +361,16 @@ pub struct ToTagTypeMemberFnIdent {
 
 impl ToTagTypeMemberFnIdent {
     pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Type;
+}
+
+#[derive(Clone, Copy, Debug, Display, From)]
+#[display(fmt = "Field_{}", field)]
+pub struct FieldAccessTypeMemberFnIdent {
+    pub field: Ident,
+}
+
+impl FieldAccessTypeMemberFnIdent {
+    pub const PARENT_NAMESPACE_KIND: NamespaceKind = NamespaceKind::Impl;
 }
 
 #[derive(Clone, Copy, Debug, From)]
