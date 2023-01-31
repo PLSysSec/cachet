@@ -311,7 +311,7 @@ impl Float64 {
 
 struct Simd128;
 
-enum ValueType {
+enum JSValueType {
   Double,
   Int32,
   Bool,
@@ -326,32 +326,74 @@ enum ValueType {
   Unknown,
 }
 
-impl ValueType {
-    fn fromMIRType(type: MIRType) -> ValueType {
+impl JSValueType {
+    #[refined]
+    fn fromValueType(valTy: ValueType) -> JSValueType {
+        if valTy == ValueType::Double {
+            return JSValueType::Double;
+        } else if valTy == ValueType::Int32 {
+            return JSValueType::Int32;
+        } else if valTy == ValueType::Bool {
+            return JSValueType::Bool;
+        } else if valTy == ValueType::Undefined {
+            return JSValueType::Undefined;
+        } else if valTy == ValueType::Null {
+            return JSValueType::Null;
+        } else if valTy == ValueType::Magic {
+            return JSValueType::Magic;
+        } else if valTy == ValueType::String {
+            return JSValueType::String;
+        } else if valTy == ValueType::Symbol {
+            return JSValueType::Symbol;
+        } else if valTy == ValueType::PrivateGCThing {
+            return JSValueType::PrivateGCThing;
+        } else if valTy == ValueType::BigInt {
+            return JSValueType::BigInt;
+        }
+
+        assert valTy == ValueType::Object;
+        return JSValueType::Object;
+    }
+
+    fn fromMIRType(type: MIRType) -> JSValueType {
         if type == MIRType::Undefined {
-            return ValueType::Undefined;
+            return JSValueType::Undefined;
         } else if type == MIRType::Null {
-            return ValueType::Null;
+            return JSValueType::Null;
         } else if type == MIRType::Boolean {
-            return ValueType::Bool;
+            return JSValueType::Bool;
         } else if type == MIRType::Int32 {
-            return ValueType::Int32;
+            return JSValueType::Int32;
         } else if type == MIRType::Float32 || type == MIRType::Double {
-            return ValueType::Double;
+            return JSValueType::Double;
         } else if type == MIRType::String {
-            return ValueType::String;
+            return JSValueType::String;
         } else if type == MIRType::Symbol {
-            return ValueType::Symbol;
+            return JSValueType::Symbol;
         } else if type == MIRType::BigInt {
-            return ValueType::BigInt;
+            return JSValueType::BigInt;
         } else if type == MIRType::MagicOptimizedOut || type == MIRType::MagicHole || type ==
         MIRType::MagicIsConstructing || type == MIRType::MagicUninitializedLexical {
-            return ValueType::Magic;
+            return JSValueType::Magic;
         }
 
         assert type == MIRType::Object;
-        ValueType::Object
+        JSValueType::Object
     }
+}
+
+enum ValueType {
+  Double,
+  Int32,
+  Bool,
+  Undefined,
+  Null,
+  Magic,
+  String,
+  Symbol,
+  PrivateGCThing,
+  BigInt,
+  Object,
 }
 
 struct Value;

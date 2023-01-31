@@ -881,28 +881,34 @@ ir MASM {
         }
     }
 
-    op TagValue(valTy: ValueType, payload: Reg, dest: ValueReg) {
+    op TagValue(valTy: JSValueType, payload: Reg, dest: ValueReg) {
         // TODO: Don't have getters/setters for other types yet
-        if valTy == ValueType::Int32 {
+        if valTy == JSValueType::Object {
+            let o = MASM::getObject(payload);
+            let val = Value::fromObject(o);
+            MASM::setValue(dest, val);
+        } else if valTy == JSValueType::Int32 {
             let i = MASM::getInt32(payload);
             let val = Value::fromInt32(i);
             MASM::setValue(dest, val);
-        } else if valTy == ValueType::Bool {
+        } else if valTy == JSValueType::Bool {
             let b = MASM::getBool(payload);
             let val = Value::fromBool(b);
             MASM::setValue(dest, val);
-        } else if valTy == ValueType::String {
+        } else if valTy == JSValueType::String {
             let s = MASM::getString(payload);
             let val = Value::fromString(s);
             MASM::setValue(dest, val);
-        } else if valTy == ValueType::Symbol {
+        } else if valTy == JSValueType::Symbol {
             let s = MASM::getSymbol(payload);
             let val = Value::fromSymbol(s);
             MASM::setValue(dest, val);
-        } else if valTy == ValueType::BigInt {
+        } else if valTy == JSValueType::BigInt {
             let b = MASM::getBigInt(payload);
             let val = Value::fromBigInt(b);
             MASM::setValue(dest, val);
+        } else {
+            assert false;
         }
     }
 
@@ -992,7 +998,7 @@ ir MASM {
         MASM::setBigInt(bigIntReg, Value::toBigInt(value));
     }
 
-    op UnboxNonDouble(valueReg: ValueReg, dstReg: Reg, valTy: ValueType) {
+    op UnboxNonDouble(valueReg: ValueReg, dstReg: Reg, valTy: JSValueType) {
         let value = MASM::getValue(valueReg);
         MASM::unboxNonDouble(value, dstReg, valTy);
     }
@@ -2049,7 +2055,7 @@ ir MASM {
         if AnyReg::isFloat(dstReg) {
             MASM::loadInt32OrDouble(value, AnyReg::toFloatReg(dstReg));
         } else {
-            MASM::unboxNonDouble(value, AnyReg::toReg(dstReg), ValueType::fromMIRType(type));
+            MASM::unboxNonDouble(value, AnyReg::toReg(dstReg), JSValueType::fromMIRType(type));
         }
     }
 
@@ -2066,27 +2072,29 @@ ir MASM {
         assert false;
     }
 
-    fn unboxNonDouble(value: Value, dstReg: Reg, valTy: ValueType) {
-        assert valTy != ValueType::Double;
+    fn unboxNonDouble(value: Value, dstReg: Reg, valTy: JSValueType) {
+        assert valTy != JSValueType::Double;
 
-        if valTy == ValueType::Object {
+        if valTy == JSValueType::Object {
             let o = Value::toObject(value);
             MASM::setObject(dstReg, o);
-        } else if valTy == ValueType::Int32 {
+        } else if valTy == JSValueType::Int32 {
             let i = Value::toInt32(value);
             MASM::setInt32(dstReg, i);
-        } else if valTy == ValueType::Bool {
+        } else if valTy == JSValueType::Bool {
             let b = Value::toBool(value);
             MASM::setBool(dstReg, b);
-        } else if valTy == ValueType::String {
+        } else if valTy == JSValueType::String {
             let s = Value::toString(value);
             MASM::setString(dstReg, s);
-        } else if valTy == ValueType::Symbol {
+        } else if valTy == JSValueType::Symbol {
             let s = Value::toSymbol(value);
             MASM::setSymbol(dstReg, s);
-        } else if valTy == ValueType::BigInt {
+        } else if valTy == JSValueType::BigInt {
             let b = Value::toBigInt(value);
             MASM::setBigInt(dstReg, b);
+        } else {
+            assert false;
         }
     }
 
