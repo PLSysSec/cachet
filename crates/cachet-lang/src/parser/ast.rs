@@ -8,8 +8,7 @@ use derive_more::{Display, From};
 use typed_index_collections::TiVec;
 
 use cachet_util::{
-    box_from, deref_from, fmt_join, fmt_join_trailing, typed_field_index,
-    AffixWriter,
+    box_from, deref_from, fmt_join, fmt_join_trailing, typed_field_index, AffixWriter,
 };
 
 use crate::ast::{
@@ -127,11 +126,23 @@ impl Display for StructItem {
 
 typed_field_index!(StructItem:fields[pub FieldIndex] => Field);
 
+#[derive(Clone, Debug, Display, From)]
+pub enum Field {
+    Value(ValueField),
+    Label(LabelField),
+}
+
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "{ident}: {type_}")]
-pub struct Field {
+pub struct ValueField {
     pub ident: Spanned<Ident>,
     pub type_: Spanned<Path>,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "{label}")]
+pub struct LabelField {
+    pub label: Label,
 }
 
 #[derive(Clone, Debug)]

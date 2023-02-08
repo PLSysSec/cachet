@@ -13,11 +13,11 @@ use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 
 pub use crate::type_checker::{
     BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex,
-    FnIndex, GlobalVarIndex, GotoStmt, HasAttrs, IrIndex, IrItem, Label, LabelIndex, LabelParam,
-    LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,
-    NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
-    StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarIndex, VarParam,
-    VarParamIndex, VariantIndex,
+    FnIndex, GlobalVarIndex, GotoStmt, HasAttrs, IrIndex, IrItem, Label, LabelField, LabelIndex,
+    LabelParam, LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex,
+    Locals, NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
+    StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, ValueField, VarExpr, VarIndex,
+    VarParam, VarParamIndex, VariantIndex,
 };
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
@@ -140,6 +140,7 @@ pub enum Arg {
     Expr(PureExpr),
     OutVar(OutVarArg),
     Label(LabelArg),
+    LabelField(LabelFieldExpr),
 }
 
 #[derive(Clone, Debug)]
@@ -249,6 +250,13 @@ pub struct AssignStmt<B = ()> {
 #[derive(Clone, Debug)]
 pub struct RetStmt<B = ()> {
     pub value: Option<Expr<B>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LabelFieldExpr {
+    pub parent: PureExpr,
+    pub field: StructFieldIndex,
+    pub ir: IrIndex,
 }
 
 #[derive(Clone, Debug, From)]

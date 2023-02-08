@@ -226,6 +226,20 @@ impl<'a> FlowTracer<'a> {
                         .insert(label_param_index.into(), arg_label_node_index);
                 }
             }
+            if let (
+                flattener::ParamIndex::Label(label_param_index),
+                flattener::Arg::LabelField(label_field_expr),
+            ) = item
+            {
+                if label_field_expr.ir == self.bottom_ir_index {
+                    let arg_label_node_index = self.insert_label_node(label_param_index.into());
+                    let exit_emit_node_index = self.graph.exit_emit_node_index();
+                    self.graph
+                        .link_label_to_emit(arg_label_node_index, exit_emit_node_index);
+                    self.label_scope
+                        .insert(label_param_index.into(), arg_label_node_index);
+                }
+            }
         }
     }
 
