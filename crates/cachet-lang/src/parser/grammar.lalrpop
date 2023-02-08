@@ -62,9 +62,19 @@ StructFields: TiVec<FieldIndex, Field> = {
     "{" <fields:Comma<Field>> "}" => fields.into(),
 };
 
-Field: Field =
+Field: Field = {
+    <value_field:ValueField> => value_field.into(),
+    <label_field:LabelField> => label_field.into(),
+};
+
+ValueField: ValueField =
     <ident: Spanned<Ident>> ":" <type_: Spanned<Path>> => {
-        Field { ident, type_ }
+        ValueField { ident, type_ }
+    };
+
+LabelField: LabelField =
+    <label: Label> => {
+        LabelField { label }
     };
 
 IrItem: IrItem =

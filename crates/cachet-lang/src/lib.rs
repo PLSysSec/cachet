@@ -1,6 +1,7 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
 #![feature(is_some_and)]
+#![feature(box_patterns)]
 
 use std::error::Error;
 

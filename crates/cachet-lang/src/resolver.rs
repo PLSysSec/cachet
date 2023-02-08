@@ -44,13 +44,6 @@ pub fn resolve(mod_: parser::Mod) -> Result<Env, ResolveErrors> {
             .map(|enum_item| resolver.resolve_enum_item(enum_item)),
     );
 
-    let struct_items: Option<_> = collect_eager(
-        item_catalog
-            .struct_items
-            .into_iter()
-            .map(|struct_item| resolver.resolve_struct_item(struct_item)),
-    );
-
     let ir_items: Option<TiVec<_, _>> = collect_eager(
         item_catalog
             .ir_items
@@ -61,6 +54,13 @@ pub fn resolve(mod_: parser::Mod) -> Result<Env, ResolveErrors> {
     // We'll need early access to the name-resolved IR items in order to resolve
     // label IRs.
     resolver.ir_items = ir_items.as_ref().map(|ir_items| ir_items.as_slice());
+
+    let struct_items: Option<_> = collect_eager(
+        item_catalog
+            .struct_items
+            .into_iter()
+            .map(|struct_item| resolver.resolve_struct_item(struct_item)),
+    );
 
     let global_var_items: Option<_> = collect_eager(
         item_catalog
@@ -475,14 +475,28 @@ impl<'a> Resolver<'a> {
         // TODO(spinda): Raise an error on duplicate field names.
         // TODO(spinda): Interaction between struct fields and supertypes is in
         // a weird spot right now. Sort that out down the road.
-        let fields: Option<_> = collect_eager(struct_item.fields.into_iter().map(|field| {
-            let type_ = self.lookup_type_global(field.type_).found(&mut self.errors);
+        let fields: Option<_> =
+            collect_eager(struct_item.fields.into_iter().map(|field| match field {
+                parser::Field::Value(value_field) => {
+                    let type_ = self
+                        .lookup_type_global(value_field.type_)
+                        .found(&mut self.errors);
+                    Some(Field::Value(ValueField {
+                        ident: value_field.ident,
+                        type_: type_?,
+                    }))
+                }
+                parser::Field::Label(label_field) => {
+                    let ir = self
+                        .lookup_ir_global(label_field.label.ir)
+                        .found(&mut self.errors);
 
-            Some(Field {
-                ident: field.ident,
-                type_: type_?,
-            })
-        }));
+                    Some(Field::Label(LabelField {
+                        ident: label_field.label.ident,
+                        ir: ir?,
+                    }))
+                }
+            }));
 
         Some(StructItem {
             ident: struct_item.ident,
@@ -921,9 +935,10 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 .map(Stmt::from)
                 .map(Some),
             parser::Stmt::If(if_stmt) => self.resolve_if_stmt(if_stmt).map(Stmt::from).map(Some),
-            parser::Stmt::ForIn(for_in_stmt) => {
-                self.resolve_for_in_stmt(for_in_stmt).map(Stmt::from).map(Some)
-            }
+            parser::Stmt::ForIn(for_in_stmt) => self
+                .resolve_for_in_stmt(for_in_stmt)
+                .map(Stmt::from)
+                .map(Some),
             parser::Stmt::Check(check_stmt) => self
                 .resolve_check_stmt(check_stmt)
                 .map(Stmt::from)

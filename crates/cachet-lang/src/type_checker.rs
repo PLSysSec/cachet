@@ -723,14 +723,10 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
         let arg_span = arg.span;
         let (found_arg_kind, arg) = match &arg.value {
-            resolver::Arg::Expr(expr) => (
-                ArgKind::Expr,
-                self.type_check_expr_arg(
-                    callable_item.path.value,
-                    param_summary.as_ref(),
-                    Spanned::new(arg_span, expr),
-                )
-                .into(),
+            resolver::Arg::Expr(expr) => self.type_check_expr_arg(
+                callable_item.path.value,
+                param_summary.as_ref(),
+                Spanned::new(arg_span, expr),
             ),
             resolver::Arg::OutVar(out_var) => (
                 ArgKind::OutVar,
@@ -786,16 +782,17 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         target: Path,
         param_summary: Option<&ParamSummary>,
         arg: Spanned<&resolver::Expr>,
-    ) -> Expr {
+    ) -> (ArgKind, Arg) {
         let expr = self.type_check_expr(arg.value);
 
-        let expr = match param_summary {
+        match param_summary {
             Some(&ParamSummary {
                 ident: param_ident,
                 type_: Some(param_type_index),
+                ir: None,
                 ..
             }) => match self.try_build_cast_chain(CastSafety::Lossless, expr, param_type_index) {
-                Ok(expr) => expr,
+                Ok(expr) => (ArgKind::Expr, expr.into()),
                 Err(expr) => {
                     self.type_checker
                         .errors
@@ -806,13 +803,51 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                             target,
                             param: param_ident,
                         });
-                    expr
+                    (ArgKind::Expr, expr.into())
                 }
             },
-            _ => expr,
-        };
+            Some(&ParamSummary {
+                ident: param_ident,
+                type_: None,
+                ir: Some(param_ir_index),
+                ..
+            }) => {
+                if let Expr::FieldAccess(box field_access_expr) = expr {
+                    let field = &self.env[field_access_expr.field];
+                    match field {
+                        Field::Value(_) => {
+                            (ArgKind::Expr, Into::<Expr>::into(field_access_expr).into())
+                        }
+                        Field::Label(LabelField {
+                            ir: arg_ir_index, ..
+                        }) => {
+                            if !self.is_same_ir(*arg_ir_index, param_ir_index) {
+                                self.type_checker
+                                    .errors
+                                    .push(TypeCheckError::ArgIrMismatch {
+                                        expected_ir: self.env[param_ir_index].ident.value,
+                                        found_ir: self.env[arg_ir_index].ident.value,
+                                        arg_span: arg.span,
+                                        target,
+                                        param: param_ident,
+                                    });
+                            }
 
-        expr
+                            let label_field_expr = LabelFieldExpr {
+                                parent: field_access_expr.parent,
+                                field: field_access_expr.field,
+                                ir: *arg_ir_index,
+                            };
+
+                            (ArgKind::Label, label_field_expr.into())
+                        }
+                    }
+                } else {
+                    (ArgKind::Expr, expr.into())
+                }
+            }
+            _ => (ArgKind::Expr, expr.into()),
+        }
     }
 
     fn type_check_out_var_arg(
@@ -1387,11 +1422,19 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             match struct_item
                 .fields
                 .iter_enumerated()
-                .find(|(_, field)| field.ident.value == field_access.field.value)
-            {
+                .find(|(_, field)| match field {
+                    Field::Value(value_field) => {
+                        value_field.ident.value == field_access.field.value
+                    }
+                    Field::Label(label_field) => {
+                        label_field.ident.value == field_access.field.value
+                    }
+                }) {
                 Some((found_field_index, found_field)) => {
                     field_index = found_field_index;
-                    type_ = found_field.type_;
+                    if let Field::Value(value_field) = found_field {
+                        type_ = value_field.type_;
+                    }
                 }
                 None => {
                     self.type_checker

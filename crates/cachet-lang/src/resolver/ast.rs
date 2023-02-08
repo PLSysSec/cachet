@@ -293,9 +293,30 @@ impl IndexMut<StructFieldIndex> for Env {
 deref_index!(Env[&StructFieldIndex] => Field);
 
 #[derive(Clone, Debug)]
-pub struct Field {
+pub enum Field {
+    Value(ValueField),
+    Label(LabelField),
+}
+
+impl Field {
+    pub fn ident(&self) -> &Spanned<Ident> {
+        match self {
+            Self::Value(value_field) => &value_field.ident,
+            Self::Label(label_field) => &label_field.ident,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ValueField {
     pub ident: Spanned<Ident>,
     pub type_: TypeIndex,
+}
+
+#[derive(Clone, Debug)]
+pub struct LabelField {
+    pub ident: Spanned<Ident>,
+    pub ir: IrIndex,
 }
 
 #[derive(Clone, Debug)]

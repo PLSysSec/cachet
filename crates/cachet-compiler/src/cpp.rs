@@ -407,11 +407,24 @@ impl<'a> Compiler<'a> {
                 let path = TypeMemberFnPath {
                     parent: struct_item.ident.value,
                     ident: FieldAccessTypeMemberFnIdent {
-                        field: field.ident.value,
+                        field: field.ident().value,
                     }
                     .into(),
                 }
                 .into();
+
+                let ret = match field {
+                    normalizer::Field::Value(value_field) => TypeMemberTypePath {
+                        parent: self.get_type_ident(value_field.type_),
+                        ident: ExprTag::Ref.into(),
+                    }
+                    .into(),
+                    normalizer::Field::Label(label_field) => IrMemberTypePath {
+                        parent: self.env[label_field.ir].ident.value,
+                        ident: IrMemberTypeIdent::LabelRef,
+                    }
+                    .into(),
+                };
 
                 let this = Param {
                     ident: ParamVarIdent::In,
@@ -421,12 +434,6 @@ impl<'a> Compiler<'a> {
                     }
                     .into(),
                 };
-
-                let ret = TypeMemberTypePath {
-                    parent: self.get_type_ident(field.type_),
-                    ident: ExprTag::Ref.into(),
-                }
-                .into();
 
                 FnItem {
                     path,
@@ -888,6 +895,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Arg::Expr(pure_expr) => self.compile_expr_arg(pure_expr),
             normalizer::Arg::OutVar(out_var_arg) => self.compile_out_var_arg(out_var_arg),
             normalizer::Arg::Label(label_arg) => self.compile_label_arg(label_arg),
+            normalizer::Arg::LabelField(label_field_expr) => {
+                self.compile_label_field_arg(label_field_expr)
+            }
         }
     }
 
@@ -938,6 +948,26 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             .into(),
         }
+    }
+
+    fn compile_label_field_arg(&self, label_field_expr: &normalizer::LabelFieldExpr) -> Expr {
+        let parent_expr = label_field_expr.parent.compile(self).expr;
+        let parent_type = label_field_expr.parent.type_();
+
+        let target = TypeMemberFnPath {
+            parent: self.get_type_ident(parent_type),
+            ident: FieldAccessTypeMemberFnIdent {
+                field: self.env[label_field_expr.field].ident().value,
+            }
+            .into(),
+        }
+        .into();
+
+        CallExpr {
+            target,
+            args: vec![CONTEXT_ARG, parent_expr],
+        }
+        .into()
     }
 
     fn compile_internal_label_arg(
@@ -1478,7 +1508,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let target = TypeMemberFnPath {
             parent: self.get_type_ident(parent_type),
             ident: FieldAccessTypeMemberFnIdent {
-                field: self.env[field_access_expr.field].ident.value,
+                field: self.env[field_access_expr.field].ident().value,
             }
             .into(),
         }

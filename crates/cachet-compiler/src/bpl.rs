@@ -143,9 +143,20 @@ impl<'a> Compiler<'a> {
         for field in &struct_item.fields {
             let ident = TypeMemberFnIdent {
                 type_ident,
-                selector: TypeMemberFnSelector::Field(field.ident.value.into()),
+                selector: TypeMemberFnSelector::Field(field.ident().value.into()),
             }
             .into();
+
+            let ret = match field {
+                flattener::Field::Value(value_field) => {
+                    self.get_type_ident(value_field.type_).into()
+                }
+                flattener::Field::Label(label_field) => IrMemberTypeIdent {
+                    ir_ident: self.env[label_field.ir].ident.value.into(),
+                    selector: IrMemberTypeSelector::Label,
+                }
+                .into(),
+            };
 
             self.items.push(
                 FnItem {
@@ -159,7 +170,7 @@ impl<'a> Compiler<'a> {
                     ]
                     .into(),
                     attr: None,
-                    ret: self.get_type_ident(field.type_).into(),
+                    ret,
                     value: None,
                 }
                 .into(),
@@ -630,7 +641,7 @@ impl<'a> Compiler<'a> {
             .as_ref()
             .map(|body| self.compile_body(callable_index, &callable_item, body));
 
-        match CallableRepr::for_callable(callable_item) {
+        match CallableRepr::for_callable(self.env, callable_item) {
             CallableRepr::Fn => {
                 self.items.push(
                     FnItem {
@@ -724,7 +735,9 @@ impl<'a> Compiler<'a> {
                                 .into()
                             });
 
-                        let body = iterate![..ret_var_assign_stmts, ..out_label_param_bind_stmts]
+                        // Also bind all label fields of returned structs to
+                        // an exit point.
+                        let body = iterate![..ret_var_assign_stmts, ..out_label_param_bind_stmts,]
                             .collect();
 
                         (Some(InlineProcAttr { depth: 1 }.into()), body)
@@ -1372,7 +1385,7 @@ enum CallableRepr {
 }
 
 impl CallableRepr {
-    fn for_callable(callable_item: &flattener::CallableItem) -> Self {
+    fn for_callable(env: &flattener::Env, callable_item: &flattener::CallableItem) -> Self {
         if let Some(callable_repr) = BLOCKED_PATHS.get(&callable_item.path.value) {
             return *callable_repr;
         };
@@ -1390,8 +1403,21 @@ impl CallableRepr {
                     }
                 });
 
-        match (has_out_params, callable_item.ret, &callable_item.body) {
-            (false, Some(_), None) => Self::Fn,
+        // functions where the return type is a struct with label fields
+        // need to be procedures to proprely bind the label field.
+        let has_fn_ret =
+            if let Some(flattener::TypeIndex::Struct(struct_index)) = callable_item.ret {
+                let struct_item = &env[struct_index];
+                struct_item.fields.iter().all(|field| match field {
+                    flattener::Field::Value(_) => true,
+                    flattener::Field::Label(_) => false,
+                })
+            } else {
+                true
+            };
+
+        match (has_out_params, has_fn_ret, &callable_item.body) {
+            (false, true, None) => Self::Fn,
             _ => Self::Proc,
         }
     }
@@ -1497,6 +1523,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 flattener::Arg::Label(label_arg) => {
                     arg_exprs.push(self.compile_label_arg(label_arg))
                 }
+                flattener::Arg::LabelField(label_field_expr) => {
+                    arg_exprs.push(self.compile_label_field_arg(label_field_expr))
+                }
             }
         }
 
@@ -1521,6 +1550,24 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_label_arg(&mut self, label_arg: &flattener::LabelArg) -> Expr {
         self.compile_internal_label_arg(label_arg.label)
+    }
+
+    fn compile_label_field_arg(&mut self, label_field_expr: &flattener::LabelFieldExpr) -> Expr {
+        let struct_item = &self.env[label_field_expr.field.struct_index];
+        let field = &struct_item.fields[label_field_expr.field.field_index];
+        let field_fn_ident = TypeMemberFnIdent {
+            type_ident: UserTypeIdent::from(struct_item.ident.value),
+            selector: TypeMemberFnSelector::Field(field.ident().value.into()),
+        }
+        .into();
+
+        let parent_expr = label_field_expr.parent.compile(self);
+
+        CallExpr {
+            target: field_fn_ident,
+            arg_exprs: vec![parent_expr],
+        }
+        .into()
     }
 
     fn compile_internal_label_arg(&mut self, label_index: flattener::LabelIndex) -> Expr {
@@ -1575,7 +1622,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let call_expr = CallExpr { target, arg_exprs };
 
-        match CallableRepr::for_callable(callable_item) {
+        match CallableRepr::for_callable(self.env, callable_item) {
             CallableRepr::Fn => CompiledInvocation::FnCall(call_expr),
             CallableRepr::Proc => {
                 let ret_var_ident = match callable_item.ret {
@@ -2060,7 +2107,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let field = &struct_item.fields[field_access_expr.field.field_index];
         let field_fn_ident = TypeMemberFnIdent {
             type_ident: UserTypeIdent::from(struct_item.ident.value),
-            selector: TypeMemberFnSelector::Field(field.ident.value.into()),
+            selector: TypeMemberFnSelector::Field(field.ident().value.into()),
         }
         .into();
 
