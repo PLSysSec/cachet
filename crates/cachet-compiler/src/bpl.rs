@@ -735,12 +735,77 @@ impl<'a> Compiler<'a> {
                                 .into()
                             });
 
-                        // Also bind all label fields of returned structs to
-                        // an exit point.
-                        let body = iterate![..ret_var_assign_stmts, ..out_label_param_bind_stmts,]
-                            .collect();
+                        let mut body: Vec<Stmt> =
+                            iterate![..ret_var_assign_stmts, ..out_label_param_bind_stmts,]
+                                .collect();
 
-                        (Some(InlineProcAttr { depth: 1 }.into()), body)
+                        // Also assume all label fields of returned structs are bound
+                        // to an exit point.
+                        if let Some(ret @ flattener::TypeIndex::Struct(struct_index)) =
+                            callable_item.ret
+                        {
+                            let struct_item = &self.env[struct_index];
+                            body.extend(
+                                struct_item
+                                    .fields
+                                    .iter()
+                                    .filter(|field| match field {
+                                        flattener::Field::Value(_) => false,
+                                        flattener::Field::Label(_) => true,
+                                    })
+                                    .map(|field| match field {
+                                        flattener::Field::Label(label_field) => {
+                                            let type_ident = self.get_type_ident(ret);
+
+                                            let field_fn_ident = TypeMemberFnIdent {
+                                                type_ident,
+                                                selector: TypeMemberFnSelector::Field(
+                                                    field.ident().value.into(),
+                                                ),
+                                            }
+                                            .into();
+
+                                            let field_access_expr = CallExpr {
+                                                target: field_fn_ident,
+                                                arg_exprs: vec![VarIdent::Ret.into()],
+                                            }
+                                            .into();
+
+                                            let ir_ident =
+                                                self.env[label_field.ir].ident.value.into();
+
+                                            let label_pcs_global_var_ident =
+                                                IrMemberGlobalVarIdent {
+                                                    ir_ident,
+                                                    selector: IrMemberGlobalVarSelector::LabelPcs,
+                                                }
+                                                .into();
+
+                                            let assume_label_field_bound_stmt = CheckStmt {
+                                                kind: CheckKind::Assume,
+                                                attr: None,
+                                                cond: BinOperExpr {
+                                                    oper: CompareBinOper::Eq.into(),
+                                                    lhs: IndexExpr {
+                                                        base: label_pcs_global_var_ident,
+                                                        key: field_access_expr,
+                                                        value: None,
+                                                    }
+                                                    .into(),
+                                                    rhs: Literal::Int(0).into(),
+                                                }
+                                                .into(),
+                                            }
+                                            .into();
+
+                                            assume_label_field_bound_stmt
+                                        }
+                                        _ => unreachable!(),
+                                    }),
+                            );
+                        }
+
+                        (Some(InlineProcAttr { depth: 1 }.into()), body.into())
                     }
                 };
 
