@@ -220,6 +220,7 @@ impl RegData {
 
     unsafe fn toStackIndexUnchecked(data: RegData) -> UInt64;
 
+    #[spec]
     fn readData(data: RegData, offset: Int64) -> RegData {
         if RegData::isUnboxedValue(data) {
             let value = RegData::toUnboxedValue(data);
@@ -625,10 +626,14 @@ impl Object {
       (unsafe { object as NativeObject })
     }
 
-    fn toArgumentsObject(object: Object) -> ArgumentsObject {
+    fn isArgumentsObject(object: Object) -> Bool {
         let shape = Object::shapeOf(object);
         let class = Shape::classOf(shape);
-        assert Class::isArgumentsObject(class);
+        Class::isArgumentsObject(class)
+    }
+
+    fn toArgumentsObject(object: Object) -> ArgumentsObject {
+        assert Object::isArgumentsObject(object);
         (unsafe { object as ArgumentsObject })
     }
   
@@ -641,7 +646,7 @@ impl Object {
     #[spec]
     fn readData(object: Object, offset: Int64) -> RegData {
         let shape = Object::shapeOf(object);
-        let class = Shape::classOf(shape);   
+        let class = Shape::classOf(shape);
 
         if Class::isNativeObject(class) {
             let nativeObject = (unsafe { object as NativeObject });
@@ -797,6 +802,15 @@ impl NativeObjectElements {
 }
 
 struct JSFunction <: NativeObject;
+
+impl JSFunction {
+    var rawClass : Class;
+
+    fn class() -> Class {
+        assume Class::isNativeObject(JSFunction::rawClass);
+        JSFunction::rawClass
+    }
+}
 
 struct ArrayObject <: NativeObject;
 
@@ -1005,9 +1019,6 @@ struct Class;
 impl Class {
     fn fromAddr(addr: UInt64) -> Class;
 
-    var rawFunctionClass: Class;
-    var rawExtendedFunctionClass: Class;
-
     fn windowProxyClass() -> Class;
 
     fn emulatesUndefined(class: Class) -> Bool;
@@ -1019,16 +1030,6 @@ impl Class {
         class == MappedArgumentsObject::class() ||
             class == UnmappedArgumentsObject::class()
     }
-
-    fn functionClass() -> Class {
-        assume Class::isNativeObject(Class::rawFunctionClass);
-        Class::rawFunctionClass
-    }
-
-    fn extendedFunctionClass() -> Class {
-        assume Class::isNativeObject(Class::rawExtendedFunctionClass);
-        Class::rawExtendedFunctionClass
-    }
 }
 
 struct String;
@@ -1038,6 +1039,7 @@ impl String {
 
     fn isAtom(string: String) -> Bool;
 
+    #[refined]
     fn asAtom(string: String) -> Atom {
         assert String::isAtom(string);
         (unsafe { string as Atom })
@@ -1054,6 +1056,7 @@ struct Symbol;
 
 struct BigInt;
 
+#[spec]
 enum ProtoTag {
     Null,
     Lazy,
@@ -1065,16 +1068,20 @@ struct TaggedProto;
 impl TaggedProto {
     fn fromAddr(addr: UInt64) -> TaggedProto;
 
+    #[spec]
     fn tag(proto: TaggedProto) -> ProtoTag;
 
+    #[refined]
     fn isNull(proto: TaggedProto) -> Bool {
         TaggedProto::tag(proto) == ProtoTag::Null
     }
 
+    #[refined]
     fn isLazy(proto: TaggedProto) -> Bool {
         TaggedProto::tag(proto) == ProtoTag::Lazy
     }
 
+    #[refined]
     fn isObject(proto: TaggedProto) -> Bool {
         TaggedProto::tag(proto) == ProtoTag::Object
     }
