@@ -444,6 +444,37 @@ enum GuardClassKind {
 }
 
 ir CacheIR emits MASM {
+    // TODO(spinda): Some slightly hacky helper functions for the codegen demo.
+
+    fn initStub() {
+      initRegState();
+    }
+
+    fn defineInputValueId() -> ValueId {
+      let valueId = ValueId::fromId(0_u16);
+      initOperandId(valueId);
+      initInputValueId(valueId);
+      valueId
+    }
+
+    fn setValueOutput() {
+      initValueOutput();
+    }
+
+    fn writeInt32Field(int32: Int32) -> Int32Field {
+      let int32Field = Int32Field::fromOffset(8_u32);
+      assume CacheIR::readInt32Field(int32Field) == int32;
+      int32Field
+    }
+
+    fn writeShapeField(shape: Shape) -> ShapeField {
+      let shapeField = ShapeField::fromOffset(8_u32);
+      assume CacheIR::readShapeField(shapeField) == shape;
+      shapeField
+    }
+
+    // (end slightly hacky helper functions)
+
     op ReturnFromIC() {}
 
     op GuardIsNumber(valueId: ValueId) {

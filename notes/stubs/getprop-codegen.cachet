@@ -1,0 +1,34 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {
+  op GetProp(value: Value, slot: UInt32) {
+    CacheIR::initStub();
+    let valueId = CacheIR::defineInputValueId();
+    CacheIR::setValueOutput();
+
+    if Value::isObject(value) {
+      let object = Value::toObject(value);
+      emit CacheIR::GuardToObject(valueId);
+      let objectId = OperandId::toObjectId(valueId);
+
+      if Object::isNativeObject(object) {
+        let shape = Object::shapeOf(object);
+        let shapeField = CacheIR::writeShapeField(shape);
+        emit CacheIR::GuardShape(objectId, shapeField);
+
+        if Shape::hasFixedSlot(shape, slot) {
+          let offset = NativeObject::offsetOfFixedSlot(slot);
+          let offsetField = CacheIR::writeInt32Field(offset as Int32);
+          emit CacheIR::LoadFixedSlotResult(objectId, offsetField);
+        } else if Shape::hasDynamicSlot(shape, slot) {
+          let offset = NativeObjectSlots::offsetOfSlot(slot - Shape::numFixedSlots(shape));
+          let offsetField = CacheIR::writeInt32Field(offset as Int32);
+          emit CacheIR::LoadDynamicSlotResult(objectId, offsetField);
+        }
+      }
+    }
+
+    emit CacheIR::ReturnFromIC();
+  }
+}
