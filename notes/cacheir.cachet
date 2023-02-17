@@ -132,10 +132,6 @@ impl OperandId {
     fn toIntPtrId(operandId: OperandId) -> IntPtrId {
         IntPtrId::fromId(OperandId::id(operandId))
     }
-
-    fn toRawId(operandId: OperandId) -> RawId {
-        RawId::fromId(OperandId::id(operandId))
-    }
 }
 
 struct ValueId <: OperandId;
@@ -256,20 +252,6 @@ impl IntPtrId {
     }
 
     unsafe fn fromIdUnchecked(id: UInt16) -> IntPtrId;
-}
-
-// TODO(spinda): This isn't an actual `OperandId` subtype on the C++ side.
-// Figure out what this maps to.
-struct RawId <: OperandId;
-
-impl RawId {
-    fn fromId(id: UInt16) -> RawId {
-        let rawId = unsafe { RawId::fromIdUnchecked(id) };
-        assume OperandId::id(rawId) == id;
-        rawId
-    }
-
-    unsafe fn fromIdUnchecked(id: UInt16) -> RawId;
 }
 
 struct TypedId <: OperandId;

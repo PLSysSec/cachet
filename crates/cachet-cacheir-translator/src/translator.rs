@@ -79,7 +79,6 @@ lazy_static! {
     static ref BIG_INT_ID_PATH: Path = Path::from_ident("BigIntId");
     static ref VALUE_TAG_ID_PATH: Path = Path::from_ident("ValueTagId");
     static ref INT_PTR_ID_PATH: Path = Path::from_ident("IntPtrId");
-    static ref RAW_ID_PATH: Path = Path::from_ident("RawId");
 }
 
 lazy_static! {
@@ -617,7 +616,7 @@ fn type_path_for_operand_id_type(operand_type: stub::OperandIdType) -> Path {
         stub::OperandIdType::BigIntId => *BIG_INT_ID_PATH,
         stub::OperandIdType::ValueTagId => *VALUE_TAG_ID_PATH,
         stub::OperandIdType::IntPtrId => *INT_PTR_ID_PATH,
-        stub::OperandIdType::RawId => *RAW_ID_PATH,
+        stub::OperandIdType::RawId => *OPERAND_ID_PATH,
     }
 }
 
