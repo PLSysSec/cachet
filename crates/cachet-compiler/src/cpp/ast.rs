@@ -208,16 +208,20 @@ pub enum VarIdent {
     Local(LocalVarIdent),
     #[from]
     LocalLabel(LocalLabelVarIdent),
+    #[from]
+    Synthetic(SyntheticVarIdent),
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum ParamVarIdent {
     #[display(fmt = "cx")]
     Context,
-    #[display(fmt = "ops")]
-    Ops,
     #[display(fmt = "in")]
     In,
+    #[display(fmt = "parent")]
+    Parent,
+    #[display(fmt = "ops")]
+    Ops,
     User(UserParamVarIdent),
 }
 
@@ -239,6 +243,19 @@ pub struct LocalVarIdent {
 pub struct LocalLabelVarIdent {
     pub ident: Ident,
     pub index: LocalLabelIndex,
+}
+
+#[derive(Clone, Copy, Debug, Display)]
+#[display(fmt = "{}_{}", kind, index)]
+pub struct SyntheticVarIdent {
+    pub kind: SyntheticVarKind,
+    pub index: usize,
+}
+
+#[derive(Clone, Copy, Debug, Display, Enum)]
+pub enum SyntheticVarKind {
+    #[display(fmt = "hoist")]
+    Hoist,
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
@@ -922,7 +939,13 @@ pub enum Expr {
     Block(BlockExpr),
     #[from]
     Literal(Literal),
-    #[from(types(ParamVarIdent, UserParamVarIdent, LocalVarIdent, LocalLabelVarIdent,))]
+    #[from(types(
+        ParamVarIdent,
+        UserParamVarIdent,
+        LocalVarIdent,
+        LocalLabelVarIdent,
+        SyntheticVarIdent
+    ))]
     Var(VarIdent),
     #[from(types(
         HelperFnIdent,

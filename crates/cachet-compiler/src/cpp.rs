@@ -15,6 +15,7 @@ use typed_index_collections::{TiSlice, TiVec};
 use cachet_lang::ast::{BinOper, ForInOrder, Ident, NegateKind, Path, VarParamKind};
 use cachet_lang::built_in::{BuiltInType, IdentEnum};
 use cachet_lang::normalizer::{self, HasAttrs, Typed};
+use cachet_util::MaybeOwned;
 
 use crate::cpp::ast::*;
 
@@ -399,7 +400,7 @@ impl<'a> Compiler<'a> {
             ]);
         }
 
-        // add declarations for struct field accessor functions
+        // Add declarations for struct field accessor functions.
         let field_decls: Vec<_> = struct_item
             .fields
             .iter()
@@ -413,8 +414,8 @@ impl<'a> Compiler<'a> {
                 }
                 .into();
 
-                let this = Param {
-                    ident: ParamVarIdent::In,
+                let parent_param = Param {
+                    ident: ParamVarIdent::Parent,
                     type_: TypeMemberTypePath {
                         parent: struct_item.ident.value,
                         ident: ExprTag::Ref.into(),
@@ -431,9 +432,9 @@ impl<'a> Compiler<'a> {
                 FnItem {
                     path,
                     is_fully_qualified: false,
-                    //TODO(abhishekc-sharma): can/should this be inline ?
+                    // TODO(abhishekc-sharma): Can/should this be inline?
                     is_inline: false,
-                    params: vec![CONTEXT_PARAM, this],
+                    params: vec![CONTEXT_PARAM, parent_param],
                     ret,
                     body: None,
                 }
@@ -468,35 +469,32 @@ impl<'a> Compiler<'a> {
         }
         .into();
 
+        let fn_decl = FnItem {
+            path,
+            is_fully_qualified: false,
+            is_inline: true,
+            params: vec![CONTEXT_PARAM],
+            ret,
+            body: None,
+        };
+
         let item_bucket_index = global_var_item.parent.into();
 
         match &global_var_item.value {
             Some(value) => {
-                let scoped_compiler = ScopedCompiler::new(self, None, Scope::Empty);
-                let value_expr = scoped_compiler.use_expr(
-                    scoped_compiler.compile_expr(&value.value),
-                    ExprTag::Val.into(),
+                let mut scoped_compiler = ScopedCompiler::new(self, None, Scope::Empty);
+                let value_tagged_expr = scoped_compiler.compile_expr(&value.value);
+                let value_expr = scoped_compiler.use_expr(value_tagged_expr, ExprTag::Val.into());
+                let mut body = Block::from(scoped_compiler.stmts);
+                body.stmts.push(
+                    RetStmt {
+                        value: Some(value_expr),
+                    }
+                    .into(),
                 );
 
-                let fn_decl = FnItem {
-                    path,
-                    is_fully_qualified: false,
-                    is_inline: true,
-                    params: vec![CONTEXT_PARAM],
-                    ret,
-                    body: None,
-                };
-
                 let mut fn_def = fn_decl.clone();
-                fn_def.body = Block {
-                    stmts: vec![
-                        RetStmt {
-                            value: Some(value_expr),
-                        }
-                        .into(),
-                    ],
-                }
-                .into();
+                fn_def.body = Some(body);
 
                 self.internal_decls
                     .bucket_for(item_bucket_index)
@@ -506,19 +504,9 @@ impl<'a> Compiler<'a> {
                     .push(fn_def.into());
             }
             None => {
-                let fn_decl = FnItem {
-                    path,
-                    is_fully_qualified: false,
-                    is_inline: true,
-                    params: vec![CONTEXT_PARAM],
-                    ret,
-                    body: None,
-                }
-                .into();
-
                 self.external_decls
                     .bucket_for(item_bucket_index)
-                    .push(fn_decl);
+                    .push(fn_decl.into());
             }
         }
     }
@@ -821,6 +809,7 @@ struct ScopedCompiler<'a, 'b> {
     compiler: &'b Compiler<'a>,
     parent_index: Option<normalizer::ParentIndex>,
     scope: Scope<'b>,
+    next_synthetic_var_indexes: MaybeOwned<'b, EnumMap<SyntheticVarKind, usize>>,
     stmts: Vec<Stmt>,
 }
 
@@ -842,15 +831,17 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             compiler,
             parent_index,
             scope,
+            next_synthetic_var_indexes: MaybeOwned::Owned(EnumMap::default()),
             stmts: Vec::new(),
         }
     }
 
-    fn recurse(&self) -> ScopedCompiler<'a, 'b> {
+    fn recurse<'c>(&'c mut self) -> ScopedCompiler<'a, 'c> {
         ScopedCompiler {
             compiler: self.compiler,
             parent_index: self.parent_index,
             scope: self.scope,
+            next_synthetic_var_indexes: MaybeOwned::Borrowed(&mut self.next_synthetic_var_indexes),
             stmts: Vec::new(),
         }
     }
@@ -879,11 +870,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_args<'c>(&'c self, args: &'c [normalizer::Arg]) -> impl 'c + Iterator<Item = Expr> {
+    fn compile_args<'c>(
+        &'c mut self,
+        args: &'c [normalizer::Arg],
+    ) -> impl 'c + Iterator<Item = Expr> + Captures<'a> + Captures<'b> {
         args.iter().map(|arg| self.compile_arg(arg))
     }
 
-    fn compile_arg(&self, arg: &normalizer::Arg) -> Expr {
+    fn compile_arg(&mut self, arg: &normalizer::Arg) -> Expr {
         match arg {
             normalizer::Arg::Expr(pure_expr) => self.compile_expr_arg(pure_expr),
             normalizer::Arg::OutVar(out_var_arg) => self.compile_out_var_arg(out_var_arg),
@@ -891,8 +885,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_expr_arg(&self, pure_expr: &normalizer::PureExpr) -> Expr {
-        self.use_expr(self.compile_pure_expr(pure_expr), ExprTag::Ref.into())
+    fn compile_expr_arg(&mut self, pure_expr: &normalizer::PureExpr) -> Expr {
+        let tagged_expr = self.compile_pure_expr(pure_expr);
+        self.use_expr(tagged_expr, ExprTag::Ref.into())
     }
 
     fn compile_out_var_arg(&self, out_var_arg: &normalizer::OutVarArg) -> Expr {
@@ -952,7 +947,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         })
     }
 
-    fn compile_block(&self, stmts: &[normalizer::Stmt]) -> Block {
+    fn compile_block(&mut self, stmts: &[normalizer::Stmt]) -> Block {
         let mut scoped_compiler = self.recurse();
         scoped_compiler.compile_stmts(stmts);
         scoped_compiler.stmts.into()
@@ -1037,10 +1032,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_if_stmt_recurse(&mut self, if_stmt: &normalizer::IfStmt) -> IfStmt {
-        let cond = self.use_expr(
-            self.compile_expr(&if_stmt.cond),
-            ExprTag::Ref | ExprTag::Val,
-        );
+        let tagged_cond = self.compile_expr(&if_stmt.cond);
+        let cond = self.use_expr(tagged_cond, ExprTag::Ref | ExprTag::Val);
 
         let then = self.compile_block(&if_stmt.then);
 
@@ -1066,53 +1059,43 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let body = self.compile_block(&for_in_stmt.body);
 
-        let iteration_stmts: Vec<_> = enum_item
-            .variants
-            .iter()
-            .map(|variant_path| {
-                let loop_var_index = for_in_stmt.var;
+        let iteration_stmts: Vec<_> = {
+            let loop_var_index = for_in_stmt.var;
+            let loop_var_ident = LocalVarIdent {
+                ident: self.scope.local(loop_var_index).ident.value,
+                index: loop_var_index,
+            }
+            .into();
+            let loop_var_type = Type::from(TypeMemberTypePath {
+                parent: self.get_type_ident(for_in_stmt.target.into()),
+                ident: ExprTag::Local.into(),
+            });
 
-                let lhs = LocalVarIdent {
-                    ident: self.scope.local(loop_var_index).ident.value,
-                    index: loop_var_index,
-                }
-                .into();
-
-                let type_ = TypeMemberTypePath {
-                    parent: self.get_type_ident(for_in_stmt.target.into()),
-                    ident: ExprTag::Local.into(),
-                }
-                .into();
-
-                let rhs = Some(
-                    self.use_expr(
-                        TaggedExpr {
-                            expr: CallExpr {
-                                target: TypeMemberFnPath {
-                                    parent: enum_item.ident.value,
-                                    ident: VariantTypeMemberFnIdent::from(
-                                        variant_path.value.ident(),
-                                    )
-                                    .into(),
-                                }
-                                .into(),
-                                args: vec![CONTEXT_ARG],
-                            }
-                            .into(),
-                            type_: for_in_stmt.target.into(),
-                            tags: ExprTag::Ref.into(),
-                        },
+            enum_item
+                .variants
+                .iter_enumerated()
+                .map(|(variant_index, _)| {
+                    let rhs = Some(self.use_expr(
+                        self.compile_enum_variant_access(normalizer::EnumVariantIndex {
+                            enum_index: for_in_stmt.target,
+                            variant_index,
+                        }),
                         ExprTag::Local.into(),
-                    ),
-                );
+                    ));
+                    let loop_var_let_stmt = LetStmt {
+                        lhs: loop_var_ident,
+                        type_: loop_var_type.clone(),
+                        rhs,
+                    };
 
-                let body_stmts = body.stmts.iter().cloned();
-                Stmt::from(BlockStmt::from_iter(iterate![
-                    LetStmt { lhs, type_, rhs }.into(),
-                    ..body_stmts,
-                ]))
-            })
-            .collect();
+                    let body_stmts = body.stmts.iter().cloned();
+                    Stmt::from(BlockStmt::from_iter(iterate![
+                        loop_var_let_stmt.into(),
+                        ..body_stmts,
+                    ]))
+                })
+                .collect()
+        };
 
         match for_in_stmt.order {
             ForInOrder::Ascending => self.stmts.extend(iteration_stmts),
@@ -1121,10 +1104,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &normalizer::CheckStmt) {
-        let cond = self.use_expr(
-            self.compile_expr(&check_stmt.cond),
-            ExprTag::Ref | ExprTag::Val,
-        );
+        let tagged_cond = self.compile_expr(&check_stmt.cond);
+        let cond = self.use_expr(tagged_cond, ExprTag::Ref | ExprTag::Val);
 
         self.stmts.push(
             Expr::from(CallExpr {
@@ -1191,8 +1172,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_invoke_stmt(&mut self, invoke_stmt: &normalizer::InvokeStmt) {
-        self.stmts
-            .push(Expr::from(self.compile_invoke_expr(invoke_stmt).expr).into());
+        let invoke_expr = self.compile_invoke_expr(invoke_stmt);
+        // We can discard any tag information because any return value would be
+        // unused.
+        self.stmts.push(Expr::from(invoke_expr.expr).into());
     }
 
     fn compile_assign_stmt(&mut self, assign_stmt: &normalizer::AssignStmt) {
@@ -1201,8 +1184,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             ExprTag::MutRef.into(),
         );
 
+        let tagged_rhs = self.compile_expr(&assign_stmt.rhs);
         let rhs = self.use_expr(
-            self.compile_expr(&assign_stmt.rhs),
+            tagged_rhs,
             ExprTag::MutRef | ExprTag::Ref | ExprTag::Local | ExprTag::Val,
         );
 
@@ -1226,15 +1210,15 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_ret_stmt(&mut self, ret_stmt: &normalizer::RetStmt) {
-        let value = ret_stmt
-            .value
-            .as_ref()
-            .map(|value| self.use_expr(self.compile_expr(value), ExprTag::Val.into()));
+        let value = ret_stmt.value.as_ref().map(|value| {
+            let tagged_value = self.compile_expr(value);
+            self.use_expr(tagged_value, ExprTag::Val.into())
+        });
 
         self.stmts.push(RetStmt { value }.into());
     }
 
-    fn compile_expr(&self, expr: &normalizer::Expr) -> TaggedExpr {
+    fn compile_expr(&mut self, expr: &normalizer::Expr) -> TaggedExpr {
         match expr {
             normalizer::Expr::Block(_, block_expr) => {
                 self.compile_block_expr(&block_expr).map(Expr::from)
@@ -1259,7 +1243,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_pure_expr(&self, pure_expr: &normalizer::PureExpr) -> TaggedExpr {
+    fn compile_pure_expr(&mut self, pure_expr: &normalizer::PureExpr) -> TaggedExpr {
         match pure_expr {
             normalizer::PureExpr::Literal(literal) => {
                 self.compile_literal(literal).map(Expr::from)
@@ -1308,12 +1292,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         expr.expr
     }
 
-    fn compile_block_expr(&self, block_expr: &normalizer::BlockExpr) -> TaggedExpr<BlockExpr> {
+    fn compile_block_expr(&mut self, block_expr: &normalizer::BlockExpr) -> TaggedExpr<BlockExpr> {
         let mut block = self.compile_block(&block_expr.stmts);
-        block.stmts.push(
-            self.use_expr(self.compile_expr(&block_expr.value), ExprTag::Val.into())
-                .into(),
-        );
+        let value_tagged_expr = self.compile_expr(&block_expr.value);
+        let value_expr = self.use_expr(value_tagged_expr, ExprTag::Val.into());
+        block.stmts.push(value_expr.into());
         TaggedExpr {
             expr: block.into(),
             type_: block_expr.type_(),
@@ -1388,23 +1371,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 tags: ExprTag::Ref.into(),
             },
             normalizer::VarIndex::EnumVariant(enum_variant_index) => {
-                let enum_item = &self.env[enum_variant_index.enum_index];
-                let variant_path = enum_item[enum_variant_index.variant_index];
-
-                TaggedExpr {
-                    expr: CallExpr {
-                        target: TypeMemberFnPath {
-                            parent: enum_item.ident.value,
-                            ident: VariantTypeMemberFnIdent::from(variant_path.value.ident())
-                                .into(),
-                        }
-                        .into(),
-                        args: vec![CONTEXT_ARG],
-                    }
-                    .into(),
-                    type_: enum_variant_index.enum_index.into(),
-                    tags: ExprTag::Ref.into(),
-                }
+                self.compile_enum_variant_access(enum_variant_index)
             }
             normalizer::VarIndex::Global(global_var_index) => {
                 let global_var_item = &self.env[global_var_index];
@@ -1448,7 +1415,32 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_invoke_expr(&self, invoke_expr: &normalizer::InvokeExpr) -> TaggedExpr<CallExpr> {
+    fn compile_enum_variant_access(
+        &self,
+        enum_variant_index: normalizer::EnumVariantIndex,
+    ) -> TaggedExpr {
+        let enum_item = &self.env[enum_variant_index.enum_index];
+        let variant_path = enum_item[enum_variant_index.variant_index];
+
+        TaggedExpr {
+            expr: CallExpr {
+                target: TypeMemberFnPath {
+                    parent: enum_item.ident.value,
+                    ident: VariantTypeMemberFnIdent::from(variant_path.value.ident()).into(),
+                }
+                .into(),
+                args: vec![CONTEXT_ARG],
+            }
+            .into(),
+            type_: enum_variant_index.enum_index.into(),
+            tags: ExprTag::Ref.into(),
+        }
+    }
+
+    fn compile_invoke_expr(
+        &mut self,
+        invoke_expr: &normalizer::InvokeExpr,
+    ) -> TaggedExpr<CallExpr> {
         let callable_item = &self.env[invoke_expr.call.target];
 
         let callable_parent_ident = callable_item.path.value.parent().map(Path::ident);
@@ -1459,7 +1451,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
         .into();
 
-        let args = iterate![CONTEXT_ARG, ..self.compile_args(&invoke_expr.call.args)].collect();
+        let args = self.compile_args(&invoke_expr.call.args);
+        let args = iterate![CONTEXT_ARG, ..args].collect();
 
         TaggedExpr {
             expr: CallExpr { target, args },
@@ -1469,11 +1462,33 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_field_access_expr<E: CompileExpr + Typed>(
-        &self,
+        &mut self,
         field_access_expr: &normalizer::FieldAccessExpr<E>,
     ) -> TaggedExpr<Expr> {
-        let parent_expr = field_access_expr.parent.compile(self).expr;
         let parent_type = field_access_expr.parent.type_();
+
+        let parent_tagged_expr = field_access_expr.parent.compile(self);
+        // If the parent expression is `Val`-tagged, we need to hoist it up to
+        // a temporary local variable to be able to take a reference to it.
+        let parent_tagged_expr = if parent_tagged_expr.tags == ExprTag::Val {
+            // This should be safe to do based on the laws of `Expr`/`PureExpr`
+            // post-normalization: either we're dealing with a `PureExpr`
+            // parent, in which case evaluation order doesn't matter, or we're
+            // inside something unary, in which case hoisting out the
+            // sub-expression won't change the order.
+
+            let hoist_var_ident = self.generate_synthetic_var(SyntheticVarKind::Hoist).into();
+            self.init_local_var(hoist_var_ident, parent_tagged_expr);
+
+            TaggedExpr {
+                expr: hoist_var_ident.into(),
+                type_: parent_type,
+                tags: ExprTag::Local.into(),
+            }
+        } else {
+            parent_tagged_expr
+        };
+        let parent_expr = self.use_expr(parent_tagged_expr, ExprTag::Ref.into());
 
         let target = TypeMemberFnPath {
             parent: self.get_type_ident(parent_type),
@@ -1491,16 +1506,16 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             .into(),
             type_: field_access_expr.type_(),
-            //TODO(abhishekc-sharma): should this be only Ref ?
-            tags: ExprTag::Ref | ExprTag::Val,
+            tags: ExprTag::Ref.into(),
         }
     }
 
     fn compile_negate_expr<E: CompileExpr + Typed>(
-        &self,
+        &mut self,
         negate_expr: &normalizer::NegateExpr<E>,
     ) -> TaggedExpr<Expr> {
-        let expr = self.use_expr(negate_expr.expr.compile(self), ExprTag::Ref | ExprTag::Val);
+        let tagged_expr = negate_expr.expr.compile(self);
+        let expr = self.use_expr(tagged_expr, ExprTag::Ref | ExprTag::Val);
 
         let ident = TypeMemberFnIdent::Negate(match negate_expr.kind {
             NegateKind::Arith | NegateKind::Bitwise => negate_expr.kind.into(),
@@ -1536,10 +1551,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_cast_expr<E: CompileExpr + Typed>(
-        &self,
+        &mut self,
         cast_expr: &normalizer::CastExpr<E>,
     ) -> TaggedExpr<Expr> {
-        let expr = self.use_expr(cast_expr.expr.compile(self), ExprTag::Ref.into());
+        let tagged_expr = cast_expr.expr.compile(self);
+        let expr = self.use_expr(tagged_expr, ExprTag::Ref.into());
 
         let source_type_index = cast_expr.expr.type_();
         let target_type_index = cast_expr.type_;
@@ -1550,10 +1566,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         match (source_type_index, target_type_index) {
             // Rather than specifying functions for each builtin cast, we'll just use C++
             // static_casts
-            (
-                cachet_lang::type_checker::TypeIndex::BuiltIn(_),
-                cachet_lang::type_checker::TypeIndex::BuiltIn(_),
-            ) => TaggedExpr {
+            (normalizer::TypeIndex::BuiltIn(_), normalizer::TypeIndex::BuiltIn(_)) => TaggedExpr {
                 expr: CastExpr {
                     kind: CastStyle::Functional(FunctionalCastStyle::Static),
                     type_: TypeMemberTypePath {
@@ -1583,15 +1596,12 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_bin_oper_expr(&self, bin_oper_expr: &normalizer::BinOperExpr) -> TaggedExpr {
-        let lhs = self.use_expr(
-            self.compile_pure_expr(&bin_oper_expr.lhs),
-            ExprTag::Ref.into(),
-        );
-        let rhs = self.use_expr(
-            self.compile_pure_expr(&bin_oper_expr.rhs),
-            ExprTag::Ref.into(),
-        );
+    fn compile_bin_oper_expr(&mut self, bin_oper_expr: &normalizer::BinOperExpr) -> TaggedExpr {
+        let tagged_lhs = self.compile_pure_expr(&bin_oper_expr.lhs);
+        let lhs = self.use_expr(tagged_lhs, ExprTag::Ref.into());
+
+        let tagged_rhs = self.compile_pure_expr(&bin_oper_expr.rhs);
+        let rhs = self.use_expr(tagged_rhs, ExprTag::Ref.into());
 
         let ident = TypeMemberFnIdent::BinOper(match bin_oper_expr.oper {
             BinOper::Arith(arith_bin_oper) => arith_bin_oper.into(),
@@ -1632,6 +1642,16 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             type_: bin_oper_expr.type_(),
             tags: ExprTag::Ref | ExprTag::Val,
         }
+    }
+
+    fn generate_synthetic_var(&mut self, kind: SyntheticVarKind) -> SyntheticVarIdent {
+        let index = &mut self.next_synthetic_var_indexes[kind];
+        let ident = SyntheticVarIdent {
+            kind,
+            index: *index,
+        };
+        *index += 1;
+        ident
     }
 
     fn ops_arg(&self) -> Expr {
@@ -1698,17 +1718,17 @@ impl<T> TaggedExpr<T> {
 }
 
 trait CompileExpr {
-    fn compile<'a, 'b>(&self, scoped_compiler: &ScopedCompiler<'a, 'b>) -> TaggedExpr;
+    fn compile<'a, 'b>(&self, scoped_compiler: &mut ScopedCompiler<'a, 'b>) -> TaggedExpr;
 }
 
 impl CompileExpr for normalizer::Expr {
-    fn compile<'a, 'b>(&self, scoped_compiler: &ScopedCompiler<'a, 'b>) -> TaggedExpr {
+    fn compile<'a, 'b>(&self, scoped_compiler: &mut ScopedCompiler<'a, 'b>) -> TaggedExpr {
         scoped_compiler.compile_expr(self)
     }
 }
 
 impl CompileExpr for normalizer::PureExpr {
-    fn compile<'a, 'b>(&self, scoped_compiler: &ScopedCompiler<'a, 'b>) -> TaggedExpr {
+    fn compile<'a, 'b>(&self, scoped_compiler: &mut ScopedCompiler<'a, 'b>) -> TaggedExpr {
         scoped_compiler.compile_pure_expr(self)
     }
 }
