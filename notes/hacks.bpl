@@ -457,10 +457,10 @@ procedure #CacheIR~allocateAvailableFloatReg($floatReg: #FloatReg)
   returns (ret: #FloatReg)
   modifies #CacheIR~allocatedFloatRegs;
 {
-  // xmm15 is not an allocatable register
-  assert (
-    #FloatReg^field~reg($floatReg) != #PhyFloatReg^Variant~Xmm15()
-  );
+  // xmm15 is not an allocatable register but may be explicitly allocated as scratch register
+  //assert (
+  //  #FloatReg^field~reg($floatReg) != #PhyFloatReg^Variant~Xmm15()
+  //);
 
   call #CacheIR~allocateAvailableFloatRegUnchecked($floatReg: #FloatReg);
   ret := $floatReg;

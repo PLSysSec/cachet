@@ -1043,6 +1043,14 @@ ir MASM {
         MASM::setInt32(destReg, int32);
     }
 
+    op ConvertUInt32ToDouble(srcReg: Reg, destReg: FloatReg) {
+        let uint32 = MASM::getInt32(srcReg) as UInt32;
+
+        let double = Float64::fromUInt32(uint32);
+
+        MASM::setDouble(destReg, double);
+    }
+
     op SpectreBoundsCheck32Address(
         indexReg: Reg,
         length: Address,
@@ -1800,25 +1808,54 @@ ir MASM {
       MASM::setInt32(dstReg, result);
     }
 
-    // TODO(abhishekc-sharma): handle isUnsigned and volatile registers.
-    op FlexibleDivMod32(rhsReg: Reg, lhsOutputReg: Reg, remReg: Reg) {
-      let lhsInt32 = MASM::getInt32(lhsOutputReg);
-      let rhsInt32 = MASM::getInt32(rhsReg);
+    op FlexibleDivMod32(rhsReg: Reg, lhsOutputReg: Reg,
+                        remOutputReg: Reg, isUnsigned: Bool,
+                        volatileRegs: LiveRegSet) {
+        assert lhsOutputReg != rhsReg;
+        assert lhsOutputReg != remOutputReg;
 
-      let quotient = lhsInt32 / rhsInt32;
-      let remainder = lhsInt32 % rhsInt32;
+        let lhsInt32 = MASM::getInt32(lhsOutputReg);
+        let rhsInt32 = MASM::getInt32(rhsReg);
 
-      MASM::setInt32(lhsOutputReg, quotient);
-      MASM::setInt32(remReg, remainder);
+        if isUnsigned {
+            let lhsUInt64 = (lhsInt32 as UInt32) as UInt64;
+            let rhsUInt32 = rhsInt32 as UInt32;
+
+            let quotient = lhsUInt64 / rhsUInt32;
+            let remainder = lhsUInt64 % rhsUInt32;
+
+            MASM::setInt32(lhsOutputReg, quotient as Int32);
+            MASM::setInt32(remOutputReg, remainder as Int32);
+        } else {
+            let lhsInt64 = lhsInt32 as Int64;
+
+            let quotient = lhsInt64 / rhsInt32;
+            let remainder = lhsInt64 % rhsInt32;
+
+            MASM::setInt32(lhsOutputReg, quotient as Int32);
+            MASM::setInt32(remOutputReg, remainder as Int32);
+        }
     }
 
-    // TODO(abhishekc-sharma): handle isUnsigned and volatile registers.
-    op FlexibleRemainder32(rhsReg: Reg, lhsOutputReg: Reg) {
-      let lhsInt32 = MASM::getInt32(lhsOutputReg);
-      let rhsInt32 = MASM::getInt32(rhsReg);
+    op FlexibleRemainder32(
+        rhsReg: Reg, lhsOutputReg: Reg, isUnsigned: Bool,
+        volatileLiveRegs: LiveRegSet) {
 
-      let remainder = lhsInt32 % rhsInt32;
-      MASM::setInt32(lhsOutputReg, remainder);
+        let lhsInt32 = MASM::getInt32(lhsOutputReg);
+        let rhsInt32 = MASM::getInt32(rhsReg);
+
+        if isUnsigned {
+            let lhsUInt64 = (lhsInt32 as UInt32) as UInt64;
+            let rhsUInt32 = rhsInt32 as UInt32;
+
+            let remainder = lhsUInt64 % rhsUInt32;
+            MASM::setInt32(lhsOutputReg, remainder as Int32);
+        } else {
+            let lhsInt64 = lhsInt32 as Int64;
+
+            let remainder = lhsInt64 % rhsInt32;
+            MASM::setInt32(lhsOutputReg, remainder as Int32);
+        }
     }
 
     op Neg32(valueReg: Reg) {
