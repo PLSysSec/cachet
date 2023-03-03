@@ -16,10 +16,10 @@ use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 use crate::resolver;
 pub use crate::resolver::{
     CallableIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex, FnIndex,
-    GlobalVarIndex, HasAttrs, IrIndex, IrItem, Label, LabelField, LabelIndex, LabelParam,
-    LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel,
-    OutVar, ParamIndex, Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex,
-    Typed, ValueField, VarIndex, VarParam, VarParamIndex, VariantIndex,
+    GlobalVarIndex, HasAttrs, IrIndex, IrItem, Label, LabelIndex, LabelParam, LabelParamIndex,
+    LabelStmt, Literal, LocalLabelIndex, LocalVarIndex, OpIndex, OutLabel, OutVar, ParamIndex,
+    Params, ParentIndex, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarField,
+    VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 
 #[derive(Clone, Debug)]
@@ -212,7 +212,7 @@ pub enum Arg {
     Expr(Expr),
     OutVar(OutVarArg),
     Label(LabelArg),
-    LabelField(LabelFieldExpr),
+    LabelField(LabelFieldArg),
     OutLabel(OutLabelArg),
 }
 
@@ -232,6 +232,13 @@ impl Typed for OutVarArg {
 #[derive(Clone, Debug)]
 pub struct LabelArg {
     pub label: Spanned<LabelIndex>,
+    pub ir: IrIndex,
+}
+
+#[derive(Clone, Debug)]
+pub struct LabelFieldArg {
+    pub parent: Expr,
+    pub field: StructFieldIndex,
     pub ir: IrIndex,
 }
 
@@ -472,21 +479,6 @@ impl Typed for RetStmt {
     fn type_(&self) -> TypeIndex {
         BuiltInType::Unit.into()
     }
-}
-
-#[derive(Clone, Debug, From)]
-pub enum LabelExpr {
-    #[from]
-    Local(LabelIndex),
-    #[from]
-    Field(LabelFieldExpr),
-}
-
-#[derive(Clone, Debug)]
-pub struct LabelFieldExpr {
-    pub parent: Expr,
-    pub field: StructFieldIndex,
-    pub ir: IrIndex,
 }
 
 #[derive(Clone, Debug, From)]

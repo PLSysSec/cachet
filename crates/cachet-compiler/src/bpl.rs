@@ -147,15 +147,27 @@ impl<'a> Compiler<'a> {
             }
             .into();
 
-            let ret = match field {
-                flattener::Field::Value(value_field) => {
-                    self.get_type_ident(value_field.type_).into()
+            let (attr, ret, value) = match field {
+                flattener::Field::Var(var_field) => {
+                    let ret = self.get_type_ident(var_field.type_).into();
+                    (None, ret, None)
                 }
-                flattener::Field::Label(label_field) => IrMemberTypeIdent {
-                    ir_ident: self.env[label_field.ir].ident.value.into(),
-                    selector: IrMemberTypeSelector::Label,
+                // For label fields, generate an inline function that returns
+                // the shared global exit label.
+                flattener::Field::Label(label) => {
+                    let ir_ident = self.env[label.ir].ident.value.into();
+                    let ret = IrMemberTypeIdent {
+                        ir_ident,
+                        selector: IrMemberTypeSelector::Label,
+                    }
+                    .into();
+                    let value = IrMemberGlobalVarIdent {
+                        ir_ident,
+                        selector: IrMemberGlobalVarSelector::ExitLabel,
+                    }
+                    .into();
+                    (Some(FnAttr::Inline), ret, Some(value))
                 }
-                .into(),
             };
 
             self.items.push(
@@ -169,9 +181,9 @@ impl<'a> Compiler<'a> {
                         .into(),
                     ]
                     .into(),
-                    attr: None,
+                    attr,
                     ret,
-                    value: None,
+                    value,
                 }
                 .into(),
             )
@@ -354,6 +366,15 @@ impl<'a> Compiler<'a> {
             type_: Some(NativeTypeIdent::Int.into()),
         };
 
+        let exit_label_global_var_item = GlobalVarItem::from(TypedVar {
+            ident: IrMemberGlobalVarIdent {
+                ir_ident,
+                selector: IrMemberGlobalVarSelector::ExitLabel,
+            }
+            .into(),
+            type_: label_type_item.ident.into(),
+        });
+
         let next_label_global_var_item = GlobalVarItem::from(TypedVar {
             ident: IrMemberGlobalVarIdent {
                 ir_ident,
@@ -511,6 +532,7 @@ impl<'a> Compiler<'a> {
             pc_emit_paths_fn_item.into(),
             emit_proc_item.into(),
             label_type_item.into(),
+            exit_label_global_var_item.into(),
             next_label_global_var_item.into(),
             label_pcs_global_var_item.into(),
             label_proc_item.into(),
@@ -641,7 +663,7 @@ impl<'a> Compiler<'a> {
             .as_ref()
             .map(|body| self.compile_body(callable_index, &callable_item, body));
 
-        match CallableRepr::for_callable(self.env, callable_item) {
+        match CallableRepr::for_callable(callable_item) {
             CallableRepr::Fn => {
                 self.items.push(
                     FnItem {
@@ -703,8 +725,7 @@ impl<'a> Compiler<'a> {
                             .into()
                         });
 
-                        // Also bind all label out-parameters to an exit
-                        // point.
+                        // Also bind all label out-parameters to an exit point.
 
                         let out_label_param_bind_stmts = callable_item
                             .param_order
@@ -735,9 +756,7 @@ impl<'a> Compiler<'a> {
                                 .into()
                             });
 
-                        // Also bind all label fields of returned structs to
-                        // an exit point.
-                        let body = iterate![..ret_var_assign_stmts, ..out_label_param_bind_stmts,]
+                        let body = iterate![..ret_var_assign_stmts, ..out_label_param_bind_stmts]
                             .collect();
 
                         (Some(InlineProcAttr { depth: 1 }.into()), body)
@@ -798,41 +817,72 @@ impl<'a> Compiler<'a> {
 
         // Label parameters to the top-level op are reflected as local
         // variables.
-        let label_params: Vec<&flattener::LabelParam> = top_op_item
-            .param_order
-            .iter()
-            .filter_map(|param_index| match param_index {
-                flattener::ParamIndex::Label(label_param_index) => {
-                    Some(&top_op_item.params[label_param_index])
-                }
-                _ => None,
-            })
-            .collect();
+        let label_params =
+            top_op_item
+                .param_order
+                .iter()
+                .filter_map(|param_index| match param_index {
+                    flattener::ParamIndex::Label(label_param_index) => {
+                        Some(&top_op_item.params[label_param_index])
+                    }
+                    _ => None,
+                });
         let label_param_local_vars: Vec<LocalVar> = label_params
-            .iter()
             .map(|label_param| self.compile_label_param(label_param).into())
             .collect();
 
-        // Start by filling in all of the label parameter local variables with
-        // fresh labels.
-        let mut stmts: Vec<Stmt> = label_params
-            .iter()
-            .zip(label_param_local_vars.iter())
-            .map(|(label_param, label_param_local_var)| {
-                CallStmt {
-                    call: CallExpr {
-                        target: IrMemberFnIdent {
-                            ir_ident: self.env[label_param.label.ir].ident.value.into(),
-                            selector: IrMemberFnSelector::Label,
-                        }
-                        .into(),
-                        arg_exprs: Vec::new(),
-                    },
-                    ret_var_idents: vec![label_param_local_var.var.ident],
+        // First, some label-related bookkeeping...
+
+        // TODO(spinda): Should we initialize the next-label counter to 0? Test
+        // whether this affects verification time.
+
+        let exit_label_var_ident = IrMemberGlobalVarIdent {
+            ir_ident: bottom_ir_ident,
+            selector: IrMemberGlobalVarSelector::ExitLabel,
+        }
+        .into();
+
+        // Start by populating the shared global "exit" label, reused for
+        // top-level label parameters and struct label fields.
+        let init_exit_label_stmt = CallStmt {
+            call: CallExpr {
+                target: IrMemberFnIdent {
+                    ir_ident: bottom_ir_ident,
+                    selector: IrMemberFnSelector::Label,
                 }
-                .into()
-            })
-            .collect();
+                .into(),
+                arg_exprs: Vec::new(),
+            },
+            ret_var_idents: vec![exit_label_var_ident],
+        }
+        .into();
+
+        // Next, bind the global exit label to an exit point.
+        let bind_exit_label_stmt = CallExpr {
+            target: IrMemberFnIdent {
+                ir_ident: bottom_ir_ident,
+                selector: IrMemberFnSelector::BindExit,
+            }
+            .into(),
+            arg_exprs: vec![exit_label_var_ident.into()],
+        }
+        .into();
+
+        let mut stmts: Vec<Stmt> = vec![init_exit_label_stmt, bind_exit_label_stmt];
+
+        // Point all of the label parameter local variables to the shared global
+        // exit label.
+        stmts.extend(label_param_local_vars.iter().map(|label_param_local_var| {
+            AssignStmt {
+                lhs: label_param_local_var.var.ident.into(),
+                rhs: exit_label_var_ident.into(),
+            }
+            .into()
+        }));
+
+        // Now we're entering into op emission...
+
+        let nil_emit_path_expr: Expr = generate_emit_path_expr(&EmitLabelIdent::default()).into();
 
         let pc_var_ident: VarIdent = IrMemberGlobalVarIdent {
             ir_ident: bottom_ir_ident,
@@ -840,40 +890,21 @@ impl<'a> Compiler<'a> {
         }
         .into();
 
-        let nil_emit_path_expr: Expr = generate_emit_path_expr(&EmitLabelIdent::default()).into();
-
+        // Initialize the program counter to 0 for op emission.
         let init_emit_pc_stmt: Stmt = AssignStmt {
             lhs: pc_var_ident.into(),
             rhs: Literal::Int(0).into(),
         }
         .into();
 
-        stmts.push(init_emit_pc_stmt);
-
-        // Bind all top-level label parameters to the exit point we're about to
-        // emit at PC 0. Filter down to just the labels of the bottom-level IR,
-        // i.e., the ones we could actually jump to.
-        stmts.extend(
-            label_params
-                .iter()
-                .zip(label_param_local_vars.iter())
-                .filter(|(label_param, _)| label_param.label.ir == bottom_ir_index)
-                .map(|(_, label_param_local_var)| {
-                    CallExpr {
-                        target: IrMemberFnIdent {
-                            ir_ident: bottom_ir_ident,
-                            selector: IrMemberFnSelector::Bind,
-                        }
-                        .into(),
-                        arg_exprs: vec![label_param_local_var.var.ident.into()],
-                    }
-                    .into()
-                }),
-        );
-
         // Emit a leading "exit" op at the reserved PC 0, to represent control
         // flow being transferred to some point outside the program from a jump
         // to an externally-bound label (e.g., top-level label parameters).
+        //
+        // We stick this at PC 0 so that we have a known PC value to bind exit
+        // labels to before we've finished emitting all the ops (so, before we
+        // know how many ops are in the program). This means that the actual
+        // program will start at PC 1.
         let exit_op_ctor_call_expr: Expr = CallExpr {
             target: IrMemberFnIdent {
                 ir_ident: bottom_ir_ident,
@@ -933,13 +964,13 @@ impl<'a> Compiler<'a> {
         }
         .into();
 
-        // Note that PC 0 is reserved for a leading exit-point which breaks from
-        // control-flow within the program out to external code. We generate
-        // this up front so we have a known PC for binding things like top-level
-        // incoming label parameters and label out-parameters of external
-        // functions. The first real op of the generated program is emitted at
-        // PC 1, thus this is where the counter starts for the interpreter
-        // phase.
+        // And now, the interpreter...
+
+        // Reset the program counter before we run the interpreter. Note that PC
+        // 0 is reserved for the leading exit-point which breaks from
+        // control-flow within the program out to external code. The first real
+        // op of the generated program is emitted at PC 1, thus this is where
+        // the counter starts for the interpreter phase.
         let init_interpret_pc_stmt: Stmt = AssignStmt {
             lhs: pc_var_ident.into(),
             rhs: Literal::Int(1).into(),
@@ -947,6 +978,7 @@ impl<'a> Compiler<'a> {
         .into();
 
         stmts.extend([
+            init_emit_pc_stmt,
             leading_exit_emit_stmt,
             call_top_op_fn_stmt,
             trailing_exit_emit_stmt,
@@ -974,7 +1006,7 @@ impl<'a> Compiler<'a> {
             &flow_graph[flow_graph.exit_emit_node_index()],
         ];
         for emit_node in emit_nodes {
-            // all nodes other than entry node have a label ident
+            // All nodes other than entry node have a `label_ident`.
             debug_assert!(emit_node.label_ident.is_some());
 
             let emit_label_stmt = LabelStmt {
@@ -1385,7 +1417,7 @@ enum CallableRepr {
 }
 
 impl CallableRepr {
-    fn for_callable(env: &flattener::Env, callable_item: &flattener::CallableItem) -> Self {
+    fn for_callable(callable_item: &flattener::CallableItem) -> Self {
         if let Some(callable_repr) = BLOCKED_PATHS.get(&callable_item.path.value) {
             return *callable_repr;
         };
@@ -1403,21 +1435,8 @@ impl CallableRepr {
                     }
                 });
 
-        // functions where the return type is a struct with label fields
-        // need to be procedures to proprely bind the label field.
-        let has_fn_ret =
-            if let Some(flattener::TypeIndex::Struct(struct_index)) = callable_item.ret {
-                let struct_item = &env[struct_index];
-                struct_item.fields.iter().all(|field| match field {
-                    flattener::Field::Value(_) => true,
-                    flattener::Field::Label(_) => false,
-                })
-            } else {
-                true
-            };
-
-        match (has_out_params, has_fn_ret, &callable_item.body) {
-            (false, true, None) => Self::Fn,
+        match (has_out_params, callable_item.ret, &callable_item.body) {
+            (false, Some(_), None) => Self::Fn,
             _ => Self::Proc,
         }
     }
@@ -1523,8 +1542,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 flattener::Arg::Label(label_arg) => {
                     arg_exprs.push(self.compile_label_arg(label_arg))
                 }
-                flattener::Arg::LabelField(label_field_expr) => {
-                    arg_exprs.push(self.compile_label_field_arg(label_field_expr))
+                flattener::Arg::LabelField(label_field_arg) => {
+                    arg_exprs.push(self.compile_label_field_arg(label_field_arg))
                 }
             }
         }
@@ -1552,16 +1571,16 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         self.compile_internal_label_arg(label_arg.label)
     }
 
-    fn compile_label_field_arg(&mut self, label_field_expr: &flattener::LabelFieldExpr) -> Expr {
-        let struct_item = &self.env[label_field_expr.field.struct_index];
-        let field = &struct_item.fields[label_field_expr.field.field_index];
+    fn compile_label_field_arg(&mut self, label_field_arg: &flattener::LabelFieldArg) -> Expr {
+        let struct_item = &self.env[label_field_arg.field.struct_index];
+        let field = &struct_item.fields[label_field_arg.field.field_index];
         let field_fn_ident = TypeMemberFnIdent {
             type_ident: UserTypeIdent::from(struct_item.ident.value),
             selector: TypeMemberFnSelector::Field(field.ident().value.into()),
         }
         .into();
 
-        let parent_expr = label_field_expr.parent.compile(self);
+        let parent_expr = label_field_arg.parent.compile(self);
 
         CallExpr {
             target: field_fn_ident,
@@ -1622,7 +1641,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let call_expr = CallExpr { target, arg_exprs };
 
-        match CallableRepr::for_callable(self.env, callable_item) {
+        match CallableRepr::for_callable(callable_item) {
             CallableRepr::Fn => CompiledInvocation::FnCall(call_expr),
             CallableRepr::Proc => {
                 let ret_var_ident = match callable_item.ret {

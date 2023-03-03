@@ -4,7 +4,10 @@ use std::error::Error;
 use std::fmt;
 
 use codespan_reporting::diagnostic::Diagnostic;
+use enumset::{EnumSet, EnumSetType};
 use thiserror::Error;
+
+use cachet_util::fmt_join_or;
 
 use crate::ast::{labels, FileId, Ident, Path, Span, Spanned};
 use crate::FrontendError;
@@ -99,7 +102,7 @@ pub enum TypeCheckError {
     #[error("mismatched argument kind for parameter `{param}` to `{target}`")]
     ArgKindMismatch {
         expected_arg_kind: ArgKind,
-        found_arg_kind: ArgKind,
+        found_arg_kinds: EnumSet<ArgKind>,
         arg_span: Span,
         target: Path,
         param: Spanned<Ident>,
@@ -155,6 +158,11 @@ pub enum TypeCheckError {
         field: Spanned<Ident>,
         parent_type: Spanned<Ident>,
     },
+    #[error("can't use label field `{field}` on type `{parent_type}` as a variable field")]
+    LabelFieldUsedAsVarField {
+        field: Spanned<Ident>,
+        parent_type: Spanned<Ident>,
+    },
     // todo: support this and remove the error
     #[error("attempted to set default value for mutable var")]
     MutGlobalVarWithValue { var: Spanned<Path> },
@@ -199,6 +207,7 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::AssignTypeMismatch { rhs_span, .. } => *rhs_span,
             TypeCheckError::NonStructFieldAccess { field, .. } => field.span,
             TypeCheckError::FieldNotFound { field, .. } => field.span,
+            TypeCheckError::LabelFieldUsedAsVarField { field, .. } => field.span,
             TypeCheckError::MutGlobalVarWithValue { var, .. } => var.span,
             TypeCheckError::ReturnOutsideCallable { span, .. } => *span,
             TypeCheckError::NonConstGlobalVarItem { expr, .. } => *expr,
@@ -359,10 +368,10 @@ impl FrontendError for TypeCheckError {
             }
             TypeCheckError::ArgKindMismatch {
                 expected_arg_kind,
-                found_arg_kind,
+                found_arg_kinds,
                 ..
             } => {
-                format!("expected {}, found {}", expected_arg_kind, found_arg_kind)
+                format!("expected {}, found {}", expected_arg_kind, ArgKinds(found_arg_kinds))
             }
             TypeCheckError::ArgTypeMismatch {
                 expected_type: expected,
@@ -392,6 +401,9 @@ impl FrontendError for TypeCheckError {
             }
             TypeCheckError::FieldNotFound { .. } => {
                 format!("no such field")
+            }
+            TypeCheckError::LabelFieldUsedAsVarField { .. } => {
+                format!("expected a variable field")
             }
             TypeCheckError::MutGlobalVarWithValue { .. } => {
                 format!("only immutable variables may have default values")
@@ -577,7 +589,13 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::FieldNotFound { parent_type, .. } => {
                 labels.extend(labels![
                     Secondary(parent_type.span) =>
-                        format!("struct `{}` declared here", parent_type.value)
+                        format!("type `{}` defined here", parent_type.value)
+                ]);
+            }
+            TypeCheckError::LabelFieldUsedAsVarField { parent_type, .. } => {
+                labels.extend(labels![
+                    Secondary(parent_type.span) =>
+                        format!("type `{}` defined here", parent_type.value)
                 ]);
             }
             TypeCheckError::NonConstGlobalVarItem { .. } => (),
@@ -607,7 +625,7 @@ impl Error for TypeCheckErrors {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Debug, EnumSetType, Hash)]
 pub enum ArgKind {
     Expr,
     OutVar,
@@ -623,5 +641,13 @@ impl fmt::Display for ArgKind {
             ArgKind::Label => write!(f, "label"),
             ArgKind::OutLabel => write!(f, "label out-parameter"),
         }
+    }
+}
+
+struct ArgKinds<'a>(&'a EnumSet<ArgKind>);
+
+impl<'a> fmt::Display for ArgKinds<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt_join_or(f, self.0.iter(), |f, kind| kind.fmt(f))
     }
 }

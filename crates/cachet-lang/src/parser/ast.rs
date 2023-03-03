@@ -128,21 +128,24 @@ typed_field_index!(StructItem:fields[pub FieldIndex] => Field);
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Field {
-    Value(ValueField),
-    Label(LabelField),
+    Var(VarField),
+    Label(Label),
+}
+
+impl Field {
+    pub fn ident(&self) -> Spanned<Ident> {
+        match self {
+            Self::Var(var_field) => var_field.ident,
+            Self::Label(label) => label.ident,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "{ident}: {type_}")]
-pub struct ValueField {
+pub struct VarField {
     pub ident: Spanned<Ident>,
     pub type_: Spanned<Path>,
-}
-
-#[derive(Clone, Debug, Display)]
-#[display(fmt = "{label}")]
-pub struct LabelField {
-    pub label: Label,
 }
 
 #[derive(Clone, Debug)]
@@ -305,35 +308,44 @@ pub struct Label {
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Arg {
-    #[from]
     Expr(Expr),
     /// Arguments that look like `bar` in `foo(bar)` could be either a variable
     /// expression argument or a label argument. The same is true of arguments
     /// that look like `out bar)` in `foo(out bar)`. They will have to be
     /// disambiguated during name resolution.
-    #[from]
-    FreeVarOrLabel(FreeVarOrLabelArg),
+    Free(FreeArg),
+    /// Arguments that look like `bar.baz` in `foo(bar.baz)` could be accessing
+    /// either a variable field or a label field. These cases will have to be
+    /// disambiguated during type-checking. Note that when not directly in the
+    /// argument position (i.e., when appearing as a sub-expression), field
+    /// accesses are unambiguously to variable fields.
+    FieldAccess(FieldAccess),
     #[display(fmt = "out {_0}")]
-    #[from]
     OutFreshVar(LocalVar),
     #[display(fmt = "out {_0}")]
-    #[from]
     OutFreshLabel(LocalLabel),
 }
 
 #[derive(Clone, Debug)]
-pub struct FreeVarOrLabelArg {
+pub struct FreeArg {
     pub path: Spanned<Path>,
     pub is_out: bool,
 }
 
-impl Display for FreeVarOrLabelArg {
+impl Display for FreeArg {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         if self.is_out {
             write!(f, "out ")?;
         }
         write!(f, "{}", self.path)
     }
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "{}.{field}", "MaybeGrouped(&self.parent.value)")]
+pub struct FieldAccess {
+    pub parent: Spanned<Expr>,
+    pub field: Spanned<Ident>,
 }
 
 #[derive(Clone, Debug)]
@@ -569,7 +581,7 @@ pub enum Expr {
     Var(Spanned<Path>),
     Invoke(Call),
     #[from]
-    FieldAccess(Box<FieldAccessExpr>),
+    FieldAccess(Box<FieldAccess>),
     #[from]
     Negate(Box<NegateExpr>),
     #[from]
@@ -582,7 +594,7 @@ pub enum Expr {
 
 box_from!(KindedBlock => Expr);
 box_from!(NegateExpr => Expr);
-box_from!(FieldAccessExpr => Expr);
+box_from!(FieldAccess => Expr);
 box_from!(CastExpr => Expr);
 box_from!(BinOperExpr => Expr);
 box_from!(AssignExpr => Expr);
@@ -622,13 +634,6 @@ pub enum Literal {
     UInt64(u64),
     #[display(fmt = "{_0}")]
     Double(f64),
-}
-
-#[derive(Clone, Debug, Display)]
-#[display(fmt = "{}.{field}", "MaybeGrouped(&self.parent.value)")]
-pub struct FieldAccessExpr {
-    pub parent: Spanned<Expr>,
-    pub field: Spanned<Ident>,
 }
 
 #[derive(Clone, Debug, Display)]

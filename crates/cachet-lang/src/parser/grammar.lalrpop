@@ -63,18 +63,13 @@ StructFields: TiVec<FieldIndex, Field> = {
 };
 
 Field: Field = {
-    <value_field:ValueField> => value_field.into(),
-    <label_field:LabelField> => label_field.into(),
+    <var_field:VarField> => var_field.into(),
+    <label:Label> => label.into(),
 };
 
-ValueField: ValueField =
+VarField: VarField =
     <ident: Spanned<Ident>> ":" <type_: Spanned<Path>> => {
-        ValueField { ident, type_ }
-    };
-
-LabelField: LabelField =
-    <label: Label> => {
-        LabelField { label }
+        VarField { ident, type_ }
     };
 
 IrItem: IrItem =
@@ -182,13 +177,12 @@ Label: Label =
 Arg: Arg = {
     <expr:PrecExpr<NoBlock>> => {
         match expr.expr {
-            Expr::Var(path) if !expr.is_grouped => {
-                FreeVarOrLabelArg { path, is_out: false }.into()
-            }
+            Expr::Var(path) if !expr.is_grouped => FreeArg { path, is_out: false }.into(),
+            Expr::FieldAccess(field_access) if !expr.is_grouped => (*field_access).into(),
             expr => expr.into(),
         }
     },
-    "out" <path:Spanned<Path>> => FreeVarOrLabelArg { path, is_out: true }.into(),
+    "out" <path:Spanned<Path>> => FreeArg { path, is_out: true }.into(),
     "out" <local_var:LocalVar> => local_var.into(),
     "out" <local_label:LocalLabel> => local_label.into(),
 };
@@ -328,7 +322,7 @@ PrecExpr<B>: B = {
     <call:Call> => Expr::Invoke(call).into(),
 
     #[precedence(level = "0")]
-    <parent:Spanned<PrecExpr<B>>> "." <field: Spanned<Ident>> => Expr::from(FieldAccessExpr {
+    <parent:Spanned<PrecExpr<B>>> "." <field: Spanned<Ident>> => Expr::from(FieldAccess {
         parent: parent.map(|parent| parent.expr),
         field,
     }).into(),

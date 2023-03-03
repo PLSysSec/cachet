@@ -722,14 +722,23 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         });
 
         let arg_span = arg.span;
-        let (found_arg_kind, arg) = match &arg.value {
-            resolver::Arg::Expr(expr) => self.type_check_expr_arg(
+        let (found_arg_kinds, arg) = match &arg.value {
+            resolver::Arg::Expr(expr) => (
+                ArgKind::Expr.into(),
+                self.type_check_expr_arg(
+                    callable_item.path.value,
+                    param_summary.as_ref(),
+                    Spanned::new(arg_span, expr),
+                )
+                .into(),
+            ),
+            resolver::Arg::FieldAccess(field_access) => self.type_check_field_access_arg(
                 callable_item.path.value,
                 param_summary.as_ref(),
-                Spanned::new(arg_span, expr),
+                Spanned::new(arg_span, field_access),
             ),
             resolver::Arg::OutVar(out_var) => (
-                ArgKind::OutVar,
+                ArgKind::OutVar.into(),
                 self.type_check_out_var_arg(
                     callable_item.path.value,
                     param_summary.as_ref(),
@@ -738,7 +747,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 .into(),
             ),
             resolver::Arg::Label(label_index) => (
-                ArgKind::Label,
+                ArgKind::Label.into(),
                 self.type_check_label_arg(
                     callable_item.path.value,
                     param_summary.as_ref(),
@@ -747,7 +756,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 .into(),
             ),
             resolver::Arg::OutLabel(out_label) => (
-                ArgKind::OutLabel,
+                ArgKind::OutLabel.into(),
                 self.type_check_out_label_arg(
                     callable_item.path.value,
                     param_summary.as_ref(),
@@ -763,10 +772,10 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             ..
         }) = param_summary
         {
-            if expected_arg_kind != found_arg_kind {
+            if !found_arg_kinds.contains(expected_arg_kind) {
                 self.errors.push(TypeCheckError::ArgKindMismatch {
                     expected_arg_kind,
-                    found_arg_kind,
+                    found_arg_kinds,
                     arg_span,
                     target: callable_item.path.value,
                     param: param_ident,
@@ -782,72 +791,114 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         target: Path,
         param_summary: Option<&ParamSummary>,
         arg: Spanned<&resolver::Expr>,
-    ) -> (ArgKind, Arg) {
-        let expr = self.type_check_expr(arg.value);
+    ) -> Expr {
+        let arg = arg.map(|expr| self.type_check_expr(expr));
+        self.ensure_expr_arg_matches_param_type(target, param_summary, arg)
+    }
 
-        match param_summary {
-            Some(&ParamSummary {
-                ident: param_ident,
-                type_: Some(param_type_index),
-                ir: None,
-                ..
-            }) => match self.try_build_cast_chain(CastSafety::Lossless, expr, param_type_index) {
-                Ok(expr) => (ArgKind::Expr, expr.into()),
-                Err(expr) => {
+    fn type_check_field_access_arg(
+        &mut self,
+        target: Path,
+        param_summary: Option<&ParamSummary>,
+        arg: Spanned<&resolver::FieldAccess>,
+    ) -> (EnumSet<ArgKind>, Arg) {
+        let (parent, struct_field_index, field) = self.type_check_field_access(&arg.value);
+        let Some(field) = field else {
+            return (ArgKind::Expr | ArgKind::Label, Expr::from(FieldAccessExpr {
+                parent,
+                type_: self.unknown_type(),
+                field: struct_field_index,
+            }).into());
+        };
+
+        match field {
+            resolver::Field::Var(resolver::VarField { type_, .. }) => {
+                let field_access_expr = FieldAccessExpr {
+                    parent,
+                    type_: *type_,
+                    field: struct_field_index,
+                };
+                let expr = self.ensure_expr_arg_matches_param_type(
+                    target,
+                    param_summary,
+                    Spanned::new(arg.span, field_access_expr.into()),
+                );
+                (ArgKind::Expr.into(), expr.into())
+            }
+            resolver::Field::Label(resolver::Label {
+                ir: arg_ir_index, ..
+            }) => {
+                self.ensure_label_arg_matches_param_ir(
+                    target,
+                    param_summary,
+                    arg.span,
+                    *arg_ir_index,
+                );
+                let label_field_arg = LabelFieldArg {
+                    parent,
+                    field: struct_field_index,
+                    ir: *arg_ir_index,
+                };
+                (ArgKind::Label.into(), label_field_arg.into())
+            }
+        }
+    }
+
+    fn type_check_field_access(
+        &mut self,
+        field_access: &resolver::FieldAccess,
+    ) -> (Expr, StructFieldIndex, Option<&'a resolver::Field>) {
+        let parent = self.type_check_expr(&field_access.parent.value);
+        let parent_type = parent.type_();
+
+        let struct_index = match parent_type {
+            TypeIndex::Struct(struct_index) => struct_index,
+            _ => {
+                self.type_checker
+                    .errors
+                    .push(TypeCheckError::NonStructFieldAccess {
+                        field: field_access.field,
+                        parent_span: field_access.parent.span,
+                        parent_type: self.get_type_ident(parent_type),
+                    });
+                self.unknown_struct
+            }
+        };
+
+        // This field index is potentially invalid if resolution fails. However,
+        // it shouldn't be used inside the type-checker, and shouldn't escape,
+        // since the failure will raise an error.
+        let mut field_index = FieldIndex::from(0);
+        let mut field = None;
+
+        if struct_index != self.unknown_struct {
+            let struct_item = &self.env[struct_index];
+
+            match struct_item
+                .fields
+                .iter_enumerated()
+                .find(|(_, field)| field.ident().value == field_access.field.value)
+            {
+                Some((found_field_index, found_field)) => {
+                    field_index = found_field_index;
+                    field = Some(found_field);
+                }
+                None => {
                     self.type_checker
                         .errors
-                        .push(TypeCheckError::ArgTypeMismatch {
-                            expected_type: self.get_type_ident(param_type_index),
-                            found_type: self.get_type_ident(expr.type_()),
-                            arg_span: arg.span,
-                            target,
-                            param: param_ident,
+                        .push(TypeCheckError::FieldNotFound {
+                            field: field_access.field,
+                            parent_type: struct_item.ident,
                         });
-                    (ArgKind::Expr, expr.into())
-                }
-            },
-            Some(&ParamSummary {
-                ident: param_ident,
-                type_: None,
-                ir: Some(param_ir_index),
-                ..
-            }) => {
-                if let Expr::FieldAccess(box field_access_expr) = expr {
-                    let field = &self.env[field_access_expr.field];
-                    match field {
-                        Field::Value(_) => {
-                            (ArgKind::Expr, Into::<Expr>::into(field_access_expr).into())
-                        }
-                        Field::Label(LabelField {
-                            ir: arg_ir_index, ..
-                        }) => {
-                            if !self.is_same_ir(*arg_ir_index, param_ir_index) {
-                                self.type_checker
-                                    .errors
-                                    .push(TypeCheckError::ArgIrMismatch {
-                                        expected_ir: self.env[param_ir_index].ident.value,
-                                        found_ir: self.env[arg_ir_index].ident.value,
-                                        arg_span: arg.span,
-                                        target,
-                                        param: param_ident,
-                                    });
-                            }
-
-                            let label_field_expr = LabelFieldExpr {
-                                parent: field_access_expr.parent,
-                                field: field_access_expr.field,
-                                ir: *arg_ir_index,
-                            };
-
-                            (ArgKind::Label, label_field_expr.into())
-                        }
-                    }
-                } else {
-                    (ArgKind::Expr, expr.into())
                 }
             }
-            _ => (ArgKind::Expr, expr.into()),
         }
+
+        let struct_field_index = StructFieldIndex {
+            struct_index,
+            field_index,
+        };
+        (parent, struct_field_index, field)
     }
 
     fn type_check_out_var_arg(
@@ -908,25 +959,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         arg: Spanned<LabelIndex>,
     ) -> LabelArg {
         let arg_ir_index = self.get_label_ir(arg);
-
-        if let Some(&ParamSummary {
-            ident: param_ident,
-            ir: Some(param_ir_index),
-            ..
-        }) = param_summary
-        {
-            if !self.is_same_ir(arg_ir_index, param_ir_index) {
-                self.type_checker
-                    .errors
-                    .push(TypeCheckError::ArgIrMismatch {
-                        expected_ir: self.env[param_ir_index].ident.value,
-                        found_ir: self.env[arg_ir_index].ident.value,
-                        arg_span: arg.span,
-                        target,
-                        param: param_ident,
-                    });
-            }
-        }
+        self.ensure_label_arg_matches_param_ir(target, param_summary, arg.span, arg_ir_index);
 
         LabelArg {
             label: arg,
@@ -960,17 +993,73 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             }
         };
 
-        let arg_ir_index = self
-            .type_check_label_arg(
-                target,
-                param_summary,
-                Spanned::new(arg.span, arg_label_index),
-            )
-            .ir;
+        let arg_ir_index = self.get_label_ir(Spanned::new(arg.span, arg_label_index));
+        self.ensure_label_arg_matches_param_ir(target, param_summary, arg.span, arg_ir_index);
 
         OutLabelArg {
             out_label: arg.value,
             ir: arg_ir_index,
+        }
+    }
+
+    fn ensure_expr_arg_matches_param_type(
+        &mut self,
+        target: Path,
+        param_summary: Option<&ParamSummary>,
+        arg: Spanned<Expr>,
+    ) -> Expr {
+        match param_summary {
+            Some(&ParamSummary {
+                ident: param_ident,
+                type_: Some(param_type_index),
+                ir: None,
+                ..
+            }) => {
+                match self.try_build_cast_chain(CastSafety::Lossless, arg.value, param_type_index)
+                {
+                    Ok(expr) => expr,
+                    Err(expr) => {
+                        self.type_checker
+                            .errors
+                            .push(TypeCheckError::ArgTypeMismatch {
+                                expected_type: self.get_type_ident(param_type_index),
+                                found_type: self.get_type_ident(expr.type_()),
+                                arg_span: arg.span,
+                                target,
+                                param: param_ident,
+                            });
+                        expr
+                    }
+                }
+            }
+            _ => arg.value,
+        }
+    }
+
+    fn ensure_label_arg_matches_param_ir(
+        &mut self,
+        target: Path,
+        param_summary: Option<&ParamSummary>,
+        arg_span: Span,
+        arg_ir_index: IrIndex,
+    ) {
+        if let Some(&ParamSummary {
+            ident: param_ident,
+            ir: Some(param_ir_index),
+            ..
+        }) = param_summary
+        {
+            if !self.is_same_ir(arg_ir_index, param_ir_index) {
+                self.type_checker
+                    .errors
+                    .push(TypeCheckError::ArgIrMismatch {
+                        expected_ir: self.env[param_ir_index].ident.value,
+                        found_ir: self.env[arg_ir_index].ident.value,
+                        arg_span,
+                        target,
+                        param: param_ident,
+                    });
+            }
         }
     }
 
@@ -1391,69 +1480,28 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
 
     fn type_check_field_access_expr(
         &mut self,
-        field_access: &resolver::FieldAccessExpr,
+        field_access: &resolver::FieldAccess,
     ) -> FieldAccessExpr {
-        let parent = self.type_check_expr(&field_access.parent.value);
-        let parent_type = parent.type_();
+        let (parent, struct_field_index, field) = self.type_check_field_access(field_access);
 
-        let struct_index = match parent_type {
-            TypeIndex::Struct(struct_index) => struct_index,
-            _ => {
+        let type_ = match field {
+            Some(resolver::Field::Var(resolver::VarField { type_, .. })) => *type_,
+            Some(resolver::Field::Label(_)) => {
                 self.type_checker
                     .errors
-                    .push(TypeCheckError::NonStructFieldAccess {
+                    .push(TypeCheckError::LabelFieldUsedAsVarField {
                         field: field_access.field,
-                        parent_span: field_access.parent.span,
-                        parent_type: self.get_type_ident(parent_type),
+                        parent_type: self.env[struct_field_index.struct_index].ident,
                     });
-                self.unknown_struct
+                self.unknown_type()
             }
+            None => self.unknown_type(),
         };
-
-        // This field index is potentially invalid if resolution fails. However,
-        // it shouldn't be used inside the type-checker, and shouldn't escape,
-        // since the failure will raise an error.
-        let mut field_index = FieldIndex::from(0);
-        let mut type_ = self.unknown_type();
-
-        if struct_index != self.unknown_struct {
-            let struct_item = &self.env[struct_index];
-
-            match struct_item
-                .fields
-                .iter_enumerated()
-                .find(|(_, field)| match field {
-                    Field::Value(value_field) => {
-                        value_field.ident.value == field_access.field.value
-                    }
-                    Field::Label(label_field) => {
-                        label_field.ident.value == field_access.field.value
-                    }
-                }) {
-                Some((found_field_index, found_field)) => {
-                    field_index = found_field_index;
-                    if let Field::Value(value_field) = found_field {
-                        type_ = value_field.type_;
-                    }
-                }
-                None => {
-                    self.type_checker
-                        .errors
-                        .push(TypeCheckError::FieldNotFound {
-                            field: field_access.field,
-                            parent_type: struct_item.ident,
-                        });
-                }
-            }
-        }
 
         FieldAccessExpr {
             parent,
             type_,
-            field: StructFieldIndex {
-                struct_index,
-                field_index,
-            },
+            field: struct_field_index,
         }
     }
 

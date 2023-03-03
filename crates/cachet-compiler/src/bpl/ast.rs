@@ -160,6 +160,8 @@ pub struct IrMemberGlobalVarIdent {
 pub enum IrMemberGlobalVarSelector {
     #[display(fmt = "pc")]
     Pc,
+    #[display(fmt = "exitLabel")]
+    ExitLabel,
     #[display(fmt = "nextLabel")]
     NextLabel,
     #[display(fmt = "labelPcs")]

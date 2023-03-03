@@ -261,12 +261,12 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
                 ir: label_arg.ir,
             }
             .into(),
-            type_checker::Arg::LabelField(label_field_expr) => {
-                let parent = self.normalize_pure_expr(label_field_expr.parent);
-                LabelFieldExpr {
+            type_checker::Arg::LabelField(label_field_arg) => {
+                let parent = self.normalize_pure_expr(label_field_arg.parent);
+                LabelFieldArg {
                     parent,
-                    field: label_field_expr.field,
-                    ir: label_field_expr.ir,
+                    field: label_field_arg.field,
+                    ir: label_field_arg.ir,
                 }
                 .into()
             }

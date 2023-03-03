@@ -477,24 +477,27 @@ impl<'a> Resolver<'a> {
         // a weird spot right now. Sort that out down the road.
         let fields: Option<_> =
             collect_eager(struct_item.fields.into_iter().map(|field| match field {
-                parser::Field::Value(value_field) => {
+                parser::Field::Var(var_field) => {
                     let type_ = self
-                        .lookup_type_global(value_field.type_)
+                        .lookup_type_global(var_field.type_)
                         .found(&mut self.errors);
-                    Some(Field::Value(ValueField {
-                        ident: value_field.ident,
-                        type_: type_?,
-                    }))
+                    Some(
+                        VarField {
+                            ident: var_field.ident,
+                            type_: type_?,
+                        }
+                        .into(),
+                    )
                 }
-                parser::Field::Label(label_field) => {
-                    let ir = self
-                        .lookup_ir_global(label_field.label.ir)
-                        .found(&mut self.errors);
-
-                    Some(Field::Label(LabelField {
-                        ident: label_field.label.ident,
-                        ir: ir?,
-                    }))
+                parser::Field::Label(label) => {
+                    let ir = self.lookup_ir_global(label.ir).found(&mut self.errors);
+                    Some(
+                        Label {
+                            ident: label.ident,
+                            ir: ir?,
+                        }
+                        .into(),
+                    )
                 }
             }));
 
@@ -799,7 +802,7 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     ) -> Option<Arg> {
         match arg {
             parser::Arg::Expr(expr) => self.resolve_expr(expr).map(Arg::from),
-            parser::Arg::FreeVarOrLabel(free_arg) => self
+            parser::Arg::Free(free_arg) => self
                 .lookup_var_or_label_scoped(free_arg.path)
                 .found(&mut self.errors)
                 .map(|scoped_index| match scoped_index {
@@ -818,6 +821,9 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                         }
                     }
                 }),
+            parser::Arg::FieldAccess(field_access) => {
+                self.resolve_field_access(field_access).map(Arg::from)
+            }
             parser::Arg::OutFreshVar(local_var) => {
                 let local_var = self.resolve_local_var(local_var);
                 let local_var_ident = local_var.ident;
@@ -833,6 +839,17 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 Some(OutLabel::Fresh(local_label_index).into())
             }
         }
+    }
+
+    fn resolve_field_access(&mut self, field_access: parser::FieldAccess) -> Option<FieldAccess> {
+        let parent = map_spanned(field_access.parent, |parent| {
+            self.resolve_expr(parent.value)
+        });
+
+        Some(FieldAccess {
+            parent: parent?,
+            field: field_access.field,
+        })
     }
 
     fn resolve_call(
@@ -1095,9 +1112,9 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                         .map_found(Into::into)
                 })
                 .map(Expr::Invoke),
-            parser::Expr::FieldAccess(field_access_expr) => self
-                .resolve_field_access_expr(*field_access_expr)
-                .map(Expr::from),
+            parser::Expr::FieldAccess(field_access) => {
+                self.resolve_field_access(*field_access).map(Expr::from)
+            }
             parser::Expr::Negate(negate_expr) => {
                 self.resolve_negate_expr(*negate_expr).map(Expr::from)
             }
@@ -1114,20 +1131,6 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     fn resolve_var_expr(&mut self, var_path: Spanned<Path>) -> Option<Spanned<VarIndex>> {
         map_spanned(var_path, |var_path| {
             self.lookup_var_scoped(var_path).found(&mut self.errors)
-        })
-    }
-
-    fn resolve_field_access_expr(
-        &mut self,
-        field_access_expr: parser::FieldAccessExpr,
-    ) -> Option<FieldAccessExpr> {
-        let parent = map_spanned(field_access_expr.parent, |parent| {
-            self.resolve_expr(parent.value)
-        });
-
-        Some(FieldAccessExpr {
-            parent: parent?,
-            field: field_access_expr.field,
         })
     }
 

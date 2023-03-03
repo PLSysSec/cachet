@@ -29,15 +29,34 @@ impl FlowGraph {
     }
 
     pub fn entry_emit_node_index(&self) -> EmitNodeIndex {
-        let entry_emit_node_index: EmitNodeIndex = 1.into();
+        let entry_emit_node_index =
+            EmitNodeIndex::from(1 + usize::from(self.exit_emit_node_index()));
         self.emit_nodes
             .get(entry_emit_node_index)
             .expect("missing exit exit node");
         debug_assert!(
             self[entry_emit_node_index].is_entry(),
-            "second emit node does not correspond to an entry point"
+            "exit emit node is not followed by an entry point"
         );
         entry_emit_node_index
+    }
+
+    fn exit_label_node_index(&self) -> LabelNodeIndex {
+        let exit_label_node_index = self
+            .label_nodes
+            .first_key()
+            .expect("missing exit label node");
+        debug_assert!(
+            self[exit_label_node_index]
+                .bound_to
+                .contains(&self.exit_emit_node_index()),
+            "exit label node not bound to the exit emit node"
+        );
+        debug_assert!(
+            self[exit_label_node_index].bound_to.len() == 1,
+            "exit label node bound to more than one emit node"
+        );
+        exit_label_node_index
     }
 
     fn link_label_to_emit(
@@ -89,6 +108,7 @@ pub fn trace_entry_point(
 ) -> FlowGraph {
     let mut flow_tracer = FlowTracer::new(env, bottom_ir_index);
     flow_tracer.insert_exit_emit_node();
+    flow_tracer.insert_exit_label_node();
     flow_tracer.insert_entry_emit_node();
     flow_tracer.init_top_label_params(&top_op_item.params, &top_op_item.param_order);
     flow_tracer.trace_callable_item(top_op_item);
@@ -190,18 +210,13 @@ impl<'a> FlowTracer<'a> {
         params: &flattener::Params,
         param_order: &[flattener::ParamIndex],
     ) {
+        let exit_label_node_index = self.graph.exit_label_node_index();
         for param_index in param_order {
-            let exit_emit_node_index = self.graph.exit_emit_node_index();
-            if let flattener::ParamIndex::Label(label_param_index) = param_index {
-                let label_param = &params[label_param_index];
-                // We only need to track control-flow between labels of the
-                // bottom-level IR (i.e., the one that will be interpreted in
-                // the end).
-                if label_param.label.ir == self.bottom_ir_index {
-                    let label_node_index = self.insert_label_node(label_param_index.into());
-                    self.graph
-                        .link_label_to_emit(label_node_index, exit_emit_node_index);
-                }
+            if let flattener::ParamIndex::Label(label_param_index) = param_index
+                    && params[label_param_index].label.ir == self.bottom_ir_index {
+                // Top-level input label parameters are all represented by the
+                // shared global exit label.
+                self.label_scope.insert(label_param_index.into(), exit_label_node_index);
             }
         }
     }
@@ -213,32 +228,17 @@ impl<'a> FlowTracer<'a> {
         args: &[flattener::Arg],
         caller_label_scope: &LabelScope,
     ) {
-        for item in param_order.iter().zip(args) {
-            if let (
-                flattener::ParamIndex::Label(label_param_index),
-                flattener::Arg::Label(label_arg),
-            ) = item
-            {
-                let label_param = &params[label_param_index];
-                if label_param.label.ir == self.bottom_ir_index {
-                    let arg_label_node_index = caller_label_scope[&label_arg.label];
-                    self.label_scope
-                        .insert(label_param_index.into(), arg_label_node_index);
-                }
-            }
-            if let (
-                flattener::ParamIndex::Label(label_param_index),
-                flattener::Arg::LabelField(label_field_expr),
-            ) = item
-            {
-                if label_field_expr.ir == self.bottom_ir_index {
-                    let arg_label_node_index = self.insert_label_node(label_param_index.into());
-                    let exit_emit_node_index = self.graph.exit_emit_node_index();
-                    self.graph
-                        .link_label_to_emit(arg_label_node_index, exit_emit_node_index);
-                    self.label_scope
-                        .insert(label_param_index.into(), arg_label_node_index);
-                }
+        for (param_index, arg) in param_order.iter().zip(args) {
+            if let flattener::ParamIndex::Label(label_param_index) = param_index
+                    && params[label_param_index].label.ir == self.bottom_ir_index {
+                let arg_label_node_index = match arg {
+                    flattener::Arg::Expr(_) | flattener::Arg::OutVar(_) => continue,
+                    flattener::Arg::Label(label_arg) => caller_label_scope[&label_arg.label],
+                    // Label fields are represented with the shared global exit
+                    // label.
+                    flattener::Arg::LabelField(_) => self.graph.exit_label_node_index(),
+                };
+                self.label_scope.insert(label_param_index.into(), arg_label_node_index);
             }
         }
     }
@@ -615,5 +615,13 @@ impl<'a> FlowTracer<'a> {
             .push_and_get_key(LabelNode::default());
         self.label_scope.insert(label_index, label_node_index);
         label_node_index
+    }
+
+    fn insert_exit_label_node(&mut self) {
+        debug_assert!(self.graph.label_nodes.is_empty());
+        let exit_emit_node_index = self.graph.exit_emit_node_index();
+        self.graph.label_nodes.push_and_get_key(LabelNode {
+            bound_to: HashSet::from([exit_emit_node_index]),
+        });
     }
 }

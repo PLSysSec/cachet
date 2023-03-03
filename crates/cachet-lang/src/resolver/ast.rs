@@ -292,31 +292,25 @@ impl IndexMut<StructFieldIndex> for Env {
 
 deref_index!(Env[&StructFieldIndex] => Field);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From)]
 pub enum Field {
-    Value(ValueField),
-    Label(LabelField),
+    Var(VarField),
+    Label(Label),
 }
 
 impl Field {
-    pub fn ident(&self) -> &Spanned<Ident> {
+    pub fn ident(&self) -> Spanned<Ident> {
         match self {
-            Self::Value(value_field) => &value_field.ident,
-            Self::Label(label_field) => &label_field.ident,
+            Self::Var(var_field) => var_field.ident,
+            Self::Label(label) => label.ident,
         }
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct ValueField {
+pub struct VarField {
     pub ident: Spanned<Ident>,
     pub type_: TypeIndex,
-}
-
-#[derive(Clone, Debug)]
-pub struct LabelField {
-    pub ident: Spanned<Ident>,
-    pub ir: IrIndex,
 }
 
 #[derive(Clone, Debug)]
@@ -430,12 +424,22 @@ pub struct Label {
 #[derive(Clone, Debug, From)]
 pub enum Arg {
     Expr(Expr),
+    /// Field accesses directly in the argument position can't be disambiguated
+    /// between accesses to variable fields or accesses to label fields until
+    /// type-checking.
+    FieldAccess(FieldAccess),
     OutVar(OutVar),
     Label(LabelIndex),
     OutLabel(OutLabel),
 }
 
 deref_from!(&LabelIndex => Arg);
+
+#[derive(Clone, Debug)]
+pub struct FieldAccess {
+    pub parent: Spanned<Expr>,
+    pub field: Spanned<Ident>,
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum OutVar {
@@ -645,7 +649,7 @@ pub enum Expr {
     Var(Spanned<VarIndex>),
     Invoke(Call),
     #[from]
-    FieldAccess(Box<FieldAccessExpr>),
+    FieldAccess(Box<FieldAccess>),
     #[from]
     Negate(Box<NegateExpr>),
     #[from]
@@ -657,7 +661,7 @@ pub enum Expr {
 }
 
 box_from!(KindedBlock => Expr);
-box_from!(FieldAccessExpr => Expr);
+box_from!(FieldAccess => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(CastExpr => Expr);
 box_from!(BinOperExpr => Expr);
@@ -676,12 +680,6 @@ impl From<Spanned<&VarIndex>> for Expr {
     fn from(var_index: Spanned<&VarIndex>) -> Self {
         var_index.copied().into()
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct FieldAccessExpr {
-    pub parent: Spanned<Expr>,
-    pub field: Spanned<Ident>,
 }
 
 #[derive(Clone, Debug)]
