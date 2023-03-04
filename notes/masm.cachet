@@ -839,7 +839,15 @@ ir MASM {
     }
 
     op PopRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
-       MASM::popRegsInMaskIgnore(set, ignore); 
+        MASM::popRegsInMaskIgnore(set, ignore); 
+    }
+
+    op PushFloatReg(floatReg: FloatReg) {
+        MASM::stackPushFloatReg(floatReg);
+    }
+
+    op PopFloatReg(floatReg: FloatReg) {
+        MASM::stackPopFloatReg(floatReg);
     }
 
     op GuardSpecificAtom(
@@ -2199,6 +2207,20 @@ ir MASM {
         let stackData = MASM::stackPop();
         let regData = StackData::toRegData(stackData);
         MASM::setData(reg, regData);
+    }
+
+    #[refined]
+    fn stackPushFloatReg(floatReg: FloatReg) {
+        let floatData = MASM::getFloatData(floatReg);
+        let stackData = StackData::fromFloatData(floatData);
+        MASM::stackPush(stackData);
+    }
+
+    #[refined]
+    fn stackPopFloatReg(floatReg: FloatReg) {
+        let stackData = MASM::stackPop();
+        let floatData = StackData::toFloatData(stackData);
+        MASM::setFloatData(floatReg, floatData);
     }
 
     var mut hasPushedRegs: Bool;

@@ -333,6 +333,9 @@ procedure #CacheIR~defineTypedId($typedId: #TypedId)
     var $loc'0: #OperandLocation;
     var $loc'1: #OperandLocation;
     var $locKind'0: #OperandLocationKind;
+
+    assert !#CacheIR~addedFailurePath;
+    assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
     
     $id'0 := #OperandId~id(#TypedId^to#OperandId($typedId));
     $loc'0 := #Map~get(#CacheIR~operandLocations, $id'0);
@@ -352,6 +355,9 @@ procedure #CacheIR~defineValueId($valueId: #ValueId)
     var $loc'0: #OperandLocation;
     var $loc'1: #OperandLocation;
     var $locKind'0: #OperandLocationKind;
+
+    assert !#CacheIR~addedFailurePath;
+    assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
     
     $id'0 := #OperandId~id(#ValueId^to#OperandId($valueId));
     $loc'0 := #Map~get(#CacheIR~operandLocations, $id'0);
@@ -400,6 +406,9 @@ procedure #CacheIR~allocateReg()
   var tmp'1: #Bool;
   var tmp'2: #Bool;
 
+  assert !#CacheIR~addedFailurePath;
+  assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
+
   call tmp'0 := #CacheIR~hasAvailableReg();
   assert tmp'0;
 
@@ -419,6 +428,9 @@ procedure #CacheIR~allocateKnownReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
   var tmp'0: #Bool;
+
+  assert !#CacheIR~addedFailurePath;
+  assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
   
   // register should not already be allocated
   assert !#Set~contains(#CacheIR~allocatedRegs, $reg);
@@ -453,19 +465,6 @@ procedure #CacheIR~releaseReg($reg: #Reg)
 
 var #CacheIR~allocatedFloatRegs: #Set #PhyFloatReg;
 
-procedure #CacheIR~allocateAvailableFloatReg($floatReg: #FloatReg)
-  returns (ret: #FloatReg)
-  modifies #CacheIR~allocatedFloatRegs;
-{
-  // xmm15 is not an allocatable register but may be explicitly allocated as scratch register
-  //assert (
-  //  #FloatReg^field~reg($floatReg) != #PhyFloatReg^Variant~Xmm15()
-  //);
-
-  call #CacheIR~allocateAvailableFloatRegUnchecked($floatReg: #FloatReg);
-  ret := $floatReg;
-}
-
 procedure #CacheIR~allocateAvailableFloatRegUnchecked($floatReg: #FloatReg)
   modifies #CacheIR~allocatedFloatRegs;
 {
@@ -489,6 +488,9 @@ procedure #initRegState()
   var value: #Value;
   var regData: #RegData;
   var stackData: #StackData;
+
+  #CacheIR::addedFailurePath := false;
+  #CacheIR::hasAutoScratchFloatRegisterSpill := false;
 
   // All registers are initially unallocated.
   #CacheIR~allocatedRegs := #Set~empty(); 
