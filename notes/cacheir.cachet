@@ -512,6 +512,7 @@ ir CacheIR emits MASM {
         let failure = CacheIR::addFailurePath();
 
         emit MASM::BranchTestNull(Condition::NotEqual, inputReg, failure.label_);
+
         CacheIR::releaseFailurePath();
     }
 
@@ -1664,7 +1665,8 @@ ir CacheIR emits MASM {
     fn allocateReg() -> Reg;
     fn releaseReg(reg: Reg);
 
-    // SAFETY: does not check that reg is an allocatable register
+    // SAFETY: This does not check that `reg` is an allocatable register, nor
+    // does it care about failure paths.
     unsafe fn allocateKnownReg(reg: Reg);
 
     // Register allocated by ScratchScope
@@ -1861,8 +1863,8 @@ ir CacheIR emits MASM {
             let valueReg = OperandLocation::getValueReg(location);
             CacheIR::releaseValueReg(valueReg);
             let reg = ValueReg::scratchReg(valueReg);
-            // safe because we know valueReg was previously allocated
-            // with allocateValueReg and is allocatable
+            // safe because we know valueReg was previously allocated with
+            // allocateValueReg and is allocatable
             unsafe { CacheIR::allocateKnownReg(reg); }
             emit MASM::UnboxNonDouble(valueReg, reg, TypedId::type(id));
             OperandLocation::setPayloadReg(out location, reg, TypedId::type(id));

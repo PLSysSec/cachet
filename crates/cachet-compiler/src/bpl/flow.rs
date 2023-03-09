@@ -33,10 +33,10 @@ impl FlowGraph {
             EmitNodeIndex::from(1 + usize::from(self.exit_emit_node_index()));
         self.emit_nodes
             .get(entry_emit_node_index)
-            .expect("missing exit exit node");
+            .expect("missing entry emit node");
         debug_assert!(
             self[entry_emit_node_index].is_entry(),
-            "exit emit node is not followed by an entry point"
+            "exit emit node is not followed by an entry emit node"
         );
         entry_emit_node_index
     }
@@ -466,53 +466,80 @@ impl<'a> FlowTracer<'a> {
 
     fn trace_invoke_expr(&mut self, invoke_expr: &flattener::InvokeExpr) {
         let fn_item = &self.env[invoke_expr.call.target];
-        if fn_item.body.is_none() {
-            let exit_emit_node_index = self.graph.exit_emit_node_index();
-            for arg in &invoke_expr.call.args {
-                if let flattener::Arg::Label(label_arg) = arg {
-                    if label_arg.is_out && label_arg.ir == self.bottom_ir_index {
-                        let label_node_index = self.label_scope[&label_arg.label];
-                        self.graph
-                            .link_label_to_emit(label_node_index, exit_emit_node_index);
-                    }
-                }
-            }
-        } else {
-            // TODO(spinda): Handle non-external functions with label
-            // out-parameters.
 
-            debug_assert!(!invoke_expr.call.args.iter().any(|arg| {
-                match arg {
-                    flattener::Arg::Label(label_arg) => {
-                        label_arg.is_out && label_arg.ir == self.bottom_ir_index
-                    }
-                    _ => false,
-                }
-            }));
+        let mut out_label_args = invoke_expr.call.args.iter().filter_map(|arg| match arg {
+            flattener::Arg::Label(label_arg)
+                if label_arg.is_out && label_arg.ir == self.bottom_ir_index =>
+            {
+                Some(label_arg)
+            }
+            _ => None,
+        });
+
+        if fn_item.body.is_none() {
+            // Labels bound through out-arguments to external functions point
+            // into unknown territory.
+
+            let exit_emit_node_index = self.graph.exit_emit_node_index();
+            for out_label_arg in out_label_args {
+                let label_node_index = self.label_scope[&out_label_arg.label];
+                self.graph
+                    .link_label_to_emit(label_node_index, exit_emit_node_index);
+            }
+        } else if fn_item.emits.is_some() || out_label_args.next().is_some() {
+            // Otherwise, invoked functions only influence interpreter control
+            // flow if they either emit ops or bind labels via passed-in label
+            // out-arguments.
+
+            let trace_inside_target = |flow_tracer: &mut Self, curr_emit_label_ident| {
+                let mut target_flow_tracer = FlowTracer {
+                    env: flow_tracer.env,
+                    bottom_ir_index: flow_tracer.bottom_ir_index,
+                    graph: MaybeOwned::Borrowed(&mut flow_tracer.graph),
+                    curr_emit_label_ident,
+                    next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
+                    label_scope: MaybeOwned::Owned(LabelScope::new()),
+                    // Tracing inside the invoked function starts from our current working
+                    // state and mutates it directly. After tracing the function, our
+                    // current working state will be the state on control flow exiting
+                    // the function.
+                    curr_state: MaybeOwned::Borrowed(&mut flow_tracer.curr_state),
+                    // On the other hand, the exit state accumulator starts with
+                    // a blank slate, since it should reflect the state when control
+                    // flow exits the invoked function, not the containing callable.
+                    exit_state: MaybeOwned::Owned(FlowState::default()),
+                };
+
+                target_flow_tracer.init_label_params_with_args(
+                    &fn_item.params,
+                    &fn_item.param_order,
+                    &invoke_expr.call.args,
+                    &flow_tracer.label_scope,
+                );
+
+                target_flow_tracer.trace_callable_item(fn_item);
+            };
 
             if fn_item.emits.is_some() {
-                let parent_ident = match fn_item.parent {
-                    Some(flattener::ParentIndex::Ir(ir_index)) => {
-                        Some(self.env[ir_index].ident.value)
-                    }
-                    Some(_) => None,
-                    None => None,
-                };
+                // Extend the emit label identifier with the function we're currently
+                // looking at.
 
                 let new_emit_label_segment = EmitLabelSegment {
                     local_emit_index: self.take_local_emit_index(),
                     ident: EmitLabelSegmentIdent::Fn(
                         UserFnIdent {
-                            parent_ident,
+                            parent_ident: fn_item
+                                .path
+                                .value
+                                .parent()
+                                .map(|parent_path| parent_path.ident()),
                             fn_ident: fn_item.path.value.ident(),
                         }
                         .into(),
                     ),
                 };
 
-                // Extend the emit label identifier with the function we're currently
-                // looking at.
-                let new_emit_label_ident: EmitLabelIdent = self
+                let new_emit_label_ident = self
                     .curr_emit_label_ident
                     .segments
                     .iter()
@@ -520,31 +547,10 @@ impl<'a> FlowTracer<'a> {
                     .chain(iter::once(new_emit_label_segment))
                     .collect();
 
-                let mut fn_flow_tracer = FlowTracer {
-                    env: self.env,
-                    bottom_ir_index: self.bottom_ir_index,
-                    graph: MaybeOwned::Borrowed(&mut self.graph),
-                    curr_emit_label_ident: &new_emit_label_ident,
-                    next_local_emit_index: MaybeOwned::Owned(LocalEmitIndex::from(0)),
-                    label_scope: MaybeOwned::Owned(LabelScope::new()),
-                    // Tracing inside the invoked function starts from our current working
-                    // state and mutates it directly. After tracing the function, our
-                    // current working state will be the state on control flow exiting
-                    // the function.
-                    curr_state: MaybeOwned::Borrowed(&mut self.curr_state),
-                    // On the other hand, the exit state accumulator starts with
-                    // a blank slate, since it should reflect the state when control
-                    // flow exits the invoked function, not the containing callable.
-                    exit_state: MaybeOwned::Owned(FlowState::default()),
-                };
-                fn_flow_tracer.init_label_params_with_args(
-                    &fn_item.params,
-                    &fn_item.param_order,
-                    &invoke_expr.call.args,
-                    &self.label_scope,
-                );
-                fn_flow_tracer.trace_callable_item(fn_item);
-            }
+                trace_inside_target(self, &new_emit_label_ident);
+            } else {
+                trace_inside_target(self, self.curr_emit_label_ident);
+            };
         }
     }
 

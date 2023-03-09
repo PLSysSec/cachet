@@ -2354,7 +2354,7 @@ lazy_static! {
             (Ident::from("CacheIR").nest("allocateReg".into()), Proc),
             (Ident::from("CacheIR").nest("allocateKnownReg".into()), Proc),
             (Ident::from("CacheIR").nest("releaseReg".into()), Proc),
-            (Ident::from("CacheIR").nest("allocateAvailableFloatReg".into()), Proc),
+            (Ident::from("CacheIR").nest("allocateAvailableFloatRegUnchecked".into()), Proc),
             (Ident::from("CacheIR").nest("releaseFloatReg".into()), Proc),
             (Ident::from("CacheIR").nest("defineTypedId".into()), Proc),
             (Ident::from("CacheIR").nest("defineValueId".into()), Proc),

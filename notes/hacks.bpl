@@ -424,13 +424,10 @@ procedure #CacheIR~allocateReg()
   #CacheIR~numAvailableRegs := #CacheIR~numAvailableRegs - 1;
 }
 
-procedure #CacheIR~allocateKnownReg($reg: #Reg)
+procedure {:inline 1} #CacheIR~allocateKnownReg($reg: #Reg)
   modifies #CacheIR~allocatedRegs;
 {
   var tmp'0: #Bool;
-
-  assert !#CacheIR~addedFailurePath;
-  assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
   
   // register should not already be allocated
   assert !#Set~contains(#CacheIR~allocatedRegs, $reg);
