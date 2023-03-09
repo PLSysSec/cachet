@@ -2211,7 +2211,7 @@ ir MASM {
 
     #[refined]
     fn stackPushFloatReg(floatReg: FloatReg) {
-        let floatData = MASM::getFloatData(floatReg);
+        let floatData = MASM::getFloatData(floatReg.reg);
         let stackData = StackData::fromFloatData(floatData);
         MASM::stackPush(stackData);
     }
@@ -2220,7 +2220,7 @@ ir MASM {
     fn stackPopFloatReg(floatReg: FloatReg) {
         let stackData = MASM::stackPop();
         let floatData = StackData::toFloatData(stackData);
-        MASM::setFloatData(floatReg, floatData);
+        MASM::setFloatData(floatReg.reg, floatData);
     }
 
     var mut hasPushedRegs: Bool;

@@ -160,8 +160,6 @@ pub struct IrMemberGlobalVarIdent {
 pub enum IrMemberGlobalVarSelector {
     #[display(fmt = "pc")]
     Pc,
-    #[display(fmt = "exitLabel")]
-    ExitLabel,
     #[display(fmt = "nextLabel")]
     NextLabel,
     #[display(fmt = "labelPcs")]
@@ -681,7 +679,7 @@ impl Display for FnItem {
                 write!(f, ";")?;
             }
             Some(value) => {
-                write!(f, "{{\n")?;
+                write!(f, " {{\n")?;
 
                 let mut indented = AffixWriter::new(f, "  ", "");
                 write!(indented, "{}", value)?;

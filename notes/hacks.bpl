@@ -489,8 +489,8 @@ procedure #initRegState()
   var regData: #RegData;
   var stackData: #StackData;
 
-  #CacheIR::addedFailurePath := false;
-  #CacheIR::hasAutoScratchFloatRegisterSpill := false;
+  #CacheIR~addedFailurePath := false;
+  #CacheIR~hasAutoScratchFloatRegisterSpill := false;
 
   // All registers are initially unallocated.
   #CacheIR~allocatedRegs := #Set~empty(); 

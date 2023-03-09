@@ -153,7 +153,7 @@ impl<'a> Compiler<'a> {
                     (None, ret, None)
                 }
                 // For label fields, generate an inline function that returns
-                // the shared global exit label.
+                // the exit label bound at index 0 in the entry-point.
                 flattener::Field::Label(label) => {
                     let ir_ident = self.env[label.ir].ident.value.into();
                     let ret = IrMemberTypeIdent {
@@ -161,11 +161,7 @@ impl<'a> Compiler<'a> {
                         selector: IrMemberTypeSelector::Label,
                     }
                     .into();
-                    let value = IrMemberGlobalVarIdent {
-                        ir_ident,
-                        selector: IrMemberGlobalVarSelector::ExitLabel,
-                    }
-                    .into();
+                    let value = Literal::Int(0).into();
                     (Some(FnAttr::Inline), ret, Some(value))
                 }
             };
@@ -366,15 +362,6 @@ impl<'a> Compiler<'a> {
             type_: Some(NativeTypeIdent::Int.into()),
         };
 
-        let exit_label_global_var_item = GlobalVarItem::from(TypedVar {
-            ident: IrMemberGlobalVarIdent {
-                ir_ident,
-                selector: IrMemberGlobalVarSelector::ExitLabel,
-            }
-            .into(),
-            type_: label_type_item.ident.into(),
-        });
-
         let next_label_global_var_item = GlobalVarItem::from(TypedVar {
             ident: IrMemberGlobalVarIdent {
                 ir_ident,
@@ -532,7 +519,6 @@ impl<'a> Compiler<'a> {
             pc_emit_paths_fn_item.into(),
             emit_proc_item.into(),
             label_type_item.into(),
-            exit_label_global_var_item.into(),
             next_label_global_var_item.into(),
             label_pcs_global_var_item.into(),
             label_proc_item.into(),
@@ -833,49 +819,37 @@ impl<'a> Compiler<'a> {
 
         // First, some label-related bookkeeping...
 
-        // TODO(spinda): Should we initialize the next-label counter to 0? Test
-        // whether this affects verification time.
-
-        let exit_label_var_ident = IrMemberGlobalVarIdent {
-            ir_ident: bottom_ir_ident,
-            selector: IrMemberGlobalVarSelector::ExitLabel,
-        }
-        .into();
-
-        // Start by populating the shared global "exit" label, reused for
-        // top-level label parameters and struct label fields.
-        let init_exit_label_stmt = CallStmt {
-            call: CallExpr {
-                target: IrMemberFnIdent {
-                    ir_ident: bottom_ir_ident,
-                    selector: IrMemberFnSelector::Label,
-                }
-                .into(),
-                arg_exprs: Vec::new(),
-            },
-            ret_var_idents: vec![exit_label_var_ident],
-        }
-        .into();
-
-        // Next, bind the global exit label to an exit point.
+        // Bind label 0 to an exit point. This is used for top-level label
+        // parameters and struct label fields.
         let bind_exit_label_stmt = CallExpr {
             target: IrMemberFnIdent {
                 ir_ident: bottom_ir_ident,
                 selector: IrMemberFnSelector::BindExit,
             }
             .into(),
-            arg_exprs: vec![exit_label_var_ident.into()],
+            arg_exprs: vec![Literal::Int(0).into()],
         }
         .into();
 
-        let mut stmts: Vec<Stmt> = vec![init_exit_label_stmt, bind_exit_label_stmt];
+        // Set the next-label-index counter to 1, so it's after the exit label
+        // we just set up at index 0.
+        let init_next_label_counter_stmt: Stmt = AssignStmt {
+            lhs: IrMemberGlobalVarIdent {
+                ir_ident: bottom_ir_ident,
+                selector: IrMemberGlobalVarSelector::NextLabel,
+            }.into(),
+            rhs: Literal::Int(1).into(),
+        }
+        .into();
 
-        // Point all of the label parameter local variables to the shared global
-        // exit label.
+        let mut stmts: Vec<Stmt> = vec![bind_exit_label_stmt, init_next_label_counter_stmt];
+
+        // Point all of the label parameter local variables to the exit label we
+        // just bound at index 0.
         stmts.extend(label_param_local_vars.iter().map(|label_param_local_var| {
             AssignStmt {
                 lhs: label_param_local_var.var.ident.into(),
-                rhs: exit_label_var_ident.into(),
+                rhs: Literal::Int(0).into(),
             }
             .into()
         }));
