@@ -15,12 +15,16 @@ use cachet_util::{deref_from, fmt_join};
 pub struct Ident(Intern<String>);
 
 impl Ident {
-    pub fn nest(self, ident: Ident) -> Path {
-        Path::new(Some(Path::from(self)), ident)
+    pub fn from_string(string: impl ToString) -> Self {
+        Ident(string.to_string().into())
     }
 
-    pub fn from_display(name: impl ToString) -> Self {
-        Ident(name.to_string().into())
+    pub fn nest(self, ident: Ident) -> Path {
+        Path::from(self).nest(ident)
+    }
+
+    pub fn nest_string(self, string: impl ToString) -> Path {
+        Path::from(self).nest_string(string)
     }
 }
 
@@ -104,6 +108,10 @@ impl Path {
         Path::new(None, ident.into())
     }
 
+    pub fn from_ident_string(string: impl ToString) -> Self {
+        Path::new(None, Ident::from_string(string))
+    }
+
     pub fn parent(self) -> Option<Path> {
         self.0.parent
     }
@@ -118,6 +126,10 @@ impl Path {
 
     pub fn nest<T: Into<Ident>>(self, ident: T) -> Path {
         Path::new(Some(self), ident.into())
+    }
+
+    pub fn nest_string(self, string: impl ToString) -> Path {
+        Path::new(Some(self), Ident::from_string(string))
     }
 
     pub fn push<T: Into<Ident>>(&mut self, ident: T) {
