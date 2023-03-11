@@ -274,23 +274,29 @@ struct Float64;
 
 impl Float64 {
     fn isNegativeZero(float64: Float64) -> Bool;
+    fn isInfinite(float64: Float64) -> Bool;
     fn isNaN(float64: Float64) -> Bool;
 
-    fn isSafeInt32(float64: Float64) -> Bool {
-       let result = unsafe { Float64::isSafeInt32Unchecked(float64) };
+    fn isInt32(float64: Float64) -> Bool {
+       !Float64::isNegativeZero(float64) && Float64::equalsInt32(float64)
+    }
+
+    // Int32-safety under the condition that -0.0 and 0.0 are considered equal.
+    fn equalsInt32(float64: Float64) -> Bool {
+       let result = unsafe { Float64::equalsInt32Unchecked(float64) };
        if result {
-           assume !Float64::isNegativeZero(float64);
+           assume !Float64::isInfinite(float64);
            assume !Float64::isNaN(float64);
        }
        result
     }
 
-    unsafe fn isSafeInt32Unchecked(float64: Float64) -> Bool;
+    unsafe fn equalsInt32Unchecked(float64: Float64) -> Bool;
 
     fn fromInt32(int32: Int32) -> Float64 {
        let float64 = (unsafe { Float64::fromInt32Unchecked(int32) });
        assume (unsafe { Float64::toInt32Unchecked(float64) }) == int32;
-       assume Float64::isSafeInt32(float64);
+       assume Float64::isInt32(float64);
 
        float64
     }
@@ -300,7 +306,9 @@ impl Float64 {
     fn toInt32(float64: Float64) -> Int32 {
         let int32 = (unsafe { Float64::toInt32Unchecked(float64) });
 
-        if Float64::isSafeInt32(float64) {
+        if Float64::isNegativeZero(float64) {
+            assume int32 == 0_i32;
+        } else if Float64::equalsInt32(float64) {
             assume (unsafe { Float64::fromInt32Unchecked(int32) }) == float64;
         }
 
