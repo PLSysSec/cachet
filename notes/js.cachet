@@ -17,14 +17,6 @@ enum RegDataType {
 }
 
 #[spec]
-struct StackIndex;
-
-impl StackIndex {
-    fn fromUInt64(n: UInt64) -> StackIndex;
-    fn toUInt64(index: StackIndex) -> UInt64;
-}
-
-#[spec]
 struct RegData;
 
 impl RegData {
@@ -210,23 +202,23 @@ impl RegData {
         RegData::typeOf(data) == RegDataType::StackIndex
     }
 
-    fn fromStackIndex(index: StackIndex) -> RegData {
+    fn fromStackIndex(index: UInt64) -> RegData {
         let data = (unsafe { RegData::fromStackIndexUnchecked(index) });
         assume RegData::isStackIndex(data);
         assume (unsafe { RegData::toStackIndexUnchecked(data) }) == index;
         data
     }
 
-    unsafe fn fromStackIndexUnchecked(index: StackIndex) -> RegData;
+    unsafe fn fromStackIndexUnchecked(index: UInt64) -> RegData;
 
-    fn toStackIndex(data: RegData) -> StackIndex {
+    fn toStackIndex(data: RegData) -> UInt64 {
         assert RegData::isStackIndex(data);
         let index = (unsafe { RegData::toStackIndexUnchecked(data) });
         assume (unsafe { RegData::fromStackIndexUnchecked(index) }) == data;
         index
     }
 
-    unsafe fn toStackIndexUnchecked(data: RegData) -> StackIndex;
+    unsafe fn toStackIndexUnchecked(data: RegData) -> UInt64;
 
     #[spec]
     fn readData(data: RegData, offset: Int64) -> RegData {

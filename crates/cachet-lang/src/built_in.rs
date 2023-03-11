@@ -16,7 +16,7 @@ macro_rules! impl_ordered_ident_enum {
                 lazy_static! {
                     static ref IDENTS: HashMap<$t, Ident> = {
                         $t::into_enum_iter()
-                            .map(|t| (t, Ident::from_string(t)))
+                            .map(|t| (t, Ident::from_display(t)))
                             .collect()
                     };
                 }

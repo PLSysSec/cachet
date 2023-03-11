@@ -261,23 +261,18 @@ procedure #MASM~stackPopLiveFloatReg($floatReg: #FloatReg)
     call #MASM~setFloatData(#FloatReg^field~reg($floatReg), $data);
 }
 
-type #StackIndex = int;
-
-function {:builtin "bv2int"} #StackIndex~fromUInt64(n: #UInt64): #StackIndex;
-function {:builtin "(_ int2bv 64)"} #StackIndex~toUInt64(index: #StackIndex): #UInt64;
-
-var #MASM~stack: #Map #StackIndex #StackData;
+var #MASM~stack: #Map #UInt64 #StackData;
 
 procedure #MASM~stackPush($data: #StackData)
     modifies #MASM~regs, #MASM~stack;
 {
-    var $stackPtr: #StackIndex;
+    var $stackPtr: #UInt64;
     var $dataSize: #UInt64;
 
     call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
     call $dataSize := #StackData~size($data);
-    $stackPtr := $stackPtr - #StackIndex~fromUInt64($dataSize);
-    assert $stackPtr > 0;
+    $stackPtr := #UInt64^sub($stackPtr, $dataSize);
+    assert #UInt64^gte($stackPtr, 0bv64);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
     #MASM~stack := #Map~set(#MASM~stack, $stackPtr, $data);
 }
@@ -286,23 +281,23 @@ procedure #MASM~stackPop()
     returns (data: #StackData)
     modifies #MASM~regs, #MASM~stack;
 {
-    var $stackPtr: #StackIndex;
+    var $stackPtr: #UInt64;
     var $dataSize: #UInt64;
 
     call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
     data := #Map~get(#MASM~stack, $stackPtr);
     call $dataSize := #StackData~size(data);
-    $stackPtr := $stackPtr + #StackIndex~fromUInt64($dataSize);
+    $stackPtr := #UInt64^add($stackPtr, $dataSize);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
 }
 
-procedure #MASM~stackStore($idx: #StackIndex, $data: #StackData)
+procedure #MASM~stackStore($idx: #UInt64, $data: #StackData)
     modifies #MASM~stack;
 {
     #MASM~stack := #Map~set(#MASM~stack, $idx, $data);
 }
 
-procedure #MASM~stackLoad($idx: #StackIndex)
+procedure #MASM~stackLoad($idx: #UInt64)
     returns (ret: #StackData)
 {
     ret := #Map~get(#MASM~stack, $idx);
@@ -506,7 +501,7 @@ procedure #initRegState()
   call stackData := #StackData~fromRegData(regData);
   #MASM~stack := #Map~const(stackData);
 
-  call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512);
+  call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
 
   call #CacheIR~liveFloatRegSet := #FloatRegSet~empty();
   #MASM~hasPushedRegs := false;

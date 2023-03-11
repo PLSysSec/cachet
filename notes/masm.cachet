@@ -2159,12 +2159,12 @@ ir MASM {
     }
 
     #[refined]
-    fn getStackIndex(reg: Reg) -> StackIndex {
+    fn getStackIndex(reg: Reg) -> UInt64 {
         RegData::toStackIndex(MASM::getData(reg))
     }
 
     #[refined]
-    fn setStackIndex(reg: Reg, stackIndex: StackIndex) {
+    fn setStackIndex(reg: Reg, stackIndex: UInt64) {
         MASM::setData(reg, RegData::fromStackIndex(stackIndex));
     }
 
@@ -2191,9 +2191,9 @@ ir MASM {
     fn stackPop() -> StackData;
 
     #[spec]
-    fn stackStore(idx: StackIndex, stackData: StackData);
+    fn stackStore(idx: UInt64, stackData: StackData);
     #[spec]
-    fn stackLoad(idx: StackIndex) -> StackData;
+    fn stackLoad(idx: UInt64) -> StackData;
 
     #[refined]
     fn stackPushReg(reg: Reg) {
