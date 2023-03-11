@@ -422,6 +422,7 @@ impl SavedFloatRegs {
 
 #[spec]
 enum StackDataType {
+    Uninitialized,
     RegData,
     FloatData,
     SavedGeneralRegs,
@@ -434,52 +435,26 @@ struct StackData;
 impl StackData {
     fn typeOf(data: StackData) -> StackDataType;
 
-    fn size(data: StackData) -> UInt64 {
-        if StackData::typeOf(data) == StackDataType::RegData {
-            // RegData is always 8 bytes
-            return 8_u64;
-        } else if StackData::typeOf(data) == StackDataType::FloatData {
-            let floatData = StackData::toFloatData(data);
-            let contentType = FloatData::contentType(floatData);
-            if contentType == FloatContentType::Single {
-                return 4_u64;
-            } else if contentType == FloatContentType::Double {
-                return 8_u64;
-            } else {
-                return 16_u64;
-            }
-        } else if StackData::typeOf(data) == StackDataType::SavedGeneralRegs {
-            let saved = StackData::toSavedGeneralRegs(data);
-            return saved.size;
-        } else {
-            assert StackData::typeOf(data) == StackDataType::SavedFloatRegs;
-            let saved = StackData::toSavedFloatRegs(data);
-            return saved.size;
-        }
+    fn sizeOf(data: StackData) -> UInt64 {
+        assert StackData::typeOf(data) != StackDataType::Uninitialized;
+        (unsafe { StackData::sizeOfUnchecked(data) })
     }
 
-    fn fromFloatData(floatData: FloatData) -> StackData {
-        let data = (unsafe { StackData::fromFloatDataUnchecked(floatData) });
-        assume StackData::typeOf(data) == StackDataType::FloatData;
-        assume (unsafe { StackData::toFloatDataUnchecked(data) }) == floatData;
+    unsafe fn sizeOfUnchecked(data: StackData) -> UInt64;
+
+    fn uninitialized() -> StackData {
+        let data = (unsafe { StackData::uninitializedUnchecked() });
+        assume StackData::typeOf(data) == StackDataType::Uninitialized;
         data
     }
 
-    unsafe fn fromFloatDataUnchecked(floatData: FloatData) -> StackData;
-
-    fn toFloatData(data: StackData) -> FloatData {
-        assert StackData::typeOf(data) == StackDataType::FloatData;
-        let floatData = (unsafe { StackData::toFloatDataUnchecked(data) });
-        assume (unsafe { StackData::fromFloatDataUnchecked(floatData) }) == data;
-        floatData
-    }
-
-    unsafe fn toFloatDataUnchecked(data: StackData) -> FloatData;
+    unsafe fn uninitializedUnchecked() -> StackData;
 
     fn fromRegData(regData: RegData) -> StackData {
         let data = (unsafe { StackData::fromRegDataUnchecked(regData) });
-        assume StackData::typeOf(data) == StackDataType::RegData;
         assume (unsafe { StackData::toRegDataUnchecked(data) }) == regData;
+        assume StackData::typeOf(data) == StackDataType::RegData;
+        assume (unsafe { StackData::sizeOfUnchecked(data) }) == 8_u64;
         data
     }
 
@@ -494,10 +469,39 @@ impl StackData {
 
     unsafe fn toRegDataUnchecked(data: StackData) -> RegData;
 
+    fn fromFloatData(floatData: FloatData) -> StackData {
+        let data = (unsafe { StackData::fromFloatDataUnchecked(floatData) });
+        assume (unsafe { StackData::toFloatDataUnchecked(data) }) == floatData;
+        assume StackData::typeOf(data) == StackDataType::FloatData;
+
+        let contentType = FloatData::contentType(floatData);
+        if contentType == FloatContentType::Single {
+            assume (unsafe { StackData::sizeOf(data) }) == 4_u64;
+        } else if contentType == FloatContentType::Double {
+            assume (unsafe { StackData::sizeOf(data) }) == 8_u64;
+        } else {
+            assume (unsafe { StackData::sizeOf(data) }) == 16_u64;
+        }
+
+        data
+    }
+
+    unsafe fn fromFloatDataUnchecked(floatData: FloatData) -> StackData;
+
+    fn toFloatData(data: StackData) -> FloatData {
+        assert StackData::typeOf(data) == StackDataType::FloatData;
+        let floatData = (unsafe { StackData::toFloatDataUnchecked(data) });
+        assume (unsafe { StackData::fromFloatDataUnchecked(floatData) }) == data;
+        floatData
+    }
+
+    unsafe fn toFloatDataUnchecked(data: StackData) -> FloatData;
+
     fn fromSavedGeneralRegs(saved: SavedGeneralRegs) -> StackData {
         let data = (unsafe { StackData::fromSavedGeneralRegsUnchecked(saved) });
-        assume StackData::typeOf(data) == StackDataType::SavedGeneralRegs;
         assume (unsafe { StackData::toSavedGeneralRegsUnchecked(data) }) == saved;
+        assume StackData::typeOf(data) == StackDataType::SavedGeneralRegs;
+        assume (unsafe { StackData::sizeOf(data) }) == saved.size;
         data
     }
 
@@ -514,8 +518,9 @@ impl StackData {
 
     fn fromSavedFloatRegs(saved: SavedFloatRegs) -> StackData {
         let data = (unsafe { StackData::fromSavedFloatRegsUnchecked(saved) });
-        assume StackData::typeOf(data) == StackDataType::SavedFloatRegs;
         assume (unsafe { StackData::toSavedFloatRegsUnchecked(data) }) == saved;
+        assume StackData::typeOf(data) == StackDataType::SavedFloatRegs;
+        assume (unsafe { StackData::sizeOf(data) }) == saved.size;
         data
     }
 

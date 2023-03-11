@@ -270,7 +270,7 @@ procedure #MASM~stackPush($data: #StackData)
     var $dataSize: #UInt64;
 
     call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
-    call $dataSize := #StackData~size($data);
+    call $dataSize := #StackData~sizeOf($data);
     $stackPtr := #UInt64^sub($stackPtr, $dataSize);
     assert #UInt64^gte($stackPtr, 0bv64);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
@@ -278,15 +278,15 @@ procedure #MASM~stackPush($data: #StackData)
 }
 
 procedure #MASM~stackPop()
-    returns (data: #StackData)
+    returns (ret: #StackData)
     modifies #MASM~regs, #MASM~stack;
 {
     var $stackPtr: #UInt64;
     var $dataSize: #UInt64;
 
     call $stackPtr := #MASM~getStackIndex(#Reg^Variant~Rsp());
-    data := #Map~get(#MASM~stack, $stackPtr);
-    call $dataSize := #StackData~size(data);
+    ret := #Map~get(#MASM~stack, $stackPtr);
+    call $dataSize := #StackData~sizeOf(ret);
     $stackPtr := #UInt64^add($stackPtr, $dataSize);
     call #MASM~setStackIndex(#Reg^Variant~Rsp(), $stackPtr);
 }
@@ -482,9 +482,7 @@ procedure #CacheIR~releaseFloatReg($floatReg: #FloatReg)
 
 procedure #initRegState()
 {
-  var value: #Value;
-  var regData: #RegData;
-  var stackData: #StackData;
+  var $uninitializedStackData: #StackData;
 
   #CacheIR~addedFailurePath := false;
   #CacheIR~hasAutoScratchFloatRegisterSpill := false;
@@ -496,10 +494,8 @@ procedure #initRegState()
   #CacheIR~numAvailableRegs := 13;
   // => rax, rbx, rcx, rdx, rsi, rdi, r8, r9, r10, r12, r13, r14, r15
 
-  call value := #Value~fromInt32(0bv32);
-  call regData := #RegData~fromUnboxedValue(value);
-  call stackData := #StackData~fromRegData(regData);
-  #MASM~stack := #Map~const(stackData);
+  call $uninitializedStackData := #StackData~uninitialized();
+  #MASM~stack := #Map~const($uninitializedStackData);
 
   call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
 
