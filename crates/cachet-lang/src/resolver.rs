@@ -898,10 +898,6 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
         self.recurse().resolve_block_impl(block)
     }
 
-    fn resolve_nested_elseif(&mut self, if_stmt: Box<parser::IfStmt>) -> Option<Box<IfStmt>> {
-        self.recurse().resolve_if_stmt(*if_stmt).map(Box::new)
-    }
-
     /// This is deliberately *not* named `resolve_block`, to force explicit
     /// disambiguation between calls to `resolve_body_block` and
     /// `resolve_nested_block`. `resolve_block_impl` should not generally be
@@ -1007,15 +1003,20 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     }
 
     fn resolve_if_stmt(&mut self, if_stmt: parser::IfStmt) -> Option<IfStmt> {
+        // TODO(spinda): This is a little bit wrong... We should really be
+        // recursing to resolve the then-block, so that `out let` and `out
+        // label` declarations don't escape. But then we also have to deal with
+        // short-circuiting, which is kinda hairy. Something to think about...
+
         let cond = map_spanned(if_stmt.cond, |cond| self.resolve_expr(cond.value));
 
         let then = self.resolve_nested_block(if_stmt.then);
 
         let else_ = match if_stmt.else_ {
-            Some(parser::ElseClause::ElseIf(elseif_)) => self
-                // TODO(spinda): What's this doing? Should we really be
-                // recursing here?
-                .resolve_nested_elseif(elseif_)
+            Some(parser::ElseClause::ElseIf(else_if)) => self
+                .recurse()
+                .resolve_if_stmt(*else_if)
+                .map(Box::new)
                 .map(ElseClause::ElseIf)
                 .map(Some),
             Some(parser::ElseClause::Else(else_)) => self

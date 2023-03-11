@@ -161,26 +161,36 @@ impl Flattener {
         );
     }
 
-    fn flatten_if_stmt_recurse(&mut self, if_stmt: normalizer::IfStmt) -> IfStmt {
+    fn flatten_if_stmt(&mut self, if_stmt: normalizer::IfStmt) {
+        let if_ = self.flatten_if_stmt_impl(if_stmt);
+        self.stmts.push(if_.into());
+    }
+
+    fn flatten_if_stmt_impl(&mut self, if_stmt: normalizer::IfStmt) -> IfStmt {
         let cond = self.flatten_expr(if_stmt.cond);
 
         let then = flatten_block(if_stmt.then);
 
         let else_ = if_stmt.else_.map(|else_| match else_ {
             normalizer::ElseClause::ElseIf(else_if) => {
-                ast::ElseClause::ElseIf(Box::new(self.flatten_if_stmt_recurse(*else_if)))
+                // The else-if condition could flatten to multiple statements.
+                // If so, they need to be wrapped up inside an else-clause.
+                // Otherwise, the clause can remain an else-if.
+                let mut else_if_flattener = Flattener::new();
+                let else_if = else_if_flattener.flatten_if_stmt_impl(*else_if);
+                if else_if_flattener.stmts.is_empty() {
+                    ElseClause::ElseIf(Box::new(else_if))
+                } else {
+                    else_if_flattener.stmts.push(else_if.into());
+                    ElseClause::Else(else_if_flattener.stmts)
+                }
             }
             normalizer::ElseClause::Else(else_block) => {
-                ast::ElseClause::Else(flatten_block(else_block))
+                ElseClause::Else(flatten_block(else_block))
             }
         });
 
         IfStmt { cond, then, else_ }
-    }
-
-    fn flatten_if_stmt(&mut self, if_stmt: normalizer::IfStmt) {
-        let if_ = self.flatten_if_stmt_recurse(if_stmt);
-        self.stmts.push(if_.into());
     }
 
     fn flatten_for_in_stmt(&mut self, for_in_stmt: normalizer::ForInStmt) {

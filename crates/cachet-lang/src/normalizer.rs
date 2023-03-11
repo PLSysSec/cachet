@@ -1,5 +1,9 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+// TODO(spinda): I think this should be revisited post-paper-submission, and
+// reoriented around wrapping things in blocks and bubbling them around to
+// normalize execution order.
+
 mod ast;
 
 use std::ops::{Deref, DerefMut};
@@ -292,12 +296,12 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
 
     fn normalize_call(&mut self, call: type_checker::Call) -> (Vec<Stmt>, Call) {
         let mut stmts = Vec::new();
-        let mut scoped_normalizer = self.recurse(&mut stmts);
+        let mut args_normalizer = self.recurse(&mut stmts);
 
         let args = call
             .args
             .into_iter()
-            .map(|arg| scoped_normalizer.normalize_arg(arg))
+            .map(|arg| args_normalizer.normalize_arg(arg))
             .collect();
 
         (
@@ -359,24 +363,35 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         );
     }
 
-    fn normalize_if_stmt_recurse(&mut self, if_stmt: type_checker::IfStmt) -> IfStmt {
+    fn normalize_if_stmt(&mut self, if_stmt: type_checker::IfStmt) {
+        let if_ = self.normalize_if_stmt_impl(if_stmt);
+        self.stmts.push(if_.into());
+    }
+
+    fn normalize_if_stmt_impl(&mut self, if_stmt: type_checker::IfStmt) -> IfStmt {
         let cond = self.normalize_expr(if_stmt.cond);
         let then = self.normalize_unused_block(if_stmt.then);
         let else_ = if_stmt.else_.map(|else_| match else_ {
-            type_checker::ElseClause::Else(else_block) => {
-                ast::ElseClause::Else(self.normalize_unused_block(else_block))
-            }
             type_checker::ElseClause::ElseIf(else_if) => {
-                ast::ElseClause::ElseIf(Box::new(self.normalize_if_stmt_recurse(*else_if)))
+                // The else-if condition could normalize to multiple statements.
+                // If so, they need to be wrapped up inside an else-clause.
+                // Otherwise, the clause can remain an else-if.
+                let mut stmts = Vec::new();
+                let mut else_if_normalizer = self.recurse(&mut stmts);
+                let else_if = else_if_normalizer.normalize_if_stmt_impl(*else_if);
+                if stmts.is_empty() {
+                    ElseClause::ElseIf(Box::new(else_if))
+                } else {
+                    stmts.push(else_if.into());
+                    ElseClause::Else(stmts)
+                }
+            }
+            type_checker::ElseClause::Else(else_block) => {
+                ElseClause::Else(self.normalize_unused_block(else_block))
             }
         });
 
         IfStmt { cond, then, else_ }
-    }
-
-    fn normalize_if_stmt(&mut self, if_stmt: type_checker::IfStmt) {
-        let if_ = self.normalize_if_stmt_recurse(if_stmt);
-        self.stmts.push(if_.into());
     }
 
     fn normalize_for_in_stmt(&mut self, for_in_stmt: type_checker::ForInStmt) {
@@ -674,8 +689,8 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
                 let lhs = self.normalize_used_expr(bin_oper_expr.lhs);
 
                 let mut rhs_stmts = Vec::new();
-                let mut scoped_normalizer = self.recurse(&mut rhs_stmts);
-                scoped_normalizer.normalize_unused_expr(bin_oper_expr.rhs);
+                let mut rhs_normalizer = self.recurse(&mut rhs_stmts);
+                rhs_normalizer.normalize_unused_expr(bin_oper_expr.rhs);
 
                 let cond = match logical_bin_oper {
                     // if (lhs) { rhs }
