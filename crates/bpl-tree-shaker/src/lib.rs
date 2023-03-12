@@ -875,6 +875,14 @@ impl<'a> NestedReachabilityVisitor<'a> {
     }
 
     fn visit_func_call(&mut self, func_call: &FuncCall) {
+        // TODO(spinda): It would be cool if we could do something like, drop
+        // uninterpreted functions that are only referenced in assumes with
+        // expressions that don't put them in relation to anything else. That'd
+        // require modeling the expression structure in the reference graph,
+        // then doing a pattern-matching optimization pass over the graph. Or
+        // perhaps this would be better suited for an optimization inside Boogie
+        // itself. Generically optimizing Boogie programs for verification time
+        // would be an interesting research project in itself...
         self.reference_ident(func_call.target, Namespace::Func);
         self.visit_exprs(&func_call.args);
     }

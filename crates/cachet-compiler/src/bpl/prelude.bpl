@@ -318,6 +318,31 @@ procedure #UInt32~print(d: #UInt32) {
   call {:cexpr "UInt32"} boogie_si_record_bv32(d);
 }
 
+function {:bvbuiltin "bv2nat"} bv2nat31(i: bv31): int;
+function {:bvbuiltin "(_ extract 31 31)"} bvsign32(i: bv32): bv1;
+function {:bvbuiltin "(_ extract 30 0)"} bvmag32(i: bv32): bv31;
+function bv2int32(i: bv32): int {
+  // The form of this expression is very specific, so that z3 will recognize it
+  // as a signed bitvector-to-int conversion and optimize accordingly.
+  // Unfortunately, SMT-LIB doesn't provide us with a signed bv2int to call
+  // explicitly. Technically, there *is* a "bv2int", but it's an alias for
+  // bv2nat.
+  if 1bv1 == bvsign32(i)
+    then bv2nat31(bvmag32(i)) - 2147483648
+    else bv2nat31(bvmag32(i))
+}
+
+procedure {:inline 1} #Int32~checkedAdd(x: #Int32, y: #Int32)
+  returns (sum: #Int32, ret: #Bool)
+{
+  var intSum: int;
+
+  sum := #Int32^add(x, y);
+
+  intSum := bv2int32(x) + bv2int32(y);
+  ret := intSum >= -2147483648 && intSum <= 2147483647;
+}
+
 procedure boogie_si_record_bv64(x:#UInt64);
 procedure #Double~print(d: #Double) {
   call {:cexpr "Double"} boogie_si_record_bv64(#Double~bits(d));

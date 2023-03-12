@@ -1,0 +1,40 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {
+    op Add(
+        lhsValueId: ValueId,
+        rhsValueId: ValueId,
+    ) {
+        initRegState();
+
+        initOperandId(lhsValueId);
+        initInputValueId(lhsValueId);
+        let lhsValue = MASM::getValue(
+            OperandLocation::getValueReg(CacheIR::getOperandLocation(lhsValueId)));
+
+        initOperandId(rhsValueId);
+        initInputValueId(rhsValueId);
+        let rhsValue = MASM::getValue(
+            OperandLocation::getValueReg(CacheIR::getOperandLocation(rhsValueId)));
+
+        initValueOutput();
+
+        emit CacheIR::GuardToInt32(lhsValueId);
+        let lhsInt32Id = OperandId::toInt32Id(lhsValueId);
+        emit CacheIR::GuardToInt32(rhsValueId);
+        let rhsInt32Id = OperandId::toInt32Id(rhsValueId);
+        emit CacheIR::Int32AddResult(lhsInt32Id, rhsInt32Id);
+
+        if Value::isInt32(lhsValue) && Value::isInt32(rhsValue) {
+            let lhs = Value::toInt32(lhsValue);
+            let rhs = Value::toInt32(rhsValue);
+            let sum = 0_i32;
+            let noOverflow = Int32::checkedAdd(lhs, rhs, out sum);
+            emit CacheIR::Assert(noOverflow);
+            emit CacheIR::AssertEqValueOutput(Value::fromInt32(sum));
+        } else {
+            emit CacheIR::Assert(false);
+        }
+    }
+}

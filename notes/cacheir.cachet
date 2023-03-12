@@ -474,6 +474,14 @@ ir CacheIR emits MASM {
 
     op ReturnFromIC() {}
 
+    op Assert(cond: Bool) {
+        emit MASM::Assert(cond);
+    }
+
+    op AssertEqValueOutput(value: Value) {
+        emit MASM::AssertEqValue(TypedOrValueReg::toValueReg(CacheIR::outputReg), value);
+    }
+
     op GuardIsNumber(inputId: ValueId) {
         let knownType = CacheIR::knownType(inputId);
 

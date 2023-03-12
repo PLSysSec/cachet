@@ -1,0 +1,28 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {
+    op Add(
+        lhsInt32Id: Int32Id,
+        rhsInt32Id: Int32Id,
+    ) {
+        initRegState();
+
+        initOperandId(lhsInt32Id);
+        initInputInt32Id(lhsInt32Id);
+        let lhs = MASM::getInt32(OperandLocation::getPayloadReg(CacheIR::getOperandLocation(lhsInt32Id)));
+
+        initOperandId(rhsInt32Id);
+        initInputInt32Id(rhsInt32Id);
+        let rhs = MASM::getInt32(OperandLocation::getPayloadReg(CacheIR::getOperandLocation(rhsInt32Id)));
+
+        initValueOutput();
+
+        emit CacheIR::Int32AddResult(lhsInt32Id, rhsInt32Id);
+
+        let sum = 0_i32;
+        let noOverflow = Int32::checkedAdd(lhs, rhs, out sum);
+        emit CacheIR::Assert(noOverflow);
+        emit CacheIR::AssertEqValueOutput(Value::fromInt32(sum));
+    }
+}

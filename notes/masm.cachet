@@ -721,11 +721,18 @@ impl ABIFunction {
 }
 
 ir MASM {
-
     // NOTE: Needs to be implemented to call the equivalent
     // op with string as argument.
     op AssumeUnreachable() {
         assert false;
+    }
+
+    op Assert(cond: Bool) {
+        assert cond;
+    }
+
+    op AssertEqValue(valueReg: ValueReg, value: Value) {
+        assert MASM::getValue(valueReg) == value;
     }
 
     op Mov(srcReg: Reg, dstReg: Reg) {
@@ -1725,18 +1732,13 @@ ir MASM {
       let lhsInt32 = MASM::getInt32(srcReg);
       let rhsInt32 = MASM::getInt32(dstReg);
 
-      let result = lhsInt32 + rhsInt32;
-      
       assert condition == Condition::Overflow;
-      if lhsInt32 > 0_i32 && rhsInt32 > 0_i32 && result < 0_i32 {
+      let sum = 0_i32;
+      if !Int32::checkedAdd(lhsInt32, rhsInt32, out sum) {
           goto branch;
       }
 
-      if lhsInt32 < 0_i32 && rhsInt32 < 0_i32 && result > 0_i32 {
-          goto branch;
-      }
-
-      MASM::setInt32(dstReg, result);
+      MASM::setInt32(dstReg, sum);
     }
 
     // this op corresponds to an overload of the BranchAdd32 MASM op.
