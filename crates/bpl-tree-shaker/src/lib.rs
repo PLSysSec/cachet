@@ -14,10 +14,14 @@ use bpl::ast::*;
 use bpl::parser::parse_boogie_program;
 pub use bpl::parser::ParseError;
 
-pub fn shake_tree(src: &str, retain_idents: impl IntoIterator<Item = NamespacedIdent>) -> Result<Cow<'_, str>, ParseError> {
+pub fn shake_tree<'a>(
+    src: &'a str,
+    retain_idents: impl IntoIterator<Item = NamespacedIdent>,
+    prunable_data_type_idents: &HashSet<Ident>,
+) -> Result<Cow<'a, str>, ParseError> {
     let program = parse_boogie_program(src)?;
 
-    let mut reachability_visitor = ReachabilityVisitor::default();
+    let mut reachability_visitor = ReachabilityVisitor::new(&prunable_data_type_idents);
     reachability_visitor.visit_program(&program);
     let reachability_graph = reachability_visitor.graph;
 
@@ -264,13 +268,20 @@ impl Index<NodeIndex> for ReachabilityGraph {
     }
 }
 
-#[derive(Default)]
-struct ReachabilityVisitor {
+struct ReachabilityVisitor<'a> {
     graph: ReachabilityGraph,
+    prunable_data_type_idents: &'a HashSet<Ident>,
 }
 
-impl ReachabilityVisitor {
-    fn nest_decl(&mut self, span: Span) -> NestedReachabilityVisitor<'_> {
+impl<'a> ReachabilityVisitor<'a> {
+    fn new(prunable_data_type_idents: &'a HashSet<Ident>) -> Self {
+        Self {
+            graph: ReachabilityGraph::default(),
+            prunable_data_type_idents,
+        }
+    }
+
+    fn nest_decl(&mut self, span: Span) -> NestedReachabilityVisitor<'a, '_> {
         let decl_node_index = self.graph.add_decl_node(span);
         self.nest_with_parent(decl_node_index)
     }
@@ -280,7 +291,7 @@ impl ReachabilityVisitor {
         span: Span,
         ident: Ident,
         namespace: Namespace,
-    ) -> NestedReachabilityVisitor<'_> {
+    ) -> NestedReachabilityVisitor<'a, '_> {
         let decl_node_index = self.graph.add_decl_node(span);
         self.graph.attach_ident_to_node(
             decl_node_index,
@@ -291,7 +302,7 @@ impl ReachabilityVisitor {
         self.nest_with_parent(decl_node_index)
     }
 
-    fn nest_with_parent(&mut self, parent_index: NodeIndex) -> NestedReachabilityVisitor<'_> {
+    fn nest_with_parent(&mut self, parent_index: NodeIndex) -> NestedReachabilityVisitor<'a, '_> {
         NestedReachabilityVisitor {
             visitor: self,
             parent_node_index: parent_index,
@@ -349,7 +360,12 @@ impl ReachabilityVisitor {
                 extract_data_type_ident_from_type(&func_decl.value.returns.type_)
             {
                 let data_type_ident = NamespacedIdent(data_type_ident, Namespace::Type);
-                if !func_decl_visitor.local_idents.contains(&data_type_ident) {
+                if !func_decl_visitor.local_idents.contains(&data_type_ident)
+                    && !func_decl_visitor
+                        .visitor
+                        .prunable_data_type_idents
+                        .contains(&data_type_ident.0)
+                {
                     // Special handling for constructors: we additionally draw an edge
                     // from the parent data type to the constructor function.
                     let data_type_node_index = func_decl_visitor
@@ -449,18 +465,18 @@ impl ReachabilityVisitor {
     }
 }
 
-struct NestedReachabilityVisitor<'a> {
-    visitor: &'a mut ReachabilityVisitor,
+struct NestedReachabilityVisitor<'a, 'b> {
+    visitor: &'b mut ReachabilityVisitor<'a>,
     parent_node_index: NodeIndex,
-    local_idents: Cow<'a, HashSet<NamespacedIdent>>,
+    local_idents: Cow<'b, HashSet<NamespacedIdent>>,
 }
 
-impl<'a> NestedReachabilityVisitor<'a> {
-    fn nest(&mut self) -> NestedReachabilityVisitor<'_> {
+impl<'a, 'b> NestedReachabilityVisitor<'a, 'b> {
+    fn nest(&mut self) -> NestedReachabilityVisitor<'a, '_> {
         self.nest_with_parent(self.parent_node_index)
     }
 
-    fn nest_node(&mut self, span: Span) -> NestedReachabilityVisitor<'_> {
+    fn nest_node(&mut self, span: Span) -> NestedReachabilityVisitor<'a, '_> {
         let node_index = self.visitor.graph.add_node(span);
         self.visitor
             .graph
@@ -473,7 +489,7 @@ impl<'a> NestedReachabilityVisitor<'a> {
         span: Span,
         ident: Ident,
         namespace: Namespace,
-    ) -> NestedReachabilityVisitor<'_> {
+    ) -> NestedReachabilityVisitor<'a, '_> {
         let nested_visitor = self.nest_node(span);
         nested_visitor.visitor.graph.attach_ident_to_node(
             nested_visitor.parent_node_index,
@@ -484,7 +500,7 @@ impl<'a> NestedReachabilityVisitor<'a> {
         nested_visitor
     }
 
-    fn nest_with_parent(&mut self, parent_index: NodeIndex) -> NestedReachabilityVisitor<'_> {
+    fn nest_with_parent(&mut self, parent_index: NodeIndex) -> NestedReachabilityVisitor<'a, '_> {
         NestedReachabilityVisitor {
             visitor: &mut self.visitor,
             parent_node_index: parent_index,

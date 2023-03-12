@@ -30,7 +30,7 @@ if "${bin_dir}/cachet-compiler" "${cachet_file}" --bpl "${bpl_file}" 2>&1 \
   ln -s "${compile_log_file}" "${successful_compile_log_link}"
 
   cat "${hacks_bpl_file}" "${bpl_file}" | sponge "${bpl_file}"
-  "${bin_dir}/bpl-tree-shaker" -i "${bpl_file}" -t '#JSOp'
+  "${bin_dir}/bpl-tree-shaker" -i "${bpl_file}" -t '#JSOp' -p '#MASM^Op'
 else
   mk_parent_dir "${failed_compile_log_link}"
   ln -s "${compile_log_file}" "${failed_compile_log_link}"
