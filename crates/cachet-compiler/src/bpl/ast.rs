@@ -66,10 +66,12 @@ pub enum NativeTypeIdent {
 
 #[derive(Clone, Copy, Debug, Display)]
 pub enum PreludeTypeIdent {
-    #[display(fmt = "Pc")]
-    Pc,
     #[display(fmt = "EmitPath")]
     EmitPath,
+    #[display(fmt = "Label")]
+    Label,
+    #[display(fmt = "Pc")]
+    Pc,
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -83,8 +85,6 @@ pub struct IrMemberTypeIdent {
 pub enum IrMemberTypeSelector {
     #[display(fmt = "Op")]
     Op,
-    #[display(fmt = "Label")]
-    Label,
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -138,8 +138,6 @@ pub enum VarIdent {
     #[from]
     Local(LocalVarIdent),
     #[from]
-    LocalLabel(LocalLabelVarIdent),
-    #[from]
     Synthetic(SyntheticVarIdent),
 }
 
@@ -185,8 +183,6 @@ impl Display for UserGlobalVarIdent {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum ParamVarIdent {
-    #[display(fmt = "emitPath")]
-    EmitPath,
     #[display(fmt = "in")]
     In,
     #[display(fmt = "init")]
@@ -218,13 +214,6 @@ pub struct LocalVarIdent {
 }
 
 #[derive(Clone, Copy, Debug, Display)]
-#[display(fmt = "${}'l{}", ident, index)]
-pub struct LocalLabelVarIdent {
-    pub ident: Ident,
-    pub index: LocalLabelIndex,
-}
-
-#[derive(Clone, Copy, Debug, Display)]
 #[display(fmt = "{}'{}", kind, index)]
 pub struct SyntheticVarIdent {
     pub kind: SyntheticVarKind,
@@ -250,10 +239,22 @@ pub enum FnIdent {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum PreludeFnIdent {
-    #[display(fmt = "NilEmitPath")]
-    NilEmitPathCtor,
     #[display(fmt = "ConsEmitPath")]
-    ConsEmitPathCtor,
+    ConsEmitPath,
+    #[display(fmt = "ConsPcEmitPath")]
+    ConsPcEmitPath,
+    #[display(fmt = "emitPath#Pc")]
+    EmitPathPcField,
+    #[display(fmt = "ExitLabel")]
+    ExitLabel,
+    #[display(fmt = "ExitPc")]
+    ExitPc,
+    #[display(fmt = "Label")]
+    Label,
+    #[display(fmt = "NilEmitPath")]
+    NilEmitPath,
+    #[display(fmt = "NilPc")]
+    NilPc,
 }
 
 #[derive(Clone, Copy, Debug, Display)]
@@ -376,23 +377,23 @@ pub struct IrMemberFnIdent {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum IrMemberFnSelector {
-    #[display(fmt = "ops")]
-    Ops,
-    #[display(fmt = "pcEmitPaths")]
-    PcEmitPaths,
-    #[display(fmt = "step")]
-    Step,
-    #[display(fmt = "emit")]
-    Emit,
-    #[display(fmt = "label")]
-    Label,
     #[display(fmt = "bind")]
     Bind,
     #[display(fmt = "bindExit")]
     BindExit,
+    #[display(fmt = "emit")]
+    Emit,
     #[display(fmt = "goto")]
     Goto,
+    #[display(fmt = "labelBoundPc")]
+    LabelBoundPc,
+    #[display(fmt = "nextPc")]
+    NextPc,
     Op(OpCtorIrMemberFnSelector),
+    #[display(fmt = "opAt")]
+    OpAt,
+    #[display(fmt = "step")]
+    Step,
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]
@@ -980,6 +981,8 @@ pub struct AssignStmt {
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Expr {
+    #[from]
+    Commented(Box<CommentedExpr>),
     #[from(types(bool))]
     Literal(Literal),
     #[from(types(
@@ -989,7 +992,6 @@ pub enum Expr {
         ParamVarIdent,
         UserParamVarIdent,
         LocalVarIdent,
-        LocalLabelVarIdent,
         SyntheticVarIdent
     ))]
     Var(VarIdent),
@@ -1005,6 +1007,7 @@ pub enum Expr {
     ForAll(Box<ForAllExpr>),
 }
 
+box_from!(CommentedExpr => Expr);
 box_from!(IndexExpr => Expr);
 box_from!(NegateExpr => Expr);
 box_from!(BinOperExpr => Expr);
@@ -1020,9 +1023,12 @@ impl Display for MaybeGrouped<'_> {
         let needs_group = match self.0 {
             // `ForAllExpr` is always inherently grouped, so it doesn't need
             // extra grouping.
-            Expr::Literal(_) | Expr::Var(_) | Expr::Index(_) | Expr::Call(_) | Expr::ForAll(_) => {
-                false
-            }
+            Expr::Commented(_)
+            | Expr::Literal(_)
+            | Expr::Var(_)
+            | Expr::Index(_)
+            | Expr::Call(_)
+            | Expr::ForAll(_) => false,
             Expr::Negate(_) | Expr::BinOper(_) => true,
         };
 
@@ -1032,6 +1038,18 @@ impl Display for MaybeGrouped<'_> {
             Display::fmt(self.0, f)
         }
     }
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "/* {comment} */ {expr}")]
+pub struct CommentedExpr {
+    pub comment: Comment,
+    pub expr: Expr,
+}
+
+#[derive(Clone, Debug, Display, From)]
+pub enum Comment {
+    Ident(Ident),
 }
 
 #[derive(Clone, Copy, Debug, Display, From)]

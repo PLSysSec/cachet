@@ -13,8 +13,7 @@ use typed_index_collections::TiSlice;
 use void::unreachable;
 
 use cachet_lang::ast::{
-    ArithBinOper, BinOper, CheckKind, CompareBinOper, ForInOrder, Ident, NegateKind, Path,
-    Spanned, VarParamKind,
+    BinOper, CheckKind, CompareBinOper, ForInOrder, Ident, NegateKind, Path, Spanned, VarParamKind,
 };
 use cachet_lang::built_in::{BuiltInVar, IdentEnum};
 use cachet_lang::flattener::{self, HasAttrs, Typed};
@@ -153,16 +152,16 @@ impl<'a> Compiler<'a> {
                     (None, ret, None)
                 }
                 // For label fields, generate an inline function that returns
-                // the exit label bound at index 0 in the entry-point.
-                flattener::Field::Label(label) => {
-                    let ir_ident = self.env[label.ir].ident.value.into();
-                    let ret = IrMemberTypeIdent {
-                        ir_ident,
-                        selector: IrMemberTypeSelector::Label,
+                // the well-known exit label bound in the entry-point.
+                flattener::Field::Label(_) => {
+                    let attr = FnAttr::Inline;
+                    let ret = PreludeTypeIdent::Label.into();
+                    let value = CallExpr {
+                        target: PreludeFnIdent::ExitLabel.into(),
+                        arg_exprs: vec![],
                     }
                     .into();
-                    let value = Literal::Int(0).into();
-                    (Some(FnAttr::Inline), ret, Some(value))
+                    (Some(attr), ret, Some(value))
                 }
             };
 
@@ -237,10 +236,10 @@ impl<'a> Compiler<'a> {
             type_: PreludeTypeIdent::Pc.into(),
         });
 
-        let ops_fn_item = FnItem {
+        let op_at_fn_item = FnItem {
             ident: IrMemberFnIdent {
                 ir_ident,
-                selector: IrMemberFnSelector::Ops,
+                selector: IrMemberFnSelector::OpAt,
             }
             .into(),
             attr: None,
@@ -253,16 +252,21 @@ impl<'a> Compiler<'a> {
             value: None,
         };
 
-        let incr_pc_stmt: Stmt = AssignStmt {
-            lhs: pc_global_var_item.var.ident.into(),
-            rhs: BinOperExpr {
-                oper: ArithBinOper::Add.into(),
-                lhs: pc_global_var_item.var.ident.into(),
-                rhs: Literal::Int(1).into(),
+        let next_pc_fn_item = FnItem {
+            ident: IrMemberFnIdent {
+                ir_ident,
+                selector: IrMemberFnSelector::NextPc,
             }
             .into(),
-        }
-        .into();
+            attr: None,
+            param_vars: vec![TypedVar {
+                ident: ParamVarIdent::Pc.into(),
+                type_: PreludeTypeIdent::Pc.into(),
+            }]
+            .into(),
+            ret: PreludeTypeIdent::Pc.into(),
+            value: None,
+        };
 
         let step_proc_item = ProcItem {
             ident: IrMemberFnIdent {
@@ -275,24 +279,18 @@ impl<'a> Compiler<'a> {
             ret_vars: TypedVars::default(),
             body: Some(Body {
                 local_vars: Vec::new(),
-                stmts: vec![incr_pc_stmt.clone()],
+                stmts: vec![
+                    AssignStmt {
+                        lhs: pc_global_var_item.var.ident.into(),
+                        rhs: CallExpr {
+                            target: next_pc_fn_item.ident,
+                            arg_exprs: vec![pc_global_var_item.var.ident.into()],
+                        }
+                        .into(),
+                    }
+                    .into(),
+                ],
             }),
-        };
-
-        let pc_emit_paths_fn_item = FnItem {
-            ident: IrMemberFnIdent {
-                ir_ident,
-                selector: IrMemberFnSelector::PcEmitPaths,
-            }
-            .into(),
-            attr: None,
-            param_vars: vec![TypedVar {
-                ident: ParamVarIdent::Pc.into(),
-                type_: PreludeTypeIdent::Pc.into(),
-            }]
-            .into(),
-            ret: PreludeTypeIdent::EmitPath.into(),
-            value: None,
         };
 
         let emit_proc_item = ProcItem {
@@ -308,8 +306,8 @@ impl<'a> Compiler<'a> {
                     type_: op_type_item.ident.into(),
                 },
                 TypedVar {
-                    ident: ParamVarIdent::EmitPath.into(),
-                    type_: PreludeTypeIdent::EmitPath.into(),
+                    ident: ParamVarIdent::Pc.into(),
+                    type_: PreludeTypeIdent::Pc.into(),
                 },
             ]
             .into(),
@@ -323,11 +321,11 @@ impl<'a> Compiler<'a> {
                         cond: BinOperExpr {
                             oper: CompareBinOper::Eq.into(),
                             lhs: CallExpr {
-                                target: pc_emit_paths_fn_item.ident,
-                                arg_exprs: vec![pc_global_var_item.var.ident.into()],
+                                target: op_at_fn_item.ident,
+                                arg_exprs: vec![ParamVarIdent::Pc.into()],
                             }
                             .into(),
-                            rhs: ParamVarIdent::EmitPath.into(),
+                            rhs: ParamVarIdent::Op.into(),
                         }
                         .into(),
                     }
@@ -338,85 +336,38 @@ impl<'a> Compiler<'a> {
                         cond: BinOperExpr {
                             oper: CompareBinOper::Eq.into(),
                             lhs: CallExpr {
-                                target: ops_fn_item.ident,
+                                target: next_pc_fn_item.ident,
                                 arg_exprs: vec![pc_global_var_item.var.ident.into()],
                             }
                             .into(),
-                            rhs: ParamVarIdent::Op.into(),
+                            rhs: ParamVarIdent::Pc.into(),
                         }
                         .into(),
                     }
                     .into(),
-                    incr_pc_stmt,
+                    AssignStmt {
+                        lhs: pc_global_var_item.var.ident.into(),
+                        rhs: ParamVarIdent::Pc.into(),
+                    }
+                    .into(),
                 ],
             }),
         };
 
-        let label_type_item = TypeItem {
-            ident: IrMemberTypeIdent {
-                ir_ident,
-                selector: IrMemberTypeSelector::Label,
-            }
-            .into(),
-            attr: None,
-            type_: Some(NativeTypeIdent::Int.into()),
-        };
-
-        let next_label_global_var_item = GlobalVarItem::from(TypedVar {
-            ident: IrMemberGlobalVarIdent {
-                ir_ident,
-                selector: IrMemberGlobalVarSelector::NextLabel,
-            }
-            .into(),
-            type_: label_type_item.ident.into(),
-        });
-
-        let label_pcs_global_var_item = GlobalVarItem::from(TypedVar {
-            ident: IrMemberGlobalVarIdent {
-                ir_ident,
-                selector: IrMemberGlobalVarSelector::LabelPcs,
-            }
-            .into(),
-            type_: MapType {
-                key_types: vec![label_type_item.ident.into()],
-                value_type: PreludeTypeIdent::Pc.into(),
-            }
-            .into(),
-        });
-
-        let label_proc_item = ProcItem {
+        let label_bound_pc_fn_item = FnItem {
             ident: IrMemberFnIdent {
                 ir_ident,
-                selector: IrMemberFnSelector::Label,
+                selector: IrMemberFnSelector::LabelBoundPc,
             }
             .into(),
             attr: None,
-            param_vars: TypedVars::default(),
-            ret_vars: vec![TypedVar {
-                ident: VarIdent::Ret.into(),
-                type_: label_type_item.ident.into(),
+            param_vars: vec![TypedVar {
+                ident: ParamVarIdent::Label.into(),
+                type_: PreludeTypeIdent::Label.into(),
             }]
             .into(),
-            body: Some(Body {
-                local_vars: Vec::new(),
-                stmts: vec![
-                    AssignStmt {
-                        lhs: VarIdent::Ret.into(),
-                        rhs: next_label_global_var_item.var.ident.into(),
-                    }
-                    .into(),
-                    AssignStmt {
-                        lhs: next_label_global_var_item.var.ident.into(),
-                        rhs: BinOperExpr {
-                            oper: ArithBinOper::Add.into(),
-                            lhs: next_label_global_var_item.var.ident.into(),
-                            rhs: Literal::Int(1).into(),
-                        }
-                        .into(),
-                    }
-                    .into(),
-                ],
-            }),
+            ret: PreludeTypeIdent::Pc.into(),
+            value: None,
         };
 
         let bind_proc_item = ProcItem {
@@ -428,21 +379,30 @@ impl<'a> Compiler<'a> {
             attr: Some(InlineProcAttr { depth: 1 }.into()),
             param_vars: vec![TypedVar {
                 ident: ParamVarIdent::Label.into(),
-                type_: label_type_item.ident.into(),
+                type_: PreludeTypeIdent::Label.into(),
             }]
             .into(),
             ret_vars: TypedVars::default(),
             body: Some(Body {
                 local_vars: Vec::new(),
                 stmts: vec![
-                    AssignStmt {
-                        lhs: IndexExpr {
-                            base: label_pcs_global_var_item.var.ident.into(),
-                            key: ParamVarIdent::Label.into(),
-                            value: None,
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        attr: None,
+                        cond: BinOperExpr {
+                            oper: CompareBinOper::Eq.into(),
+                            lhs: CallExpr {
+                                target: label_bound_pc_fn_item.ident,
+                                arg_exprs: vec![ParamVarIdent::Label.into()],
+                            }
+                            .into(),
+                            rhs: CallExpr {
+                                target: next_pc_fn_item.ident,
+                                arg_exprs: vec![pc_global_var_item.var.ident.into()],
+                            }
+                            .into(),
                         }
                         .into(),
-                        rhs: pc_global_var_item.var.ident.into(),
                     }
                     .into(),
                 ],
@@ -458,22 +418,30 @@ impl<'a> Compiler<'a> {
             attr: Some(InlineProcAttr { depth: 1 }.into()),
             param_vars: vec![TypedVar {
                 ident: ParamVarIdent::Label.into(),
-                type_: label_type_item.ident.into(),
+                type_: PreludeTypeIdent::Label.into(),
             }]
             .into(),
             ret_vars: TypedVars::default(),
             body: Some(Body {
                 local_vars: Vec::new(),
                 stmts: vec![
-                    AssignStmt {
-                        lhs: IndexExpr {
-                            base: label_pcs_global_var_item.var.ident.into(),
-                            key: ParamVarIdent::Label.into(),
-                            value: None,
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        attr: None,
+                        cond: BinOperExpr {
+                            oper: CompareBinOper::Eq.into(),
+                            lhs: CallExpr {
+                                target: label_bound_pc_fn_item.ident,
+                                arg_exprs: vec![ParamVarIdent::Label.into()],
+                            }
+                            .into(),
+                            rhs: CallExpr {
+                                target: PreludeFnIdent::ExitPc.into(),
+                                arg_exprs: vec![],
+                            }
+                            .into(),
                         }
                         .into(),
-                        // PC 0 is reserved for an exit point.
-                        rhs: Literal::Int(0).into(),
                     }
                     .into(),
                 ],
@@ -489,7 +457,7 @@ impl<'a> Compiler<'a> {
             attr: Some(InlineProcAttr { depth: 1 }.into()),
             param_vars: vec![TypedVar {
                 ident: ParamVarIdent::Label.into(),
-                type_: label_type_item.ident.into(),
+                type_: PreludeTypeIdent::Label.into(),
             }]
             .into(),
             ret_vars: TypedVars::default(),
@@ -498,10 +466,9 @@ impl<'a> Compiler<'a> {
                 stmts: vec![
                     AssignStmt {
                         lhs: pc_global_var_item.var.ident.into(),
-                        rhs: IndexExpr {
-                            base: label_pcs_global_var_item.var.ident.into(),
-                            key: ParamVarIdent::Label.into(),
-                            value: None,
+                        rhs: CallExpr {
+                            target: label_bound_pc_fn_item.ident,
+                            arg_exprs: vec![ParamVarIdent::Label.into()],
                         }
                         .into(),
                     }
@@ -514,14 +481,11 @@ impl<'a> Compiler<'a> {
             op_type_item.into(),
             exit_op_ctor_fn_item.into(),
             pc_global_var_item.into(),
-            ops_fn_item.into(),
+            op_at_fn_item.into(),
+            next_pc_fn_item.into(),
             step_proc_item.into(),
-            pc_emit_paths_fn_item.into(),
             emit_proc_item.into(),
-            label_type_item.into(),
-            next_label_global_var_item.into(),
-            label_pcs_global_var_item.into(),
-            label_proc_item.into(),
+            label_bound_pc_fn_item.into(),
             bind_proc_item.into(),
             bind_exit_proc_item.into(),
             goto_proc_item.into(),
@@ -636,11 +600,11 @@ impl<'a> Compiler<'a> {
             }
         }
 
-        // Add an extra `emit_path` parameter to ops and emitting functions.
+        // Add an extra `pc` parameter to compiler ops and emitting functions.
         if let Some(_) = callable_item.emits {
             param_vars.push(TypedVar {
-                ident: ParamVarIdent::EmitPath.into(),
-                type_: PreludeTypeIdent::EmitPath.into(),
+                ident: ParamVarIdent::Pc.into(),
+                type_: PreludeTypeIdent::Pc.into(),
             });
         }
 
@@ -803,6 +767,8 @@ impl<'a> Compiler<'a> {
 
         // Label parameters to the top-level op are reflected as local
         // variables.
+        // TODO(spinda): Instead of using actual variables for these, just pass
+        // `ExitPc()` directly into the top-level label parameters.
         let label_params =
             top_op_item
                 .param_order
@@ -819,44 +785,36 @@ impl<'a> Compiler<'a> {
 
         // First, some label-related bookkeeping...
 
-        // Bind label 0 to an exit point. This is used for top-level label
-        // parameters and struct label fields.
+        // Bind the well-known exit label to the well-known exit point PC. This
+        // is used for top-level label parameters and struct label fields.
+        let exit_label_expr: Expr = CallExpr {
+            target: PreludeFnIdent::ExitLabel.into(),
+            arg_exprs: vec![],
+        }
+        .into();
         let bind_exit_label_stmt = CallExpr {
             target: IrMemberFnIdent {
                 ir_ident: bottom_ir_ident,
                 selector: IrMemberFnSelector::BindExit,
             }
             .into(),
-            arg_exprs: vec![Literal::Int(0).into()],
+            arg_exprs: vec![exit_label_expr.clone()],
         }
         .into();
 
-        // Set the next-label-index counter to 1, so it's after the exit label
-        // we just set up at index 0.
-        let init_next_label_counter_stmt: Stmt = AssignStmt {
-            lhs: IrMemberGlobalVarIdent {
-                ir_ident: bottom_ir_ident,
-                selector: IrMemberGlobalVarSelector::NextLabel,
-            }.into(),
-            rhs: Literal::Int(1).into(),
-        }
-        .into();
-
-        let mut stmts: Vec<Stmt> = vec![bind_exit_label_stmt, init_next_label_counter_stmt];
+        let mut stmts: Vec<Stmt> = vec![bind_exit_label_stmt];
 
         // Point all of the label parameter local variables to the exit label we
-        // just bound at index 0.
+        // just bound.
         stmts.extend(label_param_local_vars.iter().map(|label_param_local_var| {
             AssignStmt {
                 lhs: label_param_local_var.var.ident.into(),
-                rhs: Literal::Int(0).into(),
+                rhs: exit_label_expr.clone(),
             }
             .into()
         }));
 
         // Now we're entering into op emission...
-
-        let nil_emit_path_expr: Expr = generate_emit_path_expr(&EmitLabelIdent::default()).into();
 
         let pc_var_ident: VarIdent = IrMemberGlobalVarIdent {
             ir_ident: bottom_ir_ident,
@@ -864,42 +822,15 @@ impl<'a> Compiler<'a> {
         }
         .into();
 
-        // Initialize the program counter to 0 for op emission.
+        // Initialize the program counter to `NilPc()` for op emission.
+        let nil_pc_expr: Expr = CallExpr {
+            target: PreludeFnIdent::NilPc.into(),
+            arg_exprs: vec![],
+        }
+        .into();
         let init_emit_pc_stmt: Stmt = AssignStmt {
             lhs: pc_var_ident.into(),
-            rhs: Literal::Int(0).into(),
-        }
-        .into();
-
-        // Emit a leading "exit" op at the reserved PC 0, to represent control
-        // flow being transferred to some point outside the program from a jump
-        // to an externally-bound label (e.g., top-level label parameters).
-        //
-        // We stick this at PC 0 so that we have a known PC value to bind exit
-        // labels to before we've finished emitting all the ops (so, before we
-        // know how many ops are in the program). This means that the actual
-        // program will start at PC 1.
-        let exit_op_ctor_call_expr: Expr = CallExpr {
-            target: IrMemberFnIdent {
-                ir_ident: bottom_ir_ident,
-                selector: OpCtorIrMemberFnSelector::from(OpSelector::Exit).into(),
-            }
-            .into(),
-            arg_exprs: Vec::new(),
-        }
-        .into();
-        let exit_emit_label_ident = &flow_graph[flow_graph.exit_emit_node_index()]
-            .label_ident
-            .as_ref()
-            .unwrap(); // exit emit node always has label_ident
-        let exit_emit_path_expr: Expr = generate_emit_path_expr(exit_emit_label_ident).into();
-        let leading_exit_emit_stmt = CallExpr {
-            target: IrMemberFnIdent {
-                ir_ident: bottom_ir_ident,
-                selector: IrMemberFnSelector::Emit,
-            }
-            .into(),
-            arg_exprs: vec![exit_op_ctor_call_expr.clone(), exit_emit_path_expr.clone()],
+            rhs: nil_pc_expr.clone(),
         }
         .into();
 
@@ -912,7 +843,7 @@ impl<'a> Compiler<'a> {
             .map(|label_param_local_var| label_param_local_var.var.ident.into());
         let top_op_arg_exprs = top_op_var_arg_exprs
             .chain(top_op_label_arg_exprs)
-            .chain(iter::once(nil_emit_path_expr))
+            .chain(iter::once(nil_pc_expr.clone()))
             .collect();
         let call_top_op_fn_stmt = CallExpr {
             target: UserFnIdent {
@@ -925,37 +856,60 @@ impl<'a> Compiler<'a> {
         .into();
 
         // Emit a trailing "exit" op after everything else, to represent
-        // control flow being transferred to some point outside the program
-        // following normal termination (i.e., control flow reaching the end of
-        // the generated program).
-        let trailing_exit_emit_stmt = CallExpr {
+        // control flow being transferred to some point outside the program,
+        // either via normal termination (i.e., control flow reaching the end of
+        // the generated program) or otherwise (e.g., jumping to an exit label).
+        // We use a well-known fixed PC value so that the exit point has
+        // a predictable PC (e.g., for binding exit labels) regardless of how
+        // many ops are emitted.
+        let emit_exit_op_stmt = CallExpr {
             target: IrMemberFnIdent {
                 ir_ident: bottom_ir_ident,
                 selector: IrMemberFnSelector::Emit,
             }
             .into(),
-            arg_exprs: vec![exit_op_ctor_call_expr, exit_emit_path_expr],
+            arg_exprs: vec![
+                CallExpr {
+                    target: IrMemberFnIdent {
+                        ir_ident: bottom_ir_ident,
+                        selector: OpCtorIrMemberFnSelector::from(OpSelector::Exit).into(),
+                    }
+                    .into(),
+                    arg_exprs: Vec::new(),
+                }
+                .into(),
+                CallExpr {
+                    target: PreludeFnIdent::ExitPc.into(),
+                    arg_exprs: vec![],
+                }
+                .into(),
+            ],
         }
         .into();
 
         // And now, the interpreter...
 
-        // Reset the program counter before we run the interpreter. Note that PC
-        // 0 is reserved for the leading exit-point which breaks from
-        // control-flow within the program out to external code. The first real
-        // op of the generated program is emitted at PC 1, thus this is where
-        // the counter starts for the interpreter phase.
+        // Reset the program counter before we run the interpreter. The first op
+        // in the program is emitted at the PC following `NilPc()`, as that's
+        // the initial PC value passed into the top-level op emitter.
         let init_interpret_pc_stmt: Stmt = AssignStmt {
             lhs: pc_var_ident.into(),
-            rhs: Literal::Int(1).into(),
+            rhs: CallExpr {
+                target: IrMemberFnIdent {
+                    ir_ident: bottom_ir_ident,
+                    selector: IrMemberFnSelector::NextPc,
+                }
+                .into(),
+                arg_exprs: vec![nil_pc_expr],
+            }
+            .into(),
         }
         .into();
 
         stmts.extend([
             init_emit_pc_stmt,
-            leading_exit_emit_stmt,
             call_top_op_fn_stmt,
-            trailing_exit_emit_stmt,
+            emit_exit_op_stmt,
             init_interpret_pc_stmt,
         ]);
 
@@ -994,11 +948,7 @@ impl<'a> Compiler<'a> {
                 cond: BinOperExpr {
                     oper: CompareBinOper::Eq.into(),
                     lhs: CallExpr {
-                        target: IrMemberFnIdent {
-                            ir_ident: bottom_ir_ident,
-                            selector: IrMemberFnSelector::PcEmitPaths,
-                        }
-                        .into(),
+                        target: PreludeFnIdent::EmitPathPcField.into(),
                         arg_exprs: vec![pc_var_ident.into()],
                     }
                     .into(),
@@ -1019,7 +969,7 @@ impl<'a> Compiler<'a> {
                     rhs: CallExpr {
                         target: IrMemberFnIdent {
                             ir_ident: bottom_ir_ident,
-                            selector: IrMemberFnSelector::Ops,
+                            selector: IrMemberFnSelector::OpAt,
                         }
                         .into(),
                         arg_exprs: vec![pc_var_ident.into()],
@@ -1148,11 +1098,7 @@ impl<'a> Compiler<'a> {
         // through label out-parameters, we just bind the label IDs passed in.
         TypedVar {
             ident: UserParamVarIdent::from(label_param.label.ident.value).into(),
-            type_: IrMemberTypeIdent {
-                ir_ident: self.env[label_param.label.ir].ident.value.into(),
-                selector: IrMemberTypeSelector::Label,
-            }
-            .into(),
+            type_: PreludeTypeIdent::Label.into(),
         }
     }
 
@@ -1183,10 +1129,7 @@ impl<'a> Compiler<'a> {
         &'b self,
         locals: &'b flattener::Locals,
     ) -> impl 'b + Iterator<Item = LocalVar> + Captures<'a> {
-        iterate![
-            ..self.compile_local_vars(&locals.local_vars),
-            ..self.compile_local_labels(&locals.local_labels),
-        ]
+        self.compile_local_vars(&locals.local_vars)
     }
 
     fn compile_local_vars<'b>(
@@ -1210,37 +1153,6 @@ impl<'a> Compiler<'a> {
             }
             .into(),
             type_: self.get_type_ident(local_var.type_).into(),
-        }
-        .into()
-    }
-
-    fn compile_local_labels<'b>(
-        &'b self,
-        local_labels: &'b TiSlice<LocalLabelIndex, flattener::Label>,
-    ) -> impl 'b + Iterator<Item = LocalVar> + Captures<'a> {
-        local_labels
-            .iter_enumerated()
-            .map(|(local_label_index, local_label)| {
-                self.compile_local_label(local_label_index, local_label)
-            })
-    }
-
-    fn compile_local_label(
-        &self,
-        local_label_index: LocalLabelIndex,
-        local_label: &flattener::Label,
-    ) -> LocalVar {
-        TypedVar {
-            ident: LocalLabelVarIdent {
-                ident: local_label.ident.value,
-                index: local_label_index,
-            }
-            .into(),
-            type_: IrMemberTypeIdent {
-                ir_ident: self.env[local_label.ir].ident.value.into(),
-                selector: IrMemberTypeSelector::Label,
-            }
-            .into(),
         }
         .into()
     }
@@ -1330,7 +1242,7 @@ fn generate_cast_axiom_item(
 
 fn generate_emit_path_expr(emit_label_ident: &EmitLabelIdent) -> CallExpr {
     let nil_emit_path_ctor_expr = CallExpr {
-        target: PreludeFnIdent::NilEmitPathCtor.into(),
+        target: PreludeFnIdent::NilEmitPath.into(),
         arg_exprs: Vec::new(),
     };
 
@@ -1339,7 +1251,7 @@ fn generate_emit_path_expr(emit_label_ident: &EmitLabelIdent) -> CallExpr {
         .iter()
         .fold(nil_emit_path_ctor_expr, |accum, emit_label_segment| {
             CallExpr {
-                target: PreludeFnIdent::ConsEmitPathCtor.into(),
+                target: PreludeFnIdent::ConsEmitPath.into(),
                 arg_exprs: vec![
                     accum.into(),
                     Literal::Int(emit_label_segment.local_emit_index.into()).into(),
@@ -1564,19 +1476,31 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_internal_label_arg(&mut self, label_index: flattener::LabelIndex) -> Expr {
-        // As with compiling label parameters and out-parameters, we compile
-        // label arguments and label out-arguments the same way when generating
-        // Boogie.
         match label_index {
+            // As with compiling label parameters and out-parameters, we compile
+            // label arguments and label out-arguments the same way when
+            // generating Boogie.
             flattener::LabelIndex::Param(label_param_index) => {
                 UserParamVarIdent::from(self.context.param(label_param_index).label.ident.value)
                     .into()
             }
-            flattener::LabelIndex::Local(local_label_index) => LocalLabelVarIdent {
-                ident: self.context.local(local_label_index).ident.value,
-                index: local_label_index,
+            // Local labels don't actually need Boogie local variables: we can
+            // simply identify them by index.
+            flattener::LabelIndex::Local(local_label_index) => {
+                let local_label = self.context.local(local_label_index);
+                CallExpr {
+                    target: PreludeFnIdent::Label.into(),
+                    arg_exprs: vec![
+                        ParamVarIdent::Pc.into(),
+                        CommentedExpr {
+                            comment: local_label.ident.value.into(),
+                            expr: Literal::Int(local_label_index.into()).into(),
+                        }
+                        .into(),
+                    ],
+                }
+                .into()
             }
-            .into(),
         }
     }
 
@@ -1601,16 +1525,16 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             let local_emit_index = *self.next_local_emit_index;
             *self.next_local_emit_index = LocalEmitIndex::from(usize::from(local_emit_index) + 1);
 
-            let emit_path_expr = CallExpr {
-                target: PreludeFnIdent::ConsEmitPathCtor.into(),
+            let pc_expr = CallExpr {
+                target: PreludeFnIdent::ConsPcEmitPath.into(),
                 arg_exprs: vec![
-                    ParamVarIdent::EmitPath.into(),
+                    ParamVarIdent::Pc.into(),
                     Literal::Int(local_emit_index.into()).into(),
                 ],
             }
             .into();
 
-            arg_exprs.push(emit_path_expr);
+            arg_exprs.push(pc_expr);
         }
 
         let call_expr = CallExpr { target, arg_exprs };
@@ -1656,7 +1580,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_stmt(&mut self, stmt: &flattener::Stmt) {
         match stmt {
             flattener::Stmt::Let(let_stmt) => self.compile_let_stmt(let_stmt),
-            flattener::Stmt::Label(label_stmt) => self.compile_label_stmt(label_stmt),
+            flattener::Stmt::Label(_) => (),
             flattener::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
             flattener::Stmt::ForIn(for_in_stmt) => self.compile_for_in_stmt(for_in_stmt),
             flattener::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
@@ -1679,36 +1603,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let rhs = self.compile_expr(&let_stmt.rhs);
 
         self.stmts.push(AssignStmt { lhs, rhs }.into());
-    }
-
-    fn compile_label_stmt(&mut self, label_stmt: &flattener::LabelStmt) {
-        let local_label = self.context.local(label_stmt.label);
-        let ir_ident = self.env[local_label.ir].ident.value.into();
-
-        let call = CallExpr {
-            target: IrMemberFnIdent {
-                ir_ident,
-                selector: IrMemberFnSelector::Label,
-            }
-            .into(),
-            arg_exprs: vec![].into(),
-        };
-
-        let ret_var_idents = vec![
-            LocalLabelVarIdent {
-                ident: local_label.ident.value,
-                index: label_stmt.label,
-            }
-            .into(),
-        ];
-
-        self.stmts.push(
-            CallStmt {
-                call,
-                ret_var_idents,
-            }
-            .into(),
-        );
     }
 
     fn compile_if_stmt_recurse(&mut self, if_stmt: &flattener::IfStmt) -> IfStmt {
@@ -1829,10 +1723,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let local_emit_index = *self.next_local_emit_index;
         *self.next_local_emit_index = LocalEmitIndex::from(usize::from(local_emit_index) + 1);
 
-        let emit_path_expr = CallExpr {
-            target: PreludeFnIdent::ConsEmitPathCtor.into(),
+        let pc_expr = CallExpr {
+            target: PreludeFnIdent::ConsPcEmitPath.into(),
             arg_exprs: vec![
-                ParamVarIdent::EmitPath.into(),
+                ParamVarIdent::Pc.into(),
                 Literal::Int(local_emit_index.into()).into(),
             ],
         }
@@ -1849,7 +1743,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 }
                 .into();
 
-                op_arg_exprs.push(emit_path_expr);
+                op_arg_exprs.push(pc_expr);
 
                 self.stmts.push(
                     CallExpr {
@@ -1883,7 +1777,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 }
                 .into();
 
-                let emit_args = vec![op_ctor_call_expr, emit_path_expr];
+                let emit_args = vec![op_ctor_call_expr, pc_expr];
 
                 self.stmts.push(
                     CallExpr {

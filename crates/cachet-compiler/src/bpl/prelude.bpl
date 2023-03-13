@@ -1,10 +1,31 @@
 // ... begin prelude ...
 
-type Pc = int;
-
 type {:datatype} EmitPath;
 function {:constructor} NilEmitPath(): EmitPath;
 function {:constructor} ConsEmitPath(init: EmitPath, last: int): EmitPath;
+
+type {:datatype} LoopPath;
+function {:constructor} NilLoopPath(): LoopPath;
+function {:constructor} ConsLoopPath(init: LoopPath, last: int): LoopPath;
+
+type {:datatype} Pc;
+function {:constructor} Pc(emitPath: EmitPath, loopPath: LoopPath): Pc;
+
+function {:inline} NilPc(): Pc {
+  Pc(NilEmitPath(), NilLoopPath())
+}
+
+function {:inline} ExitPc(): Pc {
+  NilPc()
+}
+
+function {:inline} ConsPcEmitPath(pc: Pc, last: int): Pc {
+  Pc(ConsEmitPath(emitPath#Pc(pc), last), loopPath#Pc(pc))
+}
+
+type {:datatype} Label;
+function {:constructor} Label(pc: Pc, index: int): Label;
+function {:constructor} ExitLabel(): Label;
 
 type #Unit;
 const #unit: #Unit;
