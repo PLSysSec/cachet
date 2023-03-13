@@ -31,7 +31,7 @@ if [[ "${#selectors[@]}" = 0 ]]; then
   >&2 echo "Error: Nothing matched \"${cachet_files_glob}\""
   exit 1
 else
-  parallel "${scripts_dir}/compile-stub.sh" ::: "${selectors[@]}"
+  time parallel "${scripts_dir}/compile-stub.sh" ::: "${selectors[@]}"
 fi
 
 #for engine_cachet_dir in "${cachet_dir}"/*; do

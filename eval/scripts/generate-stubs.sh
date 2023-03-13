@@ -7,4 +7,4 @@ source "${scripts_dir}/common.sh"
 rm -rf -- "${spew_dir}"
 
 cd "${eval_dir}"
-pnpm run speedometer -- "${@}"
+time pnpm run speedometer -- "${@}"

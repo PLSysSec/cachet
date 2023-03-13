@@ -26,7 +26,7 @@ if [[ "${#selectors[@]}" = 0 ]]; then
   >&2 echo "Error: Nothing matched \"${bpl_files_glob}\""
   exit 1
 else
-  parallel "${scripts_dir}/verify-stub.sh" ::: "${selectors[@]}"
+  time parallel --shuf --jobs '25%' "${scripts_dir}/verify-stub.sh" ::: "${selectors[@]}"
 fi
 
 #for engine_bpl_dir in "${bpl_dir}"/*; do
