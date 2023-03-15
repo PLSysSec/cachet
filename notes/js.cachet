@@ -748,10 +748,6 @@ impl MaybeNativeObject {
 struct NativeObject <: Object;
 
 impl NativeObject {
-    var maxFixedSlots: UInt64 = 16_u64;
-    // FIXME(spinda): Don't know the actual value for this.
-    var maxSlotSpan: UInt64 = 1024_u64;
-
     var sizeOf: UInt64 = 24_u64;
     var offsetOfFixedSlots: UInt64 = NativeObject::sizeOf;
     var offsetOfSlots: UInt64 = 8_u64;
@@ -763,7 +759,11 @@ impl NativeObject {
 
     #[inline]
     fn numDynamicSlots(nativeObject: NativeObject) -> UInt32 {
-        Shape::numDynamicSlots(Object::shapeOf(nativeObject))
+        let shape = Object::shapeOf(nativeObject);
+        if Shape::slotSpan(shape) <= Shape::numFixedSlots(shape) {
+            return 0_u32;
+        }
+        Shape::slotSpan(shape) - Shape::numFixedSlots(shape)
     }
 
     fn slotSpan(nativeObject: NativeObject) -> UInt32 {
@@ -824,7 +824,7 @@ impl NativeObject {
             // fixed slots
             let slotOffset = offset as UInt64 - NativeObject::sizeOf;
             assert slotOffset % Value::sizeOf == 0_u64;
-            assert slotOffset / Value::sizeOf < NativeObject::maxFixedSlots;
+            assert slotOffset / Value::sizeOf < Shape::maxFixedSlots;
             let slot = (slotOffset / Value::sizeOf) as UInt32;
             let value = NativeObject::getFixedSlot(nativeObject, slot);
             return RegData::fromValue(value);
@@ -1172,7 +1172,7 @@ impl PropertyInfo {
     fn maybeSlot(info: PropertyInfo) -> UInt32 {
         let slot = (unsafe { PropertyInfo::maybeSlotUnchecked(info) });
         if PropertyInfo::hasSlot(info) {
-            assume slot < NativeObject::maxSlotSpan;
+            assume slot < Shape::maxSlotSpan;
         }
         slot
     }
@@ -1260,6 +1260,9 @@ impl BaseShape {
 struct Shape;
 
 impl Shape {
+    var maxFixedSlots: UInt64 = 16_u64;
+    var maxSlotSpan: UInt64 = 1024_u64;
+
     fn fromAddr(addr: UInt64) -> Shape;
 
     fn baseShapeOf(shape: Shape) -> BaseShape;
@@ -1268,23 +1271,29 @@ impl Shape {
         BaseShape::classOf(Shape::baseShapeOf(shape))
     }
 
-    fn numFixedSlots(shape: Shape) -> UInt32;
-
-    fn numDynamicSlots(shape: Shape) -> UInt32 {
-        if Shape::slotSpan(shape) < Shape::numFixedSlots(shape) {
-            return 0_u32;
-        }
-        Shape::slotSpan(shape) - Shape::numFixedSlots(shape)
+    fn numFixedSlots(shape: Shape) -> UInt32 {
+        let numFixedSlots = unsafe { Shape::numFixedSlotsUnchecked(shape) };
+        assume numFixedSlots < Shape::maxFixedSlots;
+        numFixedSlots
     }
 
-    fn slotSpan(shape: Shape) -> UInt32;
+    unsafe fn numFixedSlotsUnchecked(shape: Shape) -> UInt32;
+
+    #[inline]
+    fn slotSpan(shape: Shape) -> UInt32 {
+        let slotSpan = unsafe { Shape::slotSpanUnchecked(shape) };
+        assume slotSpan < Shape::maxSlotSpan;
+        slotSpan
+    }
+
+    unsafe fn slotSpanUnchecked(shape: Shape) -> UInt32;
 
     fn hasSlot(shape: Shape, slot: UInt32) -> Bool {
-      slot < NativeObject::maxSlotSpan && slot < Shape::slotSpan(shape)
+      slot < Shape::slotSpan(shape)
     }
 
     fn hasFixedSlot(shape: Shape, slot: UInt32) -> Bool {
-      slot < NativeObject::maxFixedSlots && slot < Shape::numFixedSlots(shape)
+      slot < Shape::numFixedSlots(shape)
     }
 
     fn hasDynamicSlot(shape: Shape, slot: UInt32) -> Bool {

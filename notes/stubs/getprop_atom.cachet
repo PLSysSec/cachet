@@ -7,7 +7,7 @@ ir CacheStub emits CacheIR {
         strId: ValueId,
         atomField: StringField,
         shapeField: ShapeField,
-        slotField: Int32Field,
+        offsetField: Int32Field,
     ) {
         initRegState();
 
@@ -29,8 +29,7 @@ ir CacheStub emits CacheIR {
         assume Class::isNativeObject(BaseShape::classOf(baseShape));
         assume TaggedProto::isObject(BaseShape::protoOf(baseShape));
 
-        let slotOffset = CacheIR::readInt32Field(slotField);
-        assume slotOffset == 24_i32;
+        assume CacheIR::readInt32Field(offsetField) == 24_i32;
 
         emit CacheIR::GuardToObject(objId);
         emit CacheIR::GuardToString(strId);
@@ -38,6 +37,6 @@ ir CacheStub emits CacheIR {
         emit CacheIR::GuardSpecificAtom(strId, atomField);
         let objId = OperandId::toObjectId(objId);
         emit CacheIR::GuardShape(objId, shapeField);
-        emit CacheIR::LoadFixedSlotResult(objId, slotField);
+        emit CacheIR::LoadFixedSlotResult(objId, offsetField);
     }
 }
