@@ -28,9 +28,9 @@ done
 if [[ "${#selectors[@]}" = 0 ]]; then
   >&2 echo "Error: Nothing matched \"${stub_files_glob}\""
   exit 1
-else
-  time parallel "${scripts_dir}/translate-stub.sh" ::: "${selectors[@]}"
 fi
+
+time parallel "${scripts_dir}/translate-stub.sh" ::: "${selectors[@]}"
 
 #for engine_stubs_dir in "${stubs_dir}"/*; do
 #  engine="$(basename "${engine_stubs_dir}")"
