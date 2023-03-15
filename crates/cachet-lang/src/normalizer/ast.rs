@@ -15,9 +15,9 @@ pub use crate::type_checker::{
     BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex,
     FnIndex, GlobalVarIndex, GotoStmt, HasAttrs, IrIndex, IrItem, Label, LabelIndex, LabelParam,
     LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,
-    NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
-    StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarField, VarIndex,
-    VarParam, VarParamIndex, VariantIndex,
+    NotPartOfDeclOrderError, OpIndex, ParamIndex, Params, ParentIndex, StructFieldIndex,
+    StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarField, VarIndex, VarParam,
+    VarParamIndex, VariantIndex,
 };
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
@@ -144,6 +144,13 @@ pub enum Arg {
 }
 
 #[derive(Clone, Debug)]
+pub struct OutVarArg {
+    pub var: VarIndex,
+    pub type_: TypeIndex,
+    pub upcast_route: Vec<TypeIndex>,
+}
+
+#[derive(Clone, Debug)]
 pub struct LabelArg {
     pub label: LabelIndex,
     pub is_out: bool,
@@ -202,7 +209,8 @@ pub enum Stmt<B = ()> {
 #[derive(Clone, Debug)]
 pub struct LetStmt<B = ()> {
     pub lhs: LocalVarIndex,
-    pub rhs: Expr<B>,
+    pub type_: TypeIndex,
+    pub rhs: Option<Expr<B>>,
 }
 
 #[derive(Clone, Debug)]

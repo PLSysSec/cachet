@@ -1443,14 +1443,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_out_var_arg(&mut self, out_var_arg: &flattener::OutVarArg) -> VarIdent {
         // TODO(spinda): Handle out-parameter upcasting.
-
-        match out_var_arg.out_var {
-            flattener::OutVar::Free(var_index) => self
-                .get_var_ident(var_index.value)
-                .expect("invalid out-variable argument"),
-            // TODO(spinda): Eliminate these in the normalizer.
-            flattener::OutVar::Fresh(_) => unimplemented!(),
-        }
+        self.get_var_ident(out_var_arg.var)
+            .expect("invalid out-variable argument")
     }
 
     fn compile_label_arg(&mut self, label_arg: &flattener::LabelArg) -> Expr {
@@ -1594,13 +1588,18 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_let_stmt(&mut self, let_stmt: &flattener::LetStmt) {
+        // Local variables are pre-declared at the top of the block in Boogie,
+        // so no need to insert a separate assign statement if there's nothing
+        // to assign. This comes up in, e.g., compiling `out let foo` arguments.
+        let Some(rhs) = let_stmt.rhs.as_ref() else { return };
+
         let lhs = LocalVarIdent {
             ident: self.context.local(let_stmt.lhs).ident.value,
             index: let_stmt.lhs,
         }
         .into();
 
-        let rhs = self.compile_expr(&let_stmt.rhs);
+        let rhs = self.compile_expr(rhs);
 
         self.stmts.push(AssignStmt { lhs, rhs }.into());
     }

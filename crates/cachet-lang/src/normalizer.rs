@@ -254,7 +254,25 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
     fn normalize_arg(&mut self, arg: type_checker::Arg) -> Arg {
         match arg {
             type_checker::Arg::Expr(expr) => self.normalize_pure_expr(expr).into(),
-            type_checker::Arg::OutVar(out_var_arg) => out_var_arg.into(),
+            type_checker::Arg::OutVar(out_var_arg) => OutVarArg {
+                var: match out_var_arg.out_var {
+                    type_checker::OutVar::Free(var_index) => var_index.value,
+                    type_checker::OutVar::Fresh(local_var_index) => {
+                        self.export_stmt(
+                            LetStmt {
+                                lhs: local_var_index,
+                                type_: out_var_arg.type_,
+                                rhs: None,
+                            }
+                            .into(),
+                        );
+                        local_var_index.into()
+                    }
+                },
+                type_: out_var_arg.type_,
+                upcast_route: out_var_arg.upcast_route,
+            }
+            .into(),
             type_checker::Arg::Label(label_arg) => LabelArg {
                 label: label_arg.label.value,
                 is_out: false,
@@ -353,7 +371,8 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         self.stmts.push(
             LetStmt {
                 lhs: let_stmt.lhs,
-                rhs,
+                type_: rhs.type_(),
+                rhs: Some(rhs),
             }
             .into(),
         );
@@ -730,7 +749,8 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         self.stmts.push(
             LetStmt {
                 lhs: tmp_local_var_index,
-                rhs: expr,
+                type_: tmp_local_var_type_index,
+                rhs: Some(expr),
             }
             .into(),
         );

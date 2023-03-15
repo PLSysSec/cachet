@@ -8,9 +8,9 @@ pub use crate::normalizer::{
     EnumVariantIndex, Field, FieldIndex, FnIndex, GlobalVarIndex, GotoStmt, HasAttrs, InvokeExpr,
     InvokeStmt, IrIndex, IrItem, Label, LabelArg, LabelFieldArg, LabelIndex, LabelParam,
     LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,
-    NotPartOfDeclOrderError, OpIndex, OutVar, OutVarArg, ParamIndex, Params, ParentIndex,
-    PureExpr, StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarField,
-    VarIndex, VarParam, VarParamIndex, VariantIndex,
+    NotPartOfDeclOrderError, OpIndex, OutVarArg, ParamIndex, Params, ParentIndex, PureExpr,
+    StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarField, VarIndex,
+    VarParam, VarParamIndex, VariantIndex,
 };
 
 pub type Env = normalizer::Env<Void>;

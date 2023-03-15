@@ -322,8 +322,9 @@ impl<'a> FlowTracer<'a> {
 
     fn trace_stmt(&mut self, stmt: &flattener::Stmt) -> ControlFlow<()> {
         match stmt {
-            flattener::Stmt::Label(_) => (),
-            flattener::Stmt::Let(flattener::LetStmt { rhs: expr, .. })
+            flattener::Stmt::Label(_)
+            | flattener::Stmt::Let(flattener::LetStmt { rhs: None, .. }) => (),
+            flattener::Stmt::Let(flattener::LetStmt { rhs: Some(expr), .. })
             | flattener::Stmt::Assign(flattener::AssignStmt { rhs: expr, .. })
             | flattener::Stmt::Check(flattener::CheckStmt { cond: expr, .. }) => {
                 self.trace_expr(expr);

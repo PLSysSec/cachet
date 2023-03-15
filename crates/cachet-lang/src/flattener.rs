@@ -150,11 +150,12 @@ impl Flattener {
     }
 
     fn flatten_let_stmt(&mut self, let_stmt: normalizer::LetStmt) {
-        let rhs = self.flatten_expr(let_stmt.rhs);
+        let rhs = let_stmt.rhs.map(|rhs| self.flatten_expr(rhs));
 
         self.stmts.push(
             LetStmt {
                 lhs: let_stmt.lhs,
+                type_: let_stmt.type_,
                 rhs,
             }
             .into(),

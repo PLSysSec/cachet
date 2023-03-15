@@ -871,7 +871,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                         tags: ExprTag::Ref.into(),
                     };
 
-                    self.init_local_var(lhs, rhs);
+                    self.init_local_var_with_rhs(lhs, rhs);
                 }
             }
         }
@@ -908,11 +908,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         // being used. This can reuse the machinery for out-parameter upcasting.
 
         self.use_expr(
-            match out_var_arg.out_var {
-                normalizer::OutVar::Free(var_index) => self.compile_var_access(var_index.value),
-                // TODO(spinda): Eliminate these in the normalizer.
-                normalizer::OutVar::Fresh(_) => unimplemented!(),
-            },
+            self.compile_var_access(out_var_arg.var),
             ExprTag::MutRef.into(),
         )
     }
@@ -998,9 +994,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
         .into();
 
-        let rhs = self.compile_expr(&let_stmt.rhs);
+        let rhs = let_stmt.rhs.as_ref().map(|rhs| self.compile_expr(rhs));
 
-        self.init_local_var(lhs, rhs);
+        self.init_local_var(lhs, let_stmt.type_, rhs);
     }
 
     fn compile_label_stmt(&mut self, label_stmt: &normalizer::LabelStmt) {
@@ -1034,16 +1030,28 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         self.stmts.push(LetStmt { lhs, type_, rhs }.into());
     }
 
-    fn init_local_var(&mut self, lhs: VarIdent, rhs: TaggedExpr) {
+    fn init_local_var(
+        &mut self,
+        lhs: VarIdent,
+        type_index: normalizer::TypeIndex,
+        rhs: Option<TaggedExpr>,
+    ) {
         let type_ = TypeMemberTypePath {
-            parent: self.get_type_ident(rhs.type_),
+            parent: self.get_type_ident(type_index),
             ident: ExprTag::Local.into(),
         }
         .into();
 
-        let rhs = Some(self.use_expr(rhs, ExprTag::Local.into()));
+        let rhs = rhs.map(|rhs| {
+            assert!(rhs.type_ == type_index);
+            self.use_expr(rhs, ExprTag::Local.into())
+        });
 
         self.stmts.push(LetStmt { lhs, type_, rhs }.into());
+    }
+
+    fn init_local_var_with_rhs(&mut self, lhs: VarIdent, rhs: TaggedExpr) {
+        self.init_local_var(lhs, rhs.type_, Some(rhs));
     }
 
     fn compile_if_stmt_recurse(&mut self, if_stmt: &normalizer::IfStmt) -> IfStmt {
@@ -1507,7 +1515,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             // sub-expression won't change the order.
 
             let hoist_var_ident = self.generate_synthetic_var(SyntheticVarKind::Hoist).into();
-            self.init_local_var(hoist_var_ident, parent_tagged_expr);
+            self.init_local_var_with_rhs(hoist_var_ident, parent_tagged_expr);
 
             TaggedExpr {
                 expr: hoist_var_ident.into(),
