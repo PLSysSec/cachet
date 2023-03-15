@@ -16,10 +16,12 @@ cpp_decls_file="${out_dir}/${sample_name}.h"
 cpp_defs_file="${out_dir}/${sample_name}.inc"
 bpl_file="${out_dir}/${sample_name}.bpl"
 
-cargo run --bin cachet-compiler -- "${cachet_file}" \
-  --cpp-decls "${cpp_decls_file}" \
-  --cpp-defs "${cpp_defs_file}" \
-  --bpl "${bpl_file}" \
-  "${@}"
-cat "${hacks_bpl_file}" "${bpl_file}" | sponge "${bpl_file}"
-cargo run --bin bpl-tree-shaker -- -i "${bpl_file}" -t '#JSOp' -p '#MASM^Op'
+time (
+  cargo run --bin cachet-compiler -- "${cachet_file}" \
+    --cpp-decls "${cpp_decls_file}" \
+    --cpp-defs "${cpp_defs_file}" \
+    --bpl "${bpl_file}" \
+    "${@}"
+  cat "${hacks_bpl_file}" "${bpl_file}" | sponge "${bpl_file}"
+  cargo run --bin bpl-tree-shaker -- -i "${bpl_file}" -t '#JSOp' -p '#MASM^Op'
+)
