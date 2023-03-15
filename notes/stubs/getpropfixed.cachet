@@ -1,0 +1,29 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {
+    op GetProp(
+        valueId: ValueId,
+        shapeField: ShapeField,
+        offsetField: Int32Field,
+    ) {
+        initRegState();
+
+        initOperandId(valueId);
+        initInputValueId(valueId);
+
+        initValueOutput();
+
+        let shape = CacheIR::readShapeField(shapeField);
+
+        assume Class::isNativeObject(Shape::classOf(shape));
+        assume Shape::hasFixedSlot(shape, 1_u32);
+
+        assume CacheIR::readInt32Field(offsetField) == 32_i32;
+
+        emit CacheIR::GuardToObject(valueId);
+        let objectId = OperandId::toObjectId(valueId);
+        emit CacheIR::GuardShape(objectId, shapeField);
+        emit CacheIR::LoadFixedSlotResult(objectId, offsetField);
+    }
+}

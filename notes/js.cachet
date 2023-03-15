@@ -1,5 +1,7 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+import "codegen.cachet"; // for `isCacheableProtoChain`
+
 struct Heap;
 var mut heap: Heap;
 
@@ -658,6 +660,43 @@ impl Object {
         NativeObject::getFixedSlot(nativeObject, slot)
     }
 
+    fn lookupPropertyPure(
+        object: Object,
+        key: PropertyKey,
+        out holder: MaybeNativeObject,
+        out propInfo: PropertyResult,
+    ) -> Bool {
+        let success = (unsafe {
+            Object::lookupPropertyPureUnchecked(object, key, out holder, out propInfo)
+        });
+
+        if success {
+            assume Object::isNativeObject(object);
+            let nativeObject = Object::toNativeObject(object);
+
+            assume MaybeNativeObject::isNativeObject(holder);
+            let nativeHolder = MaybeNativeObject::toNativeObject(holder);
+
+            assume isCacheableProtoChain(nativeObject, nativeHolder);
+
+            if PropertyResult::isNativeProperty(propInfo) {
+                let prop = PropertyResult::propertyInfo(propInfo);
+                if PropertyInfo::hasSlot(prop) {
+                    assume NativeObject::hasSlot(nativeHolder, PropertyInfo::slot(prop));
+                }
+            }
+        }
+
+        success
+    }
+
+    unsafe fn lookupPropertyPureUnchecked(
+        object: Object,
+        key: PropertyKey,
+        out holder: MaybeNativeObject,
+        out propInfo: PropertyResult,
+    ) -> Bool;
+
     // read RegData at the specified memory offset of the Object
     #[spec]
     fn readData(object: Object, offset: Int64) -> RegData {
@@ -674,24 +713,80 @@ impl Object {
     }
 }
 
+struct MaybeNativeObject;
+
+impl MaybeNativeObject {
+    fn isNativeObject(maybeObject: MaybeNativeObject) -> Bool;
+
+    fn none() -> MaybeNativeObject {
+        let maybeObject = (unsafe { MaybeNativeObject::noneUnchecked() });
+        assume !MaybeNativeObject::isNativeObject(maybeObject);
+        maybeObject
+    }
+
+    unsafe fn noneUnchecked() -> MaybeNativeObject;
+
+    fn fromNativeObject(object: NativeObject) -> MaybeNativeObject {
+        let maybeObject = (unsafe { MaybeNativeObject::fromNativeObjectUnchecked(object) });
+        assume MaybeNativeObject::isNativeObject(maybeObject);
+        assume (unsafe { MaybeNativeObject::toNativeObjectUnchecked(maybeObject) }) == object;
+        maybeObject
+    }
+
+    unsafe fn fromNativeObjectUnchecked(object: NativeObject) -> MaybeNativeObject;
+
+    fn toNativeObject(maybeObject: MaybeNativeObject) -> NativeObject {
+        assert MaybeNativeObject::isNativeObject(maybeObject);
+        let object = (unsafe { MaybeNativeObject::toNativeObjectUnchecked(maybeObject) });
+        assume (unsafe { MaybeNativeObject::fromNativeObjectUnchecked(object) }) == maybeObject;
+        object
+    }
+
+    fn toNativeObjectUnchecked(maybeObject: MaybeNativeObject) -> NativeObject;
+}
+
 struct NativeObject <: Object;
 
 impl NativeObject {
     var maxFixedSlots: UInt64 = 16_u64;
     // FIXME(spinda): Don't know the actual value for this.
     var maxSlotSpan: UInt64 = 1024_u64;
+
     var sizeOf: UInt64 = 24_u64;
     var offsetOfFixedSlots: UInt64 = NativeObject::sizeOf;
     var offsetOfSlots: UInt64 = 8_u64;
     var offsetOfElements: UInt64 = 16_u64;
 
+    fn numFixedSlots(nativeObject: NativeObject) -> UInt32 {
+        Shape::numFixedSlots(Object::shapeOf(nativeObject))
+    }
+
+    fn numDynamicSlots(nativeObject: NativeObject) -> UInt32 {
+        Shape::numDynamicSlots(Object::shapeOf(nativeObject))
+    }
+
+    fn slotSpan(nativeObject: NativeObject) -> UInt32 {
+        Shape::slotSpan(Object::shapeOf(nativeObject))
+    }
+
+    fn hasSlot(nativeObject: NativeObject, slot: UInt32) -> Bool {
+        Shape::hasSlot(Object::shapeOf(nativeObject), slot)
+    }
+
+    fn hasFixedSlot(nativeObject: NativeObject, slot: UInt32) -> Bool {
+        Shape::hasFixedSlot(Object::shapeOf(nativeObject), slot)
+    }
+
+    fn hasDynamicSlot(nativeObject: NativeObject, slot: UInt32) -> Bool {
+        Shape::hasDynamicSlot(Object::shapeOf(nativeObject), slot)
+    }
+
     fn offsetOfFixedSlot(slot: UInt32) -> UInt64 {
-      NativeObject::offsetOfFixedSlots + slot * Value::sizeOf
+        NativeObject::offsetOfFixedSlots + slot * Value::sizeOf
     }
 
     fn getFixedSlot(nativeObject: NativeObject, slot: UInt32) -> Value {
-        let shape = Object::shapeOf(nativeObject);
-        assert Shape::hasFixedSlot(shape, slot);
+        assert NativeObject::hasFixedSlot(nativeObject, slot);
         (unsafe { NativeObject::getFixedSlotUnchecked(heap, nativeObject, slot) })
     }
 
@@ -701,9 +796,7 @@ impl NativeObject {
 
     fn getSlots(nativeObject: NativeObject) -> NativeObjectSlots {
         let slots = (unsafe { NativeObject::getSlotsUnchecked(heap, nativeObject) } );
-        let shape = Object::shapeOf(nativeObject); 
-        assume NativeObjectSlots::length(slots) == 
-            (Shape::slotSpan(shape) - Shape::numFixedSlots(shape));
+        assume NativeObjectSlots::length(slots) == NativeObject::numDynamicSlots(nativeObject);
         slots
     }
 
@@ -987,6 +1080,166 @@ impl MapObject {
     }
 }
 
+struct MaybePropertyKey;
+
+impl MaybePropertyKey {
+    fn isPropertyKey(maybeKey: MaybePropertyKey) -> Bool;
+
+    fn none() -> MaybePropertyKey {
+        let maybeKey = (unsafe { MaybePropertyKey::noneUnchecked() });
+        assume !MaybePropertyKey::isPropertyKey(maybeKey);
+        maybeKey
+    }
+
+    unsafe fn noneUnchecked() -> MaybePropertyKey;
+
+    fn fromPropertyKey(key: PropertyKey) -> MaybePropertyKey {
+        let maybeKey = (unsafe { MaybePropertyKey::fromPropertyKeyUnchecked(key) });
+        assume MaybePropertyKey::isPropertyKey(maybeKey);
+        assume (unsafe { MaybePropertyKey::toPropertyKeyUnchecked(maybeKey) }) == key;
+        maybeKey
+    }
+
+    unsafe fn fromPropertyKeyUnchecked(key: PropertyKey) -> MaybePropertyKey;
+
+    fn toPropertyKey(maybeKey: MaybePropertyKey) -> PropertyKey {
+        assert MaybePropertyKey::isPropertyKey(maybeKey);
+        let key = (unsafe { MaybePropertyKey::toPropertyKeyUnchecked(maybeKey) });
+        assume (unsafe { MaybePropertyKey::fromPropertyKeyUnchecked(key) }) == maybeKey;
+        key
+    }
+
+    fn toPropertyKeyUnchecked(maybeKey: MaybePropertyKey) -> PropertyKey;
+}
+
+struct PropertyKey;
+
+impl PropertyKey {
+    fn isString(key: PropertyKey) -> Bool;
+    fn isSymbol(key: PropertyKey) -> Bool;
+
+    fn fromPrimitiveValue(value: Value) -> MaybePropertyKey {
+        let maybeKey = (unsafe { PropertyKey::fromPrimitiveValueUnchecked(value) });
+        if MaybePropertyKey::isPropertyKey(maybeKey) {
+            let key = MaybePropertyKey::toPropertyKey(maybeKey);
+            if Value::isString(value) {
+                assume PropertyKey::isString(key);
+            }
+            if Value::isSymbol(value) {
+                assume PropertyKey::isSymbol(key);
+            }
+        }
+        maybeKey
+    }
+
+    unsafe fn fromPrimitiveValueUnchecked(value: Value) -> MaybePropertyKey;
+}
+
+struct PropertyFlags;
+
+impl PropertyFlags {
+    fn isAccessorProperty(flags: PropertyFlags) -> Bool;
+    fn isCustomDataProperty(flags: PropertyFlags) -> Bool;
+
+    fn isDataProperty(flags: PropertyFlags) -> Bool {
+        !PropertyFlags::isAccessorProperty(flags) && !PropertyFlags::isCustomDataProperty(flags)
+    }
+}
+
+struct PropertyInfo;
+
+impl PropertyInfo {
+    fn flags(info: PropertyInfo) -> PropertyFlags;
+
+    fn isDataProperty(info: PropertyInfo) -> Bool {
+        PropertyFlags::isDataProperty(PropertyInfo::flags(info))
+    }
+
+    fn isCustomDataProperty(info: PropertyInfo) -> Bool {
+        PropertyFlags::isCustomDataProperty(PropertyInfo::flags(info))
+    }
+
+    fn hasSlot(info: PropertyInfo) -> Bool {
+        !PropertyInfo::isCustomDataProperty(info)
+    }
+
+    fn slot(info: PropertyInfo) -> UInt32 {
+        assert PropertyInfo::hasSlot(info);
+        PropertyInfo::maybeSlot(info)
+    }
+
+    fn maybeSlot(info: PropertyInfo) -> UInt32 {
+        let slot = (unsafe { PropertyInfo::maybeSlotUnchecked(info) });
+        if PropertyInfo::hasSlot(info) {
+            assume slot < NativeObject::maxSlotSpan;
+        }
+        slot
+    }
+
+    unsafe fn maybeSlotUnchecked(info: PropertyInfo) -> UInt32;
+}
+
+struct MaybePropertyInfo;
+
+impl MaybePropertyInfo {
+    fn isPropertyInfo(maybeInfo: MaybePropertyInfo) -> Bool;
+
+    fn none() -> MaybePropertyInfo {
+        let maybeInfo = (unsafe { MaybePropertyInfo::noneUnchecked() });
+        assume !MaybePropertyInfo::isPropertyInfo(maybeInfo);
+        maybeInfo
+    }
+
+    unsafe fn noneUnchecked() -> MaybePropertyInfo;
+
+    fn fromPropertyInfo(info: PropertyInfo) -> MaybePropertyInfo {
+        let maybeInfo = (unsafe { MaybePropertyInfo::fromPropertyInfoUnchecked(info) });
+        assume MaybePropertyInfo::isPropertyInfo(maybeInfo);
+        assume (unsafe { MaybePropertyInfo::toPropertyInfoUnchecked(maybeInfo) }) == info;
+        maybeInfo
+    }
+
+    unsafe fn fromPropertyInfoUnchecked(info: PropertyInfo) -> MaybePropertyInfo;
+
+    fn toPropertyInfo(maybeInfo: MaybePropertyInfo) -> PropertyInfo {
+        assert MaybePropertyInfo::isPropertyInfo(maybeInfo);
+        let info = (unsafe { MaybePropertyInfo::toPropertyInfoUnchecked(maybeInfo) });
+        assume (unsafe { MaybePropertyInfo::fromPropertyInfoUnchecked(info) }) == maybeInfo;
+        info
+    }
+
+    fn toPropertyInfoUnchecked(maybeInfo: MaybePropertyInfo) -> PropertyInfo;
+}
+
+enum PropertyResultKind {
+    NotFound,
+    NativeProperty,
+    NonNativeProperty,
+    DenseElement,
+    TypedArrayElement,
+}
+
+struct PropertyResult {
+    kind: PropertyResultKind,
+}
+
+impl PropertyResult {
+    fn isFound(result: PropertyResult) -> Bool {
+        result.kind != PropertyResultKind::NotFound
+    }
+
+    fn isNativeProperty(result: PropertyResult) -> Bool {
+        result.kind == PropertyResultKind::NativeProperty
+    }
+
+    fn propertyInfo(result: PropertyResult) -> PropertyInfo {
+        assert PropertyResult::isNativeProperty(result);
+        (unsafe { PropertyResult::propertyInfoUnchecked(result) })
+    }
+
+    unsafe fn propertyInfoUnchecked(result: PropertyResult) -> PropertyInfo;
+}
+
 struct BaseShape;
 
 impl BaseShape {
@@ -1015,6 +1268,14 @@ impl Shape {
     }
 
     fn numFixedSlots(shape: Shape) -> UInt32;
+
+    fn numDynamicSlots(shape: Shape) -> UInt32 {
+        if Shape::slotSpan(shape) < Shape::numFixedSlots(shape) {
+            return 0_u32;
+        }
+        Shape::slotSpan(shape) - Shape::numFixedSlots(shape)
+    }
+
     fn slotSpan(shape: Shape) -> UInt32;
 
     fn hasSlot(shape: Shape, slot: UInt32) -> Bool {

@@ -38,12 +38,6 @@ ir CacheStub emits CacheIR {
                             let offset = NativeObject::offsetOfFixedSlot(slot);
                             let offsetField = CacheIR::writeInt32Field(offset as Int32);
                             emit CacheIR::LoadFixedSlotResult(objectId, offsetField);
-                        } else if NativeObject::hasDynamicSlot(object, slot) {
-                            let offset = NativeObjectSlots::offsetOfSlot(
-                                slot - NativeObject::numFixedSlots(object)
-                            );
-                            let offsetField = CacheIR::writeInt32Field(offset as Int32);
-                            emit CacheIR::LoadDynamicSlotResult(objectId, offsetField);
                         }
                     }
                 }

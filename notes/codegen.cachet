@@ -1,0 +1,45 @@
+import "cacheir.cachet";
+import "js.cachet";
+
+enum NativeGetPropKind {
+    None,
+    Missing,
+    Slot,
+    NativeGetter,
+    ScriptedGetter,
+}
+
+fn canAttachNativeGetProp(
+    object: Object, key: PropertyKey, out holder: MaybeNativeObject, out propInfo: MaybePropertyInfo
+) -> NativeGetPropKind {
+    assert PropertyKey::isString(key) || PropertyKey::isSymbol(key);
+
+    if !Object::lookupPropertyPure(object, key, out holder, out let prop) {
+        return NativeGetPropKind::None;
+    }
+
+    let nativeObject = Object::toNativeObject(object);
+
+    if PropertyResult::isNativeProperty(prop) {
+        propInfo = MaybePropertyInfo::fromPropertyInfo(PropertyResult::propertyInfo(prop));
+
+        if isCacheableGetPropSlot(
+            nativeObject, MaybeNativeObject::toNativeObject(holder),
+            MaybePropertyInfo::toPropertyInfo(propInfo)
+        ) {
+            return NativeGetPropKind::Slot;
+        }
+
+        return NativeGetPropKind::None;
+    }
+
+    propInfo = MaybePropertyInfo::none();
+    return NativeGetPropKind::None;
+}
+
+fn isCacheableProtoChain(object: NativeObject, holder: NativeObject) -> Bool;
+
+fn isCacheableGetPropSlot(object: NativeObject, holder: NativeObject, prop: PropertyInfo) -> Bool {
+    assert isCacheableProtoChain(object, holder);
+    PropertyInfo::isDataProperty(prop)
+}

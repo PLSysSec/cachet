@@ -1,0 +1,30 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {
+    op GetPropDyn(
+        valueId: ValueId,
+        shapeField: ShapeField,
+        offsetField: Int32Field,
+        slot: UInt32,
+    ) {
+        initRegState();
+
+        initOperandId(valueId);
+        initInputValueId(valueId);
+
+        initValueOutput();
+
+        let shape = CacheIR::readShapeField(shapeField);
+        assume Class::isNativeObject(Shape::classOf(shape));
+        assume Shape::hasDynamicSlot(shape, slot);
+
+        let offset = NativeObjectSlots::offsetOfSlot(slot - Shape::numFixedSlots(shape));
+        assume CacheIR::readInt32Field(offsetField) == offset;
+
+        emit CacheIR::GuardToObject(valueId);
+        let objectId = OperandId::toObjectId(valueId);
+        emit CacheIR::GuardShape(objectId, shapeField);
+        emit CacheIR::LoadDynamicSlotResult(objectId, offsetField);
+    }
+}

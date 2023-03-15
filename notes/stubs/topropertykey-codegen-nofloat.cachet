@@ -1,0 +1,26 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {
+    op GetProp(value: Value) {
+        CacheIR::initStub();
+        let valueId = CacheIR::defineInputValueId();
+        CacheIR::setValueOutput();
+
+        if Value::isInt32(value) {
+            emit CacheIR::GuardToInt32(valueId);
+            let int32Id = OperandId::toInt32Id(valueId);
+            emit CacheIR::LoadInt32Result(int32Id);
+        } else if Value::isString(value) {
+            emit CacheIR::GuardToString(valueId);
+            let stringId = OperandId::toStringId(valueId);
+            emit CacheIR::LoadStringResult(stringId);
+        } else if Value::isSymbol(value) {
+            emit CacheIR::GuardToSymbol(valueId);
+            let symbolId = OperandId::toSymbolId(valueId);
+            emit CacheIR::LoadSymbolResult(symbolId);
+        }
+
+        emit CacheIR::ReturnFromIC();
+    }
+}
