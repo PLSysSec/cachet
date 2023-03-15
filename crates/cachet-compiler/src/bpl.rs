@@ -613,12 +613,20 @@ impl<'a> Compiler<'a> {
             .as_ref()
             .map(|body| self.compile_body(callable_index, &callable_item, body));
 
+        let mut is_inline = match callable_index {
+            flattener::CallableIndex::Fn(_) => callable_item.is_inline(),
+            flattener::CallableIndex::Op(_) => false,
+        };
         match CallableRepr::for_callable(callable_item) {
             CallableRepr::Fn => {
                 self.items.push(
                     FnItem {
                         ident: fn_ident.into(),
-                        attr: None,
+                        attr: if is_inline {
+                            Some(FnAttr::Inline)
+                        } else {
+                            None
+                        },
                         param_vars,
                         ret: self.get_type_ident(callable_item.type_()).into(),
                         value: None,
@@ -634,83 +642,83 @@ impl<'a> Compiler<'a> {
                     });
                 }
 
-                let (attr, body) = match body {
-                    Some(body) => (None, body),
-                    None => {
-                        // For external functions represented as procedures with
-                        // return varlabies (for, e.g., out-parameters), set up a
-                        // procedure body where each return variable is assigned to
-                        // the result of delegating to a unique uninterpreted
-                        // function.
+                let body = body.unwrap_or_else(|| {
+                    // For external functions represented as procedures with
+                    // return varlabies (for, e.g., out-parameters), set up a
+                    // procedure body where each return variable is assigned to
+                    // the result of delegating to a unique uninterpreted
+                    // function.
 
-                        let arg_exprs: Vec<_> =
-                            param_vars.iter().map(|param| param.ident.into()).collect();
+                    let arg_exprs: Vec<_> =
+                        param_vars.iter().map(|param| param.ident.into()).collect();
 
-                        let ret_var_assign_stmts = ret_vars.iter().map(|ret_var| {
-                            let ident = ExternalUserFnHelperFnIdent {
-                                fn_ident,
-                                ret_var_ident: ret_var.ident,
+                    let ret_var_assign_stmts = ret_vars.iter().map(|ret_var| {
+                        let ident = ExternalUserFnHelperFnIdent {
+                            fn_ident,
+                            ret_var_ident: ret_var.ident,
+                        }
+                        .into();
+
+                        self.items.push(
+                            FnItem {
+                                ident,
+                                attr: None,
+                                param_vars: param_vars.clone(),
+                                ret: ret_var.type_.clone(),
+                                value: None,
                             }
-                            .into();
+                            .into(),
+                        );
 
-                            self.items.push(
-                                FnItem {
-                                    ident,
-                                    attr: None,
-                                    param_vars: param_vars.clone(),
-                                    ret: ret_var.type_.clone(),
-                                    value: None,
+                        AssignStmt {
+                            lhs: ret_var.ident.into(),
+                            rhs: CallExpr {
+                                target: ident,
+                                arg_exprs: arg_exprs.clone(),
+                            }
+                            .into(),
+                        }
+                        .into()
+                    });
+
+                    // Also bind all label out-parameters to an exit point.
+
+                    let out_label_param_bind_stmts = callable_item
+                        .param_order
+                        .iter()
+                        .filter_map(|param_index| match param_index {
+                            flattener::ParamIndex::Label(label_param_index) => {
+                                Some(label_param_index)
+                            }
+                            _ => None,
+                        })
+                        .map(|label_param_index| &callable_item.params[label_param_index])
+                        .filter(|label_param| label_param.is_out)
+                        .map(|label_param| {
+                            let ir_index = label_param.label.ir;
+                            let ir_ident = self.env[ir_index].ident.value.into();
+
+                            CallExpr {
+                                target: IrMemberFnIdent {
+                                    ir_ident,
+                                    selector: IrMemberFnSelector::BindExit,
                                 }
                                 .into(),
-                            );
-
-                            AssignStmt {
-                                lhs: ret_var.ident.into(),
-                                rhs: CallExpr {
-                                    target: ident,
-                                    arg_exprs: arg_exprs.clone(),
-                                }
-                                .into(),
+                                arg_exprs: vec![
+                                    UserParamVarIdent::from(label_param.label.ident.value).into(),
+                                ],
                             }
                             .into()
                         });
 
-                        // Also bind all label out-parameters to an exit point.
+                    is_inline = true;
+                    iterate![..ret_var_assign_stmts, ..out_label_param_bind_stmts].collect()
+                });
 
-                        let out_label_param_bind_stmts = callable_item
-                            .param_order
-                            .iter()
-                            .filter_map(|param_index| match param_index {
-                                flattener::ParamIndex::Label(label_param_index) => {
-                                    Some(label_param_index)
-                                }
-                                _ => None,
-                            })
-                            .map(|label_param_index| &callable_item.params[label_param_index])
-                            .filter(|label_param| label_param.is_out)
-                            .map(|label_param| {
-                                let ir_index = label_param.label.ir;
-                                let ir_ident = self.env[ir_index].ident.value.into();
-
-                                CallExpr {
-                                    target: IrMemberFnIdent {
-                                        ir_ident,
-                                        selector: IrMemberFnSelector::BindExit,
-                                    }
-                                    .into(),
-                                    arg_exprs: vec![
-                                        UserParamVarIdent::from(label_param.label.ident.value)
-                                            .into(),
-                                    ],
-                                }
-                                .into()
-                            });
-
-                        let body = iterate![..ret_var_assign_stmts, ..out_label_param_bind_stmts]
-                            .collect();
-
-                        (Some(InlineProcAttr { depth: 1 }.into()), body)
-                    }
+                let attr = if is_inline {
+                    Some(InlineProcAttr { depth: 1 }.into())
+                } else {
+                    None
                 };
 
                 self.items.push(

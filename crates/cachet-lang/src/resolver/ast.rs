@@ -142,16 +142,20 @@ deref_from!(&LocalLabelIndex => LabelIndex);
 pub trait HasAttrs {
     fn attrs(&self) -> &EnumSet<BuiltInAttr>;
 
+    fn is_inline(&self) -> bool {
+        self.attrs().contains(BuiltInAttr::Inline)
+    }
+
     fn is_prelude(&self) -> bool {
         self.attrs().contains(BuiltInAttr::Prelude)
     }
 
-    fn is_spec(&self) -> bool {
-        self.attrs().contains(BuiltInAttr::Spec)
-    }
-
     fn is_refined(&self) -> bool {
         self.attrs().contains(BuiltInAttr::Refined)
+    }
+
+    fn is_spec(&self) -> bool {
+        self.attrs().contains(BuiltInAttr::Spec)
     }
 }
 

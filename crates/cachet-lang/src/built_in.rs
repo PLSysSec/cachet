@@ -222,14 +222,14 @@ impl BuiltInVar {
 
 #[derive(Display, EnumSetType, Debug, Hash, IntoEnumIterator)]
 pub enum BuiltInAttr {
+    #[display(fmt = "inline")]
+    Inline,
     #[display(fmt = "prelude")]
     Prelude,
-
-    #[display(fmt = "spec")]
-    Spec,
-
     #[display(fmt = "refined")]
     Refined,
+    #[display(fmt = "spec")]
+    Spec,
 }
 
 impl_ordered_ident_enum!(BuiltInAttr);
