@@ -924,6 +924,31 @@ ir CacheIR emits MASM {
         CacheIR::releaseFailurePath();
     }
 
+    op GuardIndexGreaterThanDenseInitLength(objId: ObjectId, indexId: Int32Id)  {
+        let objectReg = CacheIR::useObjectId(objId);
+        let indexReg = CacheIR::useInt32Id(indexId);
+
+        let scratchReg = CacheIR::allocateReg();
+        let spectreScratchReg = CacheIR::allocateReg();
+
+        let failure = CacheIR::addFailurePath();
+
+        emit MASM::LoadPtrAddress(
+            Address::new(objectReg, NativeObject::offsetOfElements as Int32), scratchReg
+        );
+
+        label outOfBounds: MASM;
+
+        let capacity = Address::new(scratchReg, NativeObjectElements::offsetOfInitializedLength as Int32);
+        emit MASM::SpectreBoundsCheck32Address(indexReg, capacity, spectreScratchReg, outOfBounds);
+        emit MASM::Jump(failure.label_);
+        bind outOfBounds;
+
+        CacheIR::releaseReg(spectreScratchReg);
+        CacheIR::releaseReg(scratchReg);
+        CacheIR::releaseFailurePath();
+    }
+
     op GuardTagNotEqual(lhsId: ValueTagId, rhsId: ValueTagId) {
         let lhsReg = CacheIR::useValueTagId(lhsId);
         let rhsReg = CacheIR::useValueTagId(rhsId);
