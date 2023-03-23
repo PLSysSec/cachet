@@ -134,6 +134,38 @@ impl OperandId {
     }
 }
 
+struct MaybeOperandId;
+
+impl MaybeOperandId {
+    fn isId(maybeId: MaybeOperandId) -> Bool;
+
+    fn none() -> MaybeOperandId {
+        let maybeId = (unsafe { MaybeOperandId::noneUnchecked() });
+        assume !MaybeOperandId::isId(maybeId);
+        maybeId
+    }
+
+    unsafe fn noneUnchecked() -> MaybeOperandId;
+
+    fn fromId(id: OperandId) -> MaybeOperandId {
+        let maybeId = (unsafe { MaybeOperandId::fromIdUnchecked(id) });
+        assume MaybeOperandId::isId(maybeId);
+        assume (unsafe { MaybeOperandId::toIdUnchecked(maybeId) }) == id;
+        maybeId
+    }
+
+    unsafe fn fromIdUnchecked(id: OperandId) -> MaybeOperandId;
+
+    fn toId(maybeId: MaybeOperandId) -> OperandId {
+        assert MaybeOperandId::isId(maybeId);
+        let id = (unsafe { MaybeOperandId::toIdUnchecked(maybeId) });
+        assume (unsafe { MaybeOperandId::fromIdUnchecked(id) }) == maybeId;
+        id
+    }
+
+    unsafe fn toIdUnchecked(maybeId: MaybeOperandId) -> OperandId;
+}
+
 struct ValueId <: OperandId;
 
 impl ValueId {
@@ -622,14 +654,16 @@ ir CacheIR emits MASM {
     }
 
     op IsObjectResult(inputId: ValueId) {
-        let scratchReg = CacheIR::allocateReg();
+        CacheIR::allocateOutputReg();
+        let scratchReg = CacheIR::allocateRegMaybeOutput();
         let valueReg = CacheIR::useValueId(inputId);
 
         emit MASM::TestObjectSet(Condition::Equal, valueReg, scratchReg);
         emit MASM::TagValue(JSValueType::Bool, scratchReg,
                 TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
-        CacheIR::releaseReg(scratchReg);
+        CacheIR::releaseRegMaybeOutput(scratchReg);
+        CacheIR::releaseOutputReg();
     }
 
     op GuardNonDoubleType(inputId: ValueId, type: ValueType) {
@@ -1109,8 +1143,9 @@ ir CacheIR emits MASM {
     }
 
     op LoadArgumentsObjectLengthResult(objectId: ObjectId) {
+        CacheIR::allocateOutputReg();
         let objectReg = CacheIR::useObjectId(objectId);
-        let argObjLengthReg = CacheIR::allocateReg();
+        let argObjLengthReg = CacheIR::allocateRegMaybeOutput();
 
         let failure = CacheIR::addFailurePath();
 
@@ -1118,11 +1153,13 @@ ir CacheIR emits MASM {
         emit MASM::TagValue(JSValueType::Int32, argObjLengthReg,
                 TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
-        CacheIR::releaseReg(argObjLengthReg);
+        CacheIR::releaseRegMaybeOutput(argObjLengthReg);
         CacheIR::releaseFailurePath();
+        CacheIR::releaseOutputReg();
     }
 
     op LoadArgumentsObjectArgResult(objId: ObjectId, indexId: Int32Id) {
+        CacheIR::allocateOutputReg();
         let objReg = CacheIR::useObjectId(objId);
         let indexReg = CacheIR::useInt32Id(indexId);
 
@@ -1135,6 +1172,7 @@ ir CacheIR emits MASM {
 
         CacheIR::releaseReg(scratchReg);
         CacheIR::releaseFailurePath();
+        CacheIR::releaseOutputReg();
     }
 
     op LoadInstanceOfObjectResult(lhsId: ValueId, protoId: ObjectId) {
@@ -1679,9 +1717,147 @@ ir CacheIR emits MASM {
     fn allocateReg() -> Reg;
     fn releaseReg(reg: Reg);
 
-    // SAFETY: This does not check that `reg` is an allocatable register, nor
-    // does it care about failure paths.
+    // SAFETY: These do not check that `reg`/`valueReg` are allocatable registers, nor
+    // do they care about failure paths.
     unsafe fn allocateKnownReg(reg: Reg);
+    unsafe fn allocateKnownValueReg(valueReg: ValueReg);
+
+
+
+    // Indicates if there is currently an operand thats
+    // using the IC's output register as it's location
+    var mut operandInOutputReg: MaybeOperandId;
+
+    #[spec]
+    fn maybeOutputReg() -> MaybeReg {
+        if TypedOrValueReg::hasValue(CacheIR::outputReg) {
+            let valueReg = TypedOrValueReg::toValueReg(CacheIR::outputReg);
+            return MaybeReg::fromReg(ValueReg::scratchReg(valueReg));
+        } else if TypedOrValueReg::hasTyped(CacheIR::outputReg) && !AnyReg::isFloat(TypedOrValueReg::toTypedReg(CacheIR::outputReg)) {
+            let reg = AnyReg::toReg(TypedOrValueReg::toTypedReg(CacheIR::outputReg));
+            return MaybeReg::fromReg(reg);
+        }
+
+        MaybeReg::none()
+    }
+
+    // Allocate the underlying register for CacheIR::outputReg, even if
+    // it is currently in use by an Operand. In that case we move the operand
+    // to another register.
+    #[spec]
+    fn mustAllocateOutputReg() emits MASM {
+        let outputReg = MaybeReg::toReg(CacheIR::maybeOutputReg());
+
+        if !CacheIR::isAllocatedReg(outputReg) {
+            // outputReg is already available/unallocated.
+            // Just allocate it here.
+
+            // SAFETY: safe because we want to allocate outputReg
+            unsafe { CacheIR::allocateKnownReg(outputReg); }
+            return;
+        }
+
+        // outputReg is unavailable/allocated by something else.
+        // We expect every op that wants to use the output register explicitly
+        // does it before any other register allocations. So the only possibility
+        // is that some operand is currently using the output register as it's location.
+        let operandId = MaybeOperandId::toId(CacheIR::operandInOutputReg);
+
+        let location = CacheIR::getOperandLocation(operandId);
+        let locationKind = OperandLocation::kind(location);
+
+        assert locationKind == OperandLocationKind::ValueReg ||
+            locationKind == OperandLocationKind::PayloadReg;
+
+        if locationKind == OperandLocationKind::ValueReg {
+            let valueReg = OperandLocation::getValueReg(location);
+
+            // sanity assert that this should be the output register
+            //assert ValueReg::scratchReg(valueReg) == outputReg;
+
+            // allocate a new register for the operand and move the value to it. 
+            let newValueReg = CacheIR::allocateValueReg();
+            emit MASM::MoveValue(valueReg, newValueReg);
+
+            // update the operand location
+            OperandLocation::setValueReg(out location, newValueReg);
+            CacheIR::setOperandLocation(operandId, location);
+        } else if locationKind == OperandLocationKind::PayloadReg {
+            let payloadReg = OperandLocation::getPayloadReg(location);
+            let payloadType = OperandLocation::getPayloadType(location);
+
+            // sanity assert that this should be the output register
+            //assert payloadReg == outputReg;
+
+            let newReg = CacheIR::allocateReg();
+            emit MASM::MovData(payloadReg, newReg);
+
+            OperandLocation::setPayloadReg(out location, newReg, payloadType);
+            CacheIR::setOperandLocation(operandId, location);
+        }
+    }
+
+    // Indicates if the output register has been
+    // explicitly allocated with allocateOutputReg.
+    // This is equivalent to checking if the op has used
+    // AutoOutputRegister.
+    var mut hasAllocatedOutputReg: Bool;
+
+    // Indicate that the output register is
+    // explicitly being used as a scratch register
+    // with allocateRegMaybeOutput.
+    #[spec]
+    var mut hasScratchRegOutput: Bool;
+
+    // Register allocated by AutoOutputRegister
+    // Ensures that CacheIR::outputReg is available
+    // for use to contain the IC's output
+    #[refined]
+    fn allocateOutputReg() emits MASM {
+        assert !CacheIR::hasAllocatedOutputReg;
+
+        CacheIR::mustAllocateOutputReg();
+
+        CacheIR::hasAllocatedOutputReg = true;
+    }
+
+    #[refined]
+    fn releaseOutputReg() {
+        assert CacheIR::hasAllocatedOutputReg;
+        CacheIR::hasAllocatedOutputReg = false;
+
+        let reg = MaybeReg::toReg(CacheIR::maybeOutputReg());
+        CacheIR::releaseReg(reg);
+    }
+
+    // Register allocated by AutoScratchRegisterMaybeOutput
+    #[refined]
+    fn allocateRegMaybeOutput() -> Reg {
+        assert CacheIR::hasAllocatedOutputReg;
+        assert !CacheIR::hasScratchRegOutput;
+        CacheIR::hasScratchRegOutput = true;
+
+        let maybeReg = CacheIR::maybeOutputReg();
+
+        if MaybeReg::isReg(maybeReg) {
+            let reg = MaybeReg::toReg(maybeReg);
+            assert CacheIR::isAllocatedReg(reg);
+            return reg;
+        }
+
+        CacheIR::allocateReg()
+    }
+
+    #[refined]
+    fn releaseRegMaybeOutput(reg: Reg) {
+        assert CacheIR::hasAllocatedOutputReg;
+        if CacheIR::hasScratchRegOutput {
+            CacheIR::hasScratchRegOutput = false;
+            return;
+        }
+
+        CacheIR::releaseReg(reg);
+    }
 
     // Register allocated by ScratchScope
     #[refined]

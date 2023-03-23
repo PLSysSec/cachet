@@ -333,6 +333,8 @@ procedure #CacheIR~defineTypedId($typedId: #TypedId)
     var $loc'0: #OperandLocation;
     var $loc'1: #OperandLocation;
     var $locKind'0: #OperandLocationKind;
+    var $maybeOutputReg: #MaybeReg;
+    var $outputReg: #Reg;
 
     assert !#CacheIR~addedFailurePath;
     assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
@@ -345,6 +347,15 @@ procedure #CacheIR~defineTypedId($typedId: #TypedId)
     call ret := #CacheIR~allocateReg();
     call $loc'1 := #OperandLocation~setPayloadReg(ret, #TypedId~type($typedId));
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'1);
+
+    call $maybeOutputReg := #CacheIR~maybeOutputReg();
+    if (#MaybeReg~isReg($maybeOutputReg)) {
+         call $outputReg := #MaybeReg~toReg($maybeOutputReg);
+         if ($outputReg == ret) {
+            assert !#MaybeOperandId~isId(#CacheIR~operandInOutputReg);
+            call #CacheIR~operandInOutputReg := #MaybeOperandId~fromId(#TypedId^to#OperandId($typedId));
+         }
+    }
 }
 
 procedure #CacheIR~defineValueId($valueId: #ValueId)
@@ -355,6 +366,8 @@ procedure #CacheIR~defineValueId($valueId: #ValueId)
     var $loc'0: #OperandLocation;
     var $loc'1: #OperandLocation;
     var $locKind'0: #OperandLocationKind;
+    var $maybeOutputReg: #MaybeReg;
+    var $outputReg: #Reg;
 
     assert !#CacheIR~addedFailurePath;
     assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
@@ -367,6 +380,15 @@ procedure #CacheIR~defineValueId($valueId: #ValueId)
     call ret := #CacheIR~allocateValueReg();
     call $loc'1 := #OperandLocation~setValueReg(ret);
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'1);
+
+    call $maybeOutputReg := #CacheIR~maybeOutputReg();
+    if (#MaybeReg~isReg($maybeOutputReg)) {
+         call $outputReg := #MaybeReg~toReg($maybeOutputReg);
+         if ($outputReg == ret) {
+            assert !#MaybeOperandId~isId(#CacheIR~operandInOutputReg);
+            call #CacheIR~operandInOutputReg := #MaybeOperandId~fromId(#ValueId^to#OperandId($valueId));
+         }
+    }
 }
 
 procedure #CacheIR~getOperandLocation($operandId: #OperandId)
@@ -396,6 +418,12 @@ procedure #CacheIR~releaseValueReg($valueReg: #ValueReg)
   modifies #CacheIR~allocatedRegs;
 {
   call #CacheIR~releaseReg($valueReg);
+}
+
+procedure {:inline 1} #CacheIR~allocateKnownValueReg($valueReg: #ValueReg)
+  modifies #CacheIR~allocatedRegs;
+{
+  call #CacheIR~allocateKnownReg($valueReg);
 }
 
 procedure #CacheIR~allocateReg()
@@ -486,6 +514,10 @@ procedure #initRegState()
 
   #CacheIR~addedFailurePath := false;
   #CacheIR~hasAutoScratchFloatRegisterSpill := false;
+
+  #CacheIR~hasAllocatedOutputReg := false;
+  #CacheIR~hasScratchRegOutput := false;
+  call #CacheIR~operandInOutputReg := #MaybeOperandId~none();
 
   // All registers are initially unallocated.
   #CacheIR~allocatedRegs := #Set~empty(); 

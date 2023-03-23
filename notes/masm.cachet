@@ -28,6 +28,38 @@ impl Reg {
     }
 }
 
+struct MaybeReg;
+
+impl MaybeReg {
+    fn isReg(maybeReg: MaybeReg) -> Bool;
+
+    fn none() -> MaybeReg {
+        let maybeReg = (unsafe { MaybeReg::noneUnchecked() });
+        assume !MaybeReg::isReg(maybeReg);
+        maybeReg
+    }
+
+    unsafe fn noneUnchecked() -> MaybeReg;
+    
+    fn fromReg(reg: Reg) -> MaybeReg {
+        let maybeReg = (unsafe { MaybeReg::fromRegUnchecked(reg) });
+        assume MaybeReg::isReg(maybeReg);
+        assume (unsafe { MaybeReg::toRegUnchecked(maybeReg) }) == reg;
+        maybeReg
+    }
+
+    unsafe fn fromRegUnchecked(reg: Reg) -> MaybeReg;
+
+    fn toReg(maybeReg: MaybeReg) -> Reg {
+        assert MaybeReg::isReg(maybeReg);
+        let reg = (unsafe { MaybeReg::toRegUnchecked(maybeReg) });
+        assume (unsafe { MaybeReg::fromRegUnchecked(reg) }) == maybeReg;
+        reg
+    }
+
+    unsafe fn toRegUnchecked(maybeReg: MaybeReg) -> Reg;
+}
+
 // Used for ValueOperand as well
 // #[cfg(cpp)]
 struct ValueReg;
@@ -748,7 +780,9 @@ ir MASM {
     }
 
     op MoveValue(srcReg: ValueReg, dstReg: ValueReg) {
-        MASM::setValue(dstReg, MASM::getValue(srcReg));
+        if srcReg != dstReg {
+            MASM::setValue(dstReg, MASM::getValue(srcReg));
+        }
     }
 
     op MovePtrBoolImmWord(b: Bool, dstReg: Reg) {
@@ -1523,6 +1557,7 @@ ir MASM {
         label branch: MASM
     ) {
         assert condition == Condition::Equal || condition == Condition::NotEqual;
+        assert objectReg != scratchReg;
         assert scratchReg != spectreRegToZero;
 
         let object = MASM::getObject(objectReg);
@@ -1544,6 +1579,7 @@ ir MASM {
         condition: Condition, objectReg: Reg, class: Class, scratchReg: Reg, label branch: MASM
     ) {
         assert condition == Condition::Equal || condition == Condition::NotEqual;
+        assert objectReg != scratchReg;
 
         let object = MASM::getObject(objectReg);
         let shape = Object::shapeOf(object);
@@ -1986,7 +2022,11 @@ ir MASM {
         length = ArgumentsObject::getInitialLength(argObj);
         MASM::setInt32(tempReg, length as Int32);
 
+        assert tempReg2 != tempReg;
+        assert tempReg2 != indexReg;
+
         let index = MASM::getInt32(indexReg) as UInt32;
+
 
         if index >= length {
             goto failure;
