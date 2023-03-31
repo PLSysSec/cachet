@@ -424,6 +424,10 @@ impl Value {
 
     // ...
 
+    fn isPrimitive(value: Value) -> Bool {
+        !Value::isObject(value)
+    }
+
     fn isDouble(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Double
     }
@@ -633,6 +637,27 @@ impl Object {
 
     unsafe fn shapeOfUnchecked(heap: Heap, object: Object) -> Shape;
 
+    fn taggedProto(object: Object) -> TaggedProto {
+        let shape = Object::shapeOf(object);
+        let baseShape = Shape::baseShapeOf(shape);
+
+        BaseShape::protoOf(baseShape)
+    }
+
+    fn hasStaticPrototype(object: Object) -> Bool {
+        !Object::hasDynamicPrototype(object)
+    }
+
+    fn hasDynamicPrototype(object: Object) -> Bool {
+        let dynamic = TaggedProto::isLazy(Object::taggedProto(object));
+
+        if dynamic {
+            // assert Object::isProxyObject(object);
+        }
+
+        dynamic
+    }
+
     fn isNativeObject(object: Object) -> Bool {
       let shape = Object::shapeOf(object);
       let class = Shape::classOf(shape);
@@ -653,6 +678,18 @@ impl Object {
     fn toArgumentsObject(object: Object) -> ArgumentsObject {
         assert Object::isArgumentsObject(object);
         (unsafe { object as ArgumentsObject })
+    }
+
+    fn isArrayObject(object: Object) -> Bool {
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        Class::isArrayObject(class)
+    }
+
+    fn isPlainObject(object: Object) -> Bool {
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        Class::isPlainObject(class)
     }
   
     fn getFixedSlot(object: Object, slot: UInt32) -> Value {
@@ -809,6 +846,16 @@ impl NativeObject {
 
     unsafe fn getElementsHeaderUnchecked(heap: Heap, nativeObject: NativeObject) ->
     NativeObjectElements;
+
+    fn getDenseInitializedLength(nativeObject: NativeObject) -> UInt32 {
+        let elementsHeader = NativeObject::getElementsHeader(nativeObject);
+        NativeObjectElements::getInitializedLength(elementsHeader)
+    }
+
+    fn containsDenseElement(nativeObject: NativeObject, idx: UInt32) -> Bool {
+        //TODO(abhishek): Newer versions of Firefox also check index against JS_ELEMENTS_HOLE
+        idx < NativeObject::getDenseInitializedLength(nativeObject)
+    }
 
     #[spec]
     fn readData(nativeObject: NativeObject, offset: Int64) -> RegData {
@@ -1251,7 +1298,15 @@ impl BaseShape {
     // #[reads(heap)]
     // fn protoOf(object: Object) -> TaggedProto;
     fn protoOf(baseShape: BaseShape) -> TaggedProto {
-        (unsafe { BaseShape::protoOfUnchecked(heap, baseShape) })
+        let taggedProto = (unsafe { BaseShape::protoOfUnchecked(heap, baseShape) });
+
+        let class = BaseShape::classOf(baseShape);
+        if Class::isNativeObject(class) {
+            // NativeObject proto are never dynamic
+            assume !TaggedProto::isLazy(taggedProto);
+        }
+
+        taggedProto
     }
 
     unsafe fn protoOfUnchecked(heap: Heap, baseShape: BaseShape) -> TaggedProto;
@@ -1317,6 +1372,14 @@ impl Class {
         class == MappedArgumentsObject::class() ||
             class == UnmappedArgumentsObject::class()
     }
+
+    fn isPlainObject(class: Class) -> Bool {
+        class == PlainObject::class()
+    }
+
+    fn isArrayObject(class: Class) -> Bool {
+        class == ArrayObject::class()
+    }
 }
 
 struct String;
@@ -1380,3 +1443,79 @@ impl TaggedProto {
 
     unsafe fn toObjectUnchecked(proto: TaggedProto) -> Object;
 }
+
+#[spec]
+fn GetSparseElementHelper(obj: NativeObject, intId: Int32, out result: Value) -> Bool {
+    assert Object::hasStaticPrototype(obj);
+
+    // This helper doesn't handle the case where the index is a dense element.
+    assert intId >= 0_i32;
+    assert !NativeObject::containsDenseElement(obj, intId as UInt32);
+
+    let taggedProto = Object::taggedProto(obj);
+    if !TaggedProto::isNull(taggedProto) {
+        // Indexed properties can not exist on the prototype chain.
+        assert !ObjectMayHaveExtraIndexedProperties(TaggedProto::toObject(taggedProto));
+    }
+
+    //TODO(abhishek): can potentially model even more of this helper if useful.
+    unsafe { getSparseElementHelperUnchecked(obj, intId, out result) }
+}
+
+unsafe fn getSparseElementHelperUnchecked(obj: NativeObject, intId: Int32, out result: Value) -> Bool;
+
+//TODO(abhishek): this function is implemented only to the extent of being able
+// to catch BUG1502143. It needs to be extended to be able to verify the fix.
+#[spec]
+fn ObjectMayHaveExtraIndexedProperties(obj: Object) -> Bool {
+    if Object::hasDynamicPrototype(obj) {
+        assert !Object::isNativeObject(obj);
+    }
+
+    // BUG1502143 should return here as `obj` is completely unconstrained. 
+    if !Object::isNativeObject(obj) {
+        return true;
+    }
+
+    return false;
+    //unsafe { objectMayHaveExtraIndexedPropertiesUnchecked(obj) }
+}
+
+unsafe fn objectMayHaveExtraIndexedPropertiesUnchecked(obj: Object) -> Bool;
+
+#[spec]
+fn ProxyGetPropertyByValue(proxy: Object, idVal: Value, out value: Value) -> Bool {
+    if !PrimitiveValueToId(idVal, out let id) {
+    //if !ToPropertyKey(idVal, out let id) {
+        return false;
+    }
+
+    let receiver = Value::fromObject(proxy);
+    ProxyGetInternal(proxy, receiver, id, out value)
+}
+
+// spec for Proxy::getInternal
+#[spec]
+fn ProxyGetInternal(proxy: Object, receiver: Value, id: PropertyKey, out value: Value) -> Bool;
+
+#[spec]
+fn ToPropertyKey(argument: Value, out result: PropertyKey) -> Bool {
+    if Value::isPrimitive(argument) {
+        return PrimitiveValueToId(argument, out result);
+    }
+
+    return ToPropertyKeySlow(argument, out result); 
+}
+
+#[spec]
+fn ToPropertyKeySlow(argument: Value, out result: PropertyKey) -> Bool;
+
+#[spec]
+fn PrimitiveValueToId(v: Value, out idp: PropertyKey) -> Bool {
+    assert Value::isPrimitive(v);
+
+    unsafe { PrimitiveValueToIdUnchecked(v, out idp) }
+}
+
+#[spec]
+unsafe fn PrimitiveValueToIdUnchecked(v: Value, out idp: PropertyKey) -> Bool;

@@ -1,5 +1,11 @@
 type #ValueReg = #Reg;
 
+procedure #ValueReg~fromReg($reg: #Reg)
+    returns (valueReg: #ValueReg)
+{
+    valueReg := $reg;
+}
+
 procedure #ValueReg~scratchReg($valueReg: #ValueReg)
   returns (reg: #Reg)
 {
@@ -486,6 +492,8 @@ procedure #initRegState()
 
   #CacheIR~addedFailurePath := false;
   #CacheIR~hasAutoScratchFloatRegisterSpill := false;
+  #CacheIR~savedLiveRegs := false;
+  #CacheIR~enteredStubFrame := false;
 
   // All registers are initially unallocated.
   #CacheIR~allocatedRegs := #Set~empty(); 
@@ -499,7 +507,7 @@ procedure #initRegState()
 
   call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
 
-  call #CacheIR~liveFloatRegSet := #FloatRegSet~empty();
+  call #CacheIR~liveRegSet := #LiveRegSet~empty();
   #MASM~hasPushedRegs := false;
 }
 
@@ -536,7 +544,7 @@ procedure #addLiveFloatReg($floatReg: #FloatReg)
   var data'0: #FloatData;
 
   havoc data'0;
-  call #CacheIR~liveFloatRegSet := #FloatRegSet~add(#CacheIR~liveFloatRegSet, $floatReg);
+  call #CacheIR~liveRegSet := #LiveRegSet~addFloatReg(#CacheIR~liveRegSet, $floatReg);
 
   assume #FloatReg^field~type($floatReg) == #FloatData~contentType(data'0);
   call #MASM~setFloatData(#FloatReg^field~reg($floatReg), data'0);

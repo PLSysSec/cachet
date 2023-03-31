@@ -2218,6 +2218,7 @@ lazy_static! {
         HashMap::from([
             (Ident::from("ValueReg").into(), Proc),
             (Ident::from("ValueReg").nest("scratchReg".into()), Proc),
+            (Ident::from("ValueReg").nest("fromReg".into()), Proc),
             (Ident::from("GeneralRegSet").nest("empty".into()), Proc),
             (Ident::from("GeneralRegSet").nest("volatile".into()), Proc),
             (Ident::from("GeneralRegSet").nest("intersect".into()), Proc),

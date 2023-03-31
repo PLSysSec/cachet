@@ -434,6 +434,96 @@ impl FailurePath {
     fn clearHasAutoScratchFloatRegister(failure: FailurePath);
 }
 
+struct AutoSaveLiveRegisters;
+
+impl AutoSaveLiveRegisters {
+    fn new() emits MASM -> AutoSaveLiveRegisters {
+        assert !CacheIR::savedLiveRegs;
+        CacheIR::saveLiveRegs();
+        CacheIR::savedLiveRegs = true;
+        unsafe { AutoSaveLiveRegisters::newUnchecked() }
+    }
+
+    unsafe fn newUnchecked() -> AutoSaveLiveRegisters;
+
+    fn release(aslr: AutoSaveLiveRegisters) emits MASM {
+        CacheIR::restoreLiveRegs();
+    }
+}
+
+enum VMFunction {
+    GetSparseElementHelper,
+    ProxyGetPropertyByValue,
+}
+
+struct TrampolinePtr {
+    function: VMFunction
+}
+
+impl TrampolinePtr {
+    fn new(function: VMFunction) -> TrampolinePtr {
+        let code = unsafe { TrampolinePtr::newUnchecked(function) };
+        assume code.function == function;
+        code
+    }
+
+    unsafe fn newUnchecked(function: VMFunction) -> TrampolinePtr;
+}
+
+struct AutoCallVM {
+    save: AutoSaveLiveRegisters,
+}
+
+impl AutoCallVM {
+    fn new() emits MASM -> AutoCallVM {
+        let save = AutoSaveLiveRegisters::new();
+        //TODO: initialize AutoOutputRegister
+        let callvm = unsafe { AutoCallVM::newUnchecked(save) };
+        assume callvm.save == save;
+        callvm
+    }
+
+    unsafe fn newUnchecked(save: AutoSaveLiveRegisters) -> AutoCallVM;
+
+    fn release(callvm: AutoCallVM) emits MASM {
+        AutoSaveLiveRegisters::release(callvm.save);
+    }
+
+    fn prepare(callvm: AutoCallVM) emits MASM {
+        // CacheIR::discardStack();
+        CacheIR::enterStubFrame(callvm.save);
+    }
+
+    fn call(callvm: AutoCallVM, function: VMFunction) emits MASM {
+        CacheIR::callVM(function);
+        AutoCallVM::storeVMFunctionResult(callvm, function);
+        // CallVM::leaveBaselineStubFrame();
+    }
+
+    // templated overload of storeResult
+    fn storeVMFunctionResult(callvm: AutoCallVM, function: VMFunction) emits MASM {
+        if function == VMFunction::GetSparseElementHelper {
+            // according to definition of ReturnTypeToJSValueType
+            AutoCallVM::storeResult(callvm, JSValueType::Unknown);
+        } else if function == VMFunction::ProxyGetPropertyByValue {
+            AutoCallVM::storeResult(callvm, JSValueType::Unknown);
+        } else {
+            assert false;
+        }
+    }
+
+    fn storeResult(callvm: AutoCallVM, returnType: JSValueType) emits MASM {
+        assert returnType != JSValueType::Double;
+
+        if returnType == JSValueType::Unknown {
+            emit MASM::StoreCallResultValue(CacheIR::outputReg);
+        } else {
+            //TODO(abhishek): implement the other cases 
+            assert false;
+        }
+    }
+}
+
 ir CacheIR emits MASM {
     // TODO(spinda): Some slightly hacky helper functions for the codegen demo.
 
@@ -584,6 +674,8 @@ ir CacheIR emits MASM {
 
         let failure = CacheIR::addFailurePath();
 
+        emit MASM::InitStackGuard();
+
         label done: MASM;
         {
             let tagReg = CacheIR::allocateScratchReg();
@@ -617,6 +709,8 @@ ir CacheIR emits MASM {
             CacheIR::releaseScratchReg();
         }
         bind done;
+
+        emit MASM::AssertStackGuard();
 
         CacheIR::releaseFailurePath();
     }
@@ -701,6 +795,25 @@ ir CacheIR emits MASM {
             emit MASM::BranchTestObjClassNoSpectreMitigations(Condition::NotEqual, objReg, class,
                     scratchReg, failure.label_);
         }
+
+        CacheIR::releaseReg(scratchReg);
+        CacheIR::releaseFailurePath();
+    }
+
+    op GuardNullProto(objId: ObjectId) {
+        let objReg = CacheIR::useObjectId(objId);
+        let scratchReg = CacheIR::allocateReg();
+
+        let failure = CacheIR::addFailurePath();
+
+        emit MASM::LoadObjectProto(objReg, scratchReg);
+
+        label done: MASM;
+        
+        emit MASM::BranchTestNullProto(scratchReg, done);
+        emit MASM::Jump(failure.label_);
+
+        bind done;
 
         CacheIR::releaseReg(scratchReg);
         CacheIR::releaseFailurePath();
@@ -1131,6 +1244,36 @@ ir CacheIR emits MASM {
 
         CacheIR::releaseReg(scratchReg);
         CacheIR::releaseFailurePath();
+    }
+
+    op ProxyGetByValueResult(objId: ObjectId, idId: ValueId) {
+        let callvm = AutoCallVM::new();
+
+        let objectReg = CacheIR::useObjectId(objId);
+        let idReg = CacheIR::useValueId(idId);
+
+        AutoCallVM::prepare(callvm);
+        emit MASM::PushValueReg(idReg);
+        emit MASM::PushReg(objectReg);
+
+        AutoCallVM::call(callvm, VMFunction::ProxyGetPropertyByValue);
+
+        AutoCallVM::release(callvm);
+    }
+
+    op CallGetSparseElementResult(objId: ObjectId, indexId: Int32Id) {
+        let callvm = AutoCallVM::new();
+
+        let objectReg = CacheIR::useObjectId(objId);
+        let indexReg = CacheIR::useInt32Id(indexId);
+
+        AutoCallVM::prepare(callvm);
+        emit MASM::PushReg(indexReg);
+        emit MASM::PushReg(objectReg);
+        
+        AutoCallVM::call(callvm, VMFunction::GetSparseElementHelper);
+
+        AutoCallVM::release(callvm);
     }
 
     op LoadArgumentsObjectLengthResult(objectId: ObjectId) {
@@ -2045,10 +2188,40 @@ ir CacheIR emits MASM {
 
     fn objectGuardNeedsSpectreMitigations(objectId: ObjectId) -> Bool;
 
-    var mut liveFloatRegSet: FloatRegSet;
+    var mut liveRegSet: LiveRegSet;
 
     fn liveVolatileFloatRegs() -> FloatRegSet {
-        FloatRegSet::intersect(CacheIR::liveFloatRegSet, FloatRegSet::volatile())
+        FloatRegSet::intersect(LiveRegSet::fpus(CacheIR::liveRegSet), FloatRegSet::volatile())
+    }
+
+    var mut savedLiveRegs: Bool;
+
+    // models CacheRegisterAllocator::saveIonLiveRegisters
+    fn saveLiveRegs() emits MASM {
+        //TODO(abhishek): figure out what we need to model
+    }
+
+    // models CacheRegisterAllocator::restoreIonLiveRegisters
+    fn restoreLiveRegs() emits MASM {
+        //TODO(abhishek): figure out what we need to model
+    }
+
+    var mut enteredStubFrame: Bool;
+
+    fn enterStubFrame(save: AutoSaveLiveRegisters) emits MASM {
+        assert !CacheIR::enteredStubFrame;
+
+        //TODO(abhishek): figure out what we need to model
+
+        CacheIR::enteredStubFrame = true;
+    }
+
+    fn callVM(function: VMFunction) emits MASM {
+        assert CacheIR::enteredStubFrame;
+
+        // get a reference to the trampoline VM code for this VMFunction
+        let code = TrampolinePtr::new(function);
+        emit MASM::CallJit(code);
     }
 }
 

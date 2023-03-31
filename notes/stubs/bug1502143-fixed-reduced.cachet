@@ -1,0 +1,57 @@
+import "../../../../../notes/cacheir.cachet";
+
+import "../../../../../notes/utils.cachet";
+
+ir CacheStub emits CacheIR {  
+  op GetElem() {  
+    initRegState();
+    initOperandId(OperandId::fromId(0_u16));
+    initOperandId(OperandId::fromId(1_u16));
+    initOperandId(OperandId::fromId(2_u16));
+    initOperandId(OperandId::fromId(3_u16));
+    // Input [ValId value] 0
+    initInputValueId(ValueId::fromId(0_u16));
+    // Input [ValId id] 1
+    initInputValueId(ValueId::fromId(1_u16));
+    // Output Value
+    initValueOutput();
+    // ShapeField 16, 317aeb166c00
+    assume CacheIR::readShapeField(ShapeField::fromOffset(16_u32)) == Shape::fromAddr(54403999886336_u64);
+    // ShapeBase 317aeb166c00, 317aeb13d280
+    assume Shape::baseShapeOf(Shape::fromAddr(54403999886336_u64)) == BaseShape::fromAddr(54403999715968_u64);
+    // ShapeClass 317aeb166c00, 5570a1edbed8
+    assume Shape::classOf(Shape::fromAddr(54403999886336_u64)) == Class::fromAddr(93942241410776_u64);
+    // ShapeNumFixedSlots 317aeb166c00, 0
+    assume Shape::numFixedSlots(Shape::fromAddr(54403999886336_u64)) == 0_u32;
+    // ShapeSlotSpan 317aeb166c00, 36
+    assume Shape::slotSpan(Shape::fromAddr(54403999886336_u64)) == 36_u32;
+    // BaseShapeTaggedProto 317aeb13d280, 0
+    assume BaseShape::protoOf(BaseShape::fromAddr(54403999715968_u64)) == TaggedProto::fromAddr(0_u64);
+    // ClassIsNativeObject 5570a1edbed8
+    assume Class::isNativeObject(Class::fromAddr(93942241410776_u64));
+    // TaggedProtoIsNull 0
+    assume TaggedProto::isNull(TaggedProto::fromAddr(0_u64));
+    // GuardToObject [ValId input] 0
+    emit CacheIR::GuardToObject(ValueId::fromId(0_u16));
+    // GuardToInt32Index [ValId input] 1, [Int32Id result] 2
+    emit CacheIR::GuardToInt32Index(ValueId::fromId(1_u16), Int32Id::fromId(2_u16));
+    // GuardClass [ObjId obj] 0, [GuardClassKindImm kind] Array
+    emit CacheIR::GuardClass(ObjectId::fromId(0_u16), GuardClassKind::Array);
+    // GuardIndexGreaterThanDenseInitLength [ObjId obj] 0, [Int32Id index] 2
+    emit CacheIR::GuardIndexGreaterThanDenseInitLength(ObjectId::fromId(0_u16), Int32Id::fromId(2_u16));
+    // GuardInt32IsNonNegative [Int32Id index] 2
+    emit CacheIR::GuardInt32IsNonNegative(Int32Id::fromId(2_u16));
+    // GuardProto [ObjId obj] 0, [ObjectField proto] 0
+    emit CacheIR::GuardProto(ObjectId::fromId(0_u16), ObjectField::fromOffset(0_u32));
+    // LoadObject [ObjId result] 3, [ObjectField obj] 8
+    emit CacheIR::LoadObject(ObjectId::fromId(3_u16), ObjectField::fromOffset(8_u32));
+    // GuardShape [ObjId obj] 3, [ShapeField shape] 16
+    emit CacheIR::GuardShape(ObjectId::fromId(3_u16), ShapeField::fromOffset(16_u32));
+    // GuardNoDenseElements [ObjId obj] 3
+    emit CacheIR::GuardNoDenseElements(ObjectId::fromId(3_u16));
+    // CallGetSparseElementResult [ObjId obj] 0, [Int32Id index] 2
+    emit CacheIR::CallGetSparseElementResult(ObjectId::fromId(0_u16), Int32Id::fromId(2_u16));
+    // ReturnFromIC
+    emit CacheIR::ReturnFromIC();
+  }
+}

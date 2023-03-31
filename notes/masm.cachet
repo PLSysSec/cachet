@@ -35,6 +35,7 @@ struct ValueReg;
 // type ValueReg = Reg;
 
 impl ValueReg {
+    fn fromReg(reg: Reg) -> ValueReg;
     fn scratchReg(valueReg: ValueReg) -> Reg;
 }
 
@@ -846,12 +847,36 @@ ir MASM {
         MASM::setData(dstReg, data);
     }
 
+    op InitStackGuard() {
+        MASM::guardStackPtr = MASM::getStackIndex(Reg::Rsp); 
+    }
+
+    op AssertStackGuard() {
+        assert MASM::guardStackPtr == MASM::getStackIndex(Reg::Rsp);
+    }
+
     op PushRegsInMask(set: LiveRegSet) {
         MASM::pushRegsInMask(set); 
     }
 
     op PopRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
         MASM::popRegsInMaskIgnore(set, ignore); 
+    }
+
+    op PushReg(reg: Reg) {
+        MASM::stackPushReg(reg);
+    }
+
+    op PopReg(reg: Reg) {
+        MASM::stackPopReg(reg);
+    }
+
+    op PushValueReg(valueReg: ValueReg) {
+        MASM::stackPushValueReg(valueReg);    
+    }
+
+    op PopValueReg(valueReg: ValueReg) {
+        MASM::stackPopValueReg(valueReg);
     }
 
     op PushFloatReg(floatReg: FloatReg) {
@@ -2020,6 +2045,61 @@ ir MASM {
         MASM::setValueTag(tagReg, tag);
     }
 
+    op CallJit(code: TrampolinePtr) {
+        let function = code.function;
+
+        if function == VMFunction::GetSparseElementHelper {
+
+            let obj =
+                Value::toObject(RegData::toUnboxedValue(StackData::toRegData(MASM::stackPop())));
+
+            let index =
+                Value::toInt32(RegData::toUnboxedValue(StackData::toRegData(MASM::stackPop())));
+
+            MASM::setValue(ValueReg::fromReg(Reg::Rcx), Value::getUndefined());
+
+            let ok = GetSparseElementHelper(Object::toNativeObject(obj), index, out let value);
+
+            if !ok {
+                //MASM::getFailureLabel(out label failure);
+                //goto failure;
+                //assert false;
+                //TODO(abhishek): temporary hack, jump to failure label here
+                MASM::setValue(ValueReg::fromReg(Reg::Rcx), Value::getUndefined());
+            } else {
+                MASM::setValue(ValueReg::fromReg(Reg::Rcx) , value);
+            }
+        } else if function == VMFunction::ProxyGetPropertyByValue {
+            let obj =
+                Value::toObject(RegData::toUnboxedValue(StackData::toRegData(MASM::stackPop())));
+
+            let idVal = RegData::toValue(StackData::toRegData(MASM::stackPop()));
+
+            let ok = ProxyGetPropertyByValue(obj, idVal, out let value);
+
+            if !ok {
+                //TODO(abhishek): temporary hack, jump to failure label here
+                MASM::setValue(ValueReg::fromReg(Reg::Rcx), Value::getUndefined());
+            } else {
+                MASM::setValue(ValueReg::fromReg(Reg::Rcx), value);
+            }
+        } else {
+            assert false;
+        }
+    }
+
+    op StoreCallResultValue(destReg: TypedOrValueReg) {
+        if TypedOrValueReg::hasValue(destReg) {
+            let valueReg = TypedOrValueReg::toValueReg(destReg);
+            MASM::setValue(valueReg, MASM::getValue(ValueReg::fromReg(Reg::Rcx)));
+        } else {
+            //TODO(abhishek)
+            assert false;
+        }
+    }
+
+    fn getFailureLabel(out label failure: MASM);
+
     fn extractTag(valueReg: ValueReg, scratchReg: Reg) emits MASM -> Reg {
         assert scratchReg != Reg::scratchReg();
         
@@ -2192,6 +2272,8 @@ ir MASM {
         MASM::setFloatData(floatReg.reg, FloatData::fromDouble(double));
     }
 
+    var mut guardStackPtr: UInt64;
+
     #[spec]
     fn stackPush(stackData: StackData);
     #[spec]
@@ -2214,6 +2296,20 @@ ir MASM {
         let stackData = MASM::stackPop();
         let regData = StackData::toRegData(stackData);
         MASM::setData(reg, regData);
+    }
+
+    #[refined]
+    fn stackPushValueReg(valueReg: ValueReg) {
+        let regData = RegData::fromValue(MASM::getValue(valueReg));
+        let stackData = StackData::fromRegData(regData);
+        MASM::stackPush(stackData);
+    }
+
+    #[refined]
+    fn stackPopValueReg(valueReg: ValueReg) {
+        let stackData = MASM::stackPop();
+        let value = RegData::toValue(StackData::toRegData(stackData));
+        MASM::setValue(valueReg, value);
     }
 
     #[refined]

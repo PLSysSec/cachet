@@ -1,0 +1,34 @@
+import "../cacheir.cachet";
+
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {  
+  op GetElem() {  
+    initRegState();
+    initOperandId(OperandId::fromId(0_u16));
+    initOperandId(OperandId::fromId(1_u16));
+    initOperandId(OperandId::fromId(2_u16));
+    // Input [ValId value] 0
+    initInputValueId(ValueId::fromId(0_u16));
+    // Input [ValId id] 1
+    initInputValueId(ValueId::fromId(1_u16));
+    // Output Value
+    initValueOutput();
+    // GuardToObject [ValId input] 0
+    emit CacheIR::GuardToObject(ValueId::fromId(0_u16));
+    // GuardToInt32Index [ValId input] 1, [Int32Id result] 2
+    emit CacheIR::GuardToInt32Index(ValueId::fromId(1_u16), Int32Id::fromId(2_u16));
+    // GuardClass [ObjId obj] 0, [GuardClassKindImm kind] Array
+    emit CacheIR::GuardClass(ObjectId::fromId(0_u16), GuardClassKind::Array);
+    // GuardIndexGreaterThanDenseInitLength [ObjId obj] 0, [Int32Id index] 2
+    emit CacheIR::GuardIndexGreaterThanDenseInitLength(ObjectId::fromId(0_u16), Int32Id::fromId(2_u16));
+    // GuardInt32IsNonNegative [Int32Id index] 2
+    emit CacheIR::GuardInt32IsNonNegative(Int32Id::fromId(2_u16));
+    // GuardNullProto [ObjId obj] 0
+    emit CacheIR::GuardNullProto(ObjectId::fromId(0_u16));
+    // CallGetSparseElementResult [ObjId obj] 0, [Int32Id index] 2
+    emit CacheIR::CallGetSparseElementResult(ObjectId::fromId(0_u16), Int32Id::fromId(2_u16));
+    // ReturnFromIC
+    emit CacheIR::ReturnFromIC();
+  }
+}
