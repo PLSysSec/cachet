@@ -15,6 +15,9 @@ enum RegDataType {
     ValueTag,
     TaggedProto,
     Class,
+    GetterSetter,
+    PropertyKey,
+    JSContext,
     StackIndex,
 }
 
@@ -199,6 +202,72 @@ impl RegData {
     }
 
     unsafe fn toClassUnchecked(data: RegData) -> Class;
+
+    fn isGetterSetter(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::GetterSetter
+    }
+
+    fn fromGetterSetter(gs: GetterSetter) -> RegData {
+        let data = (unsafe { RegData::fromGetterSetterUnchecked(gs) });
+        assume RegData::isGetterSetter(data);
+        assume (unsafe { RegData::toGetterSetterUnchecked(data) }) == gs;
+        data
+    }
+
+    unsafe fn fromGetterSetterUnchecked(gs: GetterSetter) -> RegData;
+
+    fn toGetterSetter(data: RegData) -> GetterSetter {
+        assert RegData::isGetterSetter(data);
+        let gs = (unsafe { RegData::toGetterSetterUnchecked(data) });
+        assume (unsafe { RegData::fromGetterSetterUnchecked(gs) }) == data;
+        gs
+    }
+
+    unsafe fn toGetterSetterUnchecked(data: RegData) -> GetterSetter;
+
+    fn isPropertyKey(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::PropertyKey
+    }
+
+    fn fromPropertyKey(key: PropertyKey) -> RegData {
+        let data = (unsafe { RegData::fromPropertyKeyUnchecked(key) });
+        assume RegData::isPropertyKey(data);
+        assume (unsafe { RegData::toPropertyKeyUnchecked(data) }) == key;
+        data
+    }
+
+    unsafe fn fromPropertyKeyUnchecked(key: PropertyKey) -> RegData;
+
+    fn toPropertyKey(data: RegData) -> PropertyKey {
+        assert RegData::isPropertyKey(data);
+        let key = (unsafe { RegData::toPropertyKeyUnchecked(data) });
+        assume (unsafe { RegData::fromPropertyKeyUnchecked(key) }) == data;
+        key
+    }
+
+    unsafe fn toPropertyKeyUnchecked(data: RegData) -> PropertyKey;
+
+    fn isJSContext(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::JSContext
+    }
+
+    fn fromJSContext(ctx: JSContext) -> RegData {
+        let data = (unsafe { RegData::fromJSContextUnchecked(ctx) });
+        assume RegData::isJSContext(data);
+        assume (unsafe { RegData::toJSContextUnchecked(data) }) == ctx;
+        data
+    }
+
+    unsafe fn fromJSContextUnchecked(ctx: JSContext) -> RegData;
+
+    fn toJSContext(data: RegData) -> JSContext {
+        assert RegData::isJSContext(data);
+        let ctx = (unsafe { RegData::toJSContextUnchecked(data) });
+        assume (unsafe { RegData::fromJSContextUnchecked(ctx) }) == data;
+        ctx
+    }
+
+    unsafe fn toJSContextUnchecked(data: RegData) -> JSContext;
 
     fn isStackIndex(data: RegData) -> Bool {
         RegData::typeOf(data) == RegDataType::StackIndex
@@ -750,6 +819,8 @@ impl Object {
     }
 }
 
+fn ObjectHasGetterSetterPure(cx: JSContext, obj: Object, id: PropertyKey, getterSetter: GetterSetter) -> Bool;
+
 struct MaybeNativeObject;
 
 impl MaybeNativeObject {
@@ -1016,6 +1087,14 @@ impl SharedArrayBufferObject {
 }
 
 struct ArrayBufferViewObject <: NativeObject;
+
+impl ArrayBufferViewObject {
+    var lengthSlot: UInt32 = 1_u32;
+
+    fn lengthOffset() -> Int32 {
+        NativeObject::offsetOfFixedSlot(ArrayBufferViewObject::lengthSlot) as Int32
+    }
+}
 
 struct DataViewObject <: ArrayBufferViewObject;
 
@@ -1443,6 +1522,12 @@ impl TaggedProto {
 
     unsafe fn toObjectUnchecked(proto: TaggedProto) -> Object;
 }
+
+struct GetterSetter;
+
+struct JSContext;
+
+fn runtimeMainContextPtr() -> JSContext;
 
 #[spec]
 fn GetSparseElementHelper(obj: NativeObject, intId: Int32, out result: Value) -> Bool {

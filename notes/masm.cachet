@@ -697,8 +697,16 @@ impl BaseObjectSlotIndex {
     unsafe fn newUnchecked(inner: BaseValueIndex) -> BaseObjectSlotIndex;
 }
 
+struct MoveResolver;
+
+impl MoveResolver {
+    fn addRegMove(data: RegData, arg: UInt8);
+    fn resolve();
+}
+
 enum ABIFunction {
-    EqualStringsHelperPure
+    EqualStringsHelperPure,
+    ObjectHasGetterSetterPure,
 }
 
 impl ABIFunction {
@@ -712,6 +720,17 @@ impl ABIFunction {
 
             let equal = EqualStringsHelperPure(str1, str2);
             MASM::setBool(Reg::Rax, equal);
+        } if function == ABIFunction::ObjectHasGetterSetterPure {
+            let cx = RegData::toJSContext(MASM::getData(Reg::Rdi));
+           let obj = MASM::getObject(Reg::Rsi);
+            let id = RegData::toPropertyKey(MASM::getData(Reg::Rdx));
+            let getterSetter = RegData::toGetterSetter(MASM::getData(Reg::Rcx));
+
+            ABIFunction::clobberVolatileRegs();
+
+            let hasGetterSetter = ObjectHasGetterSetterPure(cx, obj, id, getterSetter);
+
+            MASM::setBool(Reg::Rax, hasGetterSetter);
         } else {
             assert false;
         }
@@ -768,6 +787,14 @@ ir MASM {
 
     op MovePtrImmGCPtrObject(object: Object, dstReg: Reg) {
         MASM::setObject(dstReg, object);
+    }
+
+    op MovePtrImmGCPtrGetterSetter(gs: GetterSetter, dstReg: Reg) {
+        MASM::setGetterSetter(dstReg, gs);
+    }
+
+    op MovePropertyKey(id: PropertyKey, dstReg: Reg) {
+        MASM::setPropertyKey(dstReg, id);
     }
 
     op Cmp32Move32(condition: Condition, lhsReg: Reg, rhsReg: Reg, srcReg: Reg, dstReg: Reg) {
@@ -855,8 +882,36 @@ ir MASM {
         assert MASM::guardStackPtr == MASM::getStackIndex(Reg::Rsp);
     }
 
+    op SetupUnalignedABICall(scratchReg: Reg) {
+        //TODO(abhishek): figure out what we need to model here
+    }
+
+    op LoadJSContext(dstReg: Reg) {
+        let ctx = runtimeMainContextPtr();
+        MASM::setData(dstReg, RegData::fromJSContext(ctx));
+    }
+
+    op PassABIArg(reg: Reg, count: UInt8) {
+        MoveResolver::addRegMove(MASM::getData(reg), count);
+    }
+
+    op CallWithABI(function: ABIFunction) {
+        MoveResolver::resolve();
+        ABIFunction::call(function);
+    }
+
+    op StoreCallPointerResult(reg: Reg) {
+        if reg != Reg::Rax {
+            MASM::setData(reg, MASM::getData(Reg::Rax));
+        }
+    }
+
     op PushRegsInMask(set: LiveRegSet) {
         MASM::pushRegsInMask(set); 
+    }
+
+    op PopRegsInMask(set: LiveRegSet) {
+        MASM::popRegsInMask(set);
     }
 
     op PopRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
@@ -885,6 +940,11 @@ ir MASM {
 
     op PopFloatReg(floatReg: FloatReg) {
         MASM::stackPopFloatReg(floatReg);
+    }
+
+    //TODO(abhishek): make this a but more precise
+    op GuardNonNegativeIntPtrToInt32(reg: Reg, label fail: MASM) {
+        MASM::getInt32(reg); 
     }
 
     op GuardSpecificAtom(
@@ -1469,6 +1529,14 @@ ir MASM {
         }
     }
 
+    op BranchIfFalseBool(reg: Reg, label branch: MASM) {
+        let b = MASM::getBool(reg);
+
+        if !b {
+            goto branch;
+        }
+    }
+
     op BranchTestMagic(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         assert condition == Condition::Equal || condition == Condition::NotEqual;
 
@@ -2028,6 +2096,14 @@ ir MASM {
         MASM::setValue(output, argValue);
     }
 
+    op LoadArrayBufferViewLengthIntPtr(objReg: Reg, outputReg: Reg) {
+        let baseObject = MASM::getObject(objReg);
+        let offset = ArrayBufferViewObject::lengthOffset();
+
+        let data = Object::readData(baseObject, offset);
+        MASM::setData(outputReg, data);
+    }
+
     op LoadObjectProto(objectReg: Reg, protoReg: Reg) {
         let object = MASM::getObject(objectReg);
 
@@ -2157,6 +2233,8 @@ ir MASM {
         }
     }
 
+    var mut moveResolver: MoveResolver;
+
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);
 
@@ -2241,8 +2319,28 @@ ir MASM {
     }
 
     #[refined]
-    fn setValueTag(reg:Reg, tag: ValueType) {
+    fn setValueTag(reg: Reg, tag: ValueType) {
         MASM::setData(reg, RegData::fromValueType(tag));
+    }
+
+    #[refined]
+    fn getGetterSetter(reg: Reg) -> GetterSetter {
+        RegData::toGetterSetter(MASM::getData(reg))
+    }
+
+    #[refined]
+    fn setGetterSetter(reg: Reg, gs: GetterSetter) {
+        MASM::setData(reg, RegData::fromGetterSetter(gs));
+    }
+
+    #[refined]
+    fn getPropertyKey(reg: Reg) -> PropertyKey {
+        RegData::toPropertyKey(MASM::getData(reg))
+    }
+
+    #[refined]
+    fn setPropertyKey(reg: Reg, id: PropertyKey) {
+        MASM::setData(reg, RegData::fromPropertyKey(id));
     }
 
     #[refined]

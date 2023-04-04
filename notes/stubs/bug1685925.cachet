@@ -1,0 +1,22 @@
+import "../cacheir.cachet";
+
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {  
+  op GetProp() {  
+    initRegState();
+    initOperandId(OperandId::fromId(0_u16));
+    // Input [ValId value] 0
+    initInputValueId(ValueId::fromId(0_u16));
+    // Output Value
+    initValueOutput();
+    // GuardToObject [ValId input] 0
+    emit CacheIR::GuardToObject(ValueId::fromId(0_u16));
+    // GuardHasGetterSetter [ObjId obj] 0, [IdField id] 0, [GetterSetterField getterSetter] 8
+    emit CacheIR::GuardHasGetterSetter(ObjectId::fromId(0_u16), IdField::fromOffset(0_u32), GetterSetterField::fromOffset(8_u32));
+    // LoadArrayBufferViewLengthInt32Result [ObjId obj] 0
+    emit CacheIR::LoadArrayBufferViewLengthInt32Result(ObjectId::fromId(0_u16));
+    // ReturnFromIC
+    emit CacheIR::ReturnFromIC();
+  }
+}

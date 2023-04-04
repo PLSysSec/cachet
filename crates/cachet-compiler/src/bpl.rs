@@ -2233,6 +2233,8 @@ lazy_static! {
             (Ident::from("FloatRegSet").nest("contains".into()), Fn),
             (Ident::from("FloatRegSet").nest("add".into()), Proc),
             (Ident::from("FloatRegSet").nest("take".into()), Proc),
+            (Ident::from("MoveResolver").nest("addRegMove".into()), Proc),
+            (Ident::from("MoveResolver").nest("resolve".into()), Proc),
             (Ident::from("ABIFunction").nest("clobberVolatileRegs".into()), Proc),
             (Ident::from("MASM").nest("getValue".into()), Proc),
             (Ident::from("MASM").nest("setValue".into()), Proc),

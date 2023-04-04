@@ -327,6 +327,64 @@ procedure #ABIFunction~clobberVolatileRegs()
     call #MASM~setData(#Reg^Variant~R10(), $data);
 }
 
+function #MoveResolver~moves($resolver: #MoveResolver): #Map #UInt8 #RegData;
+function #MoveResolver~count($resolver: #MoveResolver): #UInt8;
+
+function #MoveResolver~empty(): #MoveResolver;
+function #MoveResolver~new($count: #UInt8, $moves: #Map #UInt8 #RegData): #MoveResolver;
+
+procedure #MoveResolver~reset()
+{
+    var $value: #Value;
+    var $data: #RegData;
+
+    call $value := #Value~getUndefined();
+    call $data := #RegData~fromValue($value);
+
+    #MASM~moveResolver := #MoveResolver~empty();
+    assume #MoveResolver~moves(#MASM~moveResolver) == #Map~const($data);
+    assume #MoveResolver~count(#MASM~moveResolver) == 0bv8;
+}
+
+procedure #MoveResolver~addRegMove($data: #RegData, $count: #UInt8)
+{
+    var $moves: #Map #UInt8 #RegData;
+
+    $moves := #MoveResolver~moves(#MASM~moveResolver);
+    $moves := #Map~set($moves, $count, $data);
+
+    #MASM~moveResolver := #MoveResolver~new($count, $moves);
+    assume #MoveResolver~moves(#MASM~moveResolver) == $moves;
+    assume #MoveResolver~count(#MASM~moveResolver) == $count;
+}
+
+procedure #MoveResolver~resolve()
+{
+    var $moves: #Map #UInt8 #RegData;
+    var $count: #UInt8;
+
+    $moves := #MoveResolver~moves(#MASM~moveResolver);
+    $count := #MoveResolver~count(#MASM~moveResolver);
+
+    if(#UInt8^gte($count, 1bv8)) {
+        call #MASM~setData(#Reg^Variant~Rdi(), #Map~get($moves, 1bv8));
+    }
+
+    if(#UInt8^gte($count, 2bv8)) {
+        call #MASM~setData(#Reg^Variant~Rsi(), #Map~get($moves, 2bv8));
+    }
+
+    if(#UInt8^gte($count, 3bv8)) {
+        call #MASM~setData(#Reg^Variant~Rdx(), #Map~get($moves, 3bv8));
+    }
+
+    if(#UInt8^gte($count, 4bv8)) {
+        call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($moves, 4bv8));
+    }
+
+    call #MoveResolver~reset();
+}
+
 var #CacheIR~knownOperandIds: #Set #UInt16;
 
 var #CacheIR~operandLocations: #Map #UInt16 #OperandLocation;
@@ -506,6 +564,8 @@ procedure #initRegState()
   #MASM~stack := #Map~const($uninitializedStackData);
 
   call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
+
+  call #MoveResolver~reset();
 
   call #CacheIR~liveRegSet := #LiveRegSet~empty();
   #MASM~hasPushedRegs := false;
