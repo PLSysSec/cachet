@@ -325,6 +325,8 @@ var #CacheIR~knownOperandIds: #Set #UInt16;
 
 var #CacheIR~operandLocations: #Map #UInt16 #OperandLocation;
 
+var #CacheIR~regOperands: #Map #Reg #MaybeOperandId;
+
 procedure #CacheIR~defineTypedId($typedId: #TypedId)
     returns (ret: #Reg)
     modifies #CacheIR~operandLocations, #CacheIR~allocatedRegs;
@@ -333,8 +335,7 @@ procedure #CacheIR~defineTypedId($typedId: #TypedId)
     var $loc'0: #OperandLocation;
     var $loc'1: #OperandLocation;
     var $locKind'0: #OperandLocationKind;
-    var $maybeOutputReg: #MaybeReg;
-    var $outputReg: #Reg;
+    var $maybeId: #MaybeOperandId;
 
     assert !#CacheIR~addedFailurePath;
     assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
@@ -348,14 +349,9 @@ procedure #CacheIR~defineTypedId($typedId: #TypedId)
     call $loc'1 := #OperandLocation~setPayloadReg(ret, #TypedId~type($typedId));
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'1);
 
-    call $maybeOutputReg := #CacheIR~maybeOutputReg();
-    if (#MaybeReg~isReg($maybeOutputReg)) {
-         call $outputReg := #MaybeReg~toReg($maybeOutputReg);
-         if ($outputReg == ret) {
-            assert !#MaybeOperandId~isId(#CacheIR~operandInOutputReg);
-            call #CacheIR~operandInOutputReg := #MaybeOperandId~fromId(#TypedId^to#OperandId($typedId));
-         }
-    }
+    call $maybeId := #MaybeOperandId~fromId(#TypedId^to#OperandId($typedId));
+    assert !#MaybeOperandId~isId(#Map~get(#CacheIR~regOperands, ret));
+    #CacheIR~regOperands := #Map~set(#CacheIR~regOperands, ret, $maybeId);
 }
 
 procedure #CacheIR~defineValueId($valueId: #ValueId)
@@ -366,8 +362,7 @@ procedure #CacheIR~defineValueId($valueId: #ValueId)
     var $loc'0: #OperandLocation;
     var $loc'1: #OperandLocation;
     var $locKind'0: #OperandLocationKind;
-    var $maybeOutputReg: #MaybeReg;
-    var $outputReg: #Reg;
+    var $maybeId: #MaybeOperandId;
 
     assert !#CacheIR~addedFailurePath;
     assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
@@ -381,14 +376,9 @@ procedure #CacheIR~defineValueId($valueId: #ValueId)
     call $loc'1 := #OperandLocation~setValueReg(ret);
     #CacheIR~operandLocations := #Map~set(#CacheIR~operandLocations, $id'0, $loc'1);
 
-    call $maybeOutputReg := #CacheIR~maybeOutputReg();
-    if (#MaybeReg~isReg($maybeOutputReg)) {
-         call $outputReg := #MaybeReg~toReg($maybeOutputReg);
-         if ($outputReg == ret) {
-            assert !#MaybeOperandId~isId(#CacheIR~operandInOutputReg);
-            call #CacheIR~operandInOutputReg := #MaybeOperandId~fromId(#ValueId^to#OperandId($valueId));
-         }
-    }
+    call $maybeId := #MaybeOperandId~fromId(#ValueId^to#OperandId($valueId));
+    assert !#MaybeOperandId~isId(#Map~get(#CacheIR~regOperands, ret));
+    #CacheIR~regOperands := #Map~set(#CacheIR~regOperands, ret, $maybeId);
 }
 
 procedure #CacheIR~getOperandLocation($operandId: #OperandId)
@@ -402,6 +392,25 @@ procedure #CacheIR~setOperandLocation($operandId: #OperandId, $loc: #OperandLoca
 {
     #CacheIR~operandLocations :=
         #Map~set(#CacheIR~operandLocations, #OperandId~id($operandId), $loc);
+}
+
+procedure #CacheIR~getRegOperand($reg: #Reg)
+    returns (maybeOp: #MaybeOperandId)
+{
+    maybeOp := #Map~get(#CacheIR~regOperands, $reg);
+}
+
+procedure #CacheIR~setRegOperand($reg: #Reg, $maybeOp: #MaybeOperandId)
+    modifies #CacheIR~regOperands;
+{
+    #CacheIR~regOperands :=
+        #Map~set(#CacheIR~regOperands, $reg, $maybeOp);
+}
+
+procedure #CacheIR~setValueRegOperand($valueReg: #ValueReg, $maybeOp: #MaybeOperandId)
+    modifies #CacheIR~regOperands;
+{
+    call #CacheIR~setRegOperand($valueReg, $maybeOp);
 }
 
 var #CacheIR~allocatedRegs: #Set #Reg;
@@ -511,13 +520,16 @@ procedure #CacheIR~releaseFloatReg($floatReg: #FloatReg)
 procedure #initRegState()
 {
   var $uninitializedStackData: #StackData;
+  var $noneOperandId: #MaybeOperandId;
 
   #CacheIR~addedFailurePath := false;
   #CacheIR~hasAutoScratchFloatRegisterSpill := false;
 
   #CacheIR~hasAllocatedOutputReg := false;
   #CacheIR~hasScratchRegOutput := false;
-  call #CacheIR~operandInOutputReg := #MaybeOperandId~none();
+
+  call $noneOperandId := #MaybeOperandId~none();
+  #CacheIR~regOperands := #Map~const($noneOperandId);
 
   // All registers are initially unallocated.
   #CacheIR~allocatedRegs := #Set~empty(); 
