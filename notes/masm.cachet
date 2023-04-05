@@ -81,6 +81,10 @@ impl FloatReg {
         FloatReg::new(reg, FloatContentType::Double)
     }
 
+    fn newSingle(reg: PhyFloatReg) -> FloatReg {
+        FloatReg::new(reg, FloatContentType::Single)
+    }
+
     unsafe fn newUnchecked(reg: PhyFloatReg, type: FloatContentType) -> FloatReg;
 
     fn floatReg0() -> FloatReg {
@@ -89,6 +93,10 @@ impl FloatReg {
 
     fn doubleScratchReg() -> FloatReg {
         FloatReg::newDouble((PhyFloatReg::Xmm15))
+    }
+
+    fn asSingle(floatReg: FloatReg) -> FloatReg {
+        FloatReg::new(floatReg.reg, FloatContentType::Single)
     }
 }
 
@@ -707,6 +715,7 @@ impl MoveResolver {
 enum ABIFunction {
     EqualStringsHelperPure,
     ObjectHasGetterSetterPure,
+    JSToInt32,
 }
 
 impl ABIFunction {
@@ -722,7 +731,7 @@ impl ABIFunction {
             MASM::setBool(Reg::Rax, equal);
         } if function == ABIFunction::ObjectHasGetterSetterPure {
             let cx = RegData::toJSContext(MASM::getData(Reg::Rdi));
-           let obj = MASM::getObject(Reg::Rsi);
+            let obj = MASM::getObject(Reg::Rsi);
             let id = RegData::toPropertyKey(MASM::getData(Reg::Rdx));
             let getterSetter = RegData::toGetterSetter(MASM::getData(Reg::Rcx));
 
@@ -731,6 +740,13 @@ impl ABIFunction {
             let hasGetterSetter = ObjectHasGetterSetterPure(cx, obj, id, getterSetter);
 
             MASM::setBool(Reg::Rax, hasGetterSetter);
+        } if function == ABIFunction::JSToInt32 {
+            let d = MASM::getDouble(FloatReg::new(PhyFloatReg::Xmm0, FloatContentType::Double));
+
+            ABIFunction::clobberVolatileRegs();
+
+            let int32 = JSToInt32(d);
+            MASM::setInt32(Reg::Rax, int32);
         } else {
             assert false;
         }
@@ -898,6 +914,10 @@ ir MASM {
     op CallWithABI(function: ABIFunction) {
         MoveResolver::resolve();
         ABIFunction::call(function);
+    }
+
+    op StoreCallInt32Result(reg: Reg) {
+        MASM::setInt32(reg, MASM::getInt32(Reg::Rax));
     }
 
     op StoreCallPointerResult(reg: Reg) {
