@@ -218,6 +218,19 @@ impl TypedOrValueReg {
     }
 
     unsafe fn toTypedRegUnchecked(reg: TypedOrValueReg) -> AnyReg;
+
+    // Try to get the underlying general purpose register if it exists.
+    fn toMaybeReg(reg: TypedOrValueReg) -> MaybeReg {
+        if TypedOrValueReg::hasValue(reg) {
+            let valueReg = TypedOrValueReg::toValueReg(reg);
+            return MaybeReg::fromReg(ValueReg::scratchReg(valueReg));
+        } else if TypedOrValueReg::hasTyped(reg) && !AnyReg::isFloat(TypedOrValueReg::toTypedReg(reg)) {
+            let typedReg = AnyReg::toReg(TypedOrValueReg::toTypedReg(reg));
+            return MaybeReg::fromReg(typedReg);
+        }
+
+        MaybeReg::none()
+    }
 }
 
 struct GeneralRegSet;

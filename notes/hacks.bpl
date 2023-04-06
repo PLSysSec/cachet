@@ -525,9 +525,6 @@ procedure #initRegState()
   #CacheIR~addedFailurePath := false;
   #CacheIR~hasAutoScratchFloatRegisterSpill := false;
 
-  #CacheIR~hasAllocatedOutputReg := false;
-  #CacheIR~hasScratchRegOutput := false;
-
   call $noneOperandId := #MaybeOperandId~none();
   #CacheIR~regOperands := #Map~const($noneOperandId);
 
