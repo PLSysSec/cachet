@@ -1121,14 +1121,15 @@ ir CacheIR emits MASM {
         emit MASM::SetupUnalignedABICall(scratchReg1);
 
         emit MASM::LoadJSContext(scratchReg1);
-        emit MASM::PassABIArg(scratchReg1, 1_u8);
-        emit MASM::PassABIArg(objReg, 2_u8);
+        emit MASM::PassABIArgReg(scratchReg1);
+        emit MASM::PassABIArgReg(objReg);
         CacheIR::emitLoadIdStubField(idField, scratchReg2);
-        emit MASM::PassABIArg(scratchReg2, 3_u8);
+        emit MASM::PassABIArgReg(scratchReg2);
         CacheIR::emitLoadGetterSetterStubField(getterSetterField, scratchReg3);
-        emit MASM::PassABIArg(scratchReg3, 4_u8);
+        emit MASM::PassABIArgReg(scratchReg3);
 
-        emit MASM::CallWithABI(ABIFunction::ObjectHasGetterSetterPure);
+        emit MASM::CallWithABI(ABIFunction::ObjectHasGetterSetterPure, MoveOpType::General,
+            CheckUnsafeCallWithABI::Check);
         emit MASM::StoreCallPointerResult(scratchReg1);
 
         emit MASM::PopRegsInMask(volatileRegs);
@@ -1166,8 +1167,10 @@ ir CacheIR emits MASM {
 
         emit MASM::PushRegsInMask(save);
 
-        emit MASM::PassABIArgFloatReg(floatReg);
-        emit MASM::CallWithABI(ABIFunction::JSToInt32);
+        emit MASM::SetupUnalignedABICall(resReg);
+        emit MASM::PassABIArgFloatReg(floatReg, MoveOpType::Double);
+        emit MASM::CallWithABI(ABIFunction::JSToInt32, MoveOpType::General,
+            CheckUnsafeCallWithABI::DontCheckOther);
 
         emit MASM::StoreCallInt32Result(resReg);
 
@@ -1178,7 +1181,7 @@ ir CacheIR emits MASM {
 
         bind done;
 
-        CacheIR::releaseFloatScratchReg(floatReg);
+        CacheIR::releaseFloatScratchReg();
     }
 
     op BooleanToNumber(boolId: BoolId, resultId: NumberId) {
@@ -2203,8 +2206,6 @@ ir CacheIR emits MASM {
 
     #[refined]
     fn ensureDoubleRegister(id: NumberId, destReg: FloatReg) emits MASM {
-        assert !CacheIR::hasAutoScratchFloatRegisterSpill;
-
         let operandId = id as OperandId; 
         let location = CacheIR::getOperandLocation(operandId);
         let locationKind = OperandLocation::kind(location);

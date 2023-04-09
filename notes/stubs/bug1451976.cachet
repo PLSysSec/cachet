@@ -1,0 +1,29 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {
+    op NotDouble(
+        inputValueId: ValueId,
+        int32Id: Int32Id,
+    ) {
+        initRegState();
+
+        initOperandId(inputValueId);
+        initInputValueId(inputValueId);
+
+        initOperandId(int32Id);
+
+        initValueOutput();
+
+        // Bug requires Xmm0 to be live as both Single and Double.
+        addLiveFloatReg(FloatReg::newSingle(PhyFloatReg::Xmm0));
+        addLiveFloatReg(FloatReg::newDouble(PhyFloatReg::Xmm0));
+
+        emit CacheIR::GuardIsNumber(inputValueId);
+        let inputNumberId = OperandId::toNumberId(inputValueId);
+
+        // Need to comment/uncomment a line in this CacheIR op to toggle the bug.
+        emit CacheIR::TruncateDoubleToUInt32(inputNumberId, int32Id);
+        emit CacheIR::Int32NotResult(int32Id);
+    }
+}

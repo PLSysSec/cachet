@@ -705,10 +705,26 @@ impl BaseObjectSlotIndex {
     unsafe fn newUnchecked(inner: BaseValueIndex) -> BaseObjectSlotIndex;
 }
 
+enum CheckUnsafeCallWithABI {
+   Check,
+   DontCheckHasExitFrame,
+   DontCheckOther,
+}
+
+enum MoveOpType {
+    General,
+    Int32,
+    Float32,
+    Double,
+    Simd128,
+}
+
 struct MoveResolver;
 
 impl MoveResolver {
-    fn addRegMove(data: RegData, arg: UInt8);
+    fn reset();
+    fn addRegMove(data: RegData);
+    fn addFloatMove(data: FloatData);
     fn resolve();
 }
 
@@ -729,7 +745,7 @@ impl ABIFunction {
 
             let equal = EqualStringsHelperPure(str1, str2);
             MASM::setBool(Reg::Rax, equal);
-        } if function == ABIFunction::ObjectHasGetterSetterPure {
+        } else if function == ABIFunction::ObjectHasGetterSetterPure {
             let cx = RegData::toJSContext(MASM::getData(Reg::Rdi));
             let obj = MASM::getObject(Reg::Rsi);
             let id = RegData::toPropertyKey(MASM::getData(Reg::Rdx));
@@ -740,7 +756,7 @@ impl ABIFunction {
             let hasGetterSetter = ObjectHasGetterSetterPure(cx, obj, id, getterSetter);
 
             MASM::setBool(Reg::Rax, hasGetterSetter);
-        } if function == ABIFunction::JSToInt32 {
+        } else if function == ABIFunction::JSToInt32 {
             let d = MASM::getDouble(FloatReg::new(PhyFloatReg::Xmm0, FloatContentType::Double));
 
             ABIFunction::clobberVolatileRegs();
@@ -899,7 +915,30 @@ ir MASM {
     }
 
     op SetupUnalignedABICall(scratchReg: Reg) {
-        //TODO(abhishek): figure out what we need to model here
+
+        // begin setupNativeABICall
+        
+        // We were not already in the process of making an ABI call
+        // and mark that we now are.
+        !MASM::inABICall;
+        MASM::inABICall = true;
+
+        // our MoveResolver kinda plays a weird dual role
+        // of also being ABIArgGenerator currently.
+        MoveResolver::reset();
+
+        // end of setupNativeABICall
+
+        //TODO(abhishek): currently we are not modeling the step to make sure
+        // the stack pointer is properly aligned. I'm not sure if it adds to much
+        // value given that additional stack operations is one of the big contributors
+        // to increases in verification time. As such we expect SetupUnalignedABICall
+        // to be paired with a future CallWithABI which checks and undoes the stack
+        // manipulations.
+
+        // we do however model that scratchReg gets clobbered in the process
+        // with the stack pointer.
+        MASM::setData(scratchReg, MASM::getData(Reg::Rsp));
     }
 
     op LoadJSContext(dstReg: Reg) {
@@ -907,13 +946,49 @@ ir MASM {
         MASM::setData(dstReg, RegData::fromJSContext(ctx));
     }
 
-    op PassABIArg(reg: Reg, count: UInt8) {
-        MoveResolver::addRegMove(MASM::getData(reg), count);
+    op PassABIArgReg(reg: Reg) {
+        assert MASM::inABICall;
+        MoveResolver::addRegMove(MASM::getData(reg));
     }
 
-    op CallWithABI(function: ABIFunction) {
+    op PassABIArgFloatReg(floatReg: FloatReg, type: MoveOpType) {
+        assert MASM::inABICall;
+        assert type == MoveOpType::Float32 || type == MoveOpType::Double;
+
+        let data = MASM::getFloatData(floatReg.reg);
+
+        if type == MoveOpType::Float32 {
+            assert FloatData::contentType(data) == FloatContentType::Single;
+        } else if type == MoveOpType::Double {
+            assert FloatData::contentType(data) == FloatContentType::Double;
+        }
+
+        MoveResolver::addFloatMove(data);
+    }
+
+    op CallWithABI(function: ABIFunction, result: MoveOpType, check: CheckUnsafeCallWithABI) {
+        //TODO(abhishek): figure out how to use the `check` argument. It is used to optionally
+        // do additional checks to ensure that the ABIFunction call does not GC etc.
+        // See the comments in the Firefox source code on `CheckUnsafeCallWithABI` and 
+        // `AutoUnsafeCallWithABI`.
+
+        //I do not believe the `result` argument is used in any way besides adding
+        // to the signature_ attribute that the MacroAssembler builds up.
+
+        // begin callWithABIPre
+
+        assert MASM::inABICall;
         MoveResolver::resolve();
+        
+        // end callWithABIPre
+
         ABIFunction::call(function);
+
+        // begin callWithABIPost
+
+        MASM::inABICall = false;
+
+        // end callWithABIPost
     }
 
     op StoreCallInt32Result(reg: Reg) {
@@ -1174,6 +1249,20 @@ ir MASM {
         let double = Float64::fromUInt32(uint32);
 
         MASM::setDouble(destReg, double);
+    }
+
+    // TODO(abhishek): properly handle Float64 -> Int64 -> Int32 conversion failure cases and
+    // checks.
+    op BranchTruncateDoubleMaybeModUint32(srcReg: FloatReg, destReg: Reg, label failure: MASM) {
+        let float64 = MASM::getDouble(srcReg);
+
+        if !Float64::isSafeToInt64(float64) {
+            goto failure;
+        }
+
+        let int64 = Float64::toInt64(float64);
+        let int32 = int64 as Int32;
+        MASM::setInt32(destReg, int32);
     }
 
     op SpectreBoundsCheck32Address(
@@ -2253,6 +2342,7 @@ ir MASM {
         }
     }
 
+    var mut inABICall: Bool;
     var mut moveResolver: MoveResolver;
 
     fn getValue(valueReg: ValueReg) -> Value;
