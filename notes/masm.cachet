@@ -2116,6 +2116,14 @@ ir MASM {
       MASM::setInt32(dstReg, result);
     }
 
+    op And32Imm32(imm32: Int32, dstReg: Reg) {
+        let rhsInt32 = MASM::getInt32(dstReg);
+
+        let result = rhsInt32 & imm32;
+
+        MASM::setInt32(dstReg, result);
+    }
+
     op FlexibleLshift32(shiftReg: Reg, srcDestReg: Reg) {
       let shiftInt32 = MASM::getInt32(shiftReg) & 31_i32;
       let srcInt32 = MASM::getInt32(srcDestReg);

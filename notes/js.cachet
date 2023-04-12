@@ -766,6 +766,13 @@ impl Object {
         let class = Shape::classOf(shape);
         Class::isPlainObject(class)
     }
+
+    fn isWindowProxyObject(object: Object) -> Bool {
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+
+        class == Class::windowProxyClass()
+    }
   
     fn getFixedSlot(object: Object, slot: UInt32) -> Value {
         let nativeObject = Object::toNativeObject(object);
@@ -825,7 +832,18 @@ impl Object {
     }
 }
 
-fn ObjectHasGetterSetterPure(cx: JSContext, obj: Object, id: PropertyKey, getterSetter: GetterSetter) -> Bool;
+fn ObjectHasGetterSetterPure(cx: JSContext, obj: Object, id: PropertyKey, getterSetter: GetterSetter) -> Bool {
+    if !Object::isNativeObject(obj) || Object::isWindowProxyObject(obj) {
+        return false;
+    }
+
+    assert Object::isNativeObject(obj);
+
+    unsafe { ObjectHasGetterSetterPureUnchecked(cx, obj, id, getterSetter) }
+}
+
+unsafe fn ObjectHasGetterSetterPureUnchecked(cx: JSContext,
+    obj: Object, id: PropertyKey, getterSetter: GetterSetter) -> Bool;
 
 struct MaybeNativeObject;
 

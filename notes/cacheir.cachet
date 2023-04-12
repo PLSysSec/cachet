@@ -572,6 +572,11 @@ ir CacheIR emits MASM {
         emit MASM::AssertEqValue(TypedOrValueReg::toValueReg(CacheIR::outputReg), value);
     }
 
+    op AssertEqValueInput(inputId: ValueId, value: Value) {
+        let inputReg = CacheIR::useValueId(inputId);
+        emit MASM::AssertEqValue(inputReg, value);
+    }
+
     op GuardIsNumber(inputId: ValueId) {
         let knownType = CacheIR::knownType(inputId);
 
@@ -1790,6 +1795,10 @@ ir CacheIR emits MASM {
 
         let scratchReg = CacheIR::allocateReg();
         emit MASM::Mov(lhsReg, scratchReg);
+
+        // comment/uncomment below op for BUG1654947
+        //emit MASM::And32Imm32(31_i32, rhsReg);
+
         emit MASM::FlexibleRshift32Arithmetic(rhsReg, scratchReg);
         emit MASM::TagValue(JSValueType::Int32, scratchReg,
                 TypedOrValueReg::toValueReg(CacheIR::outputReg));
