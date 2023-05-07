@@ -276,7 +276,7 @@ CheckKind: CheckKind = {
 };
 
 GotoStmt: GotoStmt =
-    "goto" <label:Spanned<Path>> => GotoStmt { label };
+    "goto" <label:Spanned<LabelExpr>> => GotoStmt { label };
 
 BindStmt: BindStmt =
     "bind" <label:Spanned<Path>> => BindStmt { label };
@@ -602,6 +602,18 @@ HexLiteral: Literal =
 
 StringLiteral: String =
     <s:r#""(?:[^"\\]|\\.)*""#> => s[1..s.len()-1].into();
+
+LabelExpr: LabelExpr = {
+    <expr:Spanned<PrecExpr<NoBlock>>> =>? {
+        match expr.value.expr {
+            Expr::Var(label_path) => Ok(label_path.into()),
+            Expr::FieldAccess(field_access) => Ok(field_access.into()),
+            _ => Err(RawParseError::User {
+                error: Spanned::new(expr.span, "label expression must be a variable or struct field access"),
+            })
+        } 
+    }
+};
 
 Ident: Ident =
     <name:r"[A-Za-z_][A-Za-z0-9_]*"> => Ident::from(name);

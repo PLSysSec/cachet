@@ -752,8 +752,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     callable_item.path.value,
                     param_summary.as_ref(),
                     Spanned::new(arg_span, *label_index),
-                )
-                .into(),
+                ),
             ),
             resolver::Arg::OutLabel(out_label) => (
                 ArgKind::OutLabel.into(),
@@ -802,21 +801,19 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         param_summary: Option<&ParamSummary>,
         arg: Spanned<&resolver::FieldAccess>,
     ) -> (EnumSet<ArgKind>, Arg) {
-        let (parent, struct_field_index, field) = self.type_check_field_access(&arg.value);
+        let (field_access, field) = self.type_check_field_access(&arg.value);
         let Some(field) = field else {
             return (ArgKind::Expr | ArgKind::Label, Expr::from(FieldAccessExpr {
-                parent,
+                field_access,
                 type_: self.unknown_type(),
-                field: struct_field_index,
             }).into());
         };
 
         match field {
             resolver::Field::Var(resolver::VarField { type_, .. }) => {
                 let field_access_expr = FieldAccessExpr {
-                    parent,
+                    field_access,
                     type_: *type_,
-                    field: struct_field_index,
                 };
                 let expr = self.ensure_expr_arg_matches_param_type(
                     target,
@@ -834,12 +831,14 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     arg.span,
                     *arg_ir_index,
                 );
-                let label_field_arg = LabelFieldArg {
-                    parent,
-                    field: struct_field_index,
+
+                let label_expr: LabelExpr = FieldAccessLabelExpr {
+                    field_access,
                     ir: *arg_ir_index,
-                };
-                (ArgKind::Label.into(), label_field_arg.into())
+                }
+                .into();
+
+                (ArgKind::Label.into(), label_expr.into())
             }
         }
     }
@@ -847,7 +846,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     fn type_check_field_access(
         &mut self,
         field_access: &resolver::FieldAccess,
-    ) -> (Expr, StructFieldIndex, Option<&'a resolver::Field>) {
+    ) -> (FieldAccess, Option<&'a resolver::Field>) {
         let parent = self.type_check_expr(&field_access.parent.value);
         let parent_type = parent.type_();
 
@@ -898,7 +897,13 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             struct_index,
             field_index,
         };
-        (parent, struct_field_index, field)
+
+        let field_access = FieldAccess {
+            parent,
+            field: struct_field_index,
+        };
+
+        (field_access, field)
     }
 
     fn type_check_out_var_arg(
@@ -957,14 +962,17 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         target: Path,
         param_summary: Option<&ParamSummary>,
         arg: Spanned<LabelIndex>,
-    ) -> LabelArg {
+    ) -> Arg {
         let arg_ir_index = self.get_label_ir(arg);
         self.ensure_label_arg_matches_param_ir(target, param_summary, arg.span, arg_ir_index);
 
-        LabelArg {
+        let label_expr: LabelExpr = PlainLabelExpr {
             label: arg,
             ir: arg_ir_index,
         }
+        .into();
+
+        label_expr.into()
     }
 
     fn type_check_out_label_arg(
@@ -1301,7 +1309,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
     }
 
     fn type_check_goto_stmt(&mut self, goto_stmt: &resolver::GotoStmt) -> GotoStmt {
-        let ir_index = self.get_label_ir(goto_stmt.label);
+        let label_expr = self.type_check_label_expr(&goto_stmt.label.value);
+        let ir_index = label_expr.ir();
 
         if !self
             .interprets
@@ -1310,10 +1319,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             self.type_checker
                 .errors
                 .push(TypeCheckError::GotoIrMismatch {
-                    label: Spanned::new(
-                        goto_stmt.label.span,
-                        self.get_label_ident(goto_stmt.label.value).value,
-                    ),
+                    label: Spanned::new(goto_stmt.label.span, ()),
 
                     callable: match self.context {
                         ItemContext::Callable { item, .. } => Some(item.path.value),
@@ -1327,9 +1333,38 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                 });
         }
 
-        GotoStmt {
-            label: goto_stmt.label.value,
-            ir: ir_index,
+        GotoStmt { label: label_expr }
+    }
+
+    fn type_check_label_expr(&mut self, label_expr: &resolver::LabelExpr) -> LabelExpr {
+        match label_expr {
+            resolver::LabelExpr::Label(label) => {
+                let ir = self.get_label_ir(*label);
+                PlainLabelExpr { label: *label, ir }.into()
+            }
+            resolver::LabelExpr::FieldAccess(field_access) => {
+                let (field_access_, field) = self.type_check_field_access(field_access);
+
+                let ir = match field {
+                    Some(resolver::Field::Label(Label { ir, .. })) => *ir,
+                    Some(resolver::Field::Var(_)) => {
+                        self.type_checker
+                            .errors
+                            .push(TypeCheckError::VarFieldUsedAsLabelField {
+                                field: field_access.field,
+                                parent_type: self.env[field_access_.field.struct_index].ident,
+                            });
+                        self.unknown_ir
+                    }
+                    None => self.unknown_ir,
+                };
+
+                FieldAccessLabelExpr {
+                    field_access: field_access_,
+                    ir,
+                }
+                .into()
+            }
         }
     }
 
@@ -1482,7 +1517,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         &mut self,
         field_access: &resolver::FieldAccess,
     ) -> FieldAccessExpr {
-        let (parent, struct_field_index, field) = self.type_check_field_access(field_access);
+        let (field_access_, field) = self.type_check_field_access(field_access);
 
         let type_ = match field {
             Some(resolver::Field::Var(resolver::VarField { type_, .. })) => *type_,
@@ -1491,7 +1526,7 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
                     .errors
                     .push(TypeCheckError::LabelFieldUsedAsVarField {
                         field: field_access.field,
-                        parent_type: self.env[struct_field_index.struct_index].ident,
+                        parent_type: self.env[field_access_.field.struct_index].ident,
                     });
                 self.unknown_type()
             }
@@ -1499,9 +1534,8 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         };
 
         FieldAccessExpr {
-            parent,
+            field_access: field_access_,
             type_,
-            field: struct_field_index,
         }
     }
 
@@ -1819,7 +1853,9 @@ fn does_expr_exit_early(expr: &Expr) -> bool {
     match expr {
         Expr::Block(kinded_block) => kinded_block.block.exits_early,
         Expr::Literal(_) | Expr::Var(_) | Expr::Invoke(_) => false,
-        Expr::FieldAccess(field_access_expr) => does_expr_exit_early(&field_access_expr.parent),
+        Expr::FieldAccess(field_access_expr) => {
+            does_expr_exit_early(&field_access_expr.field_access.parent)
+        }
         Expr::Negate(negate_expr) => does_expr_exit_early(&negate_expr.expr),
         Expr::Cast(cast_expr) => does_expr_exit_early(&cast_expr.expr),
         Expr::BinOper(bin_oper_expr) => {

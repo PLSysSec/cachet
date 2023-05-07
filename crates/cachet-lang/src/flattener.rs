@@ -129,7 +129,7 @@ impl Flattener {
                 self.flatten_check_stmt(check_stmt);
             }
             normalizer::Stmt::Goto(goto_stmt) => {
-                self.stmts.push(goto_stmt.into());
+                self.flatten_goto_stmt(goto_stmt);
             }
             normalizer::Stmt::Bind(bind_stmt) => {
                 self.stmts.push(bind_stmt.into());
@@ -209,6 +209,12 @@ impl Flattener {
         );
     }
 
+    fn flatten_goto_stmt(&mut self, goto_stmt: normalizer::GotoStmt) {
+        let label = self.flatten_label_expr(goto_stmt.label);
+
+        self.stmts.push(GotoStmt { label }.into())
+    }
+
     fn flatten_assign_stmt(&mut self, assign_stmt: normalizer::AssignStmt) {
         let rhs = self.flatten_expr(assign_stmt.rhs);
 
@@ -225,6 +231,19 @@ impl Flattener {
         let value = ret_stmt.value.map(|value| self.flatten_expr(value));
 
         self.stmts.push(RetStmt { value }.into());
+    }
+
+    fn flatten_label_expr(&mut self, label_expr: normalizer::LabelExpr) -> LabelExpr {
+        match label_expr {
+            normalizer::LabelExpr::Label(plain_label_expr) => LabelExpr::Label(plain_label_expr),
+            normalizer::LabelExpr::FieldAccess(field_access_label_expr) => {
+                let field_access = self.flatten_field_access(field_access_label_expr.field_access);
+                LabelExpr::FieldAccess(FieldAccessLabelExpr {
+                    field_access,
+                    ir: field_access_label_expr.ir,
+                })
+            }
+        }
     }
 
     fn flatten_expr(&mut self, expr: normalizer::Expr) -> Expr {
@@ -252,12 +271,19 @@ impl Flattener {
         &mut self,
         field_access_expr: normalizer::FieldAccessExpr,
     ) -> FieldAccessExpr {
-        let parent = self.flatten_expr(field_access_expr.parent);
+        let field_access = self.flatten_field_access(field_access_expr.field_access);
 
         FieldAccessExpr {
-            parent,
-            field: field_access_expr.field,
+            field_access,
             type_: field_access_expr.type_,
+        }
+    }
+
+    fn flatten_field_access(&mut self, field_access: normalizer::FieldAccess) -> FieldAccess {
+        let parent = self.flatten_expr(field_access.parent);
+        FieldAccess {
+            parent,
+            field: field_access.field,
         }
     }
 

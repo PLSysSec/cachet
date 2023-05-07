@@ -273,22 +273,10 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
                 upcast_route: out_var_arg.upcast_route,
             }
             .into(),
-            type_checker::Arg::Label(label_arg) => LabelArg {
-                label: label_arg.label.value,
-                is_out: false,
-                ir: label_arg.ir,
+            type_checker::Arg::Label(label_expr) => {
+                self.normalize_pure_label_expr(label_expr).into()
             }
-            .into(),
-            type_checker::Arg::LabelField(label_field_arg) => {
-                let parent = self.normalize_pure_expr(label_field_arg.parent);
-                LabelFieldArg {
-                    parent,
-                    field: label_field_arg.field,
-                    ir: label_field_arg.ir,
-                }
-                .into()
-            }
-            type_checker::Arg::OutLabel(out_label_arg) => LabelArg {
+            type_checker::Arg::OutLabel(out_label_arg) => OutLabelArg {
                 label: match out_label_arg.out_label {
                     type_checker::OutLabel::Free(label_index) => label_index.value,
                     type_checker::OutLabel::Fresh(local_label_index) => {
@@ -301,7 +289,6 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
                         local_label_index.into()
                     }
                 },
-                is_out: true,
                 ir: out_label_arg.ir,
             }
             .into(),
@@ -357,7 +344,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Stmt::If(if_stmt) => self.normalize_if_stmt(if_stmt),
             type_checker::Stmt::ForIn(for_in_stmt) => self.normalize_for_in_stmt(for_in_stmt),
             type_checker::Stmt::Check(check_stmt) => self.normalize_check_stmt(check_stmt),
-            type_checker::Stmt::Goto(goto_stmt) => self.stmts.push(goto_stmt.into()),
+            type_checker::Stmt::Goto(goto_stmt) => self.normalize_goto_stmt(goto_stmt),
             type_checker::Stmt::Bind(bind_stmt) => self.stmts.push(bind_stmt.into()),
             type_checker::Stmt::Emit(emit_stmt) => self.normalize_emit_stmt(emit_stmt),
             type_checker::Stmt::Expr(expr) => self.normalize_unused_expr(expr),
@@ -424,6 +411,12 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         );
     }
 
+    fn normalize_goto_stmt(&mut self, goto_stmt: type_checker::GotoStmt) {
+        let label = self.normalize_label_expr(goto_stmt.label);
+
+        self.stmts.push(GotoStmt { label }.into());
+    }
+
     fn normalize_ret_stmt(&mut self, ret_stmt: type_checker::RetStmt) {
         let value = if ret_stmt.value.type_() == BuiltInType::Unit.into() {
             // Unit return types are erased by normalization, so we should treat the
@@ -446,6 +439,47 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             }
             .into()
         });
+    }
+
+    fn normalize_label_expr(&mut self, label_expr: type_checker::LabelExpr) -> LabelExpr {
+        match label_expr {
+            type_checker::LabelExpr::Label(plain_label_expr) => LabelExpr::Label(plain_label_expr),
+            type_checker::LabelExpr::FieldAccess(field_access_label_expr) => {
+                let field_access =
+                    self.normalize_used_field_access(field_access_label_expr.field_access);
+                LabelExpr::FieldAccess(FieldAccessLabelExpr {
+                    field_access,
+                    ir: field_access_label_expr.ir,
+                })
+            }
+        }
+    }
+
+    fn normalize_pure_label_expr(&mut self, label_expr: type_checker::LabelExpr) -> PureLabelExpr {
+        let label_expr = self.normalize_label_expr(label_expr);
+
+        match label_expr {
+            LabelExpr::Label(plain_label_expr) => LabelExpr::Label(plain_label_expr),
+            LabelExpr::FieldAccess(field_access_label_expr) => {
+                match field_access_label_expr.field_access.try_into() {
+                    Ok(field_access) => LabelExpr::FieldAccess(FieldAccessLabelExpr {
+                        field_access,
+                        ir: field_access_label_expr.ir,
+                    }),
+                    Err(field_access) => {
+                        let parent = self.push_tmp_expr(field_access.parent).into();
+                        let field_access = FieldAccess {
+                            parent,
+                            field: field_access.field,
+                        };
+                        LabelExpr::FieldAccess(FieldAccessLabelExpr {
+                            field_access,
+                            ir: field_access_label_expr.ir,
+                        })
+                    }
+                }
+            }
+        }
     }
 
     fn normalize_expr(&mut self, expr: type_checker::Expr) -> Expr {
@@ -567,11 +601,10 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         &mut self,
         field_access_expr: type_checker::FieldAccessExpr,
     ) -> FieldAccessExpr {
-        let parent = self.normalize_used_expr(field_access_expr.parent);
+        let field_access = self.normalize_used_field_access(field_access_expr.field_access);
 
         FieldAccessExpr {
-            parent,
-            field: field_access_expr.field,
+            field_access,
             type_: field_access_expr.type_,
         }
     }
@@ -580,7 +613,23 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
         &mut self,
         field_access_expr: type_checker::FieldAccessExpr,
     ) {
-        self.normalize_unused_expr(field_access_expr.parent);
+        self.normalize_unused_field_access(field_access_expr.field_access);
+    }
+
+    fn normalize_used_field_access(
+        &mut self,
+        field_access: type_checker::FieldAccess,
+    ) -> FieldAccess {
+        let parent = self.normalize_used_expr(field_access.parent);
+
+        FieldAccess {
+            parent,
+            field: field_access.field,
+        }
+    }
+
+    fn normalize_unused_field_access(&mut self, field_access: type_checker::FieldAccess) {
+        self.normalize_unused_expr(field_access.parent);
     }
 
     fn normalize_used_negate_expr(&mut self, negate_expr: type_checker::NegateExpr) -> NegateExpr {

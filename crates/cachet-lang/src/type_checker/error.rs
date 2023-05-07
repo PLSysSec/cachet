@@ -35,9 +35,9 @@ pub enum TypeCheckError {
     MissingOpBody { op: Path, body_span: Span },
     #[error("function `{fn_}` with explicit emits is missing a body")]
     MissingEmitsFnBody { fn_: Spanned<Path> },
-    #[error("can't jump to label `{label}`")]
+    #[error("can't jump to label")]
     GotoIrMismatch {
-        label: Spanned<Ident>,
+        label: Spanned<()>,
         callable: Option<Path>,
         expected_ir: Option<Spanned<Ident>>,
         found_ir: Ident,
@@ -163,6 +163,11 @@ pub enum TypeCheckError {
         field: Spanned<Ident>,
         parent_type: Spanned<Ident>,
     },
+    #[error("can't use var field `{field}` on type `{parent_type}` as a label field")]
+    VarFieldUsedAsLabelField {
+        field: Spanned<Ident>,
+        parent_type: Spanned<Ident>,
+    },
     // todo: support this and remove the error
     #[error("attempted to set default value for mutable var")]
     MutGlobalVarWithValue { var: Spanned<Path> },
@@ -207,7 +212,8 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::AssignTypeMismatch { rhs_span, .. } => *rhs_span,
             TypeCheckError::NonStructFieldAccess { field, .. } => field.span,
             TypeCheckError::FieldNotFound { field, .. } => field.span,
-            TypeCheckError::LabelFieldUsedAsVarField { field, .. } => field.span,
+            TypeCheckError::LabelFieldUsedAsVarField { field, .. }
+            | TypeCheckError::VarFieldUsedAsLabelField { field, .. } => field.span,
             TypeCheckError::MutGlobalVarWithValue { var, .. } => var.span,
             TypeCheckError::ReturnOutsideCallable { span, .. } => *span,
             TypeCheckError::NonConstGlobalVarItem { expr, .. } => *expr,
@@ -371,7 +377,11 @@ impl FrontendError for TypeCheckError {
                 found_arg_kinds,
                 ..
             } => {
-                format!("expected {}, found {}", expected_arg_kind, ArgKinds(found_arg_kinds))
+                format!(
+                    "expected {}, found {}",
+                    expected_arg_kind,
+                    ArgKinds(found_arg_kinds)
+                )
             }
             TypeCheckError::ArgTypeMismatch {
                 expected_type: expected,
@@ -404,6 +414,9 @@ impl FrontendError for TypeCheckError {
             }
             TypeCheckError::LabelFieldUsedAsVarField { .. } => {
                 format!("expected a variable field")
+            }
+            TypeCheckError::VarFieldUsedAsLabelField { .. } => {
+                format!("expected a label field")
             }
             TypeCheckError::MutGlobalVarWithValue { .. } => {
                 format!("only immutable variables may have default values")
@@ -592,7 +605,8 @@ impl FrontendError for TypeCheckError {
                         format!("type `{}` defined here", parent_type.value)
                 ]);
             }
-            TypeCheckError::LabelFieldUsedAsVarField { parent_type, .. } => {
+            TypeCheckError::LabelFieldUsedAsVarField { parent_type, .. }
+            | TypeCheckError::VarFieldUsedAsLabelField { parent_type, .. } => {
                 labels.extend(labels![
                     Secondary(parent_type.span) =>
                         format!("type `{}` defined here", parent_type.value)

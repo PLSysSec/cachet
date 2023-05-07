@@ -311,7 +311,7 @@ pub enum Arg {
     Expr(Expr),
     /// Arguments that look like `bar` in `foo(bar)` could be either a variable
     /// expression argument or a label argument. The same is true of arguments
-    /// that look like `out bar)` in `foo(out bar)`. They will have to be
+    /// that look like `out bar` in `foo(out bar)`. They will have to be
     /// disambiguated during name resolution.
     Free(FreeArg),
     /// Arguments that look like `bar.baz` in `foo(bar.baz)` could be accessing
@@ -546,7 +546,7 @@ pub struct CheckStmt {
 #[derive(Clone, Debug, Display)]
 #[display(fmt = "goto {label};")]
 pub struct GotoStmt {
-    pub label: Spanned<Path>,
+    pub label: Spanned<LabelExpr>,
 }
 
 #[derive(Clone, Debug, Display)]
@@ -668,6 +668,14 @@ pub struct AssignExpr {
     pub lhs: Spanned<Path>,
     pub rhs: Spanned<Expr>,
 }
+
+#[derive(Clone, Debug, Display, From)]
+pub enum LabelExpr {
+    Label(Spanned<Path>),
+    FieldAccess(Box<FieldAccess>),
+}
+
+box_from!(FieldAccess => LabelExpr);
 
 // * Formatting Utilities
 

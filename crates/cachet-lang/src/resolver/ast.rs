@@ -612,7 +612,7 @@ impl Typed for CheckStmt {
 
 #[derive(Clone, Debug)]
 pub struct GotoStmt {
-    pub label: Spanned<LabelIndex>,
+    pub label: Spanned<LabelExpr>,
 }
 
 impl Typed for GotoStmt {
@@ -726,3 +726,11 @@ impl Typed for AssignExpr {
         AssignExpr::TYPE.into()
     }
 }
+
+#[derive(Clone, Debug, From)]
+pub enum LabelExpr {
+    Label(Spanned<LabelIndex>),
+    FieldAccess(Box<FieldAccess>),
+}
+
+box_from!(FieldAccess => LabelExpr);

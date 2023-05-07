@@ -22,6 +22,10 @@ pub use crate::resolver::{
     VarIndex, VarParam, VarParamIndex, VariantIndex,
 };
 
+pub trait HasIr {
+    fn ir(&self) -> IrIndex;
+}
+
 #[derive(Clone, Debug)]
 pub struct Env {
     pub enum_items: TiVec<EnumIndex, EnumItem>,
@@ -211,8 +215,7 @@ impl Typed for CallableItem {
 pub enum Arg {
     Expr(Expr),
     OutVar(OutVarArg),
-    Label(LabelArg),
-    LabelField(LabelFieldArg),
+    Label(LabelExpr),
     OutLabel(OutLabelArg),
 }
 
@@ -229,17 +232,43 @@ impl Typed for OutVarArg {
     }
 }
 
+#[derive(Clone, Debug, From)]
+pub enum LabelExpr {
+    Label(PlainLabelExpr),
+    FieldAccess(FieldAccessLabelExpr),
+}
+
+impl HasIr for LabelExpr {
+    fn ir(&self) -> IrIndex {
+        match self {
+            LabelExpr::Label(plain_label_expr) => plain_label_expr.ir(),
+            LabelExpr::FieldAccess(field_access_label_expr) => field_access_label_expr.ir(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
-pub struct LabelArg {
+pub struct PlainLabelExpr {
     pub label: Spanned<LabelIndex>,
     pub ir: IrIndex,
 }
 
+impl HasIr for PlainLabelExpr {
+    fn ir(&self) -> IrIndex {
+        self.ir
+    }
+}
+
 #[derive(Clone, Debug)]
-pub struct LabelFieldArg {
-    pub parent: Expr,
-    pub field: StructFieldIndex,
+pub struct FieldAccessLabelExpr {
+    pub field_access: FieldAccess,
     pub ir: IrIndex,
+}
+
+impl HasIr for FieldAccessLabelExpr {
+    fn ir(&self) -> IrIndex {
+        self.ir
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -436,8 +465,7 @@ impl Typed for CheckStmt {
 
 #[derive(Clone, Debug)]
 pub struct GotoStmt {
-    pub label: LabelIndex,
-    pub ir: IrIndex,
+    pub label: LabelExpr,
 }
 
 impl Typed for GotoStmt {
@@ -571,9 +599,14 @@ impl Typed for InvokeExpr {
 
 #[derive(Clone, Debug)]
 pub struct FieldAccessExpr {
+    pub field_access: FieldAccess,
+    pub type_: TypeIndex,
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldAccess {
     pub parent: Expr,
     pub field: StructFieldIndex,
-    pub type_: TypeIndex,
 }
 
 impl Typed for FieldAccessExpr {

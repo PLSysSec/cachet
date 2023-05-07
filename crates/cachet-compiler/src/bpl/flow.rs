@@ -233,10 +233,11 @@ impl<'a> FlowTracer<'a> {
                     && params[label_param_index].label.ir == self.bottom_ir_index {
                 let arg_label_node_index = match arg {
                     flattener::Arg::Expr(_) | flattener::Arg::OutVar(_) => continue,
-                    flattener::Arg::Label(label_arg) => caller_label_scope[&label_arg.label],
+                    flattener::Arg::Label(flattener::LabelExpr::Label(plain_label_expr)) => caller_label_scope[&plain_label_expr.label.value],
                     // Label fields are represented with the shared global exit
                     // label.
-                    flattener::Arg::LabelField(_) => self.graph.exit_label_node_index(),
+                    flattener::Arg::Label(flattener::LabelExpr::FieldAccess(_)) => self.graph.exit_label_node_index(),
+                    flattener::Arg::OutLabel(out_label_arg) => caller_label_scope[&out_label_arg.label],
                 };
                 self.label_scope.insert(label_param_index.into(), arg_label_node_index);
             }
@@ -324,7 +325,9 @@ impl<'a> FlowTracer<'a> {
         match stmt {
             flattener::Stmt::Label(_)
             | flattener::Stmt::Let(flattener::LetStmt { rhs: None, .. }) => (),
-            flattener::Stmt::Let(flattener::LetStmt { rhs: Some(expr), .. })
+            flattener::Stmt::Let(flattener::LetStmt {
+                rhs: Some(expr), ..
+            })
             | flattener::Stmt::Assign(flattener::AssignStmt { rhs: expr, .. })
             | flattener::Stmt::Check(flattener::CheckStmt { cond: expr, .. }) => {
                 self.trace_expr(expr);
@@ -382,7 +385,12 @@ impl<'a> FlowTracer<'a> {
     }
 
     fn trace_goto_stmt(&mut self, goto_stmt: &flattener::GotoStmt) {
-        let label_node_index = self.label_scope[&goto_stmt.label];
+        let label_node_index = match &goto_stmt.label {
+            flattener::LabelExpr::Label(plain_label_expr) => {
+                self.label_scope[&plain_label_expr.label.value]
+            }
+            flattener::LabelExpr::FieldAccess(_) => self.graph.exit_label_node_index(),
+        };
         self.link_pred_emits_to_succ(label_node_index.into());
     }
 
@@ -469,10 +477,10 @@ impl<'a> FlowTracer<'a> {
         let fn_item = &self.env[invoke_expr.call.target];
 
         let mut out_label_args = invoke_expr.call.args.iter().filter_map(|arg| match arg {
-            flattener::Arg::Label(label_arg)
-                if label_arg.is_out && label_arg.ir == self.bottom_ir_index =>
+            flattener::Arg::OutLabel(out_label_arg)
+                if out_label_arg.ir == self.bottom_ir_index =>
             {
-                Some(label_arg)
+                Some(out_label_arg)
             }
             _ => None,
         });

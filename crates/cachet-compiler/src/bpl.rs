@@ -16,7 +16,7 @@ use cachet_lang::ast::{
     BinOper, CheckKind, CompareBinOper, ForInOrder, Ident, NegateKind, Path, Spanned, VarParamKind,
 };
 use cachet_lang::built_in::{BuiltInVar, IdentEnum};
-use cachet_lang::flattener::{self, HasAttrs, Typed};
+use cachet_lang::flattener::{self, HasAttrs, HasIr, Typed};
 use cachet_util::MaybeOwned;
 
 use crate::bpl::ast::*;
@@ -1433,12 +1433,17 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 flattener::Arg::OutVar(out_var_arg) => {
                     ret_var_idents.push(self.compile_out_var_arg(out_var_arg))
                 }
-                flattener::Arg::Label(label_arg) => {
-                    arg_exprs.push(self.compile_label_arg(label_arg))
+                flattener::Arg::Label(label_expr) => {
+                    arg_exprs.push(self.compile_label_expr(label_expr))
                 }
-                flattener::Arg::LabelField(label_field_arg) => {
-                    arg_exprs.push(self.compile_label_field_arg(label_field_arg))
-                }
+                flattener::Arg::OutLabel(out_label_arg) => {
+                    arg_exprs.push(self.compile_out_label_arg(out_label_arg))
+                } /*flattener::Arg::Label(label_arg) => {
+                      arg_exprs.push(self.compile_label_arg(label_arg))
+                  }
+                  flattener::Arg::LabelField(label_field_arg) => {
+                      arg_exprs.push(self.compile_label_field_arg(label_field_arg))
+                  }*/
             }
         }
 
@@ -1455,11 +1460,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             .expect("invalid out-variable argument")
     }
 
-    fn compile_label_arg(&mut self, label_arg: &flattener::LabelArg) -> Expr {
-        self.compile_internal_label_arg(label_arg.label)
+    fn compile_out_label_arg(&mut self, out_label_arg: &flattener::OutLabelArg) -> Expr {
+        self.compile_internal_label_arg(out_label_arg.label)
     }
 
-    fn compile_label_field_arg(&mut self, label_field_arg: &flattener::LabelFieldArg) -> Expr {
+    /*fn compile_label_field_arg(&mut self, label_field_arg: &flattener::LabelFieldArg) -> Expr {
         let struct_item = &self.env[label_field_arg.field.struct_index];
         let field = &struct_item.fields[label_field_arg.field.field_index];
         let field_fn_ident = TypeMemberFnIdent {
@@ -1475,7 +1480,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             arg_exprs: vec![parent_expr],
         }
         .into()
-    }
+    }*/
 
     fn compile_internal_label_arg(&mut self, label_index: flattener::LabelIndex) -> Expr {
         match label_index {
@@ -1693,14 +1698,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_goto_stmt(&mut self, goto_stmt: &flattener::GotoStmt) {
-        let ir_ident = self.env[goto_stmt.ir].ident.value.into();
+        let ir_ident = self.env[goto_stmt.label.ir()].ident.value.into();
         let target = IrMemberFnIdent {
             ir_ident,
             selector: IrMemberFnSelector::Goto,
         }
         .into();
 
-        let arg_exprs = vec![self.compile_internal_label_arg(goto_stmt.label)];
+        let arg_exprs = vec![self.compile_label_expr(&goto_stmt.label)];
 
         self.stmts
             .extend([CallExpr { target, arg_exprs }.into(), Stmt::Ret]);
@@ -1894,6 +1899,32 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             .extend(iterate![..assign_stmt, ..step_call, Stmt::Ret]);
     }
 
+    fn compile_label_expr<E: CompileExpr + Typed>(
+        &mut self,
+        label_expr: &flattener::LabelExpr<E>,
+    ) -> Expr {
+        match label_expr {
+            flattener::LabelExpr::Label(plain_label_expr) => {
+                self.compile_plain_label_expr(plain_label_expr)
+            }
+            flattener::LabelExpr::FieldAccess(field_access_label_expr) => {
+                self.compile_field_access_label_expr(field_access_label_expr)
+            }
+        }
+    }
+
+    fn compile_plain_label_expr(&mut self, plain_label_expr: &flattener::PlainLabelExpr) -> Expr {
+        self.compile_internal_label_arg(plain_label_expr.label.value)
+    }
+
+    fn compile_field_access_label_expr<E: CompileExpr + Typed>(
+        &mut self,
+        field_access_label_expr: &flattener::FieldAccessLabelExpr<E>,
+    ) -> Expr {
+        self.compile_field_access(&field_access_label_expr.field_access)
+            .into()
+    }
+
     fn compile_expr(&mut self, expr: &flattener::Expr) -> Expr {
         match expr {
             flattener::Expr::Block(void, _) => unreachable(*void),
@@ -1993,24 +2024,31 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
-    fn compile_field_access_expr<E: CompileExpr + Typed>(
+    fn compile_field_access<E: CompileExpr + Typed>(
         &mut self,
-        field_access_expr: &flattener::FieldAccessExpr<E>,
+        field_access: &flattener::FieldAccess<E>,
     ) -> CallExpr {
-        let struct_item = &self.env[field_access_expr.field.struct_index];
-        let field = &struct_item.fields[field_access_expr.field.field_index];
+        let struct_item = &self.env[field_access.field.struct_index];
+        let field = &struct_item.fields[field_access.field.field_index];
         let field_fn_ident = TypeMemberFnIdent {
             type_ident: UserTypeIdent::from(struct_item.ident.value),
             selector: TypeMemberFnSelector::Field(field.ident().value.into()),
         }
         .into();
 
-        let parent_expr = field_access_expr.parent.compile(self);
+        let parent_expr = field_access.parent.compile(self);
 
         CallExpr {
             target: field_fn_ident,
             arg_exprs: vec![parent_expr],
         }
+    }
+
+    fn compile_field_access_expr<E: CompileExpr + Typed>(
+        &mut self,
+        field_access_expr: &flattener::FieldAccessExpr<E>,
+    ) -> CallExpr {
+        self.compile_field_access(&field_access_expr.field_access)
     }
 
     fn compile_negate_expr<E: CompileExpr + Typed>(

@@ -13,11 +13,11 @@ use crate::built_in::{BuiltInAttr, BuiltInType, BuiltInVar};
 
 pub use crate::type_checker::{
     BindStmt, CallableIndex, DeclIndex, EnumIndex, EnumItem, EnumVariantIndex, Field, FieldIndex,
-    FnIndex, GlobalVarIndex, GotoStmt, HasAttrs, IrIndex, IrItem, Label, LabelIndex, LabelParam,
+    FnIndex, GlobalVarIndex, HasAttrs, HasIr, IrIndex, IrItem, Label, LabelIndex, LabelParam,
     LabelParamIndex, LabelStmt, Literal, LocalLabelIndex, LocalVar, LocalVarIndex, Locals,
-    NotPartOfDeclOrderError, OpIndex, ParamIndex, Params, ParentIndex, StructFieldIndex,
-    StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarField, VarIndex, VarParam,
-    VarParamIndex, VariantIndex,
+    NotPartOfDeclOrderError, OpIndex, ParamIndex, Params, ParentIndex, PlainLabelExpr,
+    StructFieldIndex, StructIndex, StructItem, TypeIndex, Typed, VarExpr, VarField, VarIndex,
+    VarParam, VarParamIndex, VariantIndex,
 };
 use cachet_util::{box_from, deref_from, deref_index, field_index};
 
@@ -139,8 +139,8 @@ impl<B> Typed for CallableItem<B> {
 pub enum Arg {
     Expr(PureExpr),
     OutVar(OutVarArg),
-    Label(LabelArg),
-    LabelField(LabelFieldArg),
+    Label(PureLabelExpr),
+    OutLabel(OutLabelArg),
 }
 
 #[derive(Clone, Debug)]
@@ -150,18 +150,22 @@ pub struct OutVarArg {
     pub upcast_route: Vec<TypeIndex>,
 }
 
-#[derive(Clone, Debug)]
-pub struct LabelArg {
-    pub label: LabelIndex,
-    pub is_out: bool,
-    pub ir: IrIndex,
+impl Typed for OutVarArg {
+    fn type_(&self) -> TypeIndex {
+        self.type_
+    }
 }
 
 #[derive(Clone, Debug)]
-pub struct LabelFieldArg {
-    pub parent: PureExpr,
-    pub field: StructFieldIndex,
+pub struct OutLabelArg {
+    pub label: LabelIndex,
     pub ir: IrIndex,
+}
+
+impl HasIr for OutLabelArg {
+    fn ir(&self) -> IrIndex {
+        self.ir
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -193,7 +197,7 @@ pub enum Stmt<B = ()> {
     #[from]
     Check(CheckStmt<B>),
     #[from]
-    Goto(GotoStmt),
+    Goto(GotoStmt<B>),
     #[from]
     Bind(BindStmt),
     #[from]
@@ -240,6 +244,11 @@ pub struct ForInStmt<B = ()> {
 pub struct CheckStmt<B = ()> {
     pub kind: CheckKind,
     pub cond: Expr<B>,
+}
+
+#[derive(Clone, Debug)]
+pub struct GotoStmt<B = ()> {
+    pub label: LabelExpr<Expr<B>>,
 }
 
 #[derive(Clone, Debug)]
@@ -490,9 +499,40 @@ impl<B> TryFrom<NegateExpr<Expr<B>>> for NegateExpr<PureExpr> {
 
 #[derive(Clone, Debug)]
 pub struct FieldAccessExpr<E = Expr> {
+    pub field_access: FieldAccess<E>,
+    pub type_: TypeIndex,
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldAccess<E = Expr> {
     pub parent: E,
     pub field: StructFieldIndex,
-    pub type_: TypeIndex,
+}
+
+impl<B> From<FieldAccess<PureExpr>> for FieldAccess<Expr<B>> {
+    fn from(field_access: FieldAccess<PureExpr>) -> Self {
+        FieldAccess {
+            parent: field_access.parent.into(),
+            field: field_access.field,
+        }
+    }
+}
+
+impl<B> TryFrom<FieldAccess<Expr<B>>> for FieldAccess<PureExpr> {
+    type Error = FieldAccess<Expr<B>>;
+
+    fn try_from(field_access: FieldAccess<Expr<B>>) -> Result<Self, Self::Error> {
+        match field_access.parent.try_into() {
+            Ok(parent) => Ok(FieldAccess {
+                parent,
+                field: field_access.field,
+            }),
+            Err(parent) => Err(FieldAccess {
+                parent,
+                field: field_access.field,
+            }),
+        }
+    }
 }
 
 impl<E> Typed for FieldAccessExpr<E> {
@@ -504,8 +544,7 @@ impl<E> Typed for FieldAccessExpr<E> {
 impl<B> From<FieldAccessExpr<PureExpr>> for FieldAccessExpr<Expr<B>> {
     fn from(field_access_expr: FieldAccessExpr<PureExpr>) -> Self {
         FieldAccessExpr {
-            parent: field_access_expr.parent.into(),
-            field: field_access_expr.field,
+            field_access: field_access_expr.field_access.into(),
             type_: field_access_expr.type_,
         }
     }
@@ -515,15 +554,13 @@ impl<B> TryFrom<FieldAccessExpr<Expr<B>>> for FieldAccessExpr<PureExpr> {
     type Error = FieldAccessExpr<Expr<B>>;
 
     fn try_from(field_access_expr: FieldAccessExpr<Expr<B>>) -> Result<Self, Self::Error> {
-        match field_access_expr.parent.try_into() {
-            Ok(parent) => Ok(FieldAccessExpr {
-                parent,
-                field: field_access_expr.field,
+        match field_access_expr.field_access.try_into() {
+            Ok(field_access) => Ok(FieldAccessExpr {
+                field_access,
                 type_: field_access_expr.type_,
             }),
-            Err(parent) => Err(FieldAccessExpr {
-                parent,
-                field: field_access_expr.field,
+            Err(field_access) => Err(FieldAccessExpr {
+                field_access,
                 type_: field_access_expr.type_,
             }),
         }
@@ -583,5 +620,34 @@ pub struct BinOperExpr {
 impl Typed for BinOperExpr {
     fn type_(&self) -> TypeIndex {
         self.type_
+    }
+}
+
+#[derive(Clone, Debug, From)]
+pub enum LabelExpr<E = Expr> {
+    Label(PlainLabelExpr),
+    FieldAccess(FieldAccessLabelExpr<E>),
+}
+
+impl<E> HasIr for LabelExpr<E> {
+    fn ir(&self) -> IrIndex {
+        match self {
+            LabelExpr::Label(plain_label_expr) => plain_label_expr.ir(),
+            LabelExpr::FieldAccess(field_access_label_expr) => field_access_label_expr.ir(),
+        }
+    }
+}
+
+pub type PureLabelExpr = LabelExpr<PureExpr>;
+
+#[derive(Clone, Debug)]
+pub struct FieldAccessLabelExpr<E = Expr> {
+    pub field_access: FieldAccess<E>,
+    pub ir: IrIndex,
+}
+
+impl<E> HasIr for FieldAccessLabelExpr<E> {
+    fn ir(&self) -> IrIndex {
+        self.ir
     }
 }

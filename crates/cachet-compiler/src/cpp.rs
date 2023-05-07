@@ -14,7 +14,7 @@ use typed_index_collections::{TiSlice, TiVec};
 
 use cachet_lang::ast::{BinOper, ForInOrder, Ident, NegateKind, Path, VarParamKind};
 use cachet_lang::built_in::{BuiltInType, IdentEnum};
-use cachet_lang::normalizer::{self, HasAttrs, Typed};
+use cachet_lang::normalizer::{self, HasAttrs, HasIr, Typed};
 use cachet_util::MaybeOwned;
 
 use crate::cpp::ast::*;
@@ -888,9 +888,9 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         match arg {
             normalizer::Arg::Expr(pure_expr) => self.compile_expr_arg(pure_expr),
             normalizer::Arg::OutVar(out_var_arg) => self.compile_out_var_arg(out_var_arg),
-            normalizer::Arg::Label(label_arg) => self.compile_label_arg(label_arg),
-            normalizer::Arg::LabelField(label_field_arg) => {
-                self.compile_label_field_arg(label_field_arg)
+            normalizer::Arg::Label(label_expr) => self.compile_label_expr(label_expr),
+            normalizer::Arg::OutLabel(out_label_arg) => {
+                self.compile_internal_label_arg(out_label_arg.label, true)
             }
         }
     }
@@ -913,16 +913,17 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         )
     }
 
-    fn compile_label_arg(&self, label_arg: &normalizer::LabelArg) -> Expr {
-        match label_arg.label {
+    fn compile_internal_label_arg(&self, label: normalizer::LabelIndex, is_out: bool) -> Expr {
+        let ir = self.get_label_ir(label);
+        match label {
             normalizer::LabelIndex::Param(label_param_index) => {
                 UserParamVarIdent::from(self.scope.param(label_param_index).label.ident.value)
                     .into()
             }
             normalizer::LabelIndex::Local(local_label_index) => CallExpr {
                 target: IrMemberFnPath {
-                    parent: self.env[label_arg.ir].ident.value,
-                    ident: if label_arg.is_out {
+                    parent: self.env[ir].ident.value,
+                    ident: if is_out {
                         IrMemberFnIdent::ToLabelMutRef
                     } else {
                         IrMemberFnIdent::ToLabelRef
@@ -939,23 +940,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             }
             .into(),
         }
-    }
-
-    fn compile_label_field_arg(&mut self, label_field_arg: &normalizer::LabelFieldArg) -> Expr {
-        self.compile_field_access(&label_field_arg.parent, label_field_arg.field)
-            .into()
-    }
-
-    fn compile_internal_label_arg(
-        &self,
-        label_index: normalizer::LabelIndex,
-        is_out: bool,
-    ) -> Expr {
-        self.compile_label_arg(&normalizer::LabelArg {
-            label: label_index,
-            is_out,
-            ir: self.get_label_ir(label_index),
-        })
     }
 
     fn compile_block(&mut self, stmts: &[normalizer::Stmt]) -> Block {
@@ -1140,17 +1124,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_goto_stmt(&mut self, goto_stmt: &normalizer::GotoStmt) {
-        let ir_ident = self.env[goto_stmt.ir].ident.value;
+        let ir_ident = self.env[goto_stmt.label.ir()].ident.value;
         let target = IrMemberFnPath {
             parent: ir_ident,
             ident: IrMemberFnIdent::GotoLabel,
         }
         .into();
 
-        let args = vec![
-            CONTEXT_ARG,
-            self.compile_internal_label_arg(goto_stmt.label, false),
-        ];
+        let args = vec![CONTEXT_ARG, self.compile_label_expr(&goto_stmt.label)];
 
         self.stmts.extend([
             Expr::from(CallExpr { target, args }).into(),
@@ -1239,6 +1220,20 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         });
 
         self.stmts.push(RetStmt { value }.into());
+    }
+
+    fn compile_label_expr<E: CompileExpr + Typed>(
+        &mut self,
+        label_expr: &normalizer::LabelExpr<E>,
+    ) -> Expr {
+        match label_expr {
+            normalizer::LabelExpr::Label(plain_label_expr) => {
+                self.compile_internal_label_arg(plain_label_expr.label.value, false)
+            }
+            normalizer::LabelExpr::FieldAccess(field_access_label_expr) => self
+                .compile_field_access(&field_access_label_expr.field_access)
+                .into(),
+        }
     }
 
     fn compile_expr(&mut self, expr: &normalizer::Expr) -> TaggedExpr {
@@ -1490,7 +1485,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     ) -> TaggedExpr<Expr> {
         TaggedExpr {
             expr: self
-                .compile_field_access(&field_access_expr.parent, field_access_expr.field)
+                .compile_field_access(&field_access_expr.field_access)
                 .into(),
             type_: field_access_expr.type_(),
             tags: ExprTag::Ref.into(),
@@ -1499,12 +1494,11 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
     fn compile_field_access<E: CompileExpr + Typed>(
         &mut self,
-        parent_expr: &E,
-        struct_field_index: normalizer::StructFieldIndex,
+        field_access: &normalizer::FieldAccess<E>,
     ) -> CallExpr {
-        let parent_type = parent_expr.type_();
+        let parent_type = field_access.parent.type_();
 
-        let parent_tagged_expr = parent_expr.compile(self);
+        let parent_tagged_expr = field_access.parent.compile(self);
         // If the parent expression is `Val`-tagged, we need to hoist it up to
         // a temporary local variable to be able to take a reference to it.
         let parent_tagged_expr = if parent_tagged_expr.tags == ExprTag::Val {
@@ -1530,7 +1524,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         let target = TypeMemberFnPath {
             parent: self.get_type_ident(parent_type),
             ident: FieldAccessTypeMemberFnIdent {
-                field: self.env[struct_field_index].ident().value,
+                field: self.env[field_access.field].ident().value,
             }
             .into(),
         }

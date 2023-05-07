@@ -1070,14 +1070,29 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
     }
 
     fn resolve_goto_stmt(&mut self, goto_stmt: parser::GotoStmt) -> Option<GotoStmt> {
-        let label_index = map_spanned(goto_stmt.label, |label_ident| {
+        /*let label_index = map_spanned(goto_stmt.label, |label_ident| {
             self.lookup_label_scoped(label_ident)
                 .found(&mut self.errors)
-        });
+        });*/
 
-        Some(GotoStmt {
-            label: label_index?,
-        })
+        let label_expr = Spanned::new(
+            goto_stmt.label.span,
+            self.resolve_label_expr(goto_stmt.label.value)?,
+        );
+
+        Some(GotoStmt { label: label_expr })
+    }
+
+    fn resolve_label_expr(&mut self, label_expr: parser::LabelExpr) -> Option<LabelExpr> {
+        match label_expr {
+            parser::LabelExpr::Label(path) => map_spanned(path, |path_ident| {
+                self.lookup_label_scoped(path_ident).found(&mut self.errors)
+            })
+            .map(Into::into),
+            parser::LabelExpr::FieldAccess(field_access) => {
+                self.resolve_field_access(*field_access).map(Into::into)
+            }
+        }
     }
 
     fn resolve_bind_stmt(&mut self, bind_stmt: parser::BindStmt) -> Option<BindStmt> {
