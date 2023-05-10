@@ -340,6 +340,15 @@ enum MIRType {
     Shape,
 }
 
+enum FloatCategory {
+    NaN,
+    PosInf,
+    NegInf,
+    NegZero,
+    Subnormal,
+    Normal,
+}
+
 struct Float32;
 struct Float64;
 
@@ -347,6 +356,14 @@ impl Float64 {
     fn isNegativeZero(float64: Float64) -> Bool;
     fn isInfinite(float64: Float64) -> Bool;
     fn isNaN(float64: Float64) -> Bool;
+
+    fn isEqual(f1: Float64, f2: Float64) -> Bool {
+        if Float64::isNaN(f1) || Float64::isNaN(f2) {
+            return false;
+        }
+
+        f1 == f2
+    }
 
     fn isInt32(float64: Float64) -> Bool {
        !Float64::isNegativeZero(float64) && Float64::equalsInt32(float64)
@@ -400,6 +417,78 @@ impl Float64 {
     fn isSafeToInt64(float64: Float64) -> Bool;
     fn toInt64(float64: Float64) -> Int64;
 }
+
+/*impl Float64 {
+    fn category(float64: Float64) -> FloatCategory;
+
+    fn isNegativeZero(float64: Float64) -> Bool {
+        Float64::category(float64) == FloatCategory::NegZero;
+    }
+
+    fn isInfinite(float64: Float64) -> Bool {
+        Float64::category(float64) == FloatCategory::PosInf ||
+        Float64::category(float64) == FloatCategory::NegInf
+    }
+
+    fn isNaN(float64: Float64) -> Bool {
+        Float64::category(float64) == FloatCategory::NaN;
+    }
+
+    fn isEqual(f1: Float64, f2: Float64) -> Bool {
+        if Float64::isNaN(f1) || Float64::isNaN(f2) {
+            false
+        } else {
+            f1 == f2
+        }
+    }
+
+    fn fromInt32(int32: Int32) -> Float64 {
+        let float64 = (unsafe { Float64::fromInt32Unchecked(int32) });
+        assume Float64::category(float64) == FloatCategory::Normal;
+        assume Float64::isNormalInt32(float64);
+        assume (unsafe { Float64::toInt32Unchecked(float64) }) == int32;
+        float64
+    }
+
+    unsafe fn fromInt32Unchecked(int32: Int32) -> Float64;
+
+    // convert an arbitrary float64 to an int32
+    fn toInt32(float64: Float64) -> Int32 {
+        let category = Float64::category(float64);
+        let int32 = (unsafe { Float64::toInt32Unchecked(float64) });
+
+        if category == FloatCategory::NegZero {
+            assume int32 == 0_i32;    
+        } else if category == FloatCategory::Normal && Float64::isNormalInt32(float64) {
+            assume (unsafe { Float64::fromInt32Unchecked(int32) }) == float64;
+        }
+
+        int32
+    }
+
+    unsafe fn toInt32Unchecked(float64: Float64) -> Int32;
+
+    // checks if a Normal float64 can be represented as an int32 precisely.
+    // if this returns true it means that `float64` is both in the representable
+    // range does not need rounding/truncation when converting.
+    fn isNormalInt32(float64: Float64) -> Bool {
+        assert Float64::category(float64) == FloatCategory::Normal;
+        (unsafe { Float64::isNormalInt32Unchecked(float64) })
+    }
+
+    unsafe fn isNormalInt32Unchecked(float64: Float64) -> Bool;
+
+    fn toInt64(float64: Float64) -> Int64 {
+        let category = Float64::category(float64);
+        let int64 = (unsafe { Float64::toInt64Unchecked(float64) });
+
+        if category == FloatCategory::NegZero {
+            assume int64 == 0_i64;
+        } else if category == FloatCategory::Normal {
+            
+        }
+    }
+}*/
 
 fn JSToInt32(d: Float64) -> Int32;
 
@@ -1401,7 +1490,7 @@ impl BaseShape {
     // #[reads(heap)]
     // fn protoOf(object: Object) -> TaggedProto;
     fn protoOf(baseShape: BaseShape) -> TaggedProto {
-        let taggedProto = (unsafe { BaseShape::protoOfUnchecked(heap, baseShape) });
+        let taggedProto = (unsafe { BaseShape::protoOfUnchecked(baseShape) });
 
         let class = BaseShape::classOf(baseShape);
         if Class::isNativeObject(class) {
@@ -1412,7 +1501,7 @@ impl BaseShape {
         taggedProto
     }
 
-    unsafe fn protoOfUnchecked(heap: Heap, baseShape: BaseShape) -> TaggedProto;
+    unsafe fn protoOfUnchecked(baseShape: BaseShape) -> TaggedProto;
 }
 
 struct Shape;
@@ -1594,8 +1683,8 @@ unsafe fn objectMayHaveExtraIndexedPropertiesUnchecked(obj: Object) -> Bool;
 
 #[spec]
 fn ProxyGetPropertyByValue(proxy: Object, idVal: Value, out value: Value) -> Bool {
-    if !PrimitiveValueToId(idVal, out let id) {
-    //if !ToPropertyKey(idVal, out let id) {
+    //if !PrimitiveValueToId(idVal, out let id) {
+    if !ToPropertyKey(idVal, out let id) {
         return false;
     }
 

@@ -772,6 +772,10 @@ impl ABIFunction {
     fn clobberVolatileRegs();
 }
 
+struct FailureLabel {
+    label label_: MASM
+}
+
 ir MASM {
     // NOTE: Needs to be implemented to call the equivalent
     // op with string as argument.
@@ -1235,10 +1239,9 @@ ir MASM {
 
         MASM::setDouble(FloatReg::doubleScratchReg(), doubleTrunc);
 
-        if Float64::isNaN(double) || Float64::isNaN(doubleTrunc) || double != doubleTrunc {
+        if !Float64::isEqual(double, doubleTrunc) {
             goto failure;
         }
-
 
         MASM::setInt32(destReg, int32);
     }
@@ -2254,11 +2257,7 @@ ir MASM {
             let ok = GetSparseElementHelper(Object::toNativeObject(obj), index, out let value);
 
             if !ok {
-                //MASM::getFailureLabel(out label failure);
-                //goto failure;
-                //assert false;
-                //TODO(abhishek): temporary hack, jump to failure label here
-                MASM::setValue(ValueReg::fromReg(Reg::Rcx), Value::getUndefined());
+                goto MASM::getFailureLabel().label_;
             } else {
                 MASM::setValue(ValueReg::fromReg(Reg::Rcx) , value);
             }
@@ -2271,8 +2270,7 @@ ir MASM {
             let ok = ProxyGetPropertyByValue(obj, idVal, out let value);
 
             if !ok {
-                //TODO(abhishek): temporary hack, jump to failure label here
-                MASM::setValue(ValueReg::fromReg(Reg::Rcx), Value::getUndefined());
+                goto MASM::getFailureLabel().label_;
             } else {
                 MASM::setValue(ValueReg::fromReg(Reg::Rcx), value);
             }
@@ -2291,7 +2289,7 @@ ir MASM {
         }
     }
 
-    fn getFailureLabel(out label failure: MASM);
+    fn getFailureLabel() -> FailureLabel;
 
     fn extractTag(valueReg: ValueReg, scratchReg: Reg) emits MASM -> Reg {
         assert scratchReg != Reg::scratchReg();

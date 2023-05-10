@@ -15,9 +15,13 @@ ir CacheStub emits CacheIR {
 
         initValueOutput();
 
-        // Bug requires Xmm0 to be live as both Single and Double.
+        // Bug requires Xmm0 to be live as a Float register with Single content-type
         addLiveFloatReg(FloatReg::newSingle(PhyFloatReg::Xmm0));
-        addLiveFloatReg(FloatReg::newDouble(PhyFloatReg::Xmm0));
+
+        // It is not required for Xmm0 to also be live as a Float register with Double content-type
+        // for Cachet to be able to catch the bug. However I've not been able to determine with
+        // certainty if this is what actually happens in Firefox.
+        //addLiveFloatReg(FloatReg::newDouble(PhyFloatReg::Xmm0));
 
         emit CacheIR::GuardIsNumber(inputValueId);
         let inputNumberId = OperandId::toNumberId(inputValueId);
