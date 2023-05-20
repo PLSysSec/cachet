@@ -336,31 +336,31 @@ pub enum ValueType {
 
 #[derive(Clone, Copy, Debug, Display, EnumIter, Eq, Hash, IntoStaticStr, PartialEq)]
 pub enum MirType {
-  Undefined,
-  Null,
-  Bool,
-  Int32,
-  Int64,
-  IntPtr,
-  Double,
-  Float32,
-  String,
-  Symbol,
-  BigInt,
-  Simd128,
-  Object,
-  MagicOptimizedOut,
-  MagicHole,
-  MagicIsConstructing,
-  MagicUninitializedLexical,
-  Value,
-  None,
-  Slots,
-  Elements,
-  Pointer,
-  RefOrNull,
-  StackResults,
-  Shape,
+    Undefined,
+    Null,
+    Bool,
+    Int32,
+    Int64,
+    IntPtr,
+    Double,
+    Float32,
+    String,
+    Symbol,
+    BigInt,
+    Simd128,
+    Object,
+    MagicOptimizedOut,
+    MagicHole,
+    MagicIsConstructing,
+    MagicUninitializedLexical,
+    Value,
+    None,
+    Slots,
+    Elements,
+    Pointer,
+    RefOrNull,
+    StackResults,
+    Shape,
 }
 
 #[derive(Clone, Debug)]
@@ -393,8 +393,12 @@ pub enum Fact {
     ShapeClass(ShapeClassFact),
     ShapeNumFixedSlots(ShapeNumFixedSlotsFact),
     ShapeSlotSpan(ShapeSlotSpanFact),
+    ShapeIsIndexed(ShapeIsIndexedFact),
     BaseShapeTaggedProto(BaseShapeTaggedProtoFact),
     ClassIsNativeObject(ClassIsNativeObjectFact),
+    ClassIsTypedArrayObject(ClassIsTypedArrayObjectFact),
+    ClassHasResolveOp(ClassHasResolveOpFact),
+    ClassHasMayResolveOp(ClassHasMayResolveOpFact),
     TaggedProtoIsObject(TaggedProtoIsObjectFact),
     TaggedProtoIsLazy(TaggedProtoIsLazyFact),
     TaggedProtoIsNull(TaggedProtoIsNullFact),
@@ -430,6 +434,13 @@ pub struct ShapeSlotSpanFact {
 }
 
 #[derive(Clone, Debug, Display)]
+#[display(fmt = "ShapeIsIndexed {shape:x}, {is}")]
+pub struct ShapeIsIndexedFact {
+    pub shape: Addr,
+    pub is: bool,
+}
+
+#[derive(Clone, Debug, Display)]
 #[display(fmt = "BaseShapeTaggedProto {base_shape:x}, {tagged_proto:x}")]
 pub struct BaseShapeTaggedProtoFact {
     pub base_shape: Addr,
@@ -440,6 +451,27 @@ pub struct BaseShapeTaggedProtoFact {
 #[display(fmt = "ClassIsNativeObject {class:x}")]
 pub struct ClassIsNativeObjectFact {
     pub class: Addr,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "ClassIsTypedArrayObject {class:x}, {is}")]
+pub struct ClassIsTypedArrayObjectFact {
+    pub class: Addr,
+    pub is: bool,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "ClassHasResolveOp {class:x}, {has}")]
+pub struct ClassHasResolveOpFact {
+    pub class: Addr,
+    pub has: bool,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "ClassHasMayResolveOp {class:x}, {has}")]
+pub struct ClassHasMayResolveOpFact {
+    pub class: Addr,
+    pub has: bool,
 }
 
 #[derive(Clone, Debug, Display)]

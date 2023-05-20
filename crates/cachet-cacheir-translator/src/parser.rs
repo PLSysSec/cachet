@@ -135,7 +135,7 @@ fn parse_imm_value(input: &str, type_: ImmValueType) -> ParseResult<ImmValue> {
     match type_ {
         ImmValueType::JSOpImm => map(parse_ident, ImmValue::JSOp)(input),
         ImmValueType::BoolImm => map(
-            alt((value(true, symbol("true")), value(false, symbol("false")))),
+            bool,
             ImmValue::Bool,
         )(input),
         ImmValueType::ByteImm => map(u8, ImmValue::Byte)(input),
@@ -245,8 +245,12 @@ fn parse_fact(input: &str) -> ParseResult<Fact> {
         map(parse_shape_num_fixed_slots_fact, Into::into),
         map(parse_shape_slot_span_fact, Into::into),
         map(parse_shape_base_fact, Into::into),
+        map(parse_shape_is_indexed_fact, Into::into),
         map(parse_base_shape_tagged_proto_fact, Into::into),
         map(parse_class_is_native_object_fact, Into::into),
+        map(parse_class_is_typed_array_object_fact, Into::into),
+        map(parse_class_has_resolve_op_fact, Into::into),
+        map(parse_class_has_may_resolve_op_fact, Into::into),
         map(parse_tagged_proto_is_object_fact, Into::into),
         map(parse_tagged_proto_is_lazy_fact, Into::into),
         map(parse_tagged_proto_is_null_fact, Into::into),
@@ -288,6 +292,13 @@ fn parse_shape_slot_span_fact(input: &str) -> ParseResult<ShapeSlotSpanFact> {
     Ok((input, ShapeSlotSpanFact { shape, slot_span }))
 }
 
+fn parse_shape_is_indexed_fact(input: &str) -> ParseResult<ShapeIsIndexedFact> {
+    let (input, _) = symbol("ShapeIsIndexed")(input)?;
+    let (input, shape) = terminated(addr, comma)(input)?;
+    let (input, is) = bool(input)?;
+    Ok((input, ShapeIsIndexedFact { shape, is }))
+}
+
 fn parse_base_shape_tagged_proto_fact(input: &str) -> ParseResult<BaseShapeTaggedProtoFact> {
     let (input, _) = symbol("BaseShapeTaggedProto")(input)?;
     let (input, base_shape) = terminated(addr, comma)(input)?;
@@ -299,6 +310,27 @@ fn parse_class_is_native_object_fact(input: &str) -> ParseResult<ClassIsNativeOb
     let (input, _) = symbol("ClassIsNativeObject")(input)?;
     let (input, class) = addr(input)?;
     Ok((input, ClassIsNativeObjectFact { class }))
+}
+
+fn parse_class_is_typed_array_object_fact(input: &str) -> ParseResult<ClassIsTypedArrayObjectFact> {
+    let (input, _) = symbol("ClassIsTypedArrayObject")(input)?;
+    let (input, class) = terminated(addr, comma)(input)?;
+    let (input, is) = bool(input)?;
+    Ok((input, ClassIsTypedArrayObjectFact { class, is }))
+}
+
+fn parse_class_has_resolve_op_fact(input: &str) -> ParseResult<ClassHasResolveOpFact> {
+    let (input, _) = symbol("ClassHasResolveOp")(input)?;
+    let (input, class) = terminated(addr, comma)(input)?;
+    let (input, has) = bool(input)?;
+    Ok((input, ClassHasResolveOpFact{ class, has }))
+}
+
+fn parse_class_has_may_resolve_op_fact(input: &str) -> ParseResult<ClassHasMayResolveOpFact> {
+    let (input, _) = symbol("ClassHasMayResolveOp")(input)?;
+    let (input, class) = terminated(addr, comma)(input)?;
+    let (input, has) = bool(input)?;
+    Ok((input, ClassHasMayResolveOpFact{ class, has }))
 }
 
 fn parse_tagged_proto_is_object_fact(input: &str) -> ParseResult<TaggedProtoIsObjectFact> {
@@ -362,6 +394,10 @@ fn hex_u64(input: &str) -> ParseResult<u64> {
 
 fn hex_word(input: &str) -> ParseResult<Word> {
     hex_u64(input)
+}
+
+fn bool(input: &str) -> ParseResult<bool> {
+    alt((value(true, symbol("true")), value(false, symbol("false"))))(input)
 }
 
 fn addr(input: &str) -> ParseResult<Addr> {

@@ -214,6 +214,7 @@ pub fn translate(stub: &stub::Stub) -> Mod {
 
     for field in &stub.fields {
         let data_expr = match field.data {
+            stub::FieldData::Object(object) => Some(generate_from_addr_call(*OBJECT_PATH, object)),
             stub::FieldData::Shape(shape) => Some(generate_from_addr_call(*SHAPE_PATH, shape)),
             stub::FieldData::String(string) => Some(generate_from_addr_call(*STRING_PATH, string)),
             stub::FieldData::RawInt32(n) => Some(Literal::Int32(n).into()),
@@ -354,6 +355,27 @@ pub fn translate(stub: &stub::Stub) -> Mod {
                     .into(),
                 ));
             }
+            stub::Fact::ShapeIsIndexed(fact) => {
+                stmts.push(Spanned::internal(
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        cond: Spanned::internal(
+                            BinOperExpr {
+                                oper: Spanned::internal(CompareBinOper::Eq.into()),
+                                lhs: Spanned::internal(Expr::Invoke(Call {
+                                    target: Spanned::internal(SHAPE_PATH.nest("isIndexed")),
+                                    args: Spanned::internal(vec![Spanned::internal(
+                                        generate_from_addr_call(*SHAPE_PATH, fact.shape).into(),
+                                    )]),
+                                })),
+                                rhs: Spanned::internal(translate_bool(fact.is)),
+                            }
+                            .into(),
+                        ),
+                    }
+                    .into(),
+                ));
+            }
             stub::Fact::BaseShapeTaggedProto(fact) => {
                 stmts.push(Spanned::internal(
                     CheckStmt {
@@ -389,6 +411,52 @@ pub fn translate(stub: &stub::Stub) -> Mod {
                                 generate_from_addr_call(*CLASS_PATH, fact.class).into(),
                             )]),
                         })),
+                    }
+                    .into(),
+                ));
+            }
+            stub::Fact::ClassIsTypedArrayObject(_fact) => {
+               //TODO
+               ();
+            }
+            stub::Fact::ClassHasResolveOp(fact) => {
+                stmts.push(Spanned::internal(
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        cond: Spanned::internal(
+                            BinOperExpr {
+                                oper: Spanned::internal(CompareBinOper::Eq.into()),
+                                lhs: Spanned::internal(Expr::Invoke(Call {
+                                    target: Spanned::internal(CLASS_PATH.nest("hasResolveOp")),
+                                    args: Spanned::internal(vec![Spanned::internal(
+                                        generate_from_addr_call(*CLASS_PATH, fact.class).into(),
+                                    )]),
+                                })),
+                                rhs: Spanned::internal(translate_bool(fact.has)),
+                            }
+                            .into(),
+                        ),
+                    }
+                    .into(),
+                ));
+            }
+            stub::Fact::ClassHasMayResolveOp(fact) => {
+                stmts.push(Spanned::internal(
+                    CheckStmt {
+                        kind: CheckKind::Assume,
+                        cond: Spanned::internal(
+                            BinOperExpr {
+                                oper: Spanned::internal(CompareBinOper::Eq.into()),
+                                lhs: Spanned::internal(Expr::Invoke(Call {
+                                    target: Spanned::internal(CLASS_PATH.nest("hasMayResolveOp")),
+                                    args: Spanned::internal(vec![Spanned::internal(
+                                        generate_from_addr_call(*CLASS_PATH, fact.class).into(),
+                                    )]),
+                                })),
+                                rhs: Spanned::internal(translate_bool(fact.has)),
+                            }
+                            .into(),
+                        ),
                     }
                     .into(),
                 ));
@@ -445,8 +513,7 @@ pub fn translate(stub: &stub::Stub) -> Mod {
                         cond: Spanned::internal(Expr::Invoke(Call {
                             target: Spanned::internal(STRING_PATH.nest("isAtom")),
                             args: Spanned::internal(vec![Spanned::internal(
-                                generate_from_addr_call(*STRING_PATH, fact.string)
-                                    .into(),
+                                generate_from_addr_call(*STRING_PATH, fact.string).into(),
                             )]),
                         })),
                     }
