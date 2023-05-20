@@ -824,6 +824,24 @@ ir CacheIR emits MASM {
         CacheIR::releaseFailurePath();
     }
 
+    op GuardProto(objId: ObjectId, protoField: ObjectField) {
+        let objReg = CacheIR::useObjectId(objId);
+        let proto = CacheIR::readObjectField(protoField);
+
+        let scratchReg = CacheIR::allocateReg();
+
+        let failure = CacheIR::addFailurePath();
+
+        emit MASM::LoadObjectProto(objReg, scratchReg);
+        emit MASM::BranchTestNullProto(scratchReg, failure.label_);
+        emit MASM::BranchTestLazyProto(scratchReg, failure.label_);
+        emit MASM::UnboxObjectProto(scratchReg, scratchReg);
+        emit MASM::BranchObjectImmGCPtr(Condition::NotEqual, scratchReg, proto, failure.label_);
+
+        CacheIR::releaseReg(scratchReg);
+        CacheIR::releaseFailurePath();
+    }
+
     op GuardBooleanToInt32(inputId: ValueId, resultId: Int32Id) {
         let resultReg = CacheIR::defineInt32Id(resultId);
 
@@ -1168,7 +1186,7 @@ ir CacheIR emits MASM {
 
         LiveRegSet::takeFloatReg(out save, save, floatReg);
         // comment below line to re-introduce BUG1451976
-        LiveRegSet::takeFloatReg(out save, save, FloatReg::asSingle(floatReg));
+        //LiveRegSet::takeFloatReg(out save, save, FloatReg::asSingle(floatReg));
 
         emit MASM::PushRegsInMask(save);
 

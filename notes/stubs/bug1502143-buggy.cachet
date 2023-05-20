@@ -9,16 +9,31 @@ ir CacheStub emits CacheIR {
     initOperandId(OperandId::fromId(1_u16));
     initOperandId(OperandId::fromId(2_u16));
     initOperandId(OperandId::fromId(3_u16));
+    initOperandId(OperandId::fromId(4_u16));
     // Input [ValId value] 0
     initInputValueId(ValueId::fromId(0_u16));
     // Input [ValId id] 1
     initInputValueId(ValueId::fromId(1_u16));
     // Output Value
     initValueOutput();
-    // ObjectField 0, 233c6c543028
-    assume CacheIR::readObjectField(ObjectField::fromOffset(0_u32)) == Object::fromAddr(38742422466600_u64);
-    // ShapeField 8, 233c6c53e9a0
-    assume CacheIR::readShapeField(ShapeField::fromOffset(8_u32)) == Shape::fromAddr(38742422448544_u64);
+    // ObjectField 0, 233c6c567030
+    assume CacheIR::readObjectField(ObjectField::fromOffset(0_u32)) == Object::fromAddr(38742422614064_u64);
+    // ShapeField 8, 233c6c566c00
+    assume CacheIR::readShapeField(ShapeField::fromOffset(8_u32)) == Shape::fromAddr(38742422612992_u64);
+    // ObjectField 16, 233c6c543028
+    assume CacheIR::readObjectField(ObjectField::fromOffset(16_u32)) == Object::fromAddr(38742422466600_u64);
+    // ShapeField 24, 233c6c53e9a0
+    assume CacheIR::readShapeField(ShapeField::fromOffset(24_u32)) == Shape::fromAddr(38742422448544_u64);
+    // ShapeBase 233c6c566c00, 233c6c53d280
+    assume Shape::baseShapeOf(Shape::fromAddr(38742422612992_u64)) == BaseShape::fromAddr(38742422442624_u64);
+    // ShapeClass 233c6c566c00, 55b4b27820e8
+    assume Shape::classOf(Shape::fromAddr(38742422612992_u64)) == Class::fromAddr(94234576691432_u64);
+    // ShapeNumFixedSlots 233c6c566c00, 0
+    assume Shape::numFixedSlots(Shape::fromAddr(38742422612992_u64)) == 0_u32;
+    // ShapeSlotSpan 233c6c566c00, 36
+    assume Shape::slotSpan(Shape::fromAddr(38742422612992_u64)) == 36_u32;
+    // ShapeIsIndexed 233c6c566c00, false
+    assume Shape::isIndexed(Shape::fromAddr(38742422612992_u64)) == false;
     // ShapeBase 233c6c53e9a0, 233c6c53d070
     assume Shape::baseShapeOf(Shape::fromAddr(38742422448544_u64)) == BaseShape::fromAddr(38742422442096_u64);
     // ShapeClass 233c6c53e9a0, 55b4b2784ae0
@@ -29,8 +44,17 @@ ir CacheStub emits CacheIR {
     assume Shape::slotSpan(Shape::fromAddr(38742422448544_u64)) == 13_u32;
     // ShapeIsIndexed 233c6c53e9a0, false
     assume Shape::isIndexed(Shape::fromAddr(38742422448544_u64)) == false;
+    // BaseShapeTaggedProto 233c6c53d280, 233c6c543028
+    assume BaseShape::protoOf(BaseShape::fromAddr(38742422442624_u64)) == TaggedProto::fromAddr(38742422466600_u64);
     // BaseShapeTaggedProto 233c6c53d070, 0
     assume BaseShape::protoOf(BaseShape::fromAddr(38742422442096_u64)) == TaggedProto::fromAddr(0_u64);
+    // ClassIsNativeObject 55b4b27820e8
+    assume Class::isNativeObject(Class::fromAddr(94234576691432_u64));
+    // ClassIsTypedArrayObject 55b4b27820e8, false
+    // ClassHasResolveOp 55b4b27820e8, false
+    assume Class::hasResolveOp(Class::fromAddr(94234576691432_u64)) == false;
+    // ClassHasMayResolveOp 55b4b27820e8, false
+    assume Class::hasMayResolveOp(Class::fromAddr(94234576691432_u64)) == false;
     // ClassIsNativeObject 55b4b2784ae0
     assume Class::isNativeObject(Class::fromAddr(94234576702176_u64));
     // ClassIsTypedArrayObject 55b4b2784ae0, false
@@ -38,6 +62,8 @@ ir CacheStub emits CacheIR {
     assume Class::hasResolveOp(Class::fromAddr(94234576702176_u64)) == false;
     // ClassHasMayResolveOp 55b4b2784ae0, false
     assume Class::hasMayResolveOp(Class::fromAddr(94234576702176_u64)) == false;
+    // TaggedProtoIsObject 233c6c543028
+    assume TaggedProto::isObject(TaggedProto::fromAddr(38742422466600_u64));
     // TaggedProtoIsNull 0
     assume TaggedProto::isNull(TaggedProto::fromAddr(0_u64));
     // GuardToObject [ValId input] 0
@@ -56,6 +82,12 @@ ir CacheStub emits CacheIR {
     emit CacheIR::GuardShape(ObjectId::fromId(3_u16), ShapeField::fromOffset(8_u32));
     // GuardNoDenseElements [ObjId obj] 3
     emit CacheIR::GuardNoDenseElements(ObjectId::fromId(3_u16));
+    // LoadObject [ObjId result] 4, [ObjectField obj] 16
+    emit CacheIR::LoadObject(ObjectId::fromId(4_u16), ObjectField::fromOffset(16_u32));
+    // GuardShape [ObjId obj] 4, [ShapeField shape] 24
+    emit CacheIR::GuardShape(ObjectId::fromId(4_u16), ShapeField::fromOffset(24_u32));
+    // GuardNoDenseElements [ObjId obj] 4
+    emit CacheIR::GuardNoDenseElements(ObjectId::fromId(4_u16));
     // CallGetSparseElementResult [ObjId obj] 0, [Int32Id index] 2
     emit CacheIR::CallGetSparseElementResult(ObjectId::fromId(0_u16), Int32Id::fromId(2_u16));
     // ReturnFromIC

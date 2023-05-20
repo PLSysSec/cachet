@@ -1,0 +1,61 @@
+import "../cacheir.cachet";
+
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {  
+  op GetProp() {  
+    initRegState();
+    initOperandId(OperandId::fromId(0_u16));
+    initOperandId(OperandId::fromId(1_u16));
+    // Input [ValId value] 0
+    initInputValueId(ValueId::fromId(0_u16));
+    // Output Value
+    initValueOutput();
+    // ShapeField 0, 1654ccd6b6a0
+    assume CacheIR::readShapeField(ShapeField::fromOffset(0_u32)) == Shape::fromAddr(24553469687456_u64);
+    // ObjectField 8, 1654ccd43118
+    assume CacheIR::readObjectField(ObjectField::fromOffset(8_u32)) == Object::fromAddr(24553469522200_u64);
+    // ShapeField 16, 1654ccd6b560
+    assume CacheIR::readShapeField(ShapeField::fromOffset(16_u32)) == Shape::fromAddr(24553469687136_u64);
+    // ShapeBase 1654ccd6b6a0, 1654ccd3d310
+    assume Shape::baseShapeOf(Shape::fromAddr(24553469687456_u64)) == BaseShape::fromAddr(24553469498128_u64);
+    // ShapeClass 1654ccd6b6a0, 55a17ae73cb0
+    assume Shape::classOf(Shape::fromAddr(24553469687456_u64)) == Class::fromAddr(94152040070320_u64);
+    // ShapeNumFixedSlots 1654ccd6b6a0, 4
+    assume Shape::numFixedSlots(Shape::fromAddr(24553469687456_u64)) == 4_u32;
+    // ShapeSlotSpan 1654ccd6b6a0, 4
+    assume Shape::slotSpan(Shape::fromAddr(24553469687456_u64)) == 4_u32;
+    // ShapeBase 1654ccd6b560, 1654ccd3d2c8
+    assume Shape::baseShapeOf(Shape::fromAddr(24553469687136_u64)) == BaseShape::fromAddr(24553469498056_u64);
+    // ShapeClass 1654ccd6b560, 55a17ae73860
+    assume Shape::classOf(Shape::fromAddr(24553469687136_u64)) == Class::fromAddr(94152040069216_u64);
+    // ShapeNumFixedSlots 1654ccd6b560, 0
+    assume Shape::numFixedSlots(Shape::fromAddr(24553469687136_u64)) == 0_u32;
+    // ShapeSlotSpan 1654ccd6b560, 33
+    assume Shape::slotSpan(Shape::fromAddr(24553469687136_u64)) == 33_u32;
+    // BaseShapeTaggedProto 1654ccd3d2c8, 1654ccd43028
+    assume BaseShape::protoOf(BaseShape::fromAddr(24553469498056_u64)) == TaggedProto::fromAddr(24553469521960_u64);
+    // BaseShapeTaggedProto 1654ccd3d310, 1654ccd43130
+    assume BaseShape::protoOf(BaseShape::fromAddr(24553469498128_u64)) == TaggedProto::fromAddr(24553469522224_u64);
+    // ClassIsNativeObject 55a17ae73cb0
+    assume Class::isNativeObject(Class::fromAddr(94152040070320_u64));
+    // ClassIsNativeObject 55a17ae73860
+    assume Class::isNativeObject(Class::fromAddr(94152040069216_u64));
+    // TaggedProtoIsObject 1654ccd43028
+    assume TaggedProto::isObject(TaggedProto::fromAddr(24553469521960_u64));
+    // TaggedProtoIsObject 1654ccd43130
+    assume TaggedProto::isObject(TaggedProto::fromAddr(24553469522224_u64));
+    // GuardToObject [ValId input] 0
+    emit CacheIR::GuardToObject(ValueId::fromId(0_u16));
+    // GuardShape [ObjId obj] 0, [ShapeField shape] 0
+    emit CacheIR::GuardShape(ObjectId::fromId(0_u16), ShapeField::fromOffset(0_u32));
+    // LoadObject [ObjId result] 1, [ObjectField obj] 8
+    emit CacheIR::LoadObject(ObjectId::fromId(1_u16), ObjectField::fromOffset(8_u32));
+    // GuardShape [ObjId obj] 1, [ShapeField shape] 16
+    emit CacheIR::GuardShape(ObjectId::fromId(1_u16), ShapeField::fromOffset(16_u32));
+    // LoadArrayBufferViewLengthInt32Result [ObjId obj] 0
+    emit CacheIR::LoadArrayBufferViewLengthInt32Result(ObjectId::fromId(0_u16));
+    // ReturnFromIC
+    emit CacheIR::ReturnFromIC();
+  }
+}

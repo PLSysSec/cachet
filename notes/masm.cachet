@@ -340,24 +340,6 @@ struct FloatData;
 impl FloatData {
     fn contentType(data: FloatData) -> FloatContentType;
 
-    fn fromDouble(double: Float64) -> FloatData {
-        let data = (unsafe { FloatData::fromDoubleUnchecked(double) });
-        assume FloatData::contentType(data) == FloatContentType::Double;
-        assume (unsafe { FloatData::toDoubleUnchecked(data) }) == double;
-        data
-    }
-
-    unsafe fn fromDoubleUnchecked(double: Float64) -> FloatData;
-
-    fn toDouble(data: FloatData) -> Float64 {
-        assert FloatData::contentType(data) == FloatContentType::Double;
-        let double = (unsafe { FloatData::toDoubleUnchecked(data) });
-        assume (unsafe { FloatData::fromDoubleUnchecked(double) }) == data;
-        double
-    }
-
-    unsafe fn toDoubleUnchecked(data: FloatData) -> Float64;
-
     fn fromFloat(float: Float32) -> FloatData {
         let data = (unsafe { FloatData::fromFloatUnchecked(float) });
         assume FloatData::contentType(data) == FloatContentType::Single;
@@ -376,6 +358,24 @@ impl FloatData {
 
     unsafe fn toFloatUnchecked(data: FloatData) -> Float32;
 
+    fn fromDouble(double: Float64) -> FloatData {
+        let data = (unsafe { FloatData::fromDoubleUnchecked(double) });
+        assume FloatData::contentType(data) == FloatContentType::Double;
+        assume (unsafe { FloatData::toDoubleUnchecked(data) }) == double;
+        data
+    }
+
+    unsafe fn fromDoubleUnchecked(double: Float64) -> FloatData;
+
+    fn toDouble(data: FloatData) -> Float64 {
+        assert FloatData::contentType(data) == FloatContentType::Double;
+        let double = (unsafe { FloatData::toDoubleUnchecked(data) });
+        assume (unsafe { FloatData::fromDoubleUnchecked(double) }) == data;
+        double
+    }
+
+    unsafe fn toDoubleUnchecked(data: FloatData) -> Float64;
+
     fn fromSimd128(simd128: Simd128) -> FloatData {
         let data = (unsafe { FloatData::fromSimd128Unchecked(simd128) });
         assume FloatData::contentType(data) == FloatContentType::Simd128;
@@ -393,6 +393,21 @@ impl FloatData {
     }
 
     unsafe fn toSimd128Unchecked(data: FloatData) -> Simd128;
+
+    fn truncate(type: FloatContentType, data: FloatData) -> FloatData {
+        let truncated = (unsafe { FloatData::truncateUnchecked(type, data) });
+
+        let origType = FloatData::contentType(data);
+        if origType == type || origType == FloatContentType::Single || type == FloatContentType::Simd128 {
+            assume truncated == data;
+        } else {
+            assume FloatData::contentType(truncated) == type;
+        }
+
+        truncated
+    }
+
+    unsafe fn truncateUnchecked(type: FloatContentType, data: FloatData) -> FloatData;
 }
 
 #[spec]
@@ -1041,9 +1056,26 @@ ir MASM {
         MASM::stackPopFloatReg(floatReg);
     }
 
-    //TODO(abhishek): make this a but more precise
+    //TODO(abhishek): make this a bit more precise
     op GuardNonNegativeIntPtrToInt32(reg: Reg, label fail: MASM) {
-        MASM::getInt32(reg); 
+        // 1) unpack boxed Value from reg
+        // 2) if boxed Value !isDouble -> fail
+        // 3) convert Value to UInt64 with Value::toPrivate
+        // 4) if resulting UInt64 is greater than max *signed* Int32 -> fail
+        // 5) cast to Int32, write back to reg as unboxed
+
+        let value = RegData::toValue(MASM::getData(reg));
+        if !Value::isDouble(value) {
+            goto fail;
+        }
+
+        let ptr = Value::toPrivate(value);
+        if ptr > 0xffffffff {
+            goto fail;
+        }
+
+        let int32 = ptr as Int32;
+        MASM::setInt32(reg, int32);
     }
 
     op GuardSpecificAtom(
@@ -1367,6 +1399,28 @@ ir MASM {
     ) {
         let lhs = MASM::getObject(lhsReg);
         let rhs = MASM::getObject(rhsReg);
+        let isEqual = lhs == rhs;
+
+        if condition == Condition::Equal {
+            if isEqual {
+                goto branch;
+            }
+        }
+
+        if condition == Condition::NotEqual {
+            if !isEqual {
+                goto branch;
+            }
+        }
+    }
+
+    op BranchObjectImmGCPtr(
+        condition: Condition,
+        lhsReg: Reg,
+        rhs: Object,
+        label branch: MASM,
+    ) {
+        let lhs = MASM::getObject(lhsReg);
         let isEqual = lhs == rhs;
 
         if condition == Condition::Equal {
@@ -2474,6 +2528,14 @@ ir MASM {
     #[spec]
     fn setFloatData(phyReg: PhyFloatReg, data: FloatData);
 
+    fn getTruncatedFloatData(floatReg: FloatReg) -> FloatData {
+        FloatData::truncate(floatReg.type, MASM::getFloatData(floatReg.reg))
+    }
+
+    fn setTruncatedFloatData(floatReg: FloatReg, data: FloatData) {
+        MASM::setFloatData(floatReg.reg, FloatData::truncate(floatReg.type, data));
+    }
+
     #[refined]
     fn getDouble(floatReg: FloatReg) -> Float64 {
         assert floatReg.type == FloatContentType::Double;
@@ -2528,7 +2590,7 @@ ir MASM {
 
     #[refined]
     fn stackPushFloatReg(floatReg: FloatReg) {
-        let floatData = MASM::getFloatData(floatReg.reg);
+        let floatData = MASM::getTruncatedFloatData(floatReg);
         let stackData = StackData::fromFloatData(floatData);
         MASM::stackPush(stackData);
     }
@@ -2537,7 +2599,7 @@ ir MASM {
     fn stackPopFloatReg(floatReg: FloatReg) {
         let stackData = MASM::stackPop();
         let floatData = StackData::toFloatData(stackData);
-        MASM::setFloatData(floatReg.reg, floatData);
+        MASM::setTruncatedFloatData(floatReg, floatData);
     }
 
     var mut hasPushedRegs: Bool;

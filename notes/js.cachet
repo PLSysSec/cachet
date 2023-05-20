@@ -614,6 +614,28 @@ impl Value {
 
     unsafe fn toDoubleUnchecked(value: Value) -> Float64;
 
+
+    fn fromPrivate(ptr: UInt64) -> Value {
+        // JSVAL_SHIFTED_TAG_MAX_DOUBLE = ((uint64_t(JSVAL_TAG_MAX_DOUBLE) << JSVAL_TAG_SHIFT) | 0xFFFFFFFF)
+        assert ptr <= 18444492278190833663_u64;
+        let value = (unsafe { Value::fromPrivateUnchecked(ptr) });
+        assume Value::isDouble(value);
+        assume (unsafe { Value::toPrivateUnchecked(value) }) == ptr;
+        value
+    }
+
+    unsafe fn fromPrivateUnchecked(ptr: UInt64) -> Value;
+
+    fn toPrivate(value: Value) -> UInt64 {
+        assert Value::isDouble(value);
+        let ptr = (unsafe { Value::toPrivateUnchecked(value) });
+        assume (unsafe { Value::fromPrivateUnchecked(ptr) }) == value;
+        assume ptr <= 18444492278190833663_u64;
+        ptr
+    }
+
+    unsafe fn toPrivateUnchecked(value: Value) -> UInt64;
+
     fn isInt32(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Int32
     }
@@ -793,6 +815,8 @@ impl Value {
 struct Object;
 
 impl Object {
+    fn fromAddr(addr: UInt64) -> Object;
+
     // #[reads(heap)]
     // fn shapeOf(object: Object) -> Shape;
     fn shapeOf(object: Object) -> Shape {
@@ -815,9 +839,9 @@ impl Object {
     fn hasDynamicPrototype(object: Object) -> Bool {
         let dynamic = TaggedProto::isLazy(Object::taggedProto(object));
 
-        if dynamic {
+        //if dynamic {
             // assert Object::isProxyObject(object);
-        }
+        //}
 
         dynamic
     }
@@ -867,6 +891,8 @@ impl Object {
         let nativeObject = Object::toNativeObject(object);
         NativeObject::getFixedSlot(nativeObject, slot)
     }
+
+    
 
     fn lookupPropertyPure(
         object: Object,
@@ -919,6 +945,12 @@ impl Object {
         assert false; // only support NativeObject for now
         return RegData::fromValue(Value::fromObject(object)); // satisfy the compiler
     }
+}
+
+struct MaybeObject;
+
+impl MaybeObject {
+    fn fromObject(object: Object) -> MaybeObject;
 }
 
 fn ObjectHasGetterSetterPure(cx: JSContext, obj: Object, id: PropertyKey, getterSetter: GetterSetter) -> Bool {
@@ -1041,6 +1073,13 @@ impl NativeObject {
         idx < NativeObject::getDenseInitializedLength(nativeObject)
     }
 
+    // Whether there may be indexed properties on this object, excluding any in
+    // the object's elements.
+    fn isIndexed(object: Object) -> Bool {
+        let shape = Object::shapeOf(object);
+        Shape::isIndexed(shape)
+    }
+
     #[spec]
     fn readData(nativeObject: NativeObject, offset: Int64) -> RegData {
         if offset == NativeObject::offsetOfSlots as Int64 {
@@ -1160,6 +1199,10 @@ impl ArrayObject {
 
     fn class() -> Class {
         assume Class::isNativeObject(ArrayObject::rawClass);
+
+        assume !Class::hasResolveOp(ArrayObject::rawClass);
+        assume !Class::hasMayResolveOp(ArrayObject::rawClass);
+
         ArrayObject::rawClass
     }
 }
@@ -1373,6 +1416,8 @@ impl PropertyKey {
     }
 
     unsafe fn fromPrimitiveValueUnchecked(value: Value) -> MaybePropertyKey;
+
+    fn fromInt32(int32: Int32) -> PropertyKey;
 }
 
 struct PropertyFlags;
@@ -1546,6 +1591,9 @@ impl Shape {
     fn hasDynamicSlot(shape: Shape, slot: UInt32) -> Bool {
       Shape::hasSlot(shape, slot) && slot >= Shape::numFixedSlots(shape)
     }
+
+    // if the immutable Shape::objectFlags_ has the Indexed flag set
+    fn isIndexed(shape: Shape) -> Bool;
 }
 
 struct Class;
@@ -1559,6 +1607,16 @@ impl Class {
 
     fn isNativeObject(class: Class) -> Bool;
     fn isProxyObject(class: Class) -> Bool;
+
+    fn hasResolveOp(class: Class) -> Bool;
+    fn hasMayResolveOp(class: Class) -> Bool;
+
+    fn mayResolveOp(class: Class, id: PropertyKey, obj: MaybeObject) -> Bool {
+        assert Class::hasMayResolveOp(class);
+        unsafe { Class::mayResolveOpUnchecked(class, id, obj) }
+    }
+
+    unsafe fn mayResolveOpUnchecked(class: Class, id: PropertyKey, obj: MaybeObject) -> Bool;
 
     fn isArgumentsObject(class: Class) -> Bool {
         class == MappedArgumentsObject::class() ||
@@ -1608,7 +1666,21 @@ enum ProtoTag {
 struct TaggedProto;
 
 impl TaggedProto {
-    fn fromAddr(addr: UInt64) -> TaggedProto;
+    fn fromAddr(addr: UInt64) -> TaggedProto {
+        let proto = (unsafe { TaggedProto::fromAddrUnchecked(addr) });
+        assume addr == (unsafe { TaggedProto::toAddrUnchecked(proto) });
+        proto
+    }
+
+    unsafe fn fromAddrUnchecked(addr: UInt64) -> TaggedProto;
+
+    fn toAddr(proto: TaggedProto) -> UInt64 {
+        let addr = (unsafe { TaggedProto::toAddrUnchecked(proto) });
+        assume proto == (unsafe { TaggedProto::fromAddrUnchecked(addr) });
+        addr
+    }
+
+    unsafe fn toAddrUnchecked(proto: TaggedProto) -> UInt64;
 
     #[spec]
     fn tag(proto: TaggedProto) -> ProtoTag;
@@ -1630,7 +1702,9 @@ impl TaggedProto {
 
     fn toObject(proto: TaggedProto) -> Object {
         assert TaggedProto::isObject(proto);
-        (unsafe { TaggedProto::toObjectUnchecked(proto) })
+        let object = (unsafe { TaggedProto::toObjectUnchecked(proto) });
+        assume object == Object::fromAddr(TaggedProto::toAddr(proto));
+        object
     }
 
     unsafe fn toObjectUnchecked(proto: TaggedProto) -> Object;
@@ -1670,16 +1744,70 @@ fn ObjectMayHaveExtraIndexedProperties(obj: Object) -> Bool {
         assert !Object::isNativeObject(obj);
     }
 
+    if ObjectMayHaveExtraIndexedOwnProperties(obj) {
+        return true;
+    }
+
+    PrototypeMayHaveIndexedProperties(Object::toNativeObject(obj))
+}
+
+#[spec]
+fn PrototypeMayHaveIndexedProperties(obj: NativeObject) -> Bool {
+    let mut obj = obj;
+
+    while ({
+        assert Object::hasStaticPrototype(obj);
+        TaggedProto::isObject(Object::taggedProto(obj))
+    }) {
+        let proto = TaggedProto::toObject(Object::taggedProto(obj));
+
+        if ObjectMayHaveExtraIndexedOwnProperties(proto) {
+            return true;
+        }
+
+        obj = Object::toNativeObject(proto);
+        if NativeObject::getDenseInitializedLength(obj) != 0_u32 {
+            return true;
+        }
+    }
+    
+    false
+}
+
+#[spec]
+fn ObjectMayHaveExtraIndexedOwnProperties(obj: Object) -> Bool {
     // BUG1502143 should return here as `obj` is completely unconstrained. 
     if !Object::isNativeObject(obj) {
         return true;
     }
 
-    return false;
-    //unsafe { objectMayHaveExtraIndexedPropertiesUnchecked(obj) }
+    if NativeObject::isIndexed(Object::toNativeObject(obj)) {
+        return true;
+    }
+
+    // if Object::isTypedArrayObject(obj) {
+    //     return true;
+    // }
+
+    ClassMayResolveId(Shape::classOf(Object::shapeOf(obj)),
+        PropertyKey::fromInt32(0_i32), MaybeObject::fromObject(obj))
 }
 
-unsafe fn objectMayHaveExtraIndexedPropertiesUnchecked(obj: Object) -> Bool;
+#[spec]
+fn ClassMayResolveId(class: Class, id: PropertyKey, maybeObj: MaybeObject) -> Bool {
+    if !Class::hasResolveOp(class) {
+        assert !Class::hasMayResolveOp(class);
+        return false;
+    }
+
+    if Class::hasMayResolveOp(class) && !Class::mayResolveOp(class, id, maybeObj) {
+        return false;
+    }
+
+    return true;
+}
+
+//unsafe fn objectMayHaveExtraIndexedPropertiesUnchecked(obj: Object) -> Bool;
 
 #[spec]
 fn ProxyGetPropertyByValue(proxy: Object, idVal: Value, out value: Value) -> Bool {
