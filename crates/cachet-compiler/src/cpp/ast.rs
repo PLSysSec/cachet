@@ -827,9 +827,13 @@ pub enum Stmt {
     #[from]
     If(IfStmt),
     #[from]
+    While(WhileStmt),
+    #[from]
     Ret(RetStmt),
     #[from(types(Expr))]
     Expr(ExprStmt),
+    #[display(fmt = "break;")]
+    Break,
 }
 
 impl FromIterator<Stmt> for Stmt {
@@ -910,6 +914,13 @@ impl Display for ElseClause {
         }
         Ok(())
     }
+}
+
+#[derive(Clone, Debug, Display, From)]
+#[display(fmt = "while ({}) {}", cond, body)]
+pub struct WhileStmt {
+    pub cond: Expr,
+    pub body: Block,
 }
 
 #[derive(Clone, Debug)]

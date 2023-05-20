@@ -472,6 +472,8 @@ pub enum Stmt {
     #[from]
     ForIn(ForInStmt),
     #[from]
+    While(WhileStmt),
+    #[from]
     Check(CheckStmt),
     #[from]
     Goto(GotoStmt),
@@ -505,6 +507,13 @@ pub struct ForInStmt {
     pub var: Spanned<Ident>,
     pub target: Spanned<Path>,
     pub order: ForInOrder,
+    pub body: Block,
+}
+
+#[derive(Clone, Debug, Display)]
+#[display(fmt = "while {cond} {body}")]
+pub struct WhileStmt {
+    pub cond: Spanned<Expr>,
     pub body: Block,
 }
 

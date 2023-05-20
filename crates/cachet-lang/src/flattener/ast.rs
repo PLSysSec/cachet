@@ -22,6 +22,7 @@ pub type Stmt = normalizer::Stmt<Void>;
 pub type LetStmt = normalizer::LetStmt<Void>;
 pub type IfStmt = normalizer::IfStmt<Void>;
 pub type ForInStmt = normalizer::ForInStmt<Void>;
+pub type WhileStmt = normalizer::WhileStmt<Void>;
 pub type ElseClause = normalizer::ElseClause<Void>;
 pub type CheckStmt = normalizer::CheckStmt<Void>;
 pub type GotoStmt = normalizer::GotoStmt<Void>;

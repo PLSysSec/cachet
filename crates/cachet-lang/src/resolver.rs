@@ -956,6 +956,10 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
                 .resolve_for_in_stmt(for_in_stmt)
                 .map(Stmt::from)
                 .map(Some),
+            parser::Stmt::While(while_stmt) => self
+                .resolve_while_stmt(while_stmt)
+                .map(Stmt::from)
+                .map(Some),
             parser::Stmt::Check(check_stmt) => self
                 .resolve_check_stmt(check_stmt)
                 .map(Stmt::from)
@@ -1056,6 +1060,16 @@ impl<'a, 'b> ScopedResolver<'a, 'b> {
             var: loop_var_index,
             target: target_type_index?,
             order: for_in_stmt.order,
+            body: body?,
+        })
+    }
+
+    fn resolve_while_stmt(&mut self, while_stmt: parser::WhileStmt) -> Option<WhileStmt> {
+        let cond = map_spanned(while_stmt.cond, |cond| self.resolve_expr(cond.value));
+        let body = self.resolve_nested_block(while_stmt.body);
+
+        Some(WhileStmt {
+            cond: cond?,
             body: body?,
         })
     }

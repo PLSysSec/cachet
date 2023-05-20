@@ -363,6 +363,8 @@ pub enum Stmt {
     #[from]
     ForIn(ForInStmt),
     #[from]
+    While(WhileStmt),
+    #[from]
     Check(CheckStmt),
     #[from]
     Goto(GotoStmt),
@@ -383,6 +385,7 @@ impl Typed for Stmt {
             Self::Label(label_stmt) => label_stmt.type_(),
             Self::If(if_stmt) => if_stmt.type_(),
             Self::ForIn(for_in_stmt) => for_in_stmt.type_(),
+            Self::While(while_stmt) => while_stmt.type_(),
             Self::Check(check_stmt) => check_stmt.type_(),
             Self::Goto(goto_stmt) => goto_stmt.type_(),
             Self::Bind(bind_stmt) => bind_stmt.type_(),
@@ -446,6 +449,18 @@ pub struct ForInStmt {
 }
 
 impl Typed for ForInStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WhileStmt {
+    pub cond: Expr,
+    pub body: Block,
+}
+
+impl Typed for WhileStmt {
     fn type_(&self) -> TypeIndex {
         BuiltInType::Unit.into()
     }

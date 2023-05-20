@@ -961,6 +961,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Stmt::Label(label_stmt) => self.compile_label_stmt(label_stmt),
             normalizer::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
             normalizer::Stmt::ForIn(for_in_stmt) => self.compile_for_in_stmt(for_in_stmt),
+            normalizer::Stmt::While(while_stmt) => self.compile_while_stmt(while_stmt),
             normalizer::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
             normalizer::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
             normalizer::Stmt::Bind(bind_stmt) => self.compile_bind_stmt(bind_stmt),
@@ -968,6 +969,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             normalizer::Stmt::Invoke(invoke_stmt) => self.compile_invoke_stmt(invoke_stmt),
             normalizer::Stmt::Assign(assign_stmt) => self.compile_assign_stmt(assign_stmt),
             normalizer::Stmt::Ret(ret_stmt) => self.compile_ret_stmt(ret_stmt),
+            normalizer::Stmt::Break => self.stmts.push(Stmt::Break),
         }
     }
 
@@ -1108,6 +1110,15 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             ForInOrder::Ascending => self.stmts.extend(iteration_stmts),
             ForInOrder::Descending => self.stmts.extend(iteration_stmts.into_iter().rev()),
         };
+    }
+
+    fn compile_while_stmt(&mut self, while_stmt: &normalizer::WhileStmt) {
+        let tagged_cond = self.compile_expr(&while_stmt.cond);
+        let cond = self.use_expr(tagged_cond, ExprTag::Ref | ExprTag::Val);
+
+        let body = self.compile_block(&while_stmt.body);
+
+        self.stmts.push(WhileStmt { cond, body }.into());
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &normalizer::CheckStmt) {

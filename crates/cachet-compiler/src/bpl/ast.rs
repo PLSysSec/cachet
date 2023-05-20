@@ -838,6 +838,8 @@ pub enum Stmt {
     #[from]
     If(IfStmt),
     #[from]
+    While(WhileStmt),
+    #[from]
     Check(CheckStmt),
     #[from]
     Label(LabelStmt),
@@ -850,6 +852,8 @@ pub enum Stmt {
     #[display(fmt = "return;")]
     #[from]
     Ret,
+    #[display(fmt = "break;")]
+    Break,
 }
 
 #[derive(Clone, Debug)]
@@ -885,6 +889,13 @@ impl Display for ElseClause {
         }?;
         Ok(())
     }
+}
+
+#[derive(Clone, Debug, Display, From)]
+#[display(fmt = "while ({}) {}", cond, body)]
+pub struct WhileStmt {
+    pub cond: Expr,
+    pub body: Block,
 }
 
 #[derive(Clone, Debug)]

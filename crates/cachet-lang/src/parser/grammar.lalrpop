@@ -234,6 +234,7 @@ Stmt: Stmt = {
     <label_stmt:LabelStmt> ";"+ => label_stmt.into(),
     <if_stmt:IfStmt> => if_stmt.into(),
     <for_in_stmt:ForInStmt> => for_in_stmt.into(),
+    <while_stmt:WhileStmt> => while_stmt.into(),
     <check_stmt:CheckStmt> ";"+ => check_stmt.into(),
     <goto_stmt:GotoStmt> ";"+ => goto_stmt.into(),
     <bind_stmt:BindStmt> ";"+ => bind_stmt.into(),
@@ -261,6 +262,10 @@ ForInOrder: ForInOrder = {
     "asc" => ForInOrder::Ascending,
     "desc" => ForInOrder::Descending,
 }
+
+WhileStmt: WhileStmt =
+    "while" <cond:Spanned<Expr<WithBlock>>> <body:Block> =>
+        WhileStmt { cond, body };
 
 ElseClause: ElseClause = {
     <else_if:Box<IfStmt>> => else_if.into(),

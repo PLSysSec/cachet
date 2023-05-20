@@ -195,6 +195,8 @@ pub enum Stmt<B = ()> {
     #[from]
     ForIn(ForInStmt<B>),
     #[from]
+    While(WhileStmt<B>),
+    #[from]
     Check(CheckStmt<B>),
     #[from]
     Goto(GotoStmt<B>),
@@ -208,6 +210,7 @@ pub enum Stmt<B = ()> {
     Assign(AssignStmt<B>),
     #[from]
     Ret(RetStmt<B>),
+    Break,
 }
 
 #[derive(Clone, Debug)]
@@ -237,6 +240,12 @@ pub struct ForInStmt<B = ()> {
     pub var: LocalVarIndex,
     pub target: EnumIndex,
     pub order: ForInOrder,
+    pub body: Vec<Stmt<B>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct WhileStmt<B = ()> {
+    pub cond: Expr<B>,
     pub body: Vec<Stmt<B>>,
 }
 

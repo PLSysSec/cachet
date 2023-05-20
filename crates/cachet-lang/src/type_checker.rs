@@ -1169,6 +1169,9 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             resolver::Stmt::ForIn(for_in_stmt) => {
                 Some(self.type_check_for_in_stmt(for_in_stmt).into())
             }
+            resolver::Stmt::While(while_stmt) => {
+                Some(self.type_check_while_stmt(while_stmt).into())
+            }
             resolver::Stmt::Check(check_stmt) => {
                 Some(self.type_check_check_stmt(check_stmt).into())
             }
@@ -1269,6 +1272,15 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
             order: for_in_stmt.order,
             body,
         }
+    }
+
+    fn type_check_while_stmt(&mut self, while_stmt: &resolver::WhileStmt) -> WhileStmt {
+        let cond = self
+            .type_check_expr_expecting_type(while_stmt.cond.as_ref(), BuiltInType::Bool.into());
+
+        let body = self.type_check_block(&while_stmt.body);
+
+        WhileStmt { cond, body }
     }
 
     fn type_check_check_stmt(&mut self, check_stmt: &resolver::CheckStmt) -> CheckStmt {
@@ -1831,6 +1843,7 @@ fn does_stmt_exit_early(stmt: &Stmt) -> bool {
         Stmt::Let(LetStmt { rhs: expr, .. }) | Stmt::Expr(expr) => does_expr_exit_early(expr),
         Stmt::If(if_stmt) => does_if_stmt_exit_early(if_stmt),
         Stmt::ForIn(for_in_stmt) => for_in_stmt.body.exits_early,
+        Stmt::While(while_stmt) => while_stmt.body.exits_early,
         Stmt::Ret(_) => true,
         Stmt::Label(_) | Stmt::Check(_) | Stmt::Goto(_) | Stmt::Bind(_) | Stmt::Emit(_) => false,
     }

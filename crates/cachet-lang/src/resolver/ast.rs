@@ -532,6 +532,8 @@ pub enum Stmt {
     #[from]
     If(IfStmt),
     #[from]
+    While(WhileStmt),
+    #[from]
     ForIn(ForInStmt),
     #[from]
     Check(CheckStmt),
@@ -593,6 +595,18 @@ pub struct ForInStmt {
 }
 
 impl Typed for ForInStmt {
+    fn type_(&self) -> TypeIndex {
+        BuiltInType::Unit.into()
+    }
+}
+
+#[derive(Clone, Debug, From)]
+pub struct WhileStmt {
+    pub cond: Spanned<Expr>,
+    pub body: Block,
+}
+
+impl Typed for WhileStmt {
     fn type_(&self) -> TypeIndex {
         BuiltInType::Unit.into()
     }

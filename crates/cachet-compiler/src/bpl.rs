@@ -1590,6 +1590,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Stmt::Label(_) => (),
             flattener::Stmt::If(if_stmt) => self.compile_if_stmt(if_stmt),
             flattener::Stmt::ForIn(for_in_stmt) => self.compile_for_in_stmt(for_in_stmt),
+            flattener::Stmt::While(while_stmt) => self.compile_while_stmt(while_stmt),
             flattener::Stmt::Check(check_stmt) => self.compile_check_stmt(check_stmt),
             flattener::Stmt::Goto(goto_stmt) => self.compile_goto_stmt(goto_stmt),
             flattener::Stmt::Bind(bind_stmt) => self.compile_bind_stmt(bind_stmt),
@@ -1597,6 +1598,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
             flattener::Stmt::Invoke(invoke_stmt) => self.compile_invoke_stmt(invoke_stmt),
             flattener::Stmt::Assign(assign_stmt) => self.compile_assign_stmt(assign_stmt),
             flattener::Stmt::Ret(ret_stmt) => self.compile_ret_stmt(ret_stmt),
+            flattener::Stmt::Break => self.stmts.push(Stmt::Break),
         }
     }
 
@@ -1682,6 +1684,12 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 .collect(),
         };
         self.stmts.extend(stmts);
+    }
+
+    fn compile_while_stmt(&mut self, while_stmt: &flattener::WhileStmt) {
+        let cond = self.compile_expr(&while_stmt.cond);
+        let body = self.compile_block(&while_stmt.body);
+        self.stmts.push(WhileStmt { cond, body }.into());
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &flattener::CheckStmt) {

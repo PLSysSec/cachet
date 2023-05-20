@@ -125,6 +125,9 @@ impl Flattener {
             normalizer::Stmt::ForIn(for_in_stmt) => {
                 self.flatten_for_in_stmt(for_in_stmt);
             }
+            normalizer::Stmt::While(while_stmt) => {
+                self.flatten_while_stmt(while_stmt);
+            }
             normalizer::Stmt::Check(check_stmt) => {
                 self.flatten_check_stmt(check_stmt);
             }
@@ -145,6 +148,9 @@ impl Flattener {
             }
             normalizer::Stmt::Ret(ret_stmt) => {
                 self.flatten_ret_stmt(ret_stmt);
+            }
+            normalizer::Stmt::Break => {
+                self.stmts.push(normalizer::Stmt::Break);
             }
         }
     }
@@ -195,6 +201,13 @@ impl Flattener {
             }
             .into(),
         );
+    }
+
+    fn flatten_while_stmt(&mut self, while_stmt: normalizer::WhileStmt) {
+        let cond = self.flatten_expr(while_stmt.cond);
+        let body = flatten_block(while_stmt.body);
+
+        self.stmts.push(WhileStmt { cond, body }.into());
     }
 
     fn flatten_check_stmt(&mut self, check_stmt: normalizer::CheckStmt) {

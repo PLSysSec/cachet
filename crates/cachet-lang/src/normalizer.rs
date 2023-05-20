@@ -343,6 +343,7 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             type_checker::Stmt::Label(label_stmt) => self.stmts.push(label_stmt.into()),
             type_checker::Stmt::If(if_stmt) => self.normalize_if_stmt(if_stmt),
             type_checker::Stmt::ForIn(for_in_stmt) => self.normalize_for_in_stmt(for_in_stmt),
+            type_checker::Stmt::While(while_stmt) => self.normalize_while_stmt(while_stmt),
             type_checker::Stmt::Check(check_stmt) => self.normalize_check_stmt(check_stmt),
             type_checker::Stmt::Goto(goto_stmt) => self.normalize_goto_stmt(goto_stmt),
             type_checker::Stmt::Bind(bind_stmt) => self.stmts.push(bind_stmt.into()),
@@ -397,6 +398,38 @@ impl<'a, 'b> ScopedNormalizer<'a, 'b> {
             }
             .into(),
         );
+    }
+
+    fn normalize_while_stmt(&mut self, while_stmt: type_checker::WhileStmt) {
+        let cond = self.normalize_expr(while_stmt.cond);
+        let body = self.normalize_unused_block(while_stmt.body);
+
+        match cond {
+            Expr::Block(_, block_expr) => {
+                let cond: Expr = BuiltInVar::True.into();
+                let mut stmts = block_expr.stmts;
+
+                let cond_if: Stmt = IfStmt {
+                    cond: NegateExpr {
+                        kind: NegateKind::Logical,
+                        expr: block_expr.value,
+                    }.into(),
+                    then: vec![
+                        Stmt::Break,
+                    ],
+                    else_: None,
+                }.into();
+
+                stmts.push(cond_if);
+                stmts.extend(body);
+
+                self.stmts.push(WhileStmt { cond, body: stmts }.into());
+            },
+            cond => {
+                self.stmts.push(WhileStmt { cond, body }.into());
+            },
+        }
+
     }
 
     fn normalize_check_stmt(&mut self, check_stmt: type_checker::CheckStmt) {
