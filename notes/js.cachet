@@ -1718,38 +1718,20 @@ fn runtimeMainContextPtr() -> JSContext;
 
 #[spec]
 fn GetSparseElementHelper(obj: NativeObject, intId: Int32, out result: Value) -> Bool {
-    assert Object::hasStaticPrototype(obj);
+    assert Object::isArrayObject(obj) || Object::isPlainObject(obj);
 
     // This helper doesn't handle the case where the index is a dense element.
     assert intId >= 0_i32;
     assert !NativeObject::containsDenseElement(obj, intId as UInt32);
 
-    let taggedProto = Object::taggedProto(obj);
-    if !TaggedProto::isNull(taggedProto) {
-        // Indexed properties can not exist on the prototype chain.
-        assert !ObjectMayHaveExtraIndexedProperties(TaggedProto::toObject(taggedProto));
-    }
+    // Indexed properties can not exist on the prototype chain.
+    assert !PrototypeMayHaveIndexedProperties(obj);
 
-    //TODO(abhishek): can potentially model even more of this helper if useful.
+    // TODO(abhishek): can potentially model even more of this helper if useful.
     unsafe { getSparseElementHelperUnchecked(obj, intId, out result) }
 }
 
 unsafe fn getSparseElementHelperUnchecked(obj: NativeObject, intId: Int32, out result: Value) -> Bool;
-
-//TODO(abhishek): this function is implemented only to the extent of being able
-// to catch BUG1502143. It needs to be extended to be able to verify the fix.
-#[spec]
-fn ObjectMayHaveExtraIndexedProperties(obj: Object) -> Bool {
-    if Object::hasDynamicPrototype(obj) {
-        assert !Object::isNativeObject(obj);
-    }
-
-    if ObjectMayHaveExtraIndexedOwnProperties(obj) {
-        return true;
-    }
-
-    PrototypeMayHaveIndexedProperties(Object::toNativeObject(obj))
-}
 
 #[spec]
 fn PrototypeMayHaveIndexedProperties(obj: NativeObject) -> Bool {

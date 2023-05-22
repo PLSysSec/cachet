@@ -2295,6 +2295,13 @@ ir MASM {
         MASM::setValueTag(tagReg, tag);
     }
 
+    op EnsureNoExtraIndexedProperties(objectReg: Reg) {
+        let object = MASM::getObject(objectReg);
+
+        // Indexed properties can not exist on the prototype chain.
+        assert !PrototypeMayHaveIndexedProperties(Object::toNativeObject(object));
+    }
+
     op CallJit(code: TrampolinePtr) {
         let function = code.function;
 

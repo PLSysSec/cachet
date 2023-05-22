@@ -1382,6 +1382,12 @@ ir CacheIR emits MASM {
         AutoCallVM::release(callvm);
     }
 
+    op EnsureNoExtraIndexedProperties(objId: ObjectId) {
+        let objReg = CacheIR::useObjectId(objId);
+
+        emit MASM::EnsureNoExtraIndexedProperties(objReg);
+    }
+
     op CallGetSparseElementResult(objId: ObjectId, indexId: Int32Id) {
         let callvm = AutoCallVM::new();
 
