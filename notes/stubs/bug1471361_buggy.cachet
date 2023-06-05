@@ -1,0 +1,27 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {
+    op NotDouble(
+        inputValueId: ValueId,
+        int32Id: Int32Id,
+    ) {
+        initRegState();
+
+        initOperandId(inputValueId);
+        initInputValueId(inputValueId);
+
+        initOperandId(int32Id);
+
+        initValueOutput();
+
+        emit CacheIR::InitStackGuard();
+
+        emit CacheIR::GuardIsNumber(inputValueId);
+
+        emit CacheIR::TruncateDoubleToUInt32_BUG1471361_buggy(inputValueId, int32Id);
+        emit CacheIR::Int32NotResult(int32Id);
+
+        emit CacheIR::AssertStackGuard();
+    }
+}

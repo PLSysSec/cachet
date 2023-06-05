@@ -64,6 +64,7 @@ fn initInputValueTagId(valueTagId: ValueTagId) {
 fn initValueOutput() {
     assume TypedOrValueReg::hasValue(CacheIR::outputReg);
     assume !CacheIR::isAllocatedValueReg(TypedOrValueReg::toValueReg(CacheIR::outputReg));
+    assume CacheIR::isAllocatableReg(ValueReg::scratchReg(TypedOrValueReg::toValueReg(CacheIR::outputReg)));
 }
 
 fn initTypedOutput(type: MIRType) {
@@ -72,4 +73,5 @@ fn initTypedOutput(type: MIRType) {
     let typedReg = TypedOrValueReg::toTypedReg(CacheIR::outputReg);
     assume !AnyReg::isFloat(typedReg);
     assume !CacheIR::isAllocatedReg(AnyReg::toReg(typedReg));
+    assume CacheIR::isAllocatableReg(AnyReg::toReg(typedReg));
 }

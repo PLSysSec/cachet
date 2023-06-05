@@ -454,6 +454,7 @@ impl AutoSaveLiveRegisters {
 enum VMFunction {
     GetSparseElementHelper,
     ProxyGetPropertyByValue,
+    ProxyGetPropertyByValue_BUG1651732,
 }
 
 struct TrampolinePtr {
@@ -505,7 +506,8 @@ impl AutoCallVM {
         if function == VMFunction::GetSparseElementHelper {
             // according to definition of ReturnTypeToJSValueType
             AutoCallVM::storeResult(callvm, JSValueType::Unknown);
-        } else if function == VMFunction::ProxyGetPropertyByValue {
+        } else if function == VMFunction::ProxyGetPropertyByValue || function ==
+            VMFunction::ProxyGetPropertyByValue_BUG1651732 {
             AutoCallVM::storeResult(callvm, JSValueType::Unknown);
         } else {
             assert false;
@@ -575,6 +577,14 @@ ir CacheIR emits MASM {
     op AssertEqValueInput(inputId: ValueId, value: Value) {
         let inputReg = CacheIR::useValueId(inputId);
         emit MASM::AssertEqValue(inputReg, value);
+    }
+
+    op InitStackGuard() {
+        emit MASM::InitStackGuard();
+    }
+
+    op AssertStackGuard() {
+        emit MASM::AssertStackGuard();
     }
 
     op GuardIsNumber(inputId: ValueId) {
@@ -1165,6 +1175,149 @@ ir CacheIR emits MASM {
         CacheIR::releaseFailurePath();
     }
 
+    op TruncateDoubleToUInt32_BUG1471361_buggy(inputId: ValueId, resultId: Int32Id) {
+        let valReg = CacheIR::useValueId(inputId);
+        let resReg = CacheIR::defineInt32Id(resultId);
+
+        label doneTruncate: MASM;
+        label truncateABICall: MASM;
+
+        let floatReg = CacheIR::allocateFloatScratchReg();
+
+
+        label int32: MASM;
+        label done: MASM;
+
+        emit MASM::BranchTestInt32(Condition::Equal, valReg, int32);
+
+        emit MASM::UnboxDouble(valReg, floatReg);
+        emit MASM::BranchTruncateDoubleMaybeModUint32(floatReg, resReg, truncateABICall);
+        emit MASM::Jump(doneTruncate);
+
+        bind truncateABICall;
+
+        let save = LiveRegSet::new(
+            GeneralRegSet::volatile(), CacheIR::liveVolatileFloatRegs()
+        );
+        LiveRegSet::takeFloatReg(out save, save, floatReg);
+        LiveRegSet::takeFloatReg(out save, save, FloatReg::asSingle(floatReg));
+
+        emit MASM::PushRegsInMask(save);
+
+        emit MASM::SetupUnalignedABICall(resReg);
+        emit MASM::PassABIArgFloatReg(floatReg, MoveOpType::Double);
+        emit MASM::CallWithABI(ABIFunction::JSToInt32, MoveOpType::General,
+            CheckUnsafeCallWithABI::DontCheckOther);
+
+        emit MASM::StoreCallInt32Result(resReg);
+
+        let ignore = LiveRegSet::empty();
+        LiveRegSet::addReg(out ignore, ignore, resReg);
+
+        emit MASM::PopRegsInMaskIgnore(save, ignore);
+
+        bind doneTruncate;
+        CacheIR::releaseFloatScratchReg();
+
+        emit MASM::Jump(done);
+        bind int32;
+
+        emit MASM::UnboxInt32(valReg, resReg);
+
+        bind done;
+    }
+
+    op TruncateDoubleToUInt32_BUG1471361_fixed(inputId: ValueId, resultId: Int32Id) {
+        let valReg = CacheIR::useValueId(inputId);
+        let resReg = CacheIR::defineInt32Id(resultId);
+
+        label int32: MASM;
+        label done: MASM;
+
+        emit MASM::BranchTestInt32(Condition::Equal, valReg, int32);
+
+        label doneTruncate: MASM;
+        label truncateABICall: MASM;
+
+        let floatReg = CacheIR::allocateFloatScratchReg();
+
+        emit MASM::UnboxDouble(valReg, floatReg);
+        emit MASM::BranchTruncateDoubleMaybeModUint32(floatReg, resReg, truncateABICall);
+        emit MASM::Jump(doneTruncate);
+
+        bind truncateABICall;
+
+        let save = LiveRegSet::new(
+            GeneralRegSet::volatile(), CacheIR::liveVolatileFloatRegs()
+        );
+        LiveRegSet::takeFloatReg(out save, save, floatReg);
+        LiveRegSet::takeFloatReg(out save, save, FloatReg::asSingle(floatReg));
+
+        emit MASM::PushRegsInMask(save);
+
+        emit MASM::SetupUnalignedABICall(resReg);
+        emit MASM::PassABIArgFloatReg(floatReg, MoveOpType::Double);
+        emit MASM::CallWithABI(ABIFunction::JSToInt32, MoveOpType::General,
+            CheckUnsafeCallWithABI::DontCheckOther);
+
+        emit MASM::StoreCallInt32Result(resReg);
+
+        let ignore = LiveRegSet::empty();
+        LiveRegSet::addReg(out ignore, ignore, resReg);
+
+        emit MASM::PopRegsInMaskIgnore(save, ignore);
+
+        bind doneTruncate;
+        CacheIR::releaseFloatScratchReg();
+
+        emit MASM::Jump(done);
+        bind int32;
+
+        emit MASM::UnboxInt32(valReg, resReg);
+
+        bind done;
+    }
+
+    op TruncateDoubleToUInt32_BUG1451976(inputId: NumberId, resultId: Int32Id) {
+        let resReg = CacheIR::defineInt32Id(resultId);
+
+        let floatReg = CacheIR::allocateFloatScratchReg();
+
+        CacheIR::ensureDoubleRegister(inputId, floatReg);
+
+        label done: MASM;
+        label truncateABICall: MASM;
+
+        emit MASM::BranchTruncateDoubleMaybeModUint32(floatReg, resReg, truncateABICall);
+        emit MASM::Jump(done);
+
+        bind truncateABICall;
+
+        let save = LiveRegSet::new(
+            GeneralRegSet::volatile(), CacheIR::liveVolatileFloatRegs()
+        );
+
+        LiveRegSet::takeFloatReg(out save, save, floatReg);
+
+        emit MASM::PushRegsInMask(save);
+
+        emit MASM::SetupUnalignedABICall(resReg);
+        emit MASM::PassABIArgFloatReg(floatReg, MoveOpType::Double);
+        emit MASM::CallWithABI(ABIFunction::JSToInt32, MoveOpType::General,
+            CheckUnsafeCallWithABI::DontCheckOther);
+
+        emit MASM::StoreCallInt32Result(resReg);
+
+        let ignore = LiveRegSet::empty();
+        LiveRegSet::addReg(out ignore, ignore, resReg);
+
+        emit MASM::PopRegsInMaskIgnore(save, ignore);
+
+        bind done;
+
+        CacheIR::releaseFloatScratchReg();
+    }
+
     op TruncateDoubleToUInt32(inputId: NumberId, resultId: Int32Id) {
         let resReg = CacheIR::defineInt32Id(resultId);
 
@@ -1186,7 +1339,7 @@ ir CacheIR emits MASM {
 
         LiveRegSet::takeFloatReg(out save, save, floatReg);
         // comment below line to re-introduce BUG1451976
-        //LiveRegSet::takeFloatReg(out save, save, FloatReg::asSingle(floatReg));
+        LiveRegSet::takeFloatReg(out save, save, FloatReg::asSingle(floatReg));
 
         emit MASM::PushRegsInMask(save);
 
@@ -1378,6 +1531,21 @@ ir CacheIR emits MASM {
         emit MASM::PushReg(objectReg);
 
         AutoCallVM::call(callvm, VMFunction::ProxyGetPropertyByValue);
+
+        AutoCallVM::release(callvm);
+    }
+
+    op ProxyGetByValueResult_BUG1651732(objId: ObjectId, idId: ValueId) {
+        let callvm = AutoCallVM::new();
+
+        let objectReg = CacheIR::useObjectId(objId);
+        let idReg = CacheIR::useValueId(idId);
+
+        AutoCallVM::prepare(callvm);
+        emit MASM::PushValueReg(idReg);
+        emit MASM::PushReg(objectReg);
+
+        AutoCallVM::call(callvm, VMFunction::ProxyGetPropertyByValue_BUG1651732);
 
         AutoCallVM::release(callvm);
     }
@@ -1820,8 +1988,21 @@ ir CacheIR emits MASM {
         let scratchReg = CacheIR::allocateReg();
         emit MASM::Mov(lhsReg, scratchReg);
 
-        // comment/uncomment below op for BUG1654947
-        //emit MASM::And32Imm32(31_i32, rhsReg);
+        emit MASM::FlexibleRshift32Arithmetic(rhsReg, scratchReg);
+        emit MASM::TagValue(JSValueType::Int32, scratchReg,
+                TypedOrValueReg::toValueReg(CacheIR::outputReg));
+
+        CacheIR::releaseReg(scratchReg);
+    }
+
+    op Int32RightShiftResult_BUG1654947(lhsId: Int32Id, rhsId: Int32Id) {
+        let lhsReg = CacheIR::useInt32Id(lhsId);
+        let rhsReg = CacheIR::useInt32Id(rhsId);
+
+        let scratchReg = CacheIR::allocateReg();
+        emit MASM::Mov(lhsReg, scratchReg);
+
+        emit MASM::And32Imm32(31_i32, rhsReg);
 
         emit MASM::FlexibleRshift32Arithmetic(rhsReg, scratchReg);
         emit MASM::TagValue(JSValueType::Int32, scratchReg,

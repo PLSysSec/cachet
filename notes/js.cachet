@@ -407,19 +407,51 @@ impl Float64 {
 
     fn fromUInt32(uint32: UInt32) -> Float64 {
         let float64 = (unsafe { Float64::fromUInt32Unchecked(uint32) });
+        assume !Float64::isNegativeZero(float64);
+        assume !Float64::isInfinite(float64);
+        assume !Float64::isNaN(float64);
         float64
     }
 
     unsafe fn fromUInt32Unchecked(uint32: UInt32) -> Float64;
 
-    //TODO(abhishek): properly handle various cases and assertions
-    // for conversion to Int64.
-    fn isSafeToInt64(float64: Float64) -> Bool;
-    fn toInt64(float64: Float64) -> Int64;
+    // Can a float64 be sucessfully truncated to an Int64
+    fn truncatesToInt64(float64: Float64) -> Bool {
+        let result = (unsafe { Float64::truncatesToInt64Unchecked(float64) });
+        if result {
+            assume !Float64::isInfinite(float64);
+            assume !Float64::isNaN(float64);
+
+        }
+
+        result
+    }
+
+    unsafe fn truncatesToInt64Unchecked(float64: Float64) -> Bool;
+
+    fn toInt64(float64: Float64) -> Int64 {
+        let int64 = (unsafe { Float64::toInt64Unchecked(float64) });
+        if Float64::isNegativeZero(float64) {
+            assume int64 == 0_i64;
+        }
+
+        //NOTE: we could potentially assume something about the range of int64
+        // based if truncatesToInt64(float64) is true since there are Int64 values that
+        // cannot be properly represented as Float64's that can be safely truncated -
+        // for example i64::MAX.
+
+        int64
+    }
+
+    unsafe fn toInt64Unchecked(float64: Float64) -> Int64;
 }
 
 /*impl Float64 {
     fn category(float64: Float64) -> FloatCategory;
+
+    fn isNormal(float64: Float64) -> Bool {
+        Float64::category(float64) == FloatCategory::Normal
+    }
 
     fn isNegativeZero(float64: Float64) -> Bool {
         Float64::category(float64) == FloatCategory::NegZero;
@@ -444,8 +476,7 @@ impl Float64 {
 
     fn fromInt32(int32: Int32) -> Float64 {
         let float64 = (unsafe { Float64::fromInt32Unchecked(int32) });
-        assume Float64::category(float64) == FloatCategory::Normal;
-        assume Float64::isNormalInt32(float64);
+        assume Float64::equalsInt32(float64);
         assume (unsafe { Float64::toInt32Unchecked(float64) }) == int32;
         float64
     }
@@ -454,12 +485,11 @@ impl Float64 {
 
     // convert an arbitrary float64 to an int32
     fn toInt32(float64: Float64) -> Int32 {
-        let category = Float64::category(float64);
         let int32 = (unsafe { Float64::toInt32Unchecked(float64) });
 
-        if category == FloatCategory::NegZero {
+        if Float64::isNegativeZero(float64) {
             assume int32 == 0_i32;    
-        } else if category == FloatCategory::Normal && Float64::isNormalInt32(float64) {
+        } else if Float64::equalsInt32(float64) {
             assume (unsafe { Float64::fromInt32Unchecked(int32) }) == float64;
         }
 
@@ -469,14 +499,13 @@ impl Float64 {
     unsafe fn toInt32Unchecked(float64: Float64) -> Int32;
 
     // checks if a Normal float64 can be represented as an int32 precisely.
-    // if this returns true it means that `float64` is both in the representable
-    // range does not need rounding/truncation when converting.
-    fn isNormalInt32(float64: Float64) -> Bool {
-        assert Float64::category(float64) == FloatCategory::Normal;
-        (unsafe { Float64::isNormalInt32Unchecked(float64) })
+    // if this returns true it means that `float64` is both in the int32 representable
+    // range and does not need any rounding/truncation to convert.
+    fn equalsInt32(float64: Float64) -> Bool {
+        Float64::isNormal(float64) && (unsafe { Float64::equalsInt32Unchecked(float64) })
     }
 
-    unsafe fn isNormalInt32Unchecked(float64: Float64) -> Bool;
+    unsafe fn equalsInt32Unchecked(float64: Float64) -> Bool;
 
     fn toInt64(float64: Float64) -> Int64 {
         let category = Float64::category(float64);
@@ -488,6 +517,12 @@ impl Float64 {
             
         }
     }
+
+    fn truncatesInt64(float64: Float64) -> Bool {
+        Float64::isNormal(float64) && (unsafe { Float64::truncatesInt64Unchecked(float64) })
+    }
+
+    unsafe fn truncatesInt64Unchecked(float64: Float64) -> Bool;
 }*/
 
 fn JSToInt32(d: Float64) -> Int32;
@@ -1733,14 +1768,23 @@ fn GetSparseElementHelper(obj: NativeObject, intId: Int32, out result: Value) ->
 
 unsafe fn getSparseElementHelperUnchecked(obj: NativeObject, intId: Int32, out result: Value) -> Bool;
 
+enum IterThree {
+    Zero,
+    One,
+    Two
+}
+
 #[spec]
 fn PrototypeMayHaveIndexedProperties(obj: NativeObject) -> Bool {
     let mut obj = obj;
 
-    while ({
+    for i in IterThree asc {
         assert Object::hasStaticPrototype(obj);
-        TaggedProto::isObject(Object::taggedProto(obj))
-    }) {
+        
+        if TaggedProto::isNull(Object::taggedProto(obj)) {
+            return false;
+        }
+
         let proto = TaggedProto::toObject(Object::taggedProto(obj));
 
         if ObjectMayHaveExtraIndexedOwnProperties(proto) {
@@ -1752,8 +1796,8 @@ fn PrototypeMayHaveIndexedProperties(obj: NativeObject) -> Bool {
             return true;
         }
     }
-    
-    false
+
+    true
 }
 
 #[spec]
@@ -1793,8 +1837,17 @@ fn ClassMayResolveId(class: Class, id: PropertyKey, maybeObj: MaybeObject) -> Bo
 
 #[spec]
 fn ProxyGetPropertyByValue(proxy: Object, idVal: Value, out value: Value) -> Bool {
-    //if !PrimitiveValueToId(idVal, out let id) {
     if !ToPropertyKey(idVal, out let id) {
+        return false;
+    }
+
+    let receiver = Value::fromObject(proxy);
+    ProxyGetInternal(proxy, receiver, id, out value)
+}
+
+#[spec]
+fn ProxyGetPropertyByValue_BUG1651732(proxy: Object, idVal: Value, out value: Value) -> Bool {
+    if !PrimitiveValueToId(idVal, out let id) {
         return false;
     }
 

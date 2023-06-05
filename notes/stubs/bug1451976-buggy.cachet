@@ -1,0 +1,33 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {
+    op NotDouble(
+        inputValueId: ValueId,
+        int32Id: Int32Id,
+    ) {
+        initRegState();
+
+        initOperandId(inputValueId);
+        initInputValueId(inputValueId);
+
+        initOperandId(int32Id);
+
+        initValueOutput();
+
+        // Bug requires Xmm0 to be live as a Float register with Single content-type
+        addLiveFloatReg(FloatReg::newSingle(PhyFloatReg::Xmm0));
+
+        // It is not required for Xmm0 to also be live as a Float register with Double content-type
+        // for Cachet to be able to catch the bug. However I've not been able to determine with
+        // certainty if this is what actually happens in Firefox.
+        //addLiveFloatReg(FloatReg::newDouble(PhyFloatReg::Xmm0));
+
+        emit CacheIR::GuardIsNumber(inputValueId);
+        let inputNumberId = OperandId::toNumberId(inputValueId);
+
+        // Need to comment/uncomment a line in this CacheIR op to toggle the bug.
+        emit CacheIR::TruncateDoubleToUInt32_BUG1451976(inputNumberId, int32Id);
+        emit CacheIR::Int32NotResult(int32Id);
+    }
+}

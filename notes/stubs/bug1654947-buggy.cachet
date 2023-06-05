@@ -1,0 +1,34 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {
+    op Rsh(
+        lhsValueId: ValueId,
+        rhsValueId: ValueId,
+    ) {
+        initRegState();
+
+        initOperandId(lhsValueId);
+        initInputValueId(lhsValueId);
+        let lhs = MASM::getValue(OperandLocation::getValueReg(CacheIR::getOperandLocation(lhsValueId)));
+
+        initOperandId(rhsValueId);
+        initInputValueId(rhsValueId);
+        let rhs = MASM::getValue(OperandLocation::getValueReg(CacheIR::getOperandLocation(rhsValueId)));
+
+        initValueOutput();
+
+        emit CacheIR::GuardToInt32(lhsValueId);
+        let lhsInt32Id = OperandId::toInt32Id(lhsValueId);
+        emit CacheIR::GuardToInt32(rhsValueId);
+        let rhsInt32Id = OperandId::toInt32Id(rhsValueId);
+
+        emit CacheIR::Int32RightShiftResult_BUG1654947(lhsInt32Id, rhsInt32Id);
+
+        // make sure that input operands are not clobbered
+        // NOTE: this check is currently modulo auto-boxing which
+        // may not be desired but sufficient for this bug.
+        emit CacheIR::AssertEqValueInput(lhsValueId, lhs);
+        emit CacheIR::AssertEqValueInput(rhsValueId, rhs);
+    }
+}

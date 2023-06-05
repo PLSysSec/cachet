@@ -1056,7 +1056,6 @@ ir MASM {
         MASM::stackPopFloatReg(floatReg);
     }
 
-    //TODO(abhishek): make this a bit more precise
     op GuardNonNegativeIntPtrToInt32(reg: Reg, label fail: MASM) {
         // 1) unpack boxed Value from reg
         // 2) if boxed Value !isDouble -> fail
@@ -1286,12 +1285,10 @@ ir MASM {
         MASM::setDouble(destReg, double);
     }
 
-    // TODO(abhishek): properly handle Float64 -> Int64 -> Int32 conversion failure cases and
-    // checks.
     op BranchTruncateDoubleMaybeModUint32(srcReg: FloatReg, destReg: Reg, label failure: MASM) {
         let float64 = MASM::getDouble(srcReg);
 
-        if !Float64::isSafeToInt64(float64) {
+        if !Float64::truncatesToInt64(float64) {
             goto failure;
         }
 
@@ -2329,6 +2326,19 @@ ir MASM {
             let idVal = RegData::toValue(StackData::toRegData(MASM::stackPop()));
 
             let ok = ProxyGetPropertyByValue(obj, idVal, out let value);
+
+            if !ok {
+                goto MASM::getFailureLabel().label_;
+            } else {
+                MASM::setValue(ValueReg::fromReg(Reg::Rcx), value);
+            }
+        } else if function == VMFunction::ProxyGetPropertyByValue_BUG1651732 {
+            let obj =
+                Value::toObject(RegData::toUnboxedValue(StackData::toRegData(MASM::stackPop())));
+
+            let idVal = RegData::toValue(StackData::toRegData(MASM::stackPop()));
+
+            let ok = ProxyGetPropertyByValue_BUG1651732(obj, idVal, out let value);
 
             if !ok {
                 goto MASM::getFailureLabel().label_;
