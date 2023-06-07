@@ -5,9 +5,7 @@
 A syntax highlighting plugin for Vim/Neovim can be found in the `contrib/vim/` directory. It is
 updated as the language evolves.
 
-## Testing scripts
-
-### Prerequisites
+## Prerequisites
 
 1. Clone this repository with the `-r` (recursive) flag, or run `git submodule init` / `git
    submodule update` to initialize submodules after cloning.
@@ -17,7 +15,7 @@ updated as the language evolves.
 4. Build Boogie with `./scripts/build-boogie.sh`.
 5. Build Corral with `./scripts/build-corral.sh`.
 
-### Running the Cachet compiler
+## Testing scripts
 
 A helper script is available to compile Cachet source files from the `notes/` directory.
 
@@ -28,8 +26,6 @@ A helper script is available to compile Cachet source files from the `notes/` di
 will compile `notes/<name>.cachet`, producing `out/<name>.h`, `out/<name>.inc`, and
 `out/<name>.bpl`.
 
-### Verifying the output
-
 After compiling, samples can be verified with `./scripts/verify.sh`.
 
 ```
@@ -39,3 +35,5 @@ After compiling, samples can be verified with `./scripts/verify.sh`.
 will run the Corral verifier on `out/<name>.bpl`. Note we're using a small
 [fork](https://github.com/PLSysSec/corral/tree/cachet) of Corral, vendored in this repository under
 `vendor/corral`.
+
+You can do both with a single command by running `./scripts/compile-and-verify.sh <name>`.
