@@ -848,18 +848,18 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         &mut self,
         field_access: &resolver::FieldAccess,
     ) -> (Expr, StructFieldIndex, Option<&'a resolver::Field>) {
-        let parent = self.type_check_expr(&field_access.parent.value);
-        let parent_type = parent.type_();
+        let mut parent_expr = self.type_check_expr(&field_access.parent.value);
 
-        let struct_index = match parent_type {
-            TypeIndex::Struct(struct_index) => struct_index,
+        let orig_parent_type_index = parent_expr.type_();
+        let mut parent_struct_index = match orig_parent_type_index {
+            TypeIndex::Struct(parent_struct_index) => parent_struct_index,
             _ => {
                 self.type_checker
                     .errors
                     .push(TypeCheckError::NonStructFieldAccess {
                         field: field_access.field,
                         parent_span: field_access.parent.span,
-                        parent_type: self.get_type_ident(parent_type),
+                        parent_type: self.get_type_ident(orig_parent_type_index),
                     });
                 self.unknown_struct
             }
@@ -871,34 +871,69 @@ impl<'a, 'b> ScopedTypeChecker<'a, 'b> {
         let mut field_index = FieldIndex::from(0);
         let mut field = None;
 
-        if struct_index != self.unknown_struct {
-            let struct_item = &self.env[struct_index];
+        // Note that, in addition to the non-struct-type case above, an
+        // unknown-struct here could also result from a parent expression whose
+        // type couldn't be resolved.
+        if parent_struct_index != self.unknown_struct {
+            let mut parent_upcast_route = Vec::new();
+            let mut curr_parent_struct_index = parent_struct_index;
 
-            match struct_item
-                .fields
-                .iter_enumerated()
-                .find(|(_, field)| field.ident().value == field_access.field.value)
-            {
-                Some((found_field_index, found_field)) => {
-                    field_index = found_field_index;
-                    field = Some(found_field);
+            loop {
+                let curr_parent_struct_item = &self.env[curr_parent_struct_index];
+                match curr_parent_struct_item
+                    .fields
+                    .iter_enumerated()
+                    .find(|(_, field)| field.ident().value == field_access.field.value)
+                {
+                    Some((found_field_index, found_field)) => {
+                        field_index = found_field_index;
+                        field = Some(found_field);
+
+                        parent_expr = build_cast_chain(
+                            CastSafety::Lossless,
+                            parent_expr,
+                            parent_upcast_route.into_iter(),
+                        );
+                        parent_struct_index = curr_parent_struct_index;
+                    }
+                    None => {
+                        if let Some(next_parent_type_index) = curr_parent_struct_item.supertype {
+                            // Supertype cycles are forbidden in Cachet, but
+                            // they're still technically possible in the AST at
+                            // this stage, so we need to guard against that here
+                            // to avoid a potential infinite loop.
+                            if next_parent_type_index != orig_parent_type_index {
+                                if let TypeIndex::Struct(next_parent_struct_index) =
+                                    next_parent_type_index
+                                {
+                                    debug_assert_ne!(
+                                        next_parent_struct_index,
+                                        self.unknown_struct
+                                    );
+                                    parent_upcast_route.push(next_parent_type_index);
+                                    curr_parent_struct_index = next_parent_struct_index;
+                                    continue;
+                                }
+                            }
+                        }
+
+                        self.type_checker
+                            .errors
+                            .push(TypeCheckError::FieldNotFound {
+                                field: field_access.field,
+                                parent_type: self.env[parent_struct_index].ident,
+                            });
+                    }
                 }
-                None => {
-                    self.type_checker
-                        .errors
-                        .push(TypeCheckError::FieldNotFound {
-                            field: field_access.field,
-                            parent_type: struct_item.ident,
-                        });
-                }
+                break;
             }
         }
 
         let struct_field_index = StructFieldIndex {
-            struct_index,
+            struct_index: parent_struct_index,
             field_index,
         };
-        (parent, struct_field_index, field)
+        (parent_expr, struct_field_index, field)
     }
 
     fn type_check_out_var_arg(

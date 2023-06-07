@@ -473,6 +473,7 @@ impl<'a> Resolver<'a> {
         };
 
         // TODO(spinda): Raise an error on duplicate field names.
+        // TODO(spinda): Raise an error on shadowing supertype field names.
         // TODO(spinda): Interaction between struct fields and supertypes is in
         // a weird spot right now. Sort that out down the road.
         let fields: Option<_> =
