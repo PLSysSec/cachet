@@ -416,6 +416,7 @@ impl Display for NegateTypeMemberFnIdent {
 #[derive(Clone, Copy, Debug)]
 pub struct CastTypeMemberFnIdent {
     pub target_type_ident: Ident,
+    pub tag: ExprTag,
 }
 
 impl CastTypeMemberFnIdent {
@@ -424,7 +425,7 @@ impl CastTypeMemberFnIdent {
 
 impl Display for CastTypeMemberFnIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "To_{}", self.target_type_ident)
+        write!(f, "To_{}_{}", self.target_type_ident, self.tag)
     }
 }
 
@@ -507,8 +508,6 @@ impl IrMemberFnPath {
 
 #[derive(Clone, Copy, Debug, Display, From)]
 pub enum IrMemberFnIdent {
-    #[display(fmt = "GetOutput")]
-    GetOutput,
     #[display(fmt = "NewLabel")]
     NewLabel,
     #[display(fmt = "ToLabelRef")]
@@ -525,8 +524,7 @@ pub enum IrMemberFnIdent {
 impl IrMemberFnIdent {
     pub const fn parent_namespace_kind(self) -> NamespaceKind {
         match self {
-            IrMemberFnIdent::GetOutput
-            | IrMemberFnIdent::NewLabel
+            IrMemberFnIdent::NewLabel
             | IrMemberFnIdent::ToLabelRef
             | IrMemberFnIdent::ToLabelMutRef
             | IrMemberFnIdent::GotoLabel

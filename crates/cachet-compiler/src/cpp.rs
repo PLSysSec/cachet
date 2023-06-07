@@ -388,11 +388,16 @@ impl<'a> Compiler<'a> {
         if let Some(supertype_index) = struct_item.supertype {
             let supertype_ident = self.get_type_ident(supertype_index);
 
+            self.external_decls
+                .bucket_for_type(supertype_index)
+                .extend([
+                    generate_cast_fn_decl(supertype_ident, struct_item.ident.value, ExprTag::Val)
+                        .into(),
+                    generate_cast_fn_decl(supertype_ident, struct_item.ident.value, ExprTag::Ref)
+                        .into(),
+                ]);
+
             self.external_decls.bucket_for_struct(struct_index).extend([
-                generate_cast_fn_decl(supertype_ident, struct_item.ident.value, ExprTag::Val)
-                    .into(),
-                generate_cast_fn_decl(supertype_ident, struct_item.ident.value, ExprTag::Ref)
-                    .into(),
                 generate_cast_fn_decl(struct_item.ident.value, supertype_ident, ExprTag::Val)
                     .into(),
                 generate_cast_fn_decl(struct_item.ident.value, supertype_ident, ExprTag::Ref)
@@ -556,6 +561,16 @@ impl<'a> Compiler<'a> {
         .into();
 
         let params = iter::once(CONTEXT_PARAM)
+            .chain(callable_item.emits.map(|ir_index| {
+                Param {
+                    ident: ParamVarIdent::Ops,
+                    type_: IrMemberTypePath {
+                        parent: self.env[ir_index].ident.value,
+                        ident: IrMemberTypeIdent::OpsRef,
+                    }
+                    .into(),
+                }
+            }))
             .chain(self.compile_params(&callable_item.params, &callable_item.param_order))
             .collect();
 
@@ -741,28 +756,41 @@ impl<'a> Compiler<'a> {
 fn generate_cast_fn_decl(
     source_type_ident: Ident,
     target_type_ident: Ident,
-    param_tag: ExprTag,
+    tag: ExprTag,
 ) -> FnItem {
     let source_type_path = TypeMemberTypePath {
         parent: source_type_ident,
-        ident: param_tag.into(),
+        ident: tag.into(),
     };
     let target_type_path = TypeMemberTypePath {
         parent: target_type_ident,
-        ident: param_tag.into(),
+        ident: tag.into(),
     };
+
+    let mut param_type = source_type_path.into();
+    if let ExprTag::Val = tag {
+        param_type = RefType {
+            inner: param_type,
+            value_category: ValueCategory::RValue,
+        }
+        .into();
+    }
 
     FnItem {
         path: TypeMemberFnPath {
             parent: source_type_ident,
-            ident: CastTypeMemberFnIdent { target_type_ident }.into(),
+            ident: CastTypeMemberFnIdent {
+                target_type_ident,
+                tag,
+            }
+            .into(),
         }
         .into(),
         is_fully_qualified: false,
         is_inline: true,
         params: vec![Param {
             ident: ParamVarIdent::In,
-            type_: source_type_path.into(),
+            type_: param_type,
         }],
         ret: target_type_path.into(),
         body: None,
@@ -1168,7 +1196,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let args = vec![
             CONTEXT_ARG,
-            self.ops_arg(),
+            ParamVarIdent::Ops.into(),
             self.compile_internal_label_arg(bind_stmt.label, true),
         ];
 
@@ -1185,8 +1213,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
         .into();
 
-        let args = iter::once(CONTEXT_ARG)
-            .chain(iter::once(self.ops_arg()))
+        let args = [CONTEXT_ARG, ParamVarIdent::Ops.into()]
+            .into_iter()
             .chain(self.compile_args(&emit_stmt.call.args))
             .collect();
 
@@ -1287,6 +1315,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         }
     }
 
+    // TODO(spinda): Switch from a bottom-up to a top-down approach to
+    // expression tagging.
     fn use_expr(&self, expr: TaggedExpr, tags: EnumSet<ExprTag>) -> Expr {
         // TODO(spinda): Auto-expand tags for built-in types.
         if expr.tags.is_disjoint(tags) {
@@ -1475,7 +1505,12 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         .into();
 
         let args = self.compile_args(&invoke_expr.call.args);
-        let args = iterate![CONTEXT_ARG, ..args].collect();
+        let args = iterate![
+            CONTEXT_ARG,
+            ..callable_item.emits.map(|_| ParamVarIdent::Ops.into()),
+            ..args
+        ]
+        .collect();
 
         TaggedExpr {
             expr: CallExpr { target, args },
@@ -1587,7 +1622,8 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         cast_expr: &normalizer::CastExpr<E>,
     ) -> TaggedExpr<Expr> {
         let tagged_expr = cast_expr.expr.compile(self);
-        let expr = self.use_expr(tagged_expr, ExprTag::Ref.into());
+        let expr_tags = tagged_expr.tags;
+        let expr = self.use_expr(tagged_expr, ExprTag::Ref | ExprTag::Val);
 
         let source_type_index = cast_expr.expr.type_();
         let target_type_index = cast_expr.type_;
@@ -1610,21 +1646,34 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
                 }
                 .into(),
                 type_: cast_expr.type_(),
-                tags: ExprTag::Val.into(),
+                tags: ExprTag::Ref | ExprTag::Val,
             },
-            _ => TaggedExpr {
-                expr: CallExpr {
-                    target: TypeMemberFnPath {
-                        parent: source_type_ident,
-                        ident: CastTypeMemberFnIdent { target_type_ident }.into(),
+            _ => {
+                debug_assert_eq!(expr_tags.len(), 1);
+                let tag = if expr_tags == ExprTag::Val {
+                    ExprTag::Val
+                } else {
+                    ExprTag::Ref
+                };
+
+                TaggedExpr {
+                    expr: CallExpr {
+                        target: TypeMemberFnPath {
+                            parent: source_type_ident,
+                            ident: CastTypeMemberFnIdent {
+                                target_type_ident,
+                                tag,
+                            }
+                            .into(),
+                        }
+                        .into(),
+                        args: vec![expr],
                     }
                     .into(),
-                    args: vec![expr],
+                    type_: cast_expr.type_(),
+                    tags: tag.into(),
                 }
-                .into(),
-                type_: cast_expr.type_(),
-                tags: ExprTag::Ref.into(),
-            },
+            }
         }
     }
 
@@ -1684,21 +1733,6 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         };
         *index += 1;
         ident
-    }
-
-    fn ops_arg(&self) -> Expr {
-        match self.parent_index {
-            Some(normalizer::ParentIndex::Ir(ir_index)) => CallExpr {
-                target: IrMemberFnPath {
-                    parent: self.env[ir_index].ident.value,
-                    ident: IrMemberFnIdent::GetOutput,
-                }
-                .into(),
-                args: vec![CONTEXT_ARG],
-            }
-            .into(),
-            _ => ParamVarIdent::Ops.into(),
-        }
     }
 
     fn get_label_ir(&self, label_index: normalizer::LabelIndex) -> normalizer::IrIndex {
