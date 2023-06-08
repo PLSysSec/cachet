@@ -130,11 +130,27 @@ impl<'a> Compiler<'a> {
 
         let type_ident = UserTypeIdent::from(struct_item.ident.value);
 
+        // Struct types with supertypes compile to type aliases of the root
+        // supertype, so we don't have to worry about conversions.
+        let mut root_supertype_type_index = None;
+        let mut curr_struct_item = struct_item;
+        while let Some(supertype_type_index) = curr_struct_item.supertype {
+            root_supertype_type_index = Some(supertype_type_index);
+            match supertype_type_index {
+                flattener::TypeIndex::Struct(supertype_struct_index) => {
+                    curr_struct_item = &self.env[supertype_struct_index];
+                }
+                _ => break,
+            }
+        }
+        let root_supertype =
+            root_supertype_type_index.map(|type_index| self.get_type_ident(type_index).into());
+
         self.items.push(
             TypeItem {
                 ident: type_ident.into(),
                 attr: None,
-                type_: None,
+                type_: root_supertype,
             }
             .into(),
         );
@@ -182,17 +198,6 @@ impl<'a> Compiler<'a> {
                 }
                 .into(),
             )
-        }
-
-        if let Some(supertype_index) = struct_item.supertype {
-            let supertype_ident = self.get_type_ident(supertype_index);
-
-            self.items.extend([
-                generate_cast_fn_item(supertype_ident, type_ident).into(),
-                generate_cast_fn_item(type_ident, supertype_ident).into(),
-                generate_cast_axiom_item(supertype_ident, type_ident).into(),
-                generate_cast_axiom_item(type_ident, supertype_ident).into(),
-            ]);
         }
     }
 
@@ -1176,78 +1181,6 @@ impl<'a> Compiler<'a> {
     }
 }
 
-fn generate_cast_fn_item(
-    source_type_ident: UserTypeIdent,
-    target_type_ident: UserTypeIdent,
-) -> FnItem {
-    FnItem {
-        ident: TypeMemberFnIdent {
-            type_ident: source_type_ident,
-            selector: CastTypeMemberFnSelector { target_type_ident }.into(),
-        }
-        .into(),
-        attr: None,
-        param_vars: vec![TypedVar {
-            ident: ParamVarIdent::In.into(),
-            type_: source_type_ident.into(),
-        }]
-        .into(),
-        ret: target_type_ident.into(),
-        value: None,
-    }
-}
-
-fn generate_cast_axiom_item(
-    supertype_ident: UserTypeIdent,
-    subtype_ident: UserTypeIdent,
-) -> AxiomItem {
-    let in_var = TypedVar {
-        ident: ParamVarIdent::In.into(),
-        type_: subtype_ident.into(),
-    };
-
-    let inner_call_expr = CallExpr {
-        target: TypeMemberFnIdent {
-            type_ident: subtype_ident,
-            selector: CastTypeMemberFnSelector {
-                target_type_ident: supertype_ident,
-            }
-            .into(),
-        }
-        .into(),
-        arg_exprs: vec![in_var.ident.into()],
-    }
-    .into();
-
-    let lhs = CallExpr {
-        target: TypeMemberFnIdent {
-            type_ident: supertype_ident,
-            selector: CastTypeMemberFnSelector {
-                target_type_ident: subtype_ident,
-            }
-            .into(),
-        }
-        .into(),
-        arg_exprs: vec![inner_call_expr],
-    }
-    .into();
-
-    let rhs = in_var.ident.into();
-
-    let cond = ForAllExpr {
-        vars: vec![in_var].into(),
-        expr: BinOperExpr {
-            oper: CompareBinOper::Eq.into(),
-            lhs,
-            rhs,
-        }
-        .into(),
-    }
-    .into();
-
-    AxiomItem { cond }
-}
-
 fn generate_emit_path_expr(emit_label_ident: &EmitLabelIdent) -> CallExpr {
     let nil_emit_path_ctor_expr = CallExpr {
         target: PreludeFnIdent::NilEmitPath.into(),
@@ -2045,6 +1978,14 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
         let source_type_index = cast_expr.expr.type_();
         let target_type_index = cast_expr.type_;
+
+        if let (flattener::TypeIndex::Struct(_), flattener::TypeIndex::Struct(_)) =
+            (source_type_index, target_type_index)
+        {
+            // Casts between struct types should be no-ops on the Boogie side,
+            // owing to the way types with supertypes get compiled.
+            return expr;
+        }
 
         let source_type_ident = self.get_type_ident(source_type_index);
         let target_type_ident = self.get_type_ident(target_type_index);

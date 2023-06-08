@@ -337,7 +337,7 @@ procedure #CacheIR~defineTypedId($typedId: #TypedId)
     assert !#CacheIR~addedFailurePath;
     assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
     
-    $id'0 := #OperandId~id(#TypedId^to#OperandId($typedId));
+    $id'0 := #OperandId~id($typedId);
     $loc'0 := #Map~get(#CacheIR~operandLocations, $id'0);
     $locKind'0 := #OperandLocation~kind($loc'0);
     assert $locKind'0 == #OperandLocationKind^Variant~Uninitialized();
@@ -359,7 +359,7 @@ procedure #CacheIR~defineValueId($valueId: #ValueId)
     assert !#CacheIR~addedFailurePath;
     assert !#CacheIR~hasAutoScratchFloatRegisterSpill;
     
-    $id'0 := #OperandId~id(#ValueId^to#OperandId($valueId));
+    $id'0 := #OperandId~id($valueId);
     $loc'0 := #Map~get(#CacheIR~operandLocations, $id'0);
     $locKind'0 := #OperandLocation~kind($loc'0);
     assert $locKind'0 == #OperandLocationKind^Variant~Uninitialized();
