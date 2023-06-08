@@ -20,7 +20,7 @@ ir CacheStub emits CacheIR {
 
         emit CacheIR::Int32AddResult(lhsInt32Id, rhsInt32Id);
 
-        let sum = 0_i32;
+        let mut sum = 0_i32;
         let noOverflow = Int32::checkedAdd(lhs, rhs, out sum);
         emit CacheIR::Assert(noOverflow);
         emit CacheIR::AssertEqValueOutput(Value::fromInt32(sum));
