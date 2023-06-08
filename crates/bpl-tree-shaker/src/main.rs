@@ -40,9 +40,9 @@ struct Opt {
     /// Additional type declarations to retain.
     #[structopt(short("t"), long("type"), value_name("identifier"))]
     retain_types: Vec<Ident>,
-    /// Data types whose constructors can be pruned.
+    /// Data types whose unused constructors can be pruned.
     #[structopt(short("p"), long("prune"), value_name("identifier"))]
-    prunable_data_types: Vec<Ident>,
+    prune_data_types: Vec<Ident>,
 }
 
 fn main() -> Result<(), Error> {
@@ -60,9 +60,14 @@ fn main() -> Result<(), Error> {
     }
     .with_context(|| format!("Failed to read {}", opt.input.display()))?;
 
-    let retain_idents = opt.retain_types.into_iter().map(|type_ident| NamespacedIdent(type_ident, Namespace::Type));
-    let prunable_data_type_idents = HashSet::from_iter(opt.prunable_data_types);
-    let remaining_src = match shake_tree(&src, retain_idents, &prunable_data_type_idents) {
+    let retain_idents = opt
+        .retain_types
+        .into_iter()
+        .map(|type_ident| NamespacedIdent(type_ident, Namespace::Type));
+    let prune_data_type_idents: HashSet<Ident> = HashSet::from_iter(opt.prune_data_types);
+    let remaining_src = match shake_tree(&src, retain_idents, |ident| {
+        prune_data_type_idents.contains(&ident)
+    }) {
         Ok(remaining_src) => remaining_src,
         Err(parse_error) => {
             report_parse_error(&opt.input, &src, &parse_error)?;

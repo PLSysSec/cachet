@@ -587,6 +587,30 @@ impl From<Type> for VarOrType {
     }
 }
 
+impl From<TypeAtom> for VarOrType {
+    fn from(type_atom: TypeAtom) -> Self {
+        Type::from(type_atom).into()
+    }
+}
+
+impl From<TypeApp> for VarOrType {
+    fn from(type_app: TypeApp) -> Self {
+        Type::from(type_app).into()
+    }
+}
+
+impl From<Ident> for VarOrType {
+    fn from(ident: Ident) -> Self {
+        Type::from(ident).into()
+    }
+}
+
+impl From<MapType> for VarOrType {
+    fn from(map_type: MapType) -> Self {
+        Type::from(map_type).into()
+    }
+}
+
 /// [Grammar](https://boogie-docs.readthedocs.io/en/latest/LangRef.html#grammar-token-proc_sign):
 ///
 /// ```grammar
