@@ -5,6 +5,8 @@ import "codegen.cachet"; // for `isCacheableProtoChain`
 struct Heap;
 var mut heap: Heap;
 
+fn clearPendingException();
+
 #[spec]
 enum RegDataType {
     Value,
@@ -161,6 +163,10 @@ impl RegData {
     }
 
     fn fromTaggedProto(proto: TaggedProto) -> RegData {
+        if TaggedProto::isObject(proto) {
+            return RegData::fromUnboxedValue(Value::fromObject(TaggedProto::toObject(proto)));
+        }
+
         let data = (unsafe { RegData::fromTaggedProtoUnchecked(proto) });
         assume RegData::isTaggedProto(data);
         assume (unsafe { RegData::toTaggedProtoUnchecked(data) }) == proto;
@@ -170,10 +176,19 @@ impl RegData {
     unsafe fn fromTaggedProtoUnchecked(proto: TaggedProto) -> RegData;
 
     fn toTaggedProto(data: RegData) -> TaggedProto {
-        assert RegData::isTaggedProto(data);
-        let proto = (unsafe { RegData::toTaggedProtoUnchecked(data) });
-        assume (unsafe { RegData::fromTaggedProtoUnchecked(proto) }) == data;
-        proto
+        if RegData::isTaggedProto(data) {
+            let proto = (unsafe { RegData::toTaggedProtoUnchecked(data) });
+            assume (unsafe { RegData::fromTaggedProtoUnchecked(proto) }) == data;
+            return proto;
+        }
+
+        assert RegData::isUnboxedValue(data);
+        let unboxedValue = RegData::toUnboxedValue(data);
+
+        assert Value::isObject(unboxedValue);
+        let object = Value::toObject(unboxedValue);
+
+        TaggedProto::fromObject(object)
     }
 
     unsafe fn toTaggedProtoUnchecked(data: RegData) -> TaggedProto;
@@ -304,7 +319,7 @@ impl Float64 {
     }
 
     unsafe fn fromInt32Unchecked(int32: Int32) -> Float64;
-    
+
     fn toInt32(float64: Float64) -> Int32 {
         let int32 = (unsafe { Float64::toInt32Unchecked(float64) });
 
@@ -325,7 +340,6 @@ impl Float64 {
     }
 
     unsafe fn fromUInt32Unchecked(uint32: UInt32) -> Float64;
-
 }
 
 struct Simd128;
@@ -634,14 +648,14 @@ impl Object {
     unsafe fn shapeOfUnchecked(heap: Heap, object: Object) -> Shape;
 
     fn isNativeObject(object: Object) -> Bool {
-      let shape = Object::shapeOf(object);
-      let class = Shape::classOf(shape);
-      Class::isNativeObject(class)
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        Class::isNativeObject(class)
     }
 
     fn toNativeObject(object: Object) -> NativeObject {
-      assert Object::isNativeObject(object);
-      (unsafe { object as NativeObject })
+        assert Object::isNativeObject(object);
+        (unsafe { object as NativeObject })
     }
 
     fn isArgumentsObject(object: Object) -> Bool {
@@ -654,7 +668,7 @@ impl Object {
         assert Object::isArgumentsObject(object);
         (unsafe { object as ArgumentsObject })
     }
-  
+
     fn getFixedSlot(object: Object, slot: UInt32) -> Value {
         let nativeObject = Object::toNativeObject(object);
         NativeObject::getFixedSlot(nativeObject, slot)
@@ -707,7 +721,7 @@ impl Object {
             let nativeObject = (unsafe { object as NativeObject });
             return NativeObject::readData(nativeObject, offset);
         }
-        
+
         assert false; // only support NativeObject for now
         return RegData::fromValue(Value::fromObject(object)); // satisfy the compiler
     }
@@ -818,7 +832,7 @@ impl NativeObject {
             return RegData::fromNativeObjectSlots(slots);
         } else if offset == NativeObject::offsetOfElements as Int64 {
             // object elements
-            let elements = NativeObject::getElementsHeader(nativeObject); 
+            let elements = NativeObject::getElementsHeader(nativeObject);
             return RegData::fromNativeObjectElements(elements);
         } else if offset >= NativeObject::offsetOfFixedSlots as Int64 {
             // fixed slots
@@ -1081,59 +1095,27 @@ impl MapObject {
     }
 }
 
-struct MaybePropertyKey;
-
-impl MaybePropertyKey {
-    fn isPropertyKey(maybeKey: MaybePropertyKey) -> Bool;
-
-    fn none() -> MaybePropertyKey {
-        let maybeKey = (unsafe { MaybePropertyKey::noneUnchecked() });
-        assume !MaybePropertyKey::isPropertyKey(maybeKey);
-        maybeKey
-    }
-
-    unsafe fn noneUnchecked() -> MaybePropertyKey;
-
-    fn fromPropertyKey(key: PropertyKey) -> MaybePropertyKey {
-        let maybeKey = (unsafe { MaybePropertyKey::fromPropertyKeyUnchecked(key) });
-        assume MaybePropertyKey::isPropertyKey(maybeKey);
-        assume (unsafe { MaybePropertyKey::toPropertyKeyUnchecked(maybeKey) }) == key;
-        maybeKey
-    }
-
-    unsafe fn fromPropertyKeyUnchecked(key: PropertyKey) -> MaybePropertyKey;
-
-    fn toPropertyKey(maybeKey: MaybePropertyKey) -> PropertyKey {
-        assert MaybePropertyKey::isPropertyKey(maybeKey);
-        let key = (unsafe { MaybePropertyKey::toPropertyKeyUnchecked(maybeKey) });
-        assume (unsafe { MaybePropertyKey::fromPropertyKeyUnchecked(key) }) == maybeKey;
-        key
-    }
-
-    fn toPropertyKeyUnchecked(maybeKey: MaybePropertyKey) -> PropertyKey;
-}
-
 struct PropertyKey;
 
 impl PropertyKey {
     fn isString(key: PropertyKey) -> Bool;
     fn isSymbol(key: PropertyKey) -> Bool;
 
-    fn fromPrimitiveValue(value: Value) -> MaybePropertyKey {
-        let maybeKey = (unsafe { PropertyKey::fromPrimitiveValueUnchecked(value) });
-        if MaybePropertyKey::isPropertyKey(maybeKey) {
-            let key = MaybePropertyKey::toPropertyKey(maybeKey);
-            if Value::isString(value) {
-                assume PropertyKey::isString(key);
-            }
-            if Value::isSymbol(value) {
-                assume PropertyKey::isSymbol(key);
-            }
+    fn nameOrSymbolFromValue(value: Value, out key: PropertyKey, out nameOrSymbol: Bool) -> Bool {
+        let success = (unsafe {
+            PropertyKey::nameOrSymbolFromValueUnchecked(value, out key, out nameOrSymbol)
+        });
+        if success && nameOrSymbol {
+            assume PropertyKey::isString(key) || PropertyKey::isSymbol(key);
         }
-        maybeKey
+        success
     }
 
-    unsafe fn fromPrimitiveValueUnchecked(value: Value) -> MaybePropertyKey;
+    unsafe fn nameOrSymbolFromValueUnchecked(
+        value: Value,
+        out key: PropertyKey,
+        out nameOrSymbol: Bool
+    ) -> Bool;
 }
 
 struct PropertyFlags;
@@ -1289,15 +1271,15 @@ impl Shape {
     unsafe fn slotSpanUnchecked(shape: Shape) -> UInt32;
 
     fn hasSlot(shape: Shape, slot: UInt32) -> Bool {
-      slot < Shape::slotSpan(shape)
+        slot < Shape::slotSpan(shape)
     }
 
     fn hasFixedSlot(shape: Shape, slot: UInt32) -> Bool {
-      slot < Shape::numFixedSlots(shape)
+        slot < Shape::numFixedSlots(shape)
     }
 
     fn hasDynamicSlot(shape: Shape, slot: UInt32) -> Bool {
-      Shape::hasSlot(shape, slot) && slot >= Shape::numFixedSlots(shape)
+        Shape::hasSlot(shape, slot) && slot >= Shape::numFixedSlots(shape)
     }
 }
 
@@ -1335,9 +1317,9 @@ impl String {
     fn length(string: String) -> UInt64;
 }
 
-struct Atom <: String;
+fn equalStringsHelperPure(str1: String, str2: String) -> Bool;
 
-fn EqualStringsHelperPure(str1: String, str2: String) -> Bool;
+struct Atom <: String;
 
 struct Symbol;
 
@@ -1363,19 +1345,46 @@ impl TaggedProto {
         TaggedProto::tag(proto) == ProtoTag::Null
     }
 
+    fn null() -> TaggedProto {
+        let proto = (unsafe { TaggedProto::nullUnchecked() });
+        assume TaggedProto::isNull(proto);
+        proto
+    }
+
+    unsafe fn nullUnchecked() -> TaggedProto;
+
     #[refined]
     fn isLazy(proto: TaggedProto) -> Bool {
         TaggedProto::tag(proto) == ProtoTag::Lazy
     }
+
+    fn lazy() -> TaggedProto {
+        let proto = (unsafe { TaggedProto::lazyUnchecked() });
+        assume TaggedProto::isLazy(proto);
+        proto
+    }
+
+    unsafe fn lazyUnchecked() -> TaggedProto;
 
     #[refined]
     fn isObject(proto: TaggedProto) -> Bool {
         TaggedProto::tag(proto) == ProtoTag::Object
     }
 
+    fn fromObject(object: Object) -> TaggedProto {
+        let proto = (unsafe { TaggedProto::fromObjectUnchecked(object) });
+        assume TaggedProto::isObject(proto);
+        assume (unsafe { TaggedProto::toObjectUnchecked(proto) }) == object;
+        proto
+    }
+
+    unsafe fn fromObjectUnchecked(object: Object) -> TaggedProto;
+
     fn toObject(proto: TaggedProto) -> Object {
         assert TaggedProto::isObject(proto);
-        (unsafe { TaggedProto::toObjectUnchecked(proto) })
+        let object = (unsafe { TaggedProto::toObjectUnchecked(proto) });
+        assume (unsafe { TaggedProto::fromObjectUnchecked(object) }) == proto;
+        object
     }
 
     unsafe fn toObjectUnchecked(proto: TaggedProto) -> Object;

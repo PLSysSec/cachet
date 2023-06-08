@@ -9,18 +9,17 @@ ir CacheStub emits CacheIR {
         let valueId = CacheIR::defineInputValueId();
         CacheIR::setValueOutput();
 
-        let key = PropertyKey::fromPrimitiveValue(keyValue);
-        if !MaybePropertyKey::isPropertyKey(key) {
+        if !PropertyKey::nameOrSymbolFromValue(keyValue, out let key, out let nameOrSymbol) {
+            clearPendingException();
             return;
         }
-        let key = MaybePropertyKey::toPropertyKey(key);
 
         if Value::isObject(value) {
             let object = Value::toObject(value);
             emit CacheIR::GuardToObject(valueId);
             let objectId = OperandId::toObjectId(valueId);
 
-            if PropertyKey::isString(key) || PropertyKey::isSymbol(key) {
+            if nameOrSymbol {
                 let kind = canAttachNativeGetProp(object, key, out let holder, out let propInfo);
                 if kind == NativeGetPropKind::Slot {
                     let object = Object::toNativeObject(object);
