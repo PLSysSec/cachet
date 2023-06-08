@@ -1186,6 +1186,29 @@ ir MASM {
         }
     }
 
+    op BranchTaggedProto(
+        condition: Condition,
+        lhsReg: Reg,
+        rhsReg: Reg,
+        label branch: MASM,
+    ) {
+        let lhs = MASM::getTaggedProto(lhsReg);
+        let rhs = MASM::getTaggedProto(rhsReg);
+        let isEqual = lhs == rhs;
+
+        if condition == Condition::Equal {
+            if isEqual {
+                goto branch;
+            }
+        }
+
+        if condition == Condition::NotEqual {
+            if !isEqual {
+                goto branch;
+            }
+        }
+    }
+
     op ConvertInt32ToDouble(srcReg: Reg, destReg: FloatReg) {
         let int32 = MASM::getInt32(srcReg);
         let double = Float64::fromInt32(int32);
@@ -1319,27 +1342,21 @@ ir MASM {
     }
 
     op BranchTestNullProto(reg: Reg, label branch: MASM) {
-        let data = MASM::getData(reg);
-        let proto = RegData::toTaggedProto(data);
-
+        let proto = MASM::getTaggedProto(reg);
         if TaggedProto::isNull(proto) {
             goto branch;
         }
     }
 
     op BranchTestLazyProto(reg: Reg, label branch: MASM) {
-        let data = MASM::getData(reg);
-        let proto = RegData::toTaggedProto(data);
-
+        let proto = MASM::getTaggedProto(reg);
         if TaggedProto::isLazy(proto) {
             goto branch;
         }
     }
 
     op BranchTestObjectProto(reg: Reg, label branch: MASM) {
-        let data = MASM::getData(reg);
-        let proto = RegData::toTaggedProto(data);
-
+        let proto = MASM::getTaggedProto(reg);
         if TaggedProto::isObject(proto) {
             goto branch;
         }
@@ -2007,9 +2024,8 @@ ir MASM {
         let shape = Object::shapeOf(object);
         let baseShape = Shape::baseShapeOf(shape);
         let proto = BaseShape::protoOf(baseShape);
-        let data = RegData::fromTaggedProto(proto);
 
-        MASM::setData(protoReg, data);
+        MASM::setTaggedProto(protoReg, proto);
     }
 
     op SplitTagForTest(valueReg: ValueReg, tagReg: Reg) {
@@ -2159,8 +2175,18 @@ ir MASM {
     }
 
     #[refined]
-    fn setValueTag(reg:Reg, tag: ValueType) {
+    fn setValueTag(reg: Reg, tag: ValueType) {
         MASM::setData(reg, RegData::fromValueType(tag));
+    }
+
+    #[refined]
+    fn getTaggedProto(reg: Reg) -> TaggedProto {
+        RegData::toTaggedProto(MASM::getData(reg))
+    }
+
+    #[refined]
+    fn setTaggedProto(reg: Reg, proto: TaggedProto) {
+        MASM::setData(reg, RegData::fromTaggedProto(proto));
     }
 
     #[refined]

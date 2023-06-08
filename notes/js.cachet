@@ -159,6 +159,11 @@ impl RegData {
     unsafe fn toValueTypeUnchecked(data: RegData) -> ValueType;
 
     fn isTaggedProto(data: RegData) -> Bool {
+        RegData::isSpecificallyTaggedProto(data) ||
+            (RegData::isUnboxedValue(data) && Value::isObject(RegData::toUnboxedValue(data)))
+    }
+
+    fn isSpecificallyTaggedProto(data: RegData) -> Bool {
         RegData::typeOf(data) == RegDataType::TaggedProto
     }
 
@@ -168,7 +173,7 @@ impl RegData {
         }
 
         let data = (unsafe { RegData::fromTaggedProtoUnchecked(proto) });
-        assume RegData::isTaggedProto(data);
+        assume RegData::isSpecificallyTaggedProto(data);
         assume (unsafe { RegData::toTaggedProtoUnchecked(data) }) == proto;
         data
     }
@@ -176,7 +181,7 @@ impl RegData {
     unsafe fn fromTaggedProtoUnchecked(proto: TaggedProto) -> RegData;
 
     fn toTaggedProto(data: RegData) -> TaggedProto {
-        if RegData::isTaggedProto(data) {
+        if RegData::isSpecificallyTaggedProto(data) {
             let proto = (unsafe { RegData::toTaggedProtoUnchecked(data) });
             assume (unsafe { RegData::fromTaggedProtoUnchecked(proto) }) == data;
             return proto;
