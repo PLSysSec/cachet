@@ -37,12 +37,11 @@ ir CacheStub emits CacheIR {
                             let offset = NativeObject::offsetOfFixedSlot(slot);
                             let offsetField = CacheIR::writeInt32Field(offset as Int32);
                             emit CacheIR::LoadFixedSlotResult(objectId, offsetField);
+                            emit CacheIR::ReturnFromIC();
                         }
                     }
                 }
             }
         }
-
-        emit CacheIR::ReturnFromIC();
     }
 }
