@@ -430,6 +430,7 @@ procedure {:inline 1} #CacheIR~allocateKnownReg($reg: #Reg)
   var tmp'0: #Bool;
   
   // register should not already be allocated
+  // TODO(spinda): Replace this with a call to #CacheIR~isAllocatedReg?
   assert !#Set~contains(#CacheIR~allocatedRegs, $reg);
 
   #CacheIR~allocatedRegs := #Set~add(#CacheIR~allocatedRegs, $reg);
@@ -460,37 +461,16 @@ procedure #CacheIR~releaseReg($reg: #Reg)
   }
 }
 
-var #CacheIR~allocatedFloatRegs: #Set #PhyFloatReg;
-
-procedure #CacheIR~allocateAvailableFloatRegUnchecked($floatReg: #FloatReg)
-  modifies #CacheIR~allocatedFloatRegs;
-{
-  // register should not already be allocated
-  assert !#Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
-
-  #CacheIR~allocatedFloatRegs := #Set~add(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
-}
-
-procedure #CacheIR~releaseFloatReg($floatReg: #FloatReg)
-  modifies #CacheIR~allocatedFloatRegs;
-{
-  // register should be allocated
-  assert #Set~contains(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
-
-  #CacheIR~allocatedFloatRegs := #Set~remove(#CacheIR~allocatedFloatRegs, #FloatReg^field~reg($floatReg));
-}
-
 procedure #initRegState()
 {
   var $uninitializedStackData: #StackData;
 
   #CacheIR~addedFailurePath := false;
   #CacheIR~hasAutoScratchFloatRegisterSpill := false;
+  #CacheIR~isDoubleScratchRegAllocated := false;
 
   // All registers are initially unallocated.
   #CacheIR~allocatedRegs := #Set~empty(); 
-  #CacheIR~allocatedFloatRegs := #Set~empty(); 
-
   #CacheIR~numAvailableRegs := 13;
   // => rax, rbx, rcx, rdx, rsi, rdi, r8, r9, r10, r12, r13, r14, r15
 

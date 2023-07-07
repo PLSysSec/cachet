@@ -1697,9 +1697,14 @@ ir CacheIR emits MASM {
     unsafe fn allocateKnownReg(reg: Reg);
 
     // Register allocated by ScratchScope
+
     #[refined]
     fn allocateScratchReg() -> Reg {
-        // safe because we want to allocate the scratch register
+        // SAFETY: We're intentionally allocating the scratch register, which is
+        // not normally allocatable. This route also intentionally ignores
+        // failure paths.
+        // TODO(spinda): Replace this with a simple bool, like
+        // `isDoubleScratchRegAllocated`.
         unsafe { CacheIR::allocateKnownReg(Reg::scratchReg()); }
         Reg::scratchReg()
     }
@@ -1708,18 +1713,6 @@ ir CacheIR emits MASM {
     fn releaseScratchReg() {
         CacheIR::releaseReg(Reg::scratchReg());
     }
-
-    fn allocateAvailableFloatReg(floatReg: FloatReg) {
-        // xmm15 is not an allocatable register, but may be explicitly allocated
-        // as scratch register (see `allocateDoubleScratchReg` below).
-        assert floatReg.reg != PhyFloatReg::Xmm15;
-        unsafe { CacheIR::allocateAvailableFloatRegUnchecked(floatReg); }
-    }
-
-    // SAFETY: does not check that `floatReg` is an allocatable register.
-    unsafe fn allocateAvailableFloatRegUnchecked(floatReg: FloatReg);
-
-    fn releaseFloatReg(floatReg: FloatReg);
 
     var mut hasAutoScratchFloatRegisterSpill: Bool;
     fn setHasAutoScratchFloatRegisterSpill(hasAutoScratchFloatRegisterSpill: Bool) {
@@ -1731,14 +1724,10 @@ ir CacheIR emits MASM {
     fn allocateFloatScratchReg() emits MASM -> FloatReg {
         emit MASM::PushFloatReg(FloatReg::floatReg0());
         CacheIR::setHasAutoScratchFloatRegisterSpill(true);
-
-        CacheIR::allocateAvailableFloatReg(FloatReg::floatReg0());
         FloatReg::floatReg0()
     }
 
     fn releaseFloatScratchReg() emits MASM {
-        CacheIR::releaseFloatReg(FloatReg::floatReg0());
-
         emit MASM::PopFloatReg(FloatReg::floatReg0());
         CacheIR::setHasAutoScratchFloatRegisterSpill(false);
     }
@@ -1752,9 +1741,8 @@ ir CacheIR emits MASM {
     fn releaseFloatScratchRegWithFailurePath(
         failure: FailurePath, out label failurePopReg: MASM
     ) emits MASM {
-        FailurePath::clearHasAutoScratchFloatRegister(failure);
-
         CacheIR::releaseFloatScratchReg();
+        FailurePath::clearHasAutoScratchFloatRegister(failure);
 
         label done: MASM;
         emit MASM::Jump(done);
@@ -1765,18 +1753,21 @@ ir CacheIR emits MASM {
     }
 
     // Register allocated by ScratchDoubleScope
+
+    #[spec]
+    var mut isDoubleScratchRegAllocated: Bool;
+
     #[refined]
     fn allocateDoubleScratchReg() -> FloatReg {
-        // Safe because we're intentionally allocating a normally-unallocatable
-        // register which is reserved for this purpose.
-        unsafe { CacheIR::allocateAvailableFloatRegUnchecked(FloatReg::doubleScratchReg()); }
+        assert !CacheIR::isDoubleScratchRegAllocated;
+        CacheIR::isDoubleScratchRegAllocated = true;
         FloatReg::doubleScratchReg()
     }
 
-    // Register allocated by ScratchDoubleScope
     #[refined]
     fn releaseDoubleScratchReg() {
-        CacheIR::releaseFloatReg(FloatReg::doubleScratchReg());
+        assert CacheIR::isDoubleScratchRegAllocated;
+        CacheIR::isDoubleScratchRegAllocated = false;
     }
 
     fn defineValueId(valueId: ValueId) -> ValueReg;
@@ -1853,7 +1844,9 @@ ir CacheIR emits MASM {
 
     #[refined]
     fn useValueId(valueId: ValueId) emits MASM -> ValueReg {
+        // #ifdef DEBUG
         assert !CacheIR::addedFailurePath;
+        // #endif
         assert !CacheIR::hasAutoScratchFloatRegisterSpill;
 
         let operandId = valueId as OperandId;
@@ -1879,7 +1872,9 @@ ir CacheIR emits MASM {
 
     #[refined]
     fn useTypedId(id: TypedId) emits MASM -> Reg {
+        // #ifdef DEBUG
         assert !CacheIR::addedFailurePath;
+        // #endif
         assert !CacheIR::hasAutoScratchFloatRegisterSpill;
 
         let operandId = id as OperandId;
