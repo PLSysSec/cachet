@@ -1189,15 +1189,15 @@ ir MASM {
         }
     }
 
-    op BranchTaggedProto(
+    op BranchObjectProto(
         condition: Condition,
-        lhsReg: Reg,
-        rhsReg: Reg,
+        protoReg: Reg,
+        objectReg: Reg,
         label branch: MASM,
     ) {
-        let lhs = MASM::getTaggedProto(lhsReg);
-        let rhs = MASM::getTaggedProto(rhsReg);
-        let isEqual = lhs == rhs;
+        let proto = MASM::getTaggedProto(protoReg);
+        let object = MASM::getObject(objectReg);
+        let isEqual = TaggedProto::isObject(proto) && TaggedProto::toObject(proto) == object;
 
         if condition == Condition::Equal {
             if isEqual {
@@ -2029,6 +2029,13 @@ ir MASM {
         let proto = BaseShape::protoOf(baseShape);
 
         MASM::setTaggedProto(protoReg, proto);
+    }
+
+    op UnboxObjectProto(protoReg: Reg) {
+        // This is a no-op on the C++ side.
+        let proto = MASM::getTaggedProto(protoReg);
+        let object = TaggedProto::toObject(proto);
+        MASM::setObject(protoReg, object);
     }
 
     op SplitTagForTest(valueReg: ValueReg, tagReg: Reg) {
