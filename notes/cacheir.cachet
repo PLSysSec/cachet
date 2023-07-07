@@ -1672,21 +1672,24 @@ ir CacheIR emits MASM {
         }
     }
 
+    // #ifdef DEBUG
     var mut addedFailurePath: Bool;
-    fn setAddedFailurePath() {
-        assert !CacheIR::addedFailurePath;
-        CacheIR::addedFailurePath = true;
-    }
+    // #endif
 
     fn addFailurePath() -> FailurePath {
-        CacheIR::setAddedFailurePath();
+        // #ifdef DEBUG
+        assert !CacheIR::addedFailurePath;
+        CacheIR::addedFailurePath = true;
+        // #endif
         unsafe { CacheIR::addFailurePathUnchecked() }
     }
     unsafe fn addFailurePathUnchecked() -> FailurePath;
 
     fn releaseFailurePath() {
+        // #ifdef DEBUG
         assert CacheIR::addedFailurePath;
         CacheIR::addedFailurePath = false;
+        // #endif
     }
 
     fn hasAvailableReg() -> Bool;
