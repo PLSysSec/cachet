@@ -1534,15 +1534,28 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         // to assign. This comes up in, e.g., compiling `out let foo` arguments.
         let Some(rhs) = let_stmt.rhs.as_ref() else { return };
 
-        let lhs = LocalVarIdent {
+        let lhs_var_ident = LocalVarIdent {
             ident: self.context.local(let_stmt.lhs).ident.value,
             index: let_stmt.lhs,
+        };
+
+        match rhs {
+            flattener::Expr::Invoke(invoke_expr) => {
+                // Same optimization as in `compile_assign_stmt`.
+                self.compile_invoke_stmt_impl(invoke_expr, |_, _| lhs_var_ident.into());
+            }
+            _ => {
+                let rhs = self.compile_expr(rhs);
+
+                self.stmts.push(
+                    AssignStmt {
+                        lhs: lhs_var_ident.into(),
+                        rhs,
+                    }
+                    .into(),
+                );
+            }
         }
-        .into();
-
-        let rhs = self.compile_expr(rhs);
-
-        self.stmts.push(AssignStmt { lhs, rhs }.into());
     }
 
     fn compile_if_stmt_recurse(&mut self, if_stmt: &flattener::IfStmt) -> IfStmt {
@@ -1731,16 +1744,22 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_invoke_stmt(&mut self, invoke_stmt: &flattener::InvokeStmt) {
-        let generate_synthetic_ret_var = |scoped_compiler: &mut Self, ret| {
+        self.compile_invoke_stmt_impl(invoke_stmt, |scoped_compiler: &mut Self, ret| {
             scoped_compiler
                 .generate_synthetic_var(
                     SyntheticVarKind::Out,
                     scoped_compiler.get_type_ident(ret).into(),
                 )
                 .into()
-        };
+        })
+    }
 
-        match self.compile_invocation(invoke_stmt, generate_synthetic_ret_var) {
+    fn compile_invoke_stmt_impl(
+        &mut self,
+        invoke_stmt: &flattener::InvokeStmt,
+        generate_ret_var_ident: impl Fn(&mut Self, flattener::TypeIndex) -> VarIdent,
+    ) {
+        match self.compile_invocation(invoke_stmt, &generate_ret_var_ident) {
             CompiledInvocation::FnCall(call_expr) => {
                 // The invocation compiles down to a Boogie function call. We can't
                 // directly insert this as a statement, but we can wrap it up in an
@@ -1748,7 +1767,7 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
                 let callable_item = &self.env[invoke_stmt.call.target];
 
-                let lhs = generate_synthetic_ret_var(self, callable_item.type_()).into();
+                let lhs = generate_ret_var_ident(self, callable_item.type_()).into();
 
                 self.stmts.push(
                     AssignStmt {
@@ -1765,9 +1784,19 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     fn compile_assign_stmt(&mut self, assign_stmt: &flattener::AssignStmt) {
         let lhs = self.compile_var_access(assign_stmt.lhs);
 
-        let rhs = self.compile_expr(&assign_stmt.rhs);
+        match (lhs, &assign_stmt.rhs) {
+            (Expr::Var(lhs_var_ident), flattener::Expr::Invoke(invoke_expr)) => {
+                // If the assignment is to the return value of an invocation,
+                // use the LHS variable directly as the return variable of any
+                // call statement.
+                self.compile_invoke_stmt_impl(invoke_expr, |_, _| lhs_var_ident);
+            }
+            (lhs, _) => {
+                let rhs = self.compile_expr(&assign_stmt.rhs);
 
-        self.stmts.push(AssignStmt { lhs, rhs }.into());
+                self.stmts.push(AssignStmt { lhs, rhs }.into());
+            }
+        }
     }
 
     fn compile_ret_stmt(&mut self, ret_stmt: &flattener::RetStmt) {
