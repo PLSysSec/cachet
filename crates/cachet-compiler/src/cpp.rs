@@ -344,8 +344,7 @@ impl<'a> Compiler<'a> {
 
     fn compile_enum_item(&mut self, enum_index: normalizer::EnumIndex) {
         let enum_item = &self.env[enum_index];
-
-        if enum_item.is_spec() {
+        if enum_item.is_prelude() || enum_item.is_spec() {
             return;
         }
 
@@ -380,8 +379,7 @@ impl<'a> Compiler<'a> {
 
     fn compile_struct_item(&mut self, struct_index: normalizer::StructIndex) {
         let struct_item = &self.env[struct_index];
-
-        if struct_item.is_spec() {
+        if struct_item.is_prelude() || struct_item.is_spec() {
             return;
         }
 
@@ -461,7 +459,7 @@ impl<'a> Compiler<'a> {
 
     fn compile_global_var_item(&mut self, global_var_index: normalizer::GlobalVarIndex) {
         let global_var_item = &self.env[global_var_index];
-        if global_var_item.is_prelude() {
+        if global_var_item.is_prelude() || global_var_item.is_spec() {
             return;
         }
 
