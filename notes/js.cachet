@@ -843,7 +843,7 @@ impl NativeObject {
             // fixed slots
             let slotOffset = offset as UInt64 - NativeObject::sizeOf;
             assert slotOffset % Value::sizeOf == 0_u64;
-            assert slotOffset / Value::sizeOf < Shape::maxFixedSlots;
+            assert slotOffset / Value::sizeOf < Shape::fixedSlotLimit;
             let slot = (slotOffset / Value::sizeOf) as UInt32;
             let value = NativeObject::getFixedSlot(nativeObject, slot);
             return RegData::fromValue(value);
@@ -1159,7 +1159,7 @@ impl PropertyInfo {
     fn maybeSlot(info: PropertyInfo) -> UInt32 {
         let slot = (unsafe { PropertyInfo::maybeSlotUnchecked(info) });
         if PropertyInfo::hasSlot(info) {
-            assume slot < Shape::maxSlotSpan;
+            assume slot < Shape::slotLimit;
         }
         slot
     }
@@ -1247,8 +1247,11 @@ impl BaseShape {
 struct Shape;
 
 impl Shape {
-    var maxFixedSlots: UInt64 = 16_u64;
-    var maxSlotSpan: UInt64 = 1024_u64;
+    var fixedSlotLimit: UInt64 = 16_u64;
+    var numFixedSlotsLimit: UInt64 = 17_u64;
+
+    var slotLimit: UInt64 = 1024_u64;
+    var slotSpanLimit: UInt64 = 1025_u64;
 
     fn fromAddr(addr: UInt64) -> Shape;
 
@@ -1260,7 +1263,7 @@ impl Shape {
 
     fn numFixedSlots(shape: Shape) -> UInt32 {
         let numFixedSlots = unsafe { Shape::numFixedSlotsUnchecked(shape) };
-        assume numFixedSlots < Shape::maxFixedSlots;
+        assume numFixedSlots < Shape::numFixedSlotsLimit;
         numFixedSlots
     }
 
@@ -1269,7 +1272,7 @@ impl Shape {
     #[inline]
     fn slotSpan(shape: Shape) -> UInt32 {
         let slotSpan = unsafe { Shape::slotSpanUnchecked(shape) };
-        assume slotSpan < Shape::maxSlotSpan;
+        assume slotSpan < Shape::slotSpanLimit;
         slotSpan
     }
 
