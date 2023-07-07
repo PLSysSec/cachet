@@ -529,7 +529,7 @@ impl<'a> Compiler<'a> {
             self.items.push(
                 FnItem {
                     ident,
-                    attr: None,
+                    attr: Some(FnAttr::Inline),
                     param_vars: TypedVars::default(),
                     ret: type_,
                     value,
@@ -1887,8 +1887,10 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
 
             // Global variables with values are modeled as functions so we must emit a call
             // expression rather than a var expression.
-            flattener::VarIndex::Global(gvi) if self.env[gvi].value.is_some() => {
-                let global_var_item = &self.env[gvi];
+            flattener::VarIndex::Global(global_var_index)
+                if self.env[global_var_index].value.is_some() =>
+            {
+                let global_var_item = &self.env[global_var_index];
                 let parent_ident = global_var_item
                     .path
                     .value
