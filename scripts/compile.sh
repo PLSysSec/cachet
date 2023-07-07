@@ -16,6 +16,9 @@ cpp_decls_file="${out_dir}/${sample_name}.h"
 cpp_defs_file="${out_dir}/${sample_name}.inc"
 bpl_file="${out_dir}/${sample_name}.bpl"
 
+cargo build --bin cachet-compiler --bin bpl-tree-shaker
+echo
+
 time (
   cargo run --quiet --bin cachet-compiler -- "${cachet_file}" \
     --cpp-decls "${cpp_decls_file}" \
