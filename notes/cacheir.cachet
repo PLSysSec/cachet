@@ -585,6 +585,14 @@ ir CacheIR emits MASM {
 
     op GuardToInt32Index(inputId: ValueId, resultId: Int32Id) {
         let outputReg = CacheIR::defineInt32Id(resultId);
+
+        if CacheIR::knownType(inputId) == JSValueType::Int32 {
+            let int32Id = Int32Id::fromId(OperandId::id(inputId));
+            let inputReg = CacheIR::useInt32Id(int32Id);
+            emit MASM::Move32Int32(inputReg, outputReg);
+            return;
+        }
+
         let inputReg = CacheIR::useValueId(inputId);
 
         let failure = CacheIR::addFailurePath();
