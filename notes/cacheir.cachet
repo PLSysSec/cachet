@@ -479,7 +479,12 @@ ir CacheIR emits MASM {
     }
 
     op AssertEqValueOutput(value: Value) {
-        emit MASM::AssertEqValue(TypedOrValueReg::toValueReg(CacheIR::outputReg), value);
+        let scratchValueReg = CacheIR::allocateValueReg();
+
+        emit MASM::AssertEqValue(
+            TypedOrValueReg::toValueReg(CacheIR::outputReg), value, scratchValueReg);
+
+        CacheIR::releaseValueReg(scratchValueReg);
     }
 
     op GuardIsNumber(inputId: ValueId) {

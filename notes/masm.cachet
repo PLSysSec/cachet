@@ -756,8 +756,11 @@ ir MASM {
         assert cond;
     }
 
-    op AssertEqValue(valueReg: ValueReg, value: Value) {
+    op AssertEqValue(valueReg: ValueReg, value: Value, scratchValueReg: ValueReg) {
+        // #ifdef DEBUG
+        MASM::setValue(scratchValueReg, value);
         assert MASM::getValue(valueReg) == value;
+        // #endif
     }
 
     op Mov(srcReg: Reg, dstReg: Reg) {
