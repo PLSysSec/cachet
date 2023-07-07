@@ -763,20 +763,28 @@ ir MASM {
         // #endif
     }
 
-    op Mov(srcReg: Reg, dstReg: Reg) {
-        MASM::setInt32(dstReg, MASM::getInt32(srcReg));
-    }
-
-    op MovData(srcReg: Reg, dstReg: Reg) {
+    op Move(srcReg: Reg, dstReg: Reg) {
         MASM::setData(dstReg, MASM::getData(srcReg));
     }
 
-    op Move32Imm32(srcInt32: Int32, dstReg: Reg) {
+    op Move32Bool(srcReg: Reg, dstReg: Reg) {
+        MASM::setBool(dstReg, MASM::getBool(srcReg));
+    }
+
+    op Move32Int32(srcReg: Reg, dstReg: Reg) {
+        MASM::setInt32(dstReg, MASM::getInt32(srcReg));
+    }
+
+    op Move32Int32Imm(srcInt32: Int32, dstReg: Reg) {
         MASM::setInt32(dstReg, srcInt32);
     }
 
-    op MoveValue(srcReg: ValueReg, dstReg: ValueReg) {
-        MASM::setValue(dstReg, MASM::getValue(srcReg));
+    op MoveValue(srcValueReg: ValueReg, dstValueReg: ValueReg) {
+        MASM::setValue(dstValueReg, MASM::getValue(srcValueReg));
+    }
+
+    op MoveValueImm(value: Value, dstValueReg: ValueReg) {
+        MASM::setValue(dstValueReg, value);
     }
 
     op MovePtrBoolImmWord(b: Bool, dstReg: Reg) {
@@ -785,12 +793,6 @@ ir MASM {
 
     op MoveDouble(srcReg: FloatReg, dstReg: FloatReg) {
         MASM::setDouble(dstReg, MASM::getDouble(srcReg));
-    }
-
-    // this op corresponds to an overload of the MoveValue op
-    // that takes an immediate Value operand
-    op MoveValueImm(value: Value, dstReg: ValueReg) {
-        MASM::setValue(dstReg, value);
     }
 
     op MovePtrImmGCPtrObject(object: Object, dstReg: Reg) {
