@@ -466,6 +466,9 @@ impl<'a> FlowTracer<'a> {
     }
 
     fn trace_invoke_expr(&mut self, invoke_expr: &flattener::InvokeExpr) {
+        // Invoked functions only influence interpreter control flow if they
+        // either emit ops or bind labels via passed-in label out-arguments.
+
         let fn_item = &self.env[invoke_expr.call.target];
 
         let mut out_label_args = invoke_expr.call.args.iter().filter_map(|arg| match arg {
@@ -480,18 +483,19 @@ impl<'a> FlowTracer<'a> {
         if fn_item.body.is_none() {
             // Labels bound through out-arguments to external functions point
             // into unknown territory.
-
             let exit_emit_node_index = self.graph.exit_emit_node_index();
             for out_label_arg in out_label_args {
                 let label_node_index = self.label_scope[&out_label_arg.label];
                 self.graph
                     .link_label_to_emit(label_node_index, exit_emit_node_index);
             }
-        } else if fn_item.emits.is_some() || out_label_args.next().is_some() {
-            // Otherwise, invoked functions only influence interpreter control
-            // flow if they either emit ops or bind labels via passed-in label
-            // out-arguments.
 
+            if fn_item.emits.is_some() {
+                // Keep the emit index counter in sync with the Cachet-to-BPL
+                // compiler.
+                self.take_local_emit_index();
+            }
+        } else if fn_item.emits.is_some() || out_label_args.next().is_some() {
             let trace_inside_target = |flow_tracer: &mut Self, curr_emit_label_ident| {
                 let mut target_flow_tracer = FlowTracer {
                     env: flow_tracer.env,

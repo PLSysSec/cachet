@@ -303,22 +303,118 @@ procedure #MASM~stackLoad($idx: #UInt64)
     ret := #Map~get(#MASM~stack, $idx);
 }
 
-procedure #ABIFunction~clobberVolatileRegs()
+function #MoveResolver~regMoves($resolver: #MoveResolver): #Map int #RegData;
+function #MoveResolver~regCount($resolver: #MoveResolver): int;
+function #MoveResolver~floatMoves($resolver: #MoveResolver): #Map int #FloatData;
+function #MoveResolver~floatCount($resolver: #MoveResolver): int;
+
+function #MoveResolver~emptyUnchecked(): #MoveResolver;
+
+procedure #MoveResolver~empty()
+  returns (ret: #MoveResolver)
 {
-    var $value: #Value;
-    var $data: #RegData;
+  ret := #MoveResolver~emptyUnchecked();
+  assume #MoveResolver~regCount(ret) == 0;
+  assume #MoveResolver~floatCount(ret) == 0;
+}
 
-    call $value := #Value~getUndefined();
-    call $data := #RegData~fromValue($value);
+function #MoveResolver~newUnchecked(
+  $regCount: int, $regMoves: #Map int #RegData,
+  $floatCount: int, $floatMoves: #Map int #FloatData
+): #MoveResolver;
 
-    call #MASM~setData(#Reg^Variant~Rax(), $data);
-    call #MASM~setData(#Reg^Variant~Rcx(), $data);
-    call #MASM~setData(#Reg^Variant~Rdx(), $data);
-    call #MASM~setData(#Reg^Variant~Rsi(), $data);
-    call #MASM~setData(#Reg^Variant~Rdi(), $data);
-    call #MASM~setData(#Reg^Variant~R8(), $data);
-    call #MASM~setData(#Reg^Variant~R9(), $data);
-    call #MASM~setData(#Reg^Variant~R10(), $data);
+procedure #MoveResolver~new(
+  $regCount: int, $regMoves: #Map int #RegData,
+  $floatCount: int, $floatMoves: #Map int #FloatData
+)
+  returns (ret: #MoveResolver)
+{
+  ret := #MoveResolver~newUnchecked($regCount, $regMoves, $floatCount, $floatMoves);
+  assume #MoveResolver~regCount(ret) == $regCount;
+  assume #MoveResolver~regMoves(ret) == $regMoves;
+  assume #MoveResolver~floatCount(ret) == $floatCount;
+  assume #MoveResolver~floatMoves(ret) == $floatMoves;
+}
+
+procedure #MoveResolver~reset()
+  returns ($newResolver: #MoveResolver)
+{
+  call $newResolver := #MoveResolver~empty();
+}
+
+procedure #MoveResolver~addRegMove($resolver: #MoveResolver, $data: #RegData)
+  returns ($newResolver: #MoveResolver)
+{
+  var $regMoves: #Map int #RegData;
+  var $regCount: int;
+  var $floatMoves: #Map int #FloatData;
+  var $floatCount: int;
+
+  $regMoves := #MoveResolver~regMoves($resolver);
+  $regCount := #MoveResolver~regCount($resolver);
+  $floatMoves := #MoveResolver~floatMoves($resolver);
+  $floatCount := #MoveResolver~floatCount($resolver);
+
+  call $newResolver := #MoveResolver~new(
+    $regCount + 1, #Map~set($regMoves, $regCount, $data),
+    $floatCount, $floatMoves
+  );
+}
+
+procedure #MoveResolver~addFloatMove($resolver: #MoveResolver, $data: #FloatData)
+  returns ($newResolver: #MoveResolver)
+{
+  var $regMoves: #Map int #RegData;
+  var $regCount: int;
+  var $floatMoves: #Map int #FloatData;
+  var $floatCount: int;
+
+  $regMoves := #MoveResolver~regMoves($resolver);
+  $regCount := #MoveResolver~regCount($resolver);
+  $floatMoves := #MoveResolver~floatMoves($resolver);
+  $floatCount := #MoveResolver~floatCount($resolver);
+
+  call $newResolver := #MoveResolver~new(
+    $regCount, $regMoves,
+    $floatCount + 1, #Map~set($floatMoves, $floatCount, $data)
+  );
+}
+
+procedure #MoveResolver~resolve($resolver: #MoveResolver)
+{
+  var $regMoves: #Map int #RegData;
+  var $regCount: int;
+  var $floatMoves: #Map int #FloatData;
+  var $floatCount: int;
+
+  $regMoves := #MoveResolver~regMoves($resolver);
+  $regCount := #MoveResolver~regCount($resolver);
+  $floatMoves := #MoveResolver~floatMoves($resolver);
+  $floatCount := #MoveResolver~floatCount($resolver);
+
+  if ($regCount > 0) {
+    call #MASM~setData(#Reg^Variant~Rdi(), #Map~get($regMoves, 0));
+  }
+
+  if ($regCount > 1) {
+    call #MASM~setData(#Reg^Variant~Rsi(), #Map~get($regMoves, 1));
+  }
+
+  if ($regCount > 2) {
+    call #MASM~setData(#Reg^Variant~Rdx(), #Map~get($regMoves, 2));
+  }
+
+  if ($regCount > 3) {
+    call #MASM~setData(#Reg^Variant~Rcx(), #Map~get($regMoves, 3));
+  }
+
+  if ($floatCount > 0) {
+    call #MASM~setFloatData(#PhyFloatReg^Variant~Xmm0(), #Map~get($floatMoves, 0)); 
+  }
+
+  if ($floatCount > 1) {
+    call #MASM~setFloatData(#PhyFloatReg^Variant~Xmm1(), #Map~get($floatMoves, 1)); 
+  }
 }
 
 var #CacheIR~knownOperandIds: #Set #UInt16;
@@ -465,6 +561,9 @@ procedure #initRegState()
 {
   var $uninitializedStackData: #StackData;
 
+  #CacheIR~nextOperandId := 0bv16;
+  #CacheIR~nextFieldOffset := 0bv32;
+
   #CacheIR~addedFailurePath := false;
   #CacheIR~hasAutoScratchFloatRegisterSpill := false;
   #CacheIR~isDoubleScratchRegAllocated := false;
@@ -478,6 +577,8 @@ procedure #initRegState()
   #MASM~stack := #Map~const($uninitializedStackData);
 
   call #MASM~setStackIndex(#Reg^Variant~Rsp(), 512bv64);
+
+  #MASM~inABICall := false;
 
   call #CacheIR~liveFloatRegSet := #FloatRegSet~empty();
   #MASM~hasPushedRegs := false;

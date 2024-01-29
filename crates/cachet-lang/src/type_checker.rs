@@ -290,15 +290,7 @@ impl<'a> TypeChecker<'a> {
                 };
                 (interprets, emits)
             }
-            (CallableIndex::Fn(_), _, Some(ir_index)) => {
-                if callable_item.body.value.is_none() {
-                    self.errors.push(TypeCheckError::MissingEmitsFnBody {
-                        fn_: callable_item.path,
-                    });
-                }
-
-                (None, Some(ir_index))
-            }
+            (CallableIndex::Fn(_), _, Some(ir_index)) => (None, Some(ir_index)),
             _ => (None, None),
         };
 

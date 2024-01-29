@@ -1,0 +1,76 @@
+import "../cacheir.cachet";
+import "../codegen.cachet";
+import "../js.cachet";
+import "../utils.cachet";
+
+ir GetPropIRGenerator emits CacheIR {
+    var mode: ICMode;
+
+    fn isSuper() -> Bool;
+
+    op GetProp(value: Value, keyValue: Value) {
+        CacheIR::initStub();
+        let valueId = CacheIR::defineInputValueId();
+        CacheIR::setValueOutput();
+
+        if !PropertyKey::nameOrSymbolFromValue(keyValue, out let key, out let nameOrSymbol) {
+            clearPendingException();
+            return;
+        }
+
+        if !Value::isObject(value) {
+            return;
+        }
+
+        let object = Value::toObject(value);
+        emit CacheIR::GuardToObject(valueId);
+        let objectId = OperandId::toObjectId(valueId);
+
+        if !nameOrSymbol {
+            return;
+        }
+
+        if !PropertyKey::isAtom(key) {
+            return;
+        }
+
+        if !Object::isTypedArrayObject(object) {
+            return;
+        }
+        let object = Object::toTypedArrayObject(object);
+
+        // Comment out to reproduce bug 1685925.
+        if GetPropIRGenerator::mode != ICMode::Specialized {
+            return;
+        }
+
+        if !GetPropIRGenerator::isSuper() {
+            return;
+        }
+
+        let kind = canAttachNativeGetProp(
+            object, key, out let maybeHolder, out let maybePropInfo
+        );
+        if kind != NativeGetPropKind::NativeGetter {
+            return;
+        }
+
+        let holder = MaybeNativeObject::toNativeObject(maybeHolder);
+        let propInfo = MaybePropertyInfo::toPropertyInfo(maybePropInfo);
+
+        let fun = Object::toJSFunction(MaybeObject::toObject(
+            NativeObject::getGetter(holder, PropertyInfo::slot(propInfo))
+        ));
+        if !TypedArrayObject::isOriginalLengthGetter(JSFunction::native(fun)) {
+            return;
+        }
+
+        // Emit all the normal guards for calling this native, but
+        // specialize `callNativeGetterResult`.
+        emitCallGetterResultGuards(
+            object, holder, key, propInfo, objectId, GetPropIRGenerator::mode,
+        );
+        emit CacheIR::LoadArrayBufferViewLengthInt32Result(objectId);
+        emit CacheIR::ReturnFromIC();
+    }
+}

@@ -3,6 +3,12 @@
 import "./js.cachet";
 import "./jsop.cachet";
 
+struct CompileRuntime;
+
+impl CompileRuntime {
+    fn mainContextPtr(runtime: CompileRuntime) -> JSContext;
+}
+
 enum Reg {
     Rax,
     Rcx,
@@ -721,8 +727,32 @@ impl BaseObjectSlotIndex {
     unsafe fn newUnchecked(base: Reg, index: Reg) -> BaseObjectSlotIndex;
 }
 
+enum CheckUnsafeCallWithABI {
+   Check,
+   DontCheckHasExitFrame,
+   DontCheckOther,
+}
+
+enum MoveOpType {
+    General,
+    Int32,
+    Float32,
+    Double,
+    Simd128,
+}
+
+struct MoveResolver;
+
+impl MoveResolver {
+    fn reset(out resolver: MoveResolver);
+    fn addRegMove(out newResolver: MoveResolver, resolver: MoveResolver, data: RegData);
+    fn addFloatMove(out newResolver: MoveResolver, resolver: MoveResolver, data: FloatData);
+    fn resolve(resolver: MoveResolver);
+}
+
 enum ABIFunction {
-    EqualStringsHelperPure
+    EqualStringsHelperPure,
+    ObjectHasGetterSetterPure,
 }
 
 impl ABIFunction {
@@ -736,13 +766,34 @@ impl ABIFunction {
 
             let equal = equalStringsHelperPure(str1, str2);
             MASM::setBool(Reg::Rax, equal);
+        } else if function == ABIFunction::ObjectHasGetterSetterPure {
+            let cx = MASM::getJSContext(Reg::Rdi);
+            let object = MASM::getObject(Reg::Rsi);
+            let key = MASM::getPropertyKey(Reg::Rdx);
+            let gs = MASM::getGetterSetter(Reg::Rcx);
+
+            ABIFunction::clobberVolatileRegs();
+
+            let hasGetterSetter = ObjectHasGetterSetterPure(cx, object, key, gs);
+
+            MASM::setBool(Reg::Rax, hasGetterSetter);
         } else {
             assert false;
         }
     }
-
+    
     #[spec]
-    fn clobberVolatileRegs();
+    fn clobberVolatileRegs() {
+        let data = RegData::fromValue(Value::undefined());
+        MASM::setData(Reg::Rax, data);
+        MASM::setData(Reg::Rcx, data);
+        MASM::setData(Reg::Rdx, data);
+        MASM::setData(Reg::Rsi, data);
+        MASM::setData(Reg::Rdi, data);
+        MASM::setData(Reg::R8, data);
+        MASM::setData(Reg::R9, data);
+        MASM::setData(Reg::R10, data);
+    }
 }
 
 ir MASM {
@@ -797,6 +848,14 @@ ir MASM {
 
     op MovePtrImmGCPtrObject(object: Object, dstReg: Reg) {
         MASM::setObject(dstReg, object);
+    }
+
+    op MovePtrImmGCPtrGetterSetter(gs: GetterSetter, dstReg: Reg) {
+        MASM::setGetterSetter(dstReg, gs);
+    }
+
+    op MovePropertyKey(id: PropertyKey, dstReg: Reg) {
+        MASM::setPropertyKey(dstReg, id);
     }
 
     op Cmp32Move32(condition: Condition, lhsReg: Reg, rhsReg: Reg, srcReg: Reg, dstReg: Reg) {
@@ -865,8 +924,94 @@ ir MASM {
         MASM::setData(dstReg, data);
     }
 
+    op SetupUnalignedABICall(scratchReg: Reg) {
+        // begin setupNativeABICall
+        
+        // Assert that e were not already in the process of making an ABI call
+        // and mark that we now are.
+        assert !MASM::inABICall;
+        MASM::inABICall = true;
+
+        // our MoveResolver kinda plays a weird dual role
+        // of also being ABIArgGenerator currently.
+        MoveResolver::reset(out MASM::moveResolver);
+
+        // end of setupNativeABICall
+
+        // TODO(abhishek): currently we are not modeling the step to make sure
+        // the stack pointer is properly aligned. I'm not sure if it adds to
+        // much value given that additional stack operations is one of the big
+        // contributors to increases in verification time. As such we expect
+        // SetupUnalignedABICall to be paired with a future CallWithABI which
+        // checks and undoes the stack manipulations.
+
+        // we do however model that scratchReg gets clobbered in the process
+        // with the stack pointer.
+        MASM::setData(scratchReg, MASM::getData(Reg::Rsp));
+    }
+
+    op LoadJSContext(dstReg: Reg) {
+        let cx = CompileRuntime::mainContextPtr(MASM::runtime());
+        MASM::setJSContext(dstReg, cx);
+    }
+
+    op PassABIArgReg(reg: Reg) {
+        assert MASM::inABICall;
+        MoveResolver::addRegMove(out MASM::moveResolver, MASM::moveResolver, MASM::getData(reg));
+    }
+
+    op PassABIArgFloatReg(floatReg: FloatReg, type: MoveOpType) {
+        assert MASM::inABICall;
+        assert type == MoveOpType::Float32 || type == MoveOpType::Double;
+
+        let data = MASM::getFloatData(floatReg.reg);
+
+        if type == MoveOpType::Float32 {
+            assert FloatData::contentType(data) == FloatContentType::Single;
+        } else if type == MoveOpType::Double {
+            assert FloatData::contentType(data) == FloatContentType::Double;
+        }
+
+        MoveResolver::addFloatMove(out MASM::moveResolver, MASM::moveResolver, data);
+    }
+
+    op CallWithABI(function: ABIFunction, result: MoveOpType, check: CheckUnsafeCallWithABI) {
+        // TODO(abhishek): figure out how to use the `check` argument. It is
+        // used to optionally do additional checks to ensure that the
+        // ABIFunction call does not GC etc. See the comments in the Firefox
+        // source code on `CheckUnsafeCallWithABI` and `AutoUnsafeCallWithABI`.
+
+        // I do not believe the `result` argument is used in any way besides
+        // adding to the signature_ attribute that the MacroAssembler builds up.
+
+        // begin callWithABIPre
+
+        assert MASM::inABICall;
+        MoveResolver::resolve(MASM::moveResolver);
+        
+        // end callWithABIPre
+
+        ABIFunction::call(function);
+
+        // begin callWithABIPost
+
+        MASM::inABICall = false;
+
+        // end callWithABIPost
+    }
+
+    op StoreCallPointerResult(reg: Reg) {
+        if reg != Reg::Rax {
+            MASM::setData(reg, MASM::getData(Reg::Rax));
+        }
+    }
+
     op PushRegsInMask(set: LiveRegSet) {
         MASM::pushRegsInMask(set);
+    }
+
+    op PopRegsInMask(set: LiveRegSet) {
+        MASM::popRegsInMask(set);
     }
 
     op PopRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
@@ -879,6 +1024,27 @@ ir MASM {
 
     op PopFloatReg(floatReg: FloatReg) {
         MASM::stackPopFloatReg(floatReg);
+    }
+
+    op GuardNonNegativeIntPtrToInt32(reg: Reg, label fail: MASM) {
+        // 1) unpack boxed Value from reg
+        // 2) if boxed Value !isDouble -> fail
+        // 3) convert Value to UInt64 with Value::toPrivate
+        // 4) if resulting UInt64 is greater than max *signed* Int32 -> fail
+        // 5) cast to Int32, write back to reg as unboxed
+
+        let value = RegData::toValue(MASM::getData(reg));
+        if !Value::isDouble(value) {
+            goto fail;
+        }
+
+        let ptr = Value::toPrivate(value);
+        if ptr > 0xffffffff {
+            goto fail;
+        }
+
+        let int32 = ptr as Int32;
+        MASM::setInt32(reg, int32);
     }
 
     op GuardSpecificAtom(
@@ -1472,6 +1638,14 @@ ir MASM {
         }
     }
 
+    op BranchIfFalseBool(reg: Reg, label branch: MASM) {
+        let b = MASM::getBool(reg);
+
+        if !b {
+            goto branch;
+        }
+    }
+
     op BranchTestMagic(condition: Condition, valueReg: ValueReg, label branch: MASM) {
         assert condition == Condition::Equal || condition == Condition::NotEqual;
 
@@ -1975,6 +2149,14 @@ ir MASM {
             MASM::setBool(dstReg, true);
         }
     }
+    
+    op LoadArrayBufferViewLengthIntPtr(objectReg: Reg, outputReg: Reg) {
+        let baseObject = MASM::getObject(objectReg);
+        let offset = ArrayBufferViewObject::lengthOffset();
+
+        let data = Object::readData(baseObject, offset);
+        MASM::setData(outputReg, data);
+    }
 
     op LoadArgumentsObjectLength(
         objectReg: Reg, outputReg: Reg, label failure: MASM
@@ -2046,6 +2228,8 @@ ir MASM {
         MASM::setValueTag(tagReg, tag);
     }
 
+    fn runtime() -> CompileRuntime;
+
     fn extractTag(valueReg: ValueReg, scratchReg: Reg) emits MASM -> Reg {
         assert scratchReg != Reg::scratchReg();
 
@@ -2102,6 +2286,9 @@ ir MASM {
             assert false;
         }
     }
+
+    var mut inABICall: Bool;
+    var mut moveResolver: MoveResolver;
 
     fn getValue(valueReg: ValueReg) -> Value;
     fn setValue(valueReg: ValueReg, value: Value);
@@ -2189,6 +2376,36 @@ ir MASM {
     #[refined]
     fn setValueTag(reg: Reg, tag: ValueType) {
         MASM::setData(reg, RegData::fromValueType(tag));
+    }
+
+    #[refined]
+    fn getJSContext(reg: Reg) -> JSContext {
+        RegData::toJSContext(MASM::getData(reg))
+    }
+
+    #[refined]
+    fn setJSContext(reg: Reg, cx: JSContext) {
+        MASM::setData(reg, RegData::fromJSContext(cx));
+    }
+
+    #[refined]
+    fn getPropertyKey(reg: Reg) -> PropertyKey {
+        RegData::toPropertyKey(MASM::getData(reg))
+    }
+
+    #[refined]
+    fn setPropertyKey(reg: Reg, key: PropertyKey) {
+        MASM::setData(reg, RegData::fromPropertyKey(key));
+    }
+
+    #[refined]
+    fn getGetterSetter(reg: Reg) -> GetterSetter {
+        RegData::toGetterSetter(MASM::getData(reg))
+    }
+
+    #[refined]
+    fn setGetterSetter(reg: Reg, gs: GetterSetter) {
+        MASM::setData(reg, RegData::fromGetterSetter(gs));
     }
 
     #[refined]
@@ -2318,6 +2535,12 @@ ir MASM {
     }
 
     #[refined]
+    fn popRegsInMask(set: LiveRegSet) {
+        let ignore = LiveRegSet::empty();
+        MASM::popRegsInMaskIgnore(set, ignore);
+    }
+
+    #[refined]
     fn popRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
         let fpus = FloatRegSet::reducedForPush(LiveRegSet::fpus(set));
         let gprs = LiveRegSet::gprs(set);
@@ -2349,12 +2572,6 @@ ir MASM {
         }
 
         MASM::unsetHasPushedRegs();
-    }
-
-    #[refined]
-    fn popRegsInMask(set: LiveRegSet) {
-        let ignore = LiveRegSet::empty();
-        MASM::popRegsInMaskIgnore(set, ignore);
     }
 }
 

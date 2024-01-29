@@ -1,0 +1,29 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir CacheStub emits CacheIR {  
+  op GetProp(
+    valueId: ValueId,
+    shapeField: ShapeField,
+    idField: IdField,
+    gsField: GetterSetterField,
+  ) {  
+    initRegState();
+
+    initOperandId(valueId);
+    initInputValueId(valueId);
+
+    initValueOutput();
+
+    let shape = CacheIR::readShapeField(shapeField);
+    assume Class::isTypedArrayObject(Shape::classOf(shape));
+
+    emit CacheIR::GuardToObject(valueId);
+    let objectId = OperandId::toObjectId(valueId);
+    // Comment out to reproduce bug 1685925.
+    emit CacheIR::GuardShape(objectId, shapeField);
+    emit CacheIR::GuardHasGetterSetter(objectId, idField, gsField);
+    emit CacheIR::LoadArrayBufferViewLengthInt32Result(objectId);
+    emit CacheIR::ReturnFromIC();
+  }
+}

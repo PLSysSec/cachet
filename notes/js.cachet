@@ -5,6 +5,8 @@ import "codegen.cachet"; // for `isCacheableProtoChain`
 struct Heap;
 var mut heap: Heap;
 
+struct JSContext;
+
 fn clearPendingException();
 
 #[spec]
@@ -17,6 +19,9 @@ enum RegDataType {
     ValueTag,
     TaggedProto,
     Class,
+    JSContext,
+    PropertyKey,
+    GetterSetter,
     StackIndex,
 }
 
@@ -201,6 +206,72 @@ impl RegData {
     }
 
     unsafe fn toClassUnchecked(data: RegData) -> Class;
+
+    fn isJSContext(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::JSContext
+    }
+
+    fn fromJSContext(cx: JSContext) -> RegData {
+        let data = (unsafe { RegData::fromJSContextUnchecked(cx) });
+        assume RegData::isJSContext(data);
+        assume (unsafe { RegData::toJSContextUnchecked(data) }) == cx;
+        data
+    }
+
+    unsafe fn fromJSContextUnchecked(cx: JSContext) -> RegData;
+
+    fn toJSContext(data: RegData) -> JSContext {
+        assert RegData::isJSContext(data);
+        let cx = (unsafe { RegData::toJSContextUnchecked(data) });
+        assume (unsafe { RegData::fromJSContextUnchecked(cx) }) == data;
+        cx
+    }
+
+    unsafe fn toJSContextUnchecked(data: RegData) -> JSContext;
+
+    fn isPropertyKey(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::PropertyKey
+    }
+
+    fn fromPropertyKey(key: PropertyKey) -> RegData {
+        let data = (unsafe { RegData::fromPropertyKeyUnchecked(key) });
+        assume RegData::isPropertyKey(data);
+        assume (unsafe { RegData::toPropertyKeyUnchecked(data) }) == key;
+        data
+    }
+
+    unsafe fn fromPropertyKeyUnchecked(key: PropertyKey) -> RegData;
+
+    fn toPropertyKey(data: RegData) -> PropertyKey {
+        assert RegData::isPropertyKey(data);
+        let key = (unsafe { RegData::toPropertyKeyUnchecked(data) });
+        assume (unsafe { RegData::fromPropertyKeyUnchecked(key) }) == data;
+        key
+    }
+
+    unsafe fn toPropertyKeyUnchecked(data: RegData) -> PropertyKey;
+
+    fn isGetterSetter(data: RegData) -> Bool {
+        RegData::typeOf(data) == RegDataType::GetterSetter
+    }
+
+    fn fromGetterSetter(gs: GetterSetter) -> RegData {
+        let data = (unsafe { RegData::fromGetterSetterUnchecked(gs) });
+        assume RegData::isGetterSetter(data);
+        assume (unsafe { RegData::toGetterSetterUnchecked(data) }) == gs;
+        data
+    }
+
+    unsafe fn fromGetterSetterUnchecked(gs: GetterSetter) -> RegData;
+
+    fn toGetterSetter(data: RegData) -> GetterSetter {
+        assert RegData::isGetterSetter(data);
+        let gs = (unsafe { RegData::toGetterSetterUnchecked(data) });
+        assume (unsafe { RegData::fromGetterSetterUnchecked(gs) }) == data;
+        gs
+    }
+
+    unsafe fn toGetterSetterUnchecked(data: RegData) -> GetterSetter;
 
     fn isStackIndex(data: RegData) -> Bool {
         RegData::typeOf(data) == RegDataType::StackIndex
@@ -447,6 +518,42 @@ impl Value {
 
     unsafe fn toDoubleUnchecked(value: Value) -> Float64;
 
+    fn isPrivate(value: Value) -> Bool {
+        let result = (unsafe { Value::isPrivateUnchecked(value) });
+
+        if result {
+            assume Value::isDouble(value);
+
+            let ptr = (unsafe { Value::toPrivateUnchecked(value) });
+            assume ptr <= 18444492278190833663_u64;
+        }
+
+        result
+    }
+
+    #[spec]
+    unsafe fn isPrivateUnchecked(value: Value) -> Bool;
+
+    fn fromPrivate(ptr: UInt64) -> Value {
+        // JSVAL_SHIFTED_TAG_MAX_DOUBLE = ((uint64_t(JSVAL_TAG_MAX_DOUBLE) << JSVAL_TAG_SHIFT) | 0xFFFFFFFF)
+        assert ptr <= 18444492278190833663_u64;
+        let value = (unsafe { Value::fromPrivateUnchecked(ptr) });
+        assume Value::isPrivate(value);
+        assume (unsafe { Value::toPrivateUnchecked(value) }) == ptr;
+        value
+    }
+
+    unsafe fn fromPrivateUnchecked(ptr: UInt64) -> Value;
+
+    fn toPrivate(value: Value) -> UInt64 {
+        assert Value::isPrivate(value);
+        let ptr = (unsafe { Value::toPrivateUnchecked(value) });
+        assume (unsafe { Value::fromPrivateUnchecked(ptr) }) == value;
+        ptr
+    }
+
+    unsafe fn toPrivateUnchecked(value: Value) -> UInt64;
+
     fn isInt32(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Int32
     }
@@ -507,13 +614,13 @@ impl Value {
         Value::typeOf(value) == ValueType::Null
     }
 
-    fn getUndefined() -> Value {
-        let value = (unsafe { Value::getUndefinedUnchecked() });
+    fn undefined() -> Value {
+        let value = (unsafe { Value::undefinedUnchecked() });
         assume Value::isUndefined(value);
         value
     }
 
-    unsafe fn getUndefinedUnchecked() -> Value;
+    unsafe fn undefinedUnchecked() -> Value;
 
     fn isUndefined(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::Undefined
@@ -589,6 +696,17 @@ impl Value {
 
     unsafe fn toSymbolUnchecked(value: Value) -> Symbol;
 
+    fn isPrivateGCThing(value: Value) -> Bool {
+        Value::typeOf(value) == ValueType::PrivateGCThing
+    }
+
+    fn toPrivateGCThing(value: Value) -> Cell {
+        assert Value::isPrivateGCThing(value);
+        (unsafe { Value::toPrivateGCThingUnchecked(value) })
+    }
+
+    unsafe fn toPrivateGCThingUnchecked(value: Value) -> Cell;
+
     fn isBigInt(value: Value) -> Bool {
         Value::typeOf(value) == ValueType::BigInt
     }
@@ -623,7 +741,51 @@ impl Value {
     }
 }
 
-struct Object;
+struct Cell;
+
+impl Cell {
+    #[spec]
+    fn isObject(cell: Cell) -> Bool;
+
+    fn toObject(cell: Cell) -> Object {
+        assert Cell::isObject(cell);
+        (unsafe { cell as Object })
+    }
+
+    #[spec]
+    fn isGetterSetter(cell: Cell) -> Bool;
+
+    fn toGetterSetter(cell: Cell) -> GetterSetter {
+        assert Cell::isGetterSetter(cell);
+        (unsafe { cell as GetterSetter })
+    }
+
+    #[spec]
+    fn isString(cell: Cell) -> Bool;
+
+    fn toString(cell: Cell) -> String {
+        assert Cell::isString(cell);
+        (unsafe { cell as String })
+    }
+
+    #[spec]
+    fn isSymbol(cell: Cell) -> Bool;
+
+    fn toSymbol(cell: Cell) -> Symbol {
+        assert Cell::isSymbol(cell);
+        (unsafe { cell as Symbol })
+    }
+
+    #[spec]
+    fn isBigInt(cell: Cell) -> Bool;
+
+    fn toBigInt(cell: Cell) -> BigInt {
+        assert Cell::isBigInt(cell);
+        (unsafe { cell as BigInt })
+    }
+}
+
+struct Object <: Cell;
 
 impl Object {
     // #[reads(heap)]
@@ -633,6 +795,12 @@ impl Object {
     }
 
     unsafe fn shapeOfUnchecked(heap: Heap, object: Object) -> Shape;
+
+    fn isWindowProxyObject(object: Object) -> Bool {
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        class == Class::windowProxyClass()
+    }
 
     fn isNativeObject(object: Object) -> Bool {
         let shape = Object::shapeOf(object);
@@ -656,6 +824,28 @@ impl Object {
         (unsafe { object as ArgumentsObject })
     }
 
+    fn isTypedArrayObject(object: Object) -> Bool {
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        Class::isTypedArrayObject(class)
+    }
+
+    fn toTypedArrayObject(object: Object) -> TypedArrayObject {
+        assert Object::isTypedArrayObject(object);
+        (unsafe { object as TypedArrayObject })
+    }
+
+    fn isJSFunction(object: Object) -> Bool {
+        let shape = Object::shapeOf(object);
+        let class = Shape::classOf(shape);
+        Class::isJSFunction(class)
+    }
+
+    fn toJSFunction(object: Object) -> JSFunction {
+        assert Object::isJSFunction(object);
+        (unsafe { object as JSFunction })
+    }
+
     fn getFixedSlot(object: Object, slot: UInt32) -> Value {
         let nativeObject = Object::toNativeObject(object);
         NativeObject::getFixedSlot(nativeObject, slot)
@@ -664,26 +854,37 @@ impl Object {
     fn lookupPropertyPure(
         object: Object,
         key: PropertyKey,
-        out holder: MaybeNativeObject,
-        out propInfo: PropertyResult,
+        out maybeHolder: MaybeNativeObject,
+        out propResult: PropertyResult,
     ) -> Bool {
         let success = (unsafe {
-            Object::lookupPropertyPureUnchecked(object, key, out holder, out propInfo)
+            Object::lookupPropertyPureUnchecked(object, key, out maybeHolder, out propResult)
         });
 
         if success {
             assume Object::isNativeObject(object);
-            let nativeObject = Object::toNativeObject(object);
+            let object = Object::toNativeObject(object);
 
-            assume MaybeNativeObject::isNativeObject(holder);
-            let nativeHolder = MaybeNativeObject::toNativeObject(holder);
+            assume MaybeNativeObject::isNativeObject(maybeHolder);
+            let holder = MaybeNativeObject::toNativeObject(maybeHolder);
 
-            assume isCacheableProtoChain(nativeObject, nativeHolder);
+            assume isCacheableProtoChain(object, holder);
 
-            if PropertyResult::isNativeProperty(propInfo) {
-                let prop = PropertyResult::propertyInfo(propInfo);
-                if PropertyInfo::hasSlot(prop) {
-                    assume NativeObject::hasSlot(nativeHolder, PropertyInfo::slot(prop));
+            if PropertyResult::isNativeProperty(propResult) {
+                let propInfo = PropertyResult::propertyInfo(propResult);
+
+                if PropertyInfo::hasSlot(propInfo) {
+                    assume NativeObject::hasSlot(holder, PropertyInfo::slot(propInfo));
+                }
+
+                if PropertyInfo::isAccessorProperty(propInfo) {
+                    assume PropertyInfo::hasSlot(propInfo);
+                    let slotValue = NativeObject::getSlot(holder, PropertyInfo::slot(propInfo));
+
+                    assume Value::isPrivateGCThing(slotValue);
+                    let slotCell = Value::toPrivateGCThing(slotValue);
+
+                    assume Cell::isGetterSetter(slotCell);
                 }
             }
         }
@@ -695,7 +896,7 @@ impl Object {
         object: Object,
         key: PropertyKey,
         out holder: MaybeNativeObject,
-        out propInfo: PropertyResult,
+        out propResult: PropertyResult,
     ) -> Bool;
 
     // read RegData at the specified memory offset of the Object
@@ -714,37 +915,61 @@ impl Object {
     }
 }
 
-struct MaybeNativeObject;
+struct MaybeObject;
 
-impl MaybeNativeObject {
-    fn isNativeObject(maybeObject: MaybeNativeObject) -> Bool;
+impl MaybeObject {
+    fn isObject(maybeObject: MaybeObject) -> Bool;
 
-    fn none() -> MaybeNativeObject {
-        let maybeObject = (unsafe { MaybeNativeObject::noneUnchecked() });
-        assume !MaybeNativeObject::isNativeObject(maybeObject);
+    fn none() -> MaybeObject {
+        let maybeObject = (unsafe { MaybeObject::noneUnchecked() });
+        assume !MaybeObject::isObject(maybeObject);
         maybeObject
     }
 
-    unsafe fn noneUnchecked() -> MaybeNativeObject;
+    unsafe fn noneUnchecked() -> MaybeObject;
 
-    fn fromNativeObject(object: NativeObject) -> MaybeNativeObject {
-        let maybeObject = (unsafe { MaybeNativeObject::fromNativeObjectUnchecked(object) });
-        assume MaybeNativeObject::isNativeObject(maybeObject);
-        assume (unsafe { MaybeNativeObject::toNativeObjectUnchecked(maybeObject) }) == object;
+    fn fromObject(object: Object) -> MaybeObject {
+        let maybeObject = (unsafe { MaybeObject::fromObjectUnchecked(object) });
+        assume MaybeObject::isObject(maybeObject);
+        assume (unsafe { MaybeObject::toObjectUnchecked(maybeObject) }) == object;
         maybeObject
     }
 
-    unsafe fn fromNativeObjectUnchecked(object: NativeObject) -> MaybeNativeObject;
+    unsafe fn fromObjectUnchecked(object: Object) -> MaybeObject;
 
-    fn toNativeObject(maybeObject: MaybeNativeObject) -> NativeObject {
-        assert MaybeNativeObject::isNativeObject(maybeObject);
-        let object = (unsafe { MaybeNativeObject::toNativeObjectUnchecked(maybeObject) });
-        assume (unsafe { MaybeNativeObject::fromNativeObjectUnchecked(object) }) == maybeObject;
+    fn toObject(maybeObject: MaybeObject) -> Object {
+        assert MaybeObject::isObject(maybeObject);
+        let object = (unsafe { MaybeObject::toObjectUnchecked(maybeObject) });
+        assume (unsafe { MaybeObject::fromObjectUnchecked(object) }) == maybeObject;
         object
     }
 
-    fn toNativeObjectUnchecked(maybeObject: MaybeNativeObject) -> NativeObject;
+    fn toObjectUnchecked(maybeObject: MaybeObject) -> Object;
 }
+
+fn isWindow(object: Object) -> Bool;
+
+fn ObjectHasGetterSetterPure(
+    cx: JSContext,
+    object: Object,
+    key: PropertyKey,
+    gs: GetterSetter,
+) -> Bool {
+    if !Object::isNativeObject(object) || Object::isWindowProxyObject(object) {
+        return false;
+    }
+
+    assert Object::isNativeObject(object);
+
+    unsafe { ObjectHasGetterSetterPureUnchecked(cx, object, key, gs) }
+}
+
+unsafe fn ObjectHasGetterSetterPureUnchecked(
+    cx: JSContext,
+    object: Object,
+    key: PropertyKey,
+    gs: GetterSetter,
+) -> Bool;
 
 struct NativeObject <: Object;
 
@@ -783,13 +1008,26 @@ impl NativeObject {
         Shape::hasDynamicSlot(Object::shapeOf(nativeObject), slot)
     }
 
+    fn dynamicSlotIndex(nativeObject: NativeObject, slot: UInt32) -> UInt32 {
+        slot - NativeObject::numFixedSlots(nativeObject)
+    }
+
     fn offsetOfFixedSlot(slot: UInt32) -> UInt64 {
         NativeObject::offsetOfFixedSlots + slot * Value::sizeOf
     }
 
     fn getFixedSlot(nativeObject: NativeObject, slot: UInt32) -> Value {
         assert NativeObject::hasFixedSlot(nativeObject, slot);
-        (unsafe { NativeObject::getFixedSlotUnchecked(heap, nativeObject, slot) })
+
+        let slotValue = (unsafe { NativeObject::getFixedSlotUnchecked(heap, nativeObject, slot) });
+
+        if Object::isTypedArrayObject(nativeObject) {
+            if slot == ArrayBufferViewObject::lengthSlot {
+                assume Value::isPrivate(slotValue);
+            }
+        }
+
+        slotValue
     }
 
     // #[reads(heap)]
@@ -803,6 +1041,26 @@ impl NativeObject {
     }
 
     unsafe fn getSlotsUnchecked(heap: Heap, nativeObject: NativeObject) -> NativeObjectSlots;
+
+    fn getSlot(nativeObject: NativeObject, slot: UInt32) -> Value {
+        if NativeObject::hasFixedSlot(nativeObject, slot) {
+            return NativeObject::getFixedSlot(nativeObject, slot);
+        }
+        NativeObjectSlots::getDynamicSlot(
+            NativeObject::getSlots(nativeObject), 
+            NativeObject::dynamicSlotIndex(nativeObject, slot),
+        )
+    }
+
+    fn getGetterSetter(nativeObject: NativeObject, slot: UInt32) -> GetterSetter {
+        let value = NativeObject::getSlot(nativeObject, slot);
+        let cell = Value::toPrivateGCThing(value);
+        Cell::toGetterSetter(cell)
+    }
+
+    fn getGetter(nativeObject: NativeObject, slot: UInt32) -> MaybeObject {
+        GetterSetter::getter(NativeObject::getGetterSetter(nativeObject, slot))
+    }
 
     fn getElementsHeader(nativeObject: NativeObject) -> NativeObjectElements {
         (unsafe { NativeObject::getElementsHeaderUnchecked(heap, nativeObject) } )
@@ -850,6 +1108,8 @@ impl NativeObjectSlots {
         (unsafe { NativeObjectSlots::getDynamicSlotUnchecked(heap, slots, slot) } )
     }
 
+    // #[reads(heap)]
+    // unsafe fn getDynamicSlotUnchecked(slots: NativeObjectSlots, slot: UInt32) -> Value;
     unsafe fn getDynamicSlotUnchecked(heap: Heap, slots: NativeObjectSlots, slot: UInt32) ->
     Value;
 
@@ -912,37 +1172,192 @@ impl NativeObjectElements {
     }
 }
 
+struct MaybeNativeObject;
+
+impl MaybeNativeObject {
+    fn isNativeObject(maybeNativeObject: MaybeNativeObject) -> Bool;
+
+    fn none() -> MaybeNativeObject {
+        let maybeNativeObject = (unsafe { MaybeNativeObject::noneUnchecked() });
+        assume !MaybeNativeObject::isNativeObject(maybeNativeObject);
+        maybeNativeObject
+    }
+
+    unsafe fn noneUnchecked() -> MaybeNativeObject;
+
+    fn fromNativeObject(nativeObject: NativeObject) -> MaybeNativeObject {
+        let maybeNativeObject = (unsafe {
+            MaybeNativeObject::fromNativeObjectUnchecked(nativeObject)
+        });
+        assume MaybeNativeObject::isNativeObject(maybeNativeObject);
+        assume (unsafe {
+            MaybeNativeObject::toNativeObjectUnchecked(maybeNativeObject)
+        }) == nativeObject;
+        maybeNativeObject
+    }
+
+    unsafe fn fromNativeObjectUnchecked(nativeObject: NativeObject) -> MaybeNativeObject;
+
+    fn toNativeObject(maybeNativeObject: MaybeNativeObject) -> NativeObject {
+        assert MaybeNativeObject::isNativeObject(maybeNativeObject);
+        let nativeObject = (unsafe {
+            MaybeNativeObject::toNativeObjectUnchecked(maybeNativeObject)
+        });
+        assume (unsafe {
+            MaybeNativeObject::fromNativeObjectUnchecked(nativeObject)
+        }) == maybeNativeObject;
+        nativeObject
+    }
+
+    fn toNativeObjectUnchecked(maybeNativeObject: MaybeNativeObject) -> NativeObject;
+}
+
+enum FunctionKind {
+    NormalFunction,
+    Arrow,
+    Method,
+    ClassConstructor,
+    Getter,
+    Setter,
+    AsmJS,
+    Wasm,
+}
+
+struct FunctionFlags;
+
+impl FunctionFlags {
+    fn kind(flags: FunctionFlags) -> FunctionKind;
+
+    fn isInterpreted(flags: FunctionFlags) -> Bool {
+        FunctionFlags::hasBaseScript(flags) || FunctionFlags::hasSelfHostedLazyScript(flags)
+    }
+
+    fn isNativeFunction(flags: FunctionFlags) -> Bool {
+        !FunctionFlags::isInterpreted(flags)
+    }
+
+    fn isWasm(flags: FunctionFlags) -> Bool {
+        let result = FunctionFlags::kind(flags) == FunctionKind::Wasm;
+        if result {
+            assume FunctionFlags::isNativeFunction(flags);
+        }
+        result
+    }
+
+    fn isWasmWithJitEntry(flags: FunctionFlags) -> Bool {
+        let result = (unsafe { FunctionFlags::isWasmWithJitEntryUnchecked(flags) });
+        if result {
+            assume FunctionFlags::isWasm(flags);
+        }
+        result
+    }
+
+    unsafe fn isWasmWithJitEntryUnchecked(flags: FunctionFlags) -> Bool;
+
+    fn isNativeWithoutJitEntry(flags: FunctionFlags) -> Bool {
+        let result = !FunctionFlags::hasJitEntry(flags);
+        if result {
+            assert FunctionFlags::isNativeFunction(flags);
+        }
+        result
+    }
+
+    fn hasJitEntry(flags: FunctionFlags) -> Bool {
+        FunctionFlags::hasBaseScript(flags) ||
+            FunctionFlags::hasSelfHostedLazyScript(flags) ||
+            FunctionFlags::isWasmWithJitEntry(flags)
+    }
+
+    fn hasBaseScript(flags: FunctionFlags) -> Bool;
+    fn hasSelfHostedLazyScript(flags: FunctionFlags) -> Bool;
+
+    fn isClassConstructor(flags: FunctionFlags) -> Bool {
+        FunctionFlags::kind(flags) == FunctionKind::ClassConstructor
+    }
+}
+
 struct JSFunction <: NativeObject;
 
 impl JSFunction {
-    var rawClass : Class;
-
     fn class() -> Class {
-        assume Class::isNativeObject(JSFunction::rawClass);
-        JSFunction::rawClass
+        let class = (unsafe { JSFunction::classUnchecked() });
+        assume Class::isNativeObject(class);
+        class
     }
+
+    unsafe fn classUnchecked() -> Class;
+
+    fn extendedClass() -> Class {
+        let extendedClass = (unsafe { JSFunction::extendedClassUnchecked() });
+        assume Class::isNativeObject(extendedClass);
+        extendedClass
+    }
+
+    unsafe fn extendedClassUnchecked() -> Class;
+
+    // #[reads(heap)]
+    // fn flags(function: JSFunction) -> FunctionFlags;
+
+    fn flags(function: JSFunction) -> FunctionFlags {
+        unsafe { JSFunction::flagsUnchecked(heap, function) }
+    }
+
+    unsafe fn flagsUnchecked(heap: Heap, function: JSFunction) -> FunctionFlags;
+
+    fn isNativeFunction(function: JSFunction) -> Bool {
+        FunctionFlags::isNativeFunction(JSFunction::flags(function))
+    }
+
+    fn isNativeWithoutJitEntry(function: JSFunction) -> Bool {
+        FunctionFlags::isNativeWithoutJitEntry(JSFunction::flags(function))
+    }
+
+    fn hasJitEntry(function: JSFunction) -> Bool {
+        FunctionFlags::hasJitEntry(JSFunction::flags(function))
+    }
+
+    fn isClassConstructor(function: JSFunction) -> Bool {
+        FunctionFlags::isClassConstructor(JSFunction::flags(function))
+    }
+
+    fn native(function: JSFunction) -> JSNative {
+        assert JSFunction::isNativeFunction(function);
+        unsafe { JSFunction::nativeUnchecked(heap, function) }
+    }
+
+    // #[reads(heap)]
+    // unsafe fn nativeUnchecked(function: JSFunction) -> JSNative;
+    unsafe fn nativeUnchecked(heap: Heap, function: JSFunction) -> JSNative;
+}
+
+struct JSNative;
+
+impl JSNative {
+    fn fromAddr(addr: UInt64) -> JSNative;
 }
 
 struct ArrayObject <: NativeObject;
 
 impl ArrayObject {
-    var rawClass : Class;
-
     fn class() -> Class {
-        assume Class::isNativeObject(ArrayObject::rawClass);
-        ArrayObject::rawClass
+        let class = (unsafe { ArrayObject::classUnchecked() });
+        assume Class::isNativeObject(class);
+        class
     }
+
+    unsafe fn classUnchecked() -> Class;
 }
 
 struct PlainObject <: NativeObject;
 
 impl PlainObject {
-    var rawClass : Class;
-
     fn class() -> Class {
-        assume Class::isNativeObject(PlainObject::rawClass);
-        PlainObject::rawClass
+        let class = (unsafe { PlainObject::classUnchecked() });
+        assume Class::isNativeObject(class);
+        class
     }
+
+    unsafe fn classUnchecked() -> Class;
 }
 
 struct ArrayBufferObjectMaybeShared <: NativeObject;
@@ -950,36 +1365,58 @@ struct ArrayBufferObjectMaybeShared <: NativeObject;
 struct ArrayBufferObject <: ArrayBufferObjectMaybeShared;
 
 impl ArrayBufferObject {
-    var rawClass : Class;
-
     fn class() -> Class {
-        assume Class::isNativeObject(ArrayBufferObject::rawClass);
-        ArrayBufferObject::rawClass
+        let class = (unsafe { ArrayBufferObject::classUnchecked() });
+        assume Class::isNativeObject(class);
+        class
     }
+
+    unsafe fn classUnchecked() -> Class;
 }
 
 struct SharedArrayBufferObject <: ArrayBufferObjectMaybeShared;
 
 impl SharedArrayBufferObject {
-    var rawClass : Class;
-
     fn class() -> Class {
-        assume Class::isNativeObject(SharedArrayBufferObject::rawClass);
-        SharedArrayBufferObject::rawClass
+        let class = (unsafe { SharedArrayBufferObject::classUnchecked() });
+        assume Class::isNativeObject(class);
+        class
     }
+
+    unsafe fn classUnchecked() -> Class;
 }
 
 struct ArrayBufferViewObject <: NativeObject;
 
+impl ArrayBufferViewObject {
+    var lengthSlot: UInt32 = 1_u32;
+    var reservedSlots: UInt32 = 4_u32;
+
+    fn lengthOffset() -> Int32 {
+        NativeObject::offsetOfFixedSlot(ArrayBufferViewObject::lengthSlot) as Int32
+    }
+}
+
+struct TypedArrayObject <: ArrayBufferViewObject;
+
+impl TypedArrayObject {
+    var lengthGetter: JSNative;
+
+    fn isOriginalLengthGetter(native: JSNative) -> Bool {
+        native == TypedArrayObject::lengthGetter
+    }
+}
+
 struct DataViewObject <: ArrayBufferViewObject;
 
 impl DataViewObject {
-    var rawClass : Class;
-
     fn class() -> Class {
-        assume Class::isNativeObject(DataViewObject::rawClass);
-        DataViewObject::rawClass
+        let class = (unsafe { DataViewObject::classUnchecked() });
+        assume Class::isNativeObject(class);
+        class
     }
+
+    unsafe fn classUnchecked() -> Class;
 }
 
 struct ArgumentsObject <: NativeObject;
@@ -1041,45 +1478,49 @@ impl ArgumentsData {
 struct UnmappedArgumentsObject <: ArgumentsObject;
 
 impl UnmappedArgumentsObject {
-    var rawClass : Class;
-
     fn class() -> Class {
-        assume Class::isNativeObject(UnmappedArgumentsObject::rawClass);
-        UnmappedArgumentsObject::rawClass
+        let class = (unsafe { UnmappedArgumentsObject::classUnchecked() });
+        assume Class::isNativeObject(class);
+        class
     }
+
+    unsafe fn classUnchecked() -> Class;
 }
 
 struct MappedArgumentsObject <: ArgumentsObject;
 
 impl MappedArgumentsObject {
-    var rawClass: Class;
-
     fn class() -> Class {
-        assume Class::isNativeObject(MappedArgumentsObject::rawClass);
-        MappedArgumentsObject::rawClass
+        let class = (unsafe { MappedArgumentsObject::classUnchecked() });
+        assume Class::isNativeObject(class);
+        class
     }
+
+    unsafe fn classUnchecked() -> Class;
 }
 
 struct SetObject <: NativeObject;
 
 impl SetObject {
-    var rawClass: Class;
-
     fn class() -> Class {
-        assume Class::isNativeObject(SetObject::rawClass);
-        SetObject::rawClass
+        let class = (unsafe { SetObject::classUnchecked() });
+        assume Class::isNativeObject(class);
+        class
     }
+
+    unsafe fn classUnchecked() -> Class;
 }
 
 struct MapObject <: NativeObject;
 
 impl MapObject {
-    var rawClass: Class;
-
     fn class() -> Class {
-        assume Class::isNativeObject(MapObject::rawClass);
-        MapObject::rawClass
+        let class = (unsafe { MapObject::classUnchecked() });
+        assume Class::isNativeObject(class);
+        class
     }
+
+    unsafe fn classUnchecked() -> Class;
 }
 
 struct PropertyKey;
@@ -1087,6 +1528,11 @@ struct PropertyKey;
 impl PropertyKey {
     fn isString(key: PropertyKey) -> Bool;
     fn isSymbol(key: PropertyKey) -> Bool;
+
+    fn isAtom(key: PropertyKey) -> Bool {
+        // All string PropertyKeys are actually atomized.
+        PropertyKey::isString(key)
+    }
 
     fn nameOrSymbolFromValue(value: Value, out key: PropertyKey, out nameOrSymbol: Bool) -> Bool {
         let success = (unsafe {
@@ -1127,6 +1573,10 @@ impl PropertyInfo {
 
     fn isCustomDataProperty(info: PropertyInfo) -> Bool {
         PropertyFlags::isCustomDataProperty(PropertyInfo::flags(info))
+    }
+
+    fn isAccessorProperty(info: PropertyInfo) -> Bool {
+        PropertyFlags::isAccessorProperty(PropertyInfo::flags(info))
     }
 
     fn hasSlot(info: PropertyInfo) -> Bool {
@@ -1245,7 +1695,14 @@ impl Shape {
 
     fn numFixedSlots(shape: Shape) -> UInt32 {
         let numFixedSlots = unsafe { Shape::numFixedSlotsUnchecked(shape) };
+
         assume numFixedSlots < Shape::numFixedSlotsLimit;
+
+        let class = Shape::classOf(shape);
+        if Class::isTypedArrayObject(class) {
+            assume numFixedSlots >= ArrayBufferViewObject::reservedSlots;
+        }
+
         numFixedSlots
     }
 
@@ -1254,7 +1711,14 @@ impl Shape {
     #[inline]
     fn slotSpan(shape: Shape) -> UInt32 {
         let slotSpan = unsafe { Shape::slotSpanUnchecked(shape) };
+
         assume slotSpan < Shape::slotSpanLimit;
+
+        let class = Shape::classOf(shape);
+        if Class::isTypedArrayObject(class) {
+            assume slotSpan >= ArrayBufferViewObject::reservedSlots;
+        }
+
         slotSpan
     }
 
@@ -1285,13 +1749,32 @@ impl Class {
     fn isNativeObject(class: Class) -> Bool;
     fn isProxyObject(class: Class) -> Bool;
 
+    fn isTypedArrayObject(class: Class) -> Bool {
+        let result = (unsafe { Class::isTypedArrayObjectUnchecked(class) });
+        if result {
+            assume Class::isNativeObject(class);
+        }
+        result
+    }
+
+    unsafe fn isTypedArrayObjectUnchecked(class: Class) -> Bool;
+
     fn isArgumentsObject(class: Class) -> Bool {
-        class == MappedArgumentsObject::class() ||
-            class == UnmappedArgumentsObject::class()
+        class == MappedArgumentsObject::class() || class == UnmappedArgumentsObject::class()
+    }
+
+    fn isJSFunction(class: Class) -> Bool {
+        class == JSFunction::class() || class == JSFunction::extendedClass()
     }
 }
 
-struct String;
+struct GetterSetter <: Cell;
+
+impl GetterSetter {
+    fn getter(gs: GetterSetter) -> MaybeObject;
+}
+
+struct String <: Cell;
 
 impl String {
     fn fromAddr(addr: UInt64) -> String;
@@ -1311,9 +1794,9 @@ fn equalStringsHelperPure(str1: String, str2: String) -> Bool;
 
 struct Atom <: String;
 
-struct Symbol;
+struct Symbol <: Cell;
 
-struct BigInt;
+struct BigInt <: Cell;
 
 #[spec]
 enum ProtoTag {

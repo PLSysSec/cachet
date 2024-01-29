@@ -33,8 +33,6 @@ pub enum TypeCheckError {
     OpReturnsValue { op: Path, ret_span: Span },
     #[error("op `{op}` is missing a body")]
     MissingOpBody { op: Path, body_span: Span },
-    #[error("function `{fn_}` with explicit emits is missing a body")]
-    MissingEmitsFnBody { fn_: Spanned<Path> },
     #[error("can't jump to label `{label}`")]
     GotoIrMismatch {
         label: Spanned<Ident>,
@@ -187,7 +185,6 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::OpHasExplicitEmits { op, .. } => op.span,
             TypeCheckError::OpReturnsValue { ret_span, .. } => *ret_span,
             TypeCheckError::MissingOpBody { body_span, .. } => *body_span,
-            TypeCheckError::MissingEmitsFnBody { fn_, .. } => fn_.span,
             TypeCheckError::GotoIrMismatch { label, .. } => label.span,
             TypeCheckError::BindIrMismatch { label, .. } => label.span,
             TypeCheckError::EmitIrMismatch { op, .. } => op.span,
@@ -251,9 +248,6 @@ impl FrontendError for TypeCheckError {
             | TypeCheckError::OpReturnsValue { .. }
             | TypeCheckError::MissingOpBody { .. } => {
                 "allowed for functions but not for ops".to_owned()
-            }
-            TypeCheckError::MissingEmitsFnBody { .. } => {
-                "allowed for functions without explicit emits annotation".to_owned()
             }
             TypeCheckError::GotoIrMismatch {
                 callable,
@@ -466,7 +460,6 @@ impl FrontendError for TypeCheckError {
             TypeCheckError::OpReturnsValue { .. } => (),
             TypeCheckError::ReturnOutsideCallable { .. } => (),
             TypeCheckError::MissingOpBody { .. } => (),
-            TypeCheckError::MissingEmitsFnBody { .. } => (),
             TypeCheckError::MutGlobalVarWithValue { .. } => (),
             TypeCheckError::GotoIrMismatch {
                 callable,

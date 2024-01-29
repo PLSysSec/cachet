@@ -9,36 +9,125 @@ enum NativeGetPropKind {
 }
 
 fn canAttachNativeGetProp(
-    object: Object, key: PropertyKey, out holder: MaybeNativeObject, out propInfo: MaybePropertyInfo
+    object: Object, key: PropertyKey,
+    out maybeHolder: MaybeNativeObject,
+    out maybePropInfo: MaybePropertyInfo,
 ) -> NativeGetPropKind {
     assert PropertyKey::isString(key) || PropertyKey::isSymbol(key);
 
-    if !Object::lookupPropertyPure(object, key, out holder, out let prop) {
+    if !Object::lookupPropertyPure(object, key, out maybeHolder, out let propResult) {
         return NativeGetPropKind::None;
     }
 
-    let nativeObject = Object::toNativeObject(object);
+    let object = Object::toNativeObject(object);
 
-    if PropertyResult::isNativeProperty(prop) {
-        propInfo = MaybePropertyInfo::fromPropertyInfo(PropertyResult::propertyInfo(prop));
+    if PropertyResult::isNativeProperty(propResult) {
+        let propInfo = PropertyResult::propertyInfo(propResult);
+        maybePropInfo = MaybePropertyInfo::fromPropertyInfo(propInfo);
 
-        if isCacheableGetPropSlot(
-            nativeObject, MaybeNativeObject::toNativeObject(holder),
-            MaybePropertyInfo::toPropertyInfo(propInfo)
-        ) {
+        let holder = MaybeNativeObject::toNativeObject(maybeHolder);
+
+        if isCacheableGetPropSlot(object, holder, propInfo) {
             return NativeGetPropKind::Slot;
         }
 
-        return NativeGetPropKind::None;
+        return isCacheableGetPropCall(object, holder, propInfo);
     }
 
-    propInfo = MaybePropertyInfo::none();
+    maybePropInfo = MaybePropertyInfo::none();
     return NativeGetPropKind::None;
 }
 
 fn isCacheableProtoChain(object: NativeObject, holder: NativeObject) -> Bool;
 
-fn isCacheableGetPropSlot(object: NativeObject, holder: NativeObject, prop: PropertyInfo) -> Bool {
+fn isCacheableGetPropSlot(
+    object: NativeObject,
+    holder: NativeObject,
+    propInfo: PropertyInfo,
+) -> Bool {
     assert isCacheableProtoChain(object, holder);
-    PropertyInfo::isDataProperty(prop)
+    PropertyInfo::isDataProperty(propInfo)
 }
+
+fn isCacheableGetPropCall(
+    object: NativeObject,
+    holder: NativeObject,
+    propInfo: PropertyInfo,
+) -> NativeGetPropKind {
+    assert isCacheableProtoChain(object, holder);
+
+    if !PropertyInfo::isAccessorProperty(propInfo) {
+        return NativeGetPropKind::None;
+    }
+    let maybeGetterObject = NativeObject::getGetter(holder, PropertyInfo::slot(propInfo));
+
+    if !MaybeObject::isObject(maybeGetterObject) {
+        return NativeGetPropKind::None;
+    }
+    let getterObject = MaybeObject::toObject(maybeGetterObject);
+
+    if !Object::isJSFunction(getterObject) {
+        return NativeGetPropKind::None;
+    }
+    let getter = Object::toJSFunction(getterObject);
+
+    if JSFunction::isClassConstructor(getter) {
+        return NativeGetPropKind::None;
+    }
+
+    // Scripted functions and natives with JIT entry can use the scripted path.
+    if JSFunction::hasJitEntry(getter) {
+      return NativeGetPropKind::ScriptedGetter;
+    }
+
+    assert JSFunction::isNativeWithoutJitEntry(getter);
+    return NativeGetPropKind::NativeGetter;
+}
+
+// NOTE: This function is set up like it was as of bug 1685925 for the purposes
+// of reproducing that bug.
+fn emitCallGetterResultGuards(
+    object: NativeObject,
+    holder: NativeObject,
+    key: PropertyKey,
+    propInfo: PropertyInfo,
+    objectId: ObjectId,
+    mode: ICMode,
+) emits CacheIR {
+    // Use the megamorphic guard if we're in megamorphic mode, except if |obj|
+    // is a Window as GuardHasGetterSetter doesn't support this yet (Window may
+    // require outerizing).
+    if mode == ICMode::Specialized || isWindow(object) {
+        testMatchingNativeReceiver(object, objectId);
+        
+        if (object != holder) {
+            generatePrototypeGuards(object, holder, objectId);
+
+            // Guard on the holder's shape.
+            let holderId = CacheIR::newObjectId();
+            let holderField = CacheIR::writeObjectField(holder);
+            emit CacheIR::LoadObject(holderId, holderField);
+            testMatchingHolder(holder, holderId);
+        }
+    } else {
+        let gs = NativeObject::getGetterSetter(holder, PropertyInfo::slot(propInfo));
+
+        let idField = CacheIR::writeIdField(key);
+        let gsField = CacheIR::writeGetterSetterField(gs);
+        emit CacheIR::GuardHasGetterSetter(objectId, idField, gsField);
+    }
+}
+
+fn testMatchingNativeReceiver(object: NativeObject, objectId: ObjectId) emits CacheIR {
+    let shape = Object::shapeOf(object);
+    let shapeField = CacheIR::writeShapeField(shape);
+    emit CacheIR::GuardShape(objectId, shapeField);
+}
+
+fn testMatchingHolder(object: NativeObject, objectId: ObjectId) emits CacheIR {
+    let shape = Object::shapeOf(object);
+    let shapeField = CacheIR::writeShapeField(shape);
+    emit CacheIR::GuardShape(objectId, shapeField);
+}
+
+fn generatePrototypeGuards(object: Object, holder: NativeObject, objectId: ObjectId) emits CacheIR;

@@ -2,6 +2,12 @@
 
 import "./masm.cachet";
 
+enum ICMode {
+    Specialized,
+    Megamorphic,
+    Generic,
+}
+
 enum OperandLocationKind {
     Uninitialized,
     PayloadReg,
@@ -435,39 +441,98 @@ impl FailurePath {
 }
 
 ir CacheIR emits MASM {
-    // TODO(spinda): Some slightly hacky helper functions for the codegen demo.
-
+    #[refined]
     fn initStub() {
         initRegState();
     }
 
+    #[spec]
+    var mut nextOperandId: UInt16;
+
+    #[spec]
+    fn takeNextOperandId() -> UInt16 {
+        let id = CacheIR::nextOperandId;
+        CacheIR::nextOperandId = CacheIR::nextOperandId + 1_u16;
+        id
+    }
+
+    #[refined]
     fn defineInputValueId() -> ValueId {
-        let valueId = ValueId::fromId(0_u16);
-        initOperandId(valueId);
+        let valueId = CacheIR::newValueId();
         initInputValueId(valueId);
         valueId
     }
 
+    #[refined]
+    fn newValueId() -> ValueId {
+        let valueId = ValueId::fromId(CacheIR::takeNextOperandId());
+        initOperandId(valueId);
+        valueId
+    }
+
+    #[refined]
+    fn newObjectId() -> ObjectId {
+        let objectId = ObjectId::fromId(CacheIR::takeNextOperandId());
+        initOperandId(objectId);
+        objectId
+    }
+
+    #[refined]
     fn newInt32Id() -> Int32Id {
-        let int32Id = Int32Id::fromId(1_u16);
+        let int32Id = Int32Id::fromId(CacheIR::takeNextOperandId());
         initOperandId(int32Id);
         int32Id
     }
 
+    #[refined]
     fn setValueOutput() {
         initValueOutput();
     }
 
+    #[spec]
+    var mut nextFieldOffset: UInt32;
+
+    #[spec]
+    fn takeNextFieldOffset() -> UInt32 {
+        let offset = CacheIR::nextFieldOffset;
+        // All stub fields are 8 bytes on x64.
+        CacheIR::nextFieldOffset = CacheIR::nextFieldOffset + 8_u32;
+        offset
+    }
+
+    #[refined]
     fn writeInt32Field(int32: Int32) -> Int32Field {
-        let int32Field = Int32Field::fromOffset(8_u32);
+        let int32Field = Int32Field::fromOffset(CacheIR::takeNextFieldOffset());
         assume CacheIR::readInt32Field(int32Field) == int32;
         int32Field
     }
 
+    #[refined]
     fn writeShapeField(shape: Shape) -> ShapeField {
-        let shapeField = ShapeField::fromOffset(8_u32);
+        let shapeField = ShapeField::fromOffset(CacheIR::takeNextFieldOffset());
         assume CacheIR::readShapeField(shapeField) == shape;
         shapeField
+    }
+
+    #[refined]
+    fn writeGetterSetterField(gs: GetterSetter) -> GetterSetterField {
+        let gsField = GetterSetterField::fromOffset(CacheIR::takeNextFieldOffset());
+        assume CacheIR::readGetterSetterField(gsField) == gs;
+        gsField
+    }
+
+    #[refined]
+    fn writeObjectField(object: Object) -> ObjectField {
+        let objectField = ObjectField::fromOffset(CacheIR::takeNextFieldOffset());
+        assume CacheIR::readObjectField(objectField) == object;
+        objectField
+    }
+
+    #[refined]
+    fn writeIdField(id: PropertyKey) -> IdField {
+        let idField = IdField::fromOffset(CacheIR::takeNextFieldOffset());
+        assume CacheIR::readIdField(idField) == id;
+        idField
     }
 
     // (end slightly hacky helper functions)
@@ -984,6 +1049,27 @@ ir CacheIR emits MASM {
         CacheIR::releaseFailurePath();
     }
 
+    op GuardHasGetterSetter(objectId: ObjectId, idField: IdField, gsField: GetterSetterField) {
+        let objectReg = CacheIR::useObjectId(objectId);
+
+        let scratchReg1 = CacheIR::allocateReg();
+        let scratchReg2 = CacheIR::allocateReg();
+        let scratchReg3 = CacheIR::allocateReg();
+
+        let failure = CacheIR::addFailurePath();
+
+        let volatileRegs = LiveRegSet::new(
+            GeneralRegSet::volatile(), CacheIR::liveVolatileFloatRegs()
+        );
+        LiveRegSet::takeReg(out volatileRegs, volatileRegs, scratchReg1);
+        LiveRegSet::takeReg(out volatileRegs, volatileRegs, scratchReg2);
+
+        CacheIR::releaseReg(scratchReg1);
+        CacheIR::releaseReg(scratchReg2);
+        CacheIR::releaseReg(scratchReg3);
+        CacheIR::releaseFailurePath();
+    }
+
     op BooleanToNumber(boolId: BoolId, resultId: NumberId) {
         let boolReg = CacheIR::useBoolId(boolId);
         let resultReg = CacheIR::defineNumberId(resultId);
@@ -1106,7 +1192,7 @@ ir CacheIR emits MASM {
                 TypedOrValueReg::toValueReg(CacheIR::outputReg), done);
 
         bind hole;
-        emit MASM::MoveValueImm(Value::getUndefined(),
+        emit MASM::MoveValueImm(Value::undefined(),
                 TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         bind done;
@@ -1132,6 +1218,21 @@ ir CacheIR emits MASM {
         emit MASM::BranchTest32(Condition::Signed, scratchReg, scratchReg, failure.label_);
         emit MASM::TagValue(JSValueType::Int32, scratchReg,
                 TypedOrValueReg::toValueReg(CacheIR::outputReg));
+
+        CacheIR::releaseReg(scratchReg);
+        CacheIR::releaseFailurePath();
+    }
+
+    op LoadArrayBufferViewLengthInt32Result(objectId: ObjectId) {
+        let objectReg = CacheIR::useObjectId(objectId);
+        let scratchReg = CacheIR::allocateReg();
+
+        let failure = CacheIR::addFailurePath();
+
+        emit MASM::LoadArrayBufferViewLengthIntPtr(objectReg, scratchReg);
+        emit MASM::GuardNonNegativeIntPtrToInt32(scratchReg, failure.label_);
+        emit MASM::TagValue(JSValueType::Int32, scratchReg,
+            TypedOrValueReg::toValueReg(CacheIR::outputReg));
 
         CacheIR::releaseReg(scratchReg);
         CacheIR::releaseFailurePath();
@@ -1228,7 +1329,7 @@ ir CacheIR emits MASM {
     }
 
     op LoadUndefinedResult() {
-        let value = Value::getUndefined();
+        let value = Value::undefined();
         emit MASM::MoveValueImm(value, TypedOrValueReg::toValueReg(CacheIR::outputReg));
     }
 
@@ -1869,7 +1970,7 @@ ir CacheIR emits MASM {
         assert !CacheIR::hasAutoScratchFloatRegisterSpill;
 
         let operandId = valueId as OperandId;
-        let location = CacheIR::getOperandLocation(operandId);
+        let mut location = CacheIR::getOperandLocation(operandId);
         let locationKind = OperandLocation::kind(location);
 
         if locationKind == OperandLocationKind::ValueReg {
@@ -1877,10 +1978,14 @@ ir CacheIR emits MASM {
         } else if locationKind == OperandLocationKind::PayloadReg {
             let reg = OperandLocation::getPayloadReg(location);
             let valTy = OperandLocation::getPayloadType(location);
+
             let valueReg = CacheIR::allocateValueReg();
             emit MASM::TagValue(valTy, reg, valueReg);
-            OperandLocation::setValueReg(out location, valueReg);
             CacheIR::releaseReg(reg);
+
+            OperandLocation::setValueReg(out location, valueReg);
+            CacheIR::setOperandLocation(operandId, location);
+
             return valueReg;
         } else {
             assert false;
@@ -1897,21 +2002,25 @@ ir CacheIR emits MASM {
         assert !CacheIR::hasAutoScratchFloatRegisterSpill;
 
         let operandId = id as OperandId;
-        let location = CacheIR::getOperandLocation(operandId);
+        let mut location = CacheIR::getOperandLocation(operandId);
         let locationKind = OperandLocation::kind(location);
 
         if locationKind == OperandLocationKind::PayloadReg {
             return OperandLocation::getPayloadReg(location);
         } else if locationKind == OperandLocationKind::ValueReg {
             let valueReg = OperandLocation::getValueReg(location);
+
             CacheIR::releaseValueReg(valueReg);
             let reg = ValueReg::scratchReg(valueReg);
             // safe because we know valueReg was previously allocated with
             // allocateValueReg and is allocatable
             unsafe { CacheIR::allocateKnownReg(reg); }
+
             emit MASM::UnboxNonDouble(valueReg, reg, TypedId::type(id));
+
             OperandLocation::setPayloadReg(out location, reg, TypedId::type(id));
             CacheIR::setOperandLocation(operandId, location);
+
             return reg;
         } else {
             assert false;
@@ -2038,10 +2147,22 @@ ir CacheIR emits MASM {
         emit MASM::MovePtrImmGCPtrObject(CacheIR::readObjectField(objectField), dstReg);
     }
 
+    #[refined]
+    fn emitLoadGetterSetterStubField(gsField: GetterSetterField, dstReg: Reg) emits MASM {
+        emit MASM::MovePtrImmGCPtrGetterSetter(CacheIR::readGetterSetterField(gsField), dstReg);
+    }
+
+    #[refined]
+    fn emitLoadIdStubField(idField: IdField, dstReg: Reg) emits MASM {
+        emit MASM::MovePropertyKey(CacheIR::readIdField(idField), dstReg);
+    }
+
     fn readInt32Field(int32Field: Int32Field) -> Int32;
     fn readObjectField(objectField: ObjectField) -> Object;
     fn readStringField(stringField: StringField) -> String;
+    fn readIdField(idField: IdField) -> PropertyKey;
     fn readShapeField(shapeField: ShapeField) -> Shape;
+    fn readGetterSetterField(gsField: GetterSetterField) -> GetterSetter;
     fn readClassField(classField: ClassField) -> Class;
     fn readInt64Field(int64Field: Int64Field) -> Int64;
     fn readValueField(valueField: ValueField) -> Value;
