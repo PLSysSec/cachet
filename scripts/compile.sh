@@ -16,7 +16,7 @@ cpp_decls_file="${out_dir}/${sample_name}.h"
 cpp_defs_file="${out_dir}/${sample_name}.inc"
 bpl_file="${out_dir}/${sample_name}.bpl"
 
-cargo build --bin cachet-compiler --bin bpl-tree-shaker
+cargo build --bin cachet-compiler --bin bpl-tree-shaker --bin bpl-inliner
 echo
 
 time (
@@ -27,4 +27,5 @@ time (
     "${@}"
   cat "${hacks_bpl_file}" "${bpl_file}" | sponge "${bpl_file}"
   cargo run --quiet --bin bpl-tree-shaker -- -i "${bpl_file}" -t '#JSOp' -p '#MASM^Op'
+  cargo run --quiet --bin bpl-inliner -- -i "${bpl_file}" -p 9999
 )

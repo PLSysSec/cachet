@@ -1,18 +1,124 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
+#![feature(anonymous_lifetime_in_impl_trait)]
 #![feature(let_chains)]
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::ops::Index;
+use std::str::FromStr;
 
 use lazy_static::lazy_static;
+use num_bigint::BigUint;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::{Dfs, VisitMap, Visitable};
 
 use bpl::ast::*;
 use bpl::parser::parse_boogie_program;
 pub use bpl::parser::ParseError;
+
+lazy_static! {
+    static ref INLINE_ATTR_IDENT: Ident = Ident::from("inline");
+}
+
+pub fn inline_program<'a>(
+    src: &'a str,
+    procs_level: Option<&BigUint>,
+) -> Result<Cow<'a, str>, ParseError> {
+    let program = parse_boogie_program(src)?;
+
+    let mut spans_to_replace = Vec::new();
+    for decl in &program.decls {
+        match &decl.value {
+            Decl::Proc(proc_decl) => {
+                if let Some(procs_level) = procs_level {
+                    inline_proc_sign(&procs_level, &proc_decl.proc_sign, &mut spans_to_replace);
+                }
+            }
+            Decl::Impl(impl_decl) => {
+                if let Some(procs_level) = procs_level {
+                    inline_proc_sign(&procs_level, &impl_decl.proc_sign, &mut spans_to_replace);
+                }
+            }
+            _ => (),
+        }
+    }
+
+    Ok(replace_spans(src, spans_to_replace))
+}
+
+fn inline_proc_sign(
+    inline_level: &BigUint,
+    proc_sign: &ProcSign,
+    spans_to_replace: &mut Vec<(Span, String)>,
+) {
+    let mut max_inline_level = Cow::Borrowed(inline_level);
+
+    let mut attr_or_trigger_iter = proc_sign.attrs.iter().peekable();
+    while let Some(attr_or_trigger) = attr_or_trigger_iter.next() {
+        if let AttrOrTrigger::Attr(attr) = &attr_or_trigger.value {
+            if attr.ident == *INLINE_ATTR_IDENT {
+                if attr.params.len() == 1 {
+                    let found_inline_level_param = &attr.params[0];
+                    if let AttrParam::Expr(Expr::Nat(found_inline_level_str)) =
+                        found_inline_level_param
+                    {
+                        if let Ok(found_inline_level) = BigUint::from_str(found_inline_level_str) {
+                            if &found_inline_level >= inline_level {
+                                max_inline_level = Cow::Owned(found_inline_level);
+                            }
+                        }
+                    }
+                }
+
+                let span_start = attr_or_trigger.span.start();
+                let span_end = match attr_or_trigger_iter.peek() {
+                    Some(next_attr_or_trigger) => next_attr_or_trigger.span.start(),
+                    None => proc_sign.ident.span.start(),
+                };
+                spans_to_replace.push((Span::new(span_start, span_end), String::new()));
+            }
+        }
+    }
+
+    spans_to_replace.push((
+        Span::new(proc_sign.ident.span.start(), proc_sign.ident.span.start()),
+        format!(
+            "{} ",
+            Attr::from(AttrContent {
+                ident: *INLINE_ATTR_IDENT,
+                params: vec![AttrParam::Expr(Expr::Nat(max_inline_level.to_string()))],
+            })
+        ),
+    ));
+}
+
+fn replace_spans<'a>(src: &'a str, spans_to_replace: Vec<(Span, String)>) -> Cow<'a, str> {
+    if spans_to_replace.is_empty() {
+        return Cow::Borrowed(src);
+    }
+
+    // We should never be handling overlapping spans.
+    for span_index in 1..spans_to_replace.len() {
+        assert!(
+            spans_to_replace[span_index - 1].0.end() <= spans_to_replace[span_index].0.start()
+        );
+    }
+
+    let src_bytes = src.as_bytes();
+    let mut new_src_bytes = Vec::new();
+    let mut last_span_end = ByteIndex::default();
+    for (span, replacement) in spans_to_replace {
+        new_src_bytes.extend(&src_bytes[last_span_end.to_usize()..span.start().to_usize()]);
+        new_src_bytes.extend(replacement.into_bytes());
+        last_span_end = span.end();
+    }
+    new_src_bytes.extend(&src_bytes[last_span_end.to_usize()..]);
+    Cow::Owned(
+        String::from_utf8(new_src_bytes)
+            .expect("encoding error replacing spans in Boogie source code"),
+    )
+}
 
 pub fn shake_tree<'a>(
     src: &'a str,
@@ -40,8 +146,9 @@ pub fn shake_tree<'a>(
         }
     }
 
-    let spans_to_eliminate = find_spans_to_eliminate(&reachability_graph, &reachability_map);
-    Ok(eliminate_spans(src, &spans_to_eliminate))
+    let spans_to_replace =
+        find_spans_to_replace_for_reachability(&reachability_graph, &reachability_map);
+    Ok(replace_spans(src, spans_to_replace))
 }
 
 fn decl_is_entry_point(decl: &Decl) -> bool {
@@ -54,7 +161,10 @@ fn decl_is_entry_point(decl: &Decl) -> bool {
         _ => return false,
     };
 
-    has_attr(&proc_decl.proc_sign.attrs, *ENTRY_POINT_ATTR_IDENT)
+    has_attr(
+        proc_decl.proc_sign.attrs.iter().map(|attr| &attr.value),
+        *ENTRY_POINT_ATTR_IDENT,
+    )
 }
 
 fn decl_is_axiom(decl: &Decl) -> bool {
@@ -64,41 +174,33 @@ fn decl_is_axiom(decl: &Decl) -> bool {
     }
 }
 
-fn has_attr(attrs: &[Attr], attr_ident: Ident) -> bool {
-    attrs.iter().any(|attr| match attr {
+fn has_attr(attrs: impl IntoIterator<Item = &Attr>, attr_ident: Ident) -> bool {
+    attrs.into_iter().any(|attr| match attr {
         AttrOrTrigger::Attr(attr_content) => attr_content.ident == attr_ident,
         AttrOrTrigger::Trigger(_) => false,
     })
 }
 
-fn find_spans_to_eliminate(
+fn find_spans_to_replace_for_reachability(
     reachability_graph: &ReachabilityGraph,
     reachability_map: &ReachabilityMap,
-) -> Vec<Span> {
-    let mut spans_to_eliminate = Vec::new();
-    find_spans_to_eliminate_for_nodes(
+) -> Vec<(Span, String)> {
+    let mut spans_to_replace = Vec::new();
+    find_spans_to_replace_for_reachability_nodes(
         &reachability_graph.decl_node_indexes,
         reachability_graph,
         reachability_map,
-        &mut spans_to_eliminate,
+        &mut spans_to_replace,
     );
-    spans_to_eliminate.sort();
-
-    // We should never produce overlapping spans.
-    for span_index in 1..spans_to_eliminate.len() {
-        assert!(
-            spans_to_eliminate[span_index - 1].end() <= spans_to_eliminate[span_index].start()
-        );
-    }
-
-    spans_to_eliminate
+    spans_to_replace.sort();
+    spans_to_replace
 }
 
-fn find_spans_to_eliminate_for_nodes(
+fn find_spans_to_replace_for_reachability_nodes(
     node_indexes: &[NodeIndex],
     reachability_graph: &ReachabilityGraph,
     reachability_map: &ReachabilityMap,
-    spans_to_eliminate: &mut Vec<Span>,
+    spans_to_replace: &mut Vec<(Span, String)>,
 ) {
     let mut prev_span_end = None;
     let mut node_indexes_iter = node_indexes.iter().copied().peekable();
@@ -109,14 +211,14 @@ fn find_spans_to_eliminate_for_nodes(
             // root, then that root *must* be reachable if the parent node is
             // reachable. Otherwise, we have to check each root for
             // reachability.
-            find_spans_to_eliminate_for_nodes(
+            find_spans_to_replace_for_reachability_nodes(
                 &reachability_node.root_node_indexes,
                 reachability_graph,
                 reachability_map,
-                spans_to_eliminate,
+                spans_to_replace,
             );
         } else {
-            spans_to_eliminate.push(match prev_span_end {
+            let span_to_eliminate = match prev_span_end {
                 None => match node_indexes_iter.peek() {
                     // If this is the only node on this level, just eliminate
                     // its span.
@@ -136,30 +238,12 @@ fn find_spans_to_eliminate_for_nodes(
                 // everything from the end of the previous node's span to the
                 // end of the current node's span.
                 Some(prev_span_end) => Span::new(prev_span_end, reachability_node.span.end()),
-            });
+            };
+            spans_to_replace.push((span_to_eliminate, String::new()));
         }
 
         prev_span_end = Some(reachability_node.span.end());
     }
-}
-
-fn eliminate_spans<'a>(src: &'a str, spans_to_eliminate: &[Span]) -> Cow<'a, str> {
-    if spans_to_eliminate.is_empty() {
-        return Cow::Borrowed(src);
-    }
-
-    let src_bytes = src.as_bytes();
-    let mut remaining_src_bytes = Vec::new();
-    let mut last_span_end = ByteIndex::default();
-    for span in spans_to_eliminate {
-        remaining_src_bytes.extend(&src_bytes[last_span_end.to_usize()..span.start().to_usize()]);
-        last_span_end = span.end();
-    }
-    remaining_src_bytes.extend(&src_bytes[last_span_end.to_usize()..]);
-    Cow::Owned(
-        String::from_utf8(remaining_src_bytes)
-            .expect("encoding error eliminating spans from Boogie source code"),
-    )
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -395,7 +479,7 @@ impl<F: Fn(Ident) -> bool> ReachabilityVisitor<F> {
     fn visit_impl_decl(&mut self, impl_decl: Spanned<&ImplDecl>) {
         let mut impl_decl_visitor = self.nest_decl_with_ident(
             impl_decl.span,
-            impl_decl.value.proc_sign.ident,
+            impl_decl.value.proc_sign.ident.value,
             Namespace::Proc,
         );
         impl_decl_visitor.visit_type_params(&impl_decl.value.proc_sign.type_params);
@@ -404,13 +488,20 @@ impl<F: Fn(Ident) -> bool> ReachabilityVisitor<F> {
         impl_decl_visitor
             .visit_attr_typed_idents_wheres(&impl_decl.value.proc_sign.returns, Scope::Local);
         impl_decl_visitor.visit_impl_body(&impl_decl.value.impl_body);
-        impl_decl_visitor.visit_attrs(&impl_decl.value.proc_sign.attrs);
+        impl_decl_visitor.visit_attrs(
+            impl_decl
+                .value
+                .proc_sign
+                .attrs
+                .iter()
+                .map(|attr| &attr.value),
+        );
     }
 
     fn visit_proc_decl(&mut self, proc_decl: Spanned<&ProcDecl>) {
         let mut proc_decl_visitor = self.nest_decl_with_ident(
             proc_decl.span,
-            proc_decl.value.proc_sign.ident,
+            proc_decl.value.proc_sign.ident.value,
             Namespace::Proc,
         );
         proc_decl_visitor.visit_type_params(&proc_decl.value.proc_sign.type_params);
@@ -424,7 +515,14 @@ impl<F: Fn(Ident) -> bool> ReachabilityVisitor<F> {
         if let Some(impl_body) = &proc_decl.value.impl_body {
             proc_decl_visitor.visit_impl_body(impl_body);
         }
-        proc_decl_visitor.visit_attrs(&proc_decl.value.proc_sign.attrs);
+        proc_decl_visitor.visit_attrs(
+            proc_decl
+                .value
+                .proc_sign
+                .attrs
+                .iter()
+                .map(|attr| &attr.value),
+        );
     }
 
     fn visit_type_decls(&mut self, type_decls: Spanned<&TypeDecls>) {
@@ -1053,8 +1151,8 @@ impl<'a, F> NestedReachabilityVisitor<'a, F> {
         );
     }
 
-    fn visit_attrs(&mut self, attrs: &[Attr]) {
-        for attr in attrs {
+    fn visit_attrs(&mut self, attrs: impl IntoIterator<Item = &Attr>) {
+        for attr in attrs.into_iter() {
             self.visit_attr(attr);
         }
     }

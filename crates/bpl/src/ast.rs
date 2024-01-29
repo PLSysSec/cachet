@@ -618,8 +618,8 @@ impl From<MapType> for VarOrType {
 /// ```
 #[derive(Clone, Debug)]
 pub struct ProcSign {
-    pub attrs: Vec<Attr>,
-    pub ident: Ident,
+    pub attrs: Vec<Spanned<Attr>>,
+    pub ident: Spanned<Ident>,
     pub type_params: TypeParams,
     pub var_params: AttrTypedIdentsWheres,
     pub returns: AttrTypedIdentsWheres,

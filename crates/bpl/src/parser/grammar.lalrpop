@@ -89,8 +89,9 @@ VarOrType: VarOrType =
     <attrs:Attr*> <var:(<Ident> ":")?> <type_:Type> => VarOrType { attrs, var, type_ };
 
 ProcSign: ProcSign =
-    <attrs:Attr*> <ident:Ident> <type_params:TypeParams0> "(" <var_params:AttrTypedIdentsWheres0>
-    ")" <returns:("returns" "(" <AttrTypedIdentsWheres0> ")")?> =>
+    <attrs:Spanned<Attr>*> <ident:Spanned<Ident>> <type_params:TypeParams0>
+    "(" <var_params:AttrTypedIdentsWheres0> ")"
+    <returns:("returns" "(" <AttrTypedIdentsWheres0> ")")?> =>
         ProcSign { attrs, ident, type_params, var_params, returns: returns.unwrap_or_default() };
 
 ImplBody: ImplBody =
