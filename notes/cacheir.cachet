@@ -1,6 +1,6 @@
 // vim: set tw=99 ts=4 sts=4 sw=4 et:
 
-import "./masm.cachet";
+import "masm.cachet";
 
 enum OperandLocationKind {
     Uninitialized,
@@ -435,8 +435,6 @@ impl FailurePath {
 }
 
 ir CacheIR emits MASM {
-    // TODO(spinda): Some slightly hacky helper functions for the codegen demo.
-
     fn initStub() {
         initRegState();
     }
@@ -454,9 +452,16 @@ ir CacheIR emits MASM {
         int32Id
     }
 
+    fn newNumberId() -> NumberId {
+        let numberId = NumberId::fromId(1_u16);
+        initOperandId(numberId);
+        numberId
+    }
+
     fn setValueOutput() {
         initValueOutput();
     }
+    
 
     fn writeInt32Field(int32: Int32) -> Int32Field {
         let int32Field = Int32Field::fromOffset(8_u32);

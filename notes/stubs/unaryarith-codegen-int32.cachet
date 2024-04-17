@@ -1,0 +1,44 @@
+import "../cacheir.cachet";
+import "../codegen.cachet";
+import "../js.cachet";
+import "../utils.cachet";
+
+ir UnaryArithIRGenerator emits CacheIR {
+    var value: Value;
+    var op_: JSOp;
+
+    op TryAttachInt32() {
+        initRegState();
+
+        let valueId = ValueId::fromId(0_u16);
+        initOperandId(valueId);
+        initInputValueId(valueId);
+
+        initValueOutput();
+
+        if UnaryArithIRGenerator::op_ == JSOp::BitNot {
+            return;
+        }
+
+        if (!canConvertToInt32ForToNumber(UnaryArithIRGenerator::value)) {
+           return;
+        }
+        let int32Id = emitGuardToInt32ForNumber(valueId, UnaryArithIRGenerator::value);
+
+        if UnaryArithIRGenerator::op_ == JSOp::Pos {
+            emit CacheIR::LoadInt32Result(int32Id);
+        } else if UnaryArithIRGenerator::op_ == JSOp::Neg {
+            emit CacheIR::Int32NegationResult(int32Id);
+        } else if UnaryArithIRGenerator::op_ == JSOp::Inc {
+            emit CacheIR::Int32IncResult(int32Id);
+        } else if UnaryArithIRGenerator::op_ == JSOp::Dec {
+            emit CacheIR::Int32DecResult(int32Id);
+        } else if UnaryArithIRGenerator::op_ == JSOp::ToNumeric {
+            emit CacheIR::LoadInt32Result(int32Id);
+        } else {
+            return;
+        }
+
+        emit CacheIR::ReturnFromIC();
+    }
+}

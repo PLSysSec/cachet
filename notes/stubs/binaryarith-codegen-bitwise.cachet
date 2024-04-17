@@ -1,0 +1,52 @@
+import "../cacheir.cachet";
+import "../codegen.cachet";
+import "../js.cachet";
+import "../utils.cachet";
+
+ir BinaryArithIRGenerator emits CacheIR {
+    var lhsValue: Value;
+    var rhsValue: Value;
+    var op_: JSOp;
+
+    op TryAttachBitwise() {
+        initRegState();
+
+        let lhsValueId = ValueId::fromId(0_u16);
+        initOperandId(lhsValueId);
+        initInputValueId(lhsValueId);
+
+        let rhsValueId = ValueId::fromId(1_u16);
+        initOperandId(rhsValueId);
+        initInputValueId(rhsValueId);
+
+        initValueOutput();
+
+        // Only bit-wise and shifts.
+        if BinaryArithIRGenerator::op_ != JSOp::BitOr &&
+            BinaryArithIRGenerator::op_ != JSOp::BitXor &&
+            BinaryArithIRGenerator::op_ != JSOp::BitAnd &&
+            BinaryArithIRGenerator::op_ != JSOp::Lsh &&
+            BinaryArithIRGenerator::op_ != JSOp::Rsh &&
+            BinaryArithIRGenerator::op_ != JSOp::Ursh
+        {
+            return;
+        }
+
+        // Check guard conditions.
+        if !canTruncateToInt32(BinaryArithIRGenerator::lhsValue) ||
+            !canTruncateToInt32(BinaryArithIRGenerator::rhsValue)
+        {
+            return;
+        }
+        let lhsInt32Id = emitTruncateToInt32Guard(lhsValueId, BinaryArithIRGenerator::lhsValue);
+        let rhsInt32Id = emitTruncateToInt32Guard(rhsValueId, BinaryArithIRGenerator::rhsValue);
+
+        if BinaryArithIRGenerator::op_ == JSOp::BitOr {
+            emit CacheIR::Int32BitOrResult(lhsInt32Id, rhsInt32Id);
+        } else {
+            return;
+        }
+
+        emit CacheIR::ReturnFromIC();
+    }
+}

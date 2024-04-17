@@ -1,0 +1,33 @@
+import "../cacheir.cachet";
+import "../codegen.cachet";
+import "../js.cachet";
+import "../utils.cachet";
+
+ir UnaryArithIRGenerator emits CacheIR {
+    var value: Value;
+    var op_: JSOp;
+
+    op TryAttachBitwise() {
+        initRegState();
+
+        let valueId = ValueId::fromId(0_u16);
+        initOperandId(valueId);
+        initInputValueId(valueId);
+
+        initValueOutput();
+
+        // Only bitwise operators.
+        if UnaryArithIRGenerator::op_ != JSOp::BitNot {
+            return;
+        }
+
+        // Check guard conditions.
+        if !canTruncateToInt32(UnaryArithIRGenerator::value) {
+            return;
+        }
+        let int32Id = emitTruncateToInt32Guard(valueId, UnaryArithIRGenerator::value);
+
+        emit CacheIR::Int32NotResult(int32Id);
+        emit CacheIR::ReturnFromIC();
+    }
+}

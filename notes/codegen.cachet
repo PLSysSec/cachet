@@ -42,3 +42,73 @@ fn isCacheableGetPropSlot(object: NativeObject, holder: NativeObject, prop: Prop
     assert isCacheableProtoChain(object, holder);
     PropertyInfo::isDataProperty(prop)
 }
+
+fn canTruncateToInt32(value: Value) -> Bool {
+  Value::isInt32(value) || //Value::isNumber(value) ||
+      Value::isBool(value) ||
+      Value::isNullOrUndefined(value) // ||
+      //Value::isString(value)
+}
+
+fn emitTruncateToInt32Guard(valueId: ValueId, value: Value) emits CacheIR -> Int32Id {
+    assert canTruncateToInt32(value);
+
+    if Value::isInt32(value) {
+        emit CacheIR::GuardToInt32(valueId);
+        return OperandId::toInt32Id(valueId);
+    } else if Value::isBool(value) {
+        let int32Id = CacheIR::newInt32Id();
+        emit CacheIR::GuardBooleanToInt32(valueId, int32Id);
+        return int32Id;
+    } else if Value::isNullOrUndefined(value) {
+        emit CacheIR::GuardIsNullOrUndefined(valueId);
+
+        let zeroField = CacheIR::writeInt32Field(0_i32);
+        let int32Id = CacheIR::newInt32Id();
+        emit CacheIR::LoadInt32Constant(zeroField, int32Id);
+        return int32Id;
+    } else {
+//        let numberId: NumberId;
+//
+//        if Value::isString(value) {
+//            emit CacheIR::GuardToString(valueId);
+//            let stringId = OperandId::toStringId(valueId);
+//
+//            emit CacheIR::GuardStringToNumber(stringId);
+//            numberId = OperandId::toNumberId(stringId);
+//        } else {
+//            assert Value::isDouble(value);
+//            
+//            emit CacheIR::GuardIsNumber(valueId);
+//            numberId = OperandId::toNumberId(valueId);
+//        }
+//
+//        emit CacheIR::TruncateDoubleToUInt32(numberId);
+        assert false;
+        return OperandId::toInt32Id(valueId);
+    }
+}
+
+fn canConvertToInt32ForToNumber(value: Value) -> Bool {
+    Value::isInt32(value) || Value::isBool(value) || Value::isNull(value)
+}
+
+fn emitGuardToInt32ForNumber(valueId: ValueId, value: Value) emits CacheIR -> Int32Id {
+    if Value::isInt32(value) {
+        emit CacheIR::GuardToInt32(valueId);
+        return OperandId::toInt32Id(valueId);
+    } else if Value::isNull(value) {
+        emit CacheIR::GuardIsNull(valueId);
+
+        let zeroField = CacheIR::writeInt32Field(0_i32);
+        let int32Id = CacheIR::newInt32Id();
+        emit CacheIR::LoadInt32Constant(zeroField, int32Id);
+        return int32Id;
+    } else {
+        assert Value::isBool(value);
+
+        let int32Id = CacheIR::newInt32Id();
+        emit CacheIR::GuardBooleanToInt32(valueId, int32Id);
+        return int32Id;
+    }
+}

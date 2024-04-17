@@ -465,6 +465,9 @@ procedure #initRegState()
 {
   var $uninitializedStackData: #StackData;
 
+  #CacheIR~nextOperandId := 0bv16;
+  #CacheIR~nextFieldOffset := 0bv32;
+
   #CacheIR~addedFailurePath := false;
   #CacheIR~hasAutoScratchFloatRegisterSpill := false;
   #CacheIR~isDoubleScratchRegAllocated := false;
