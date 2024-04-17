@@ -16,6 +16,7 @@ fn canAttachNativeGetProp(
     assert PropertyKey::isString(key) || PropertyKey::isSymbol(key);
 
     if !Object::lookupPropertyPure(object, key, out maybeHolder, out let propResult) {
+        maybePropInfo = MaybePropertyInfo::none();
         return NativeGetPropKind::None;
     }
 

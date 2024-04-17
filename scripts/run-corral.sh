@@ -17,4 +17,4 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf -- "${tmp_dir}"' EXIT 
 cd "${tmp_dir}"
 
-"${corral_exe}" "${bpl_file}" /trackAllVars /recursionBound:4 "${@}"
+"${corral_exe}" "${bpl_file}" /trackAllVars /recursionBound:9999999 "${@}"

@@ -1064,6 +1064,26 @@ ir CacheIR emits MASM {
         LiveRegSet::takeReg(out volatileRegs, volatileRegs, scratchReg1);
         LiveRegSet::takeReg(out volatileRegs, volatileRegs, scratchReg2);
 
+        emit MASM::PushRegsInMask(volatileRegs);
+
+        emit MASM::SetupUnalignedABICall(scratchReg1);
+
+        emit MASM::LoadJSContext(scratchReg1);
+        emit MASM::PassABIArgReg(scratchReg1);
+        emit MASM::PassABIArgReg(objectReg);
+        CacheIR::emitLoadIdStubField(idField, scratchReg2);
+        emit MASM::PassABIArgReg(scratchReg2);
+        CacheIR::emitLoadGetterSetterStubField(gsField, scratchReg3);
+        emit MASM::PassABIArgReg(scratchReg3);
+
+        emit MASM::CallWithABI(ABIFunction::ObjectHasGetterSetterPure, MoveOpType::General,
+            CheckUnsafeCallWithABI::Check);
+        emit MASM::StoreCallPointerResult(scratchReg1);
+
+        emit MASM::PopRegsInMask(volatileRegs);
+
+        emit MASM::BranchIfFalseBool(scratchReg1, failure.label_);
+
         CacheIR::releaseReg(scratchReg1);
         CacheIR::releaseReg(scratchReg2);
         CacheIR::releaseReg(scratchReg3);

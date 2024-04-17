@@ -2497,15 +2497,25 @@ ir MASM {
         MASM::hasPushedRegs = false;
     }
 
-    #[spec]
-    fn stackPushLiveGeneralReg(reg: Reg);
-    #[spec]
-    fn stackPopLiveGeneralReg(reg: Reg);
+    //#[spec]
+    //fn stackPushLiveGeneralReg(reg: Reg);
+    //#[spec]
+    //fn stackPopLiveGeneralReg(reg: Reg);
 
     #[spec]
-    fn stackPushLiveFloatReg(floatReg: FloatReg);
+    fn stackPushLiveGeneralRegs(gprs: GeneralRegSet);
     #[spec]
-    fn stackPopLiveFloatReg(floatReg: FloatReg);
+    fn stackPopLiveGeneralRegs(gprs: GeneralRegSet, gprsIgnore: GeneralRegSet);
+
+    //#[spec]
+    //fn stackPushLiveFloatReg(floatReg: FloatReg);
+    //#[spec]
+    //fn stackPopLiveFloatReg(floatReg: FloatReg);
+
+    #[spec]
+    fn stackPushLiveFloatRegs(fpus: FloatRegSet);
+    #[spec]
+    fn stackPopLiveFloatRegs(fpus: FloatRegSet, fpusIgnore: FloatRegSet);
 
     #[refined]
     fn pushRegsInMask(set: LiveRegSet) {
@@ -2513,25 +2523,27 @@ ir MASM {
         let gprs = LiveRegSet::gprs(set);
         let fpus = LiveRegSet::fpus(set);
 
-        for reg in Reg desc {
-            if GeneralRegSet::contains(gprs, reg) {
-                MASM::stackPushLiveGeneralReg(reg);
-            }
-        }
+//        for reg in Reg desc {
+//            if GeneralRegSet::contains(gprs, reg) {
+//                MASM::stackPushLiveGeneralReg(reg);
+//            }
+//        }
+        MASM::stackPushLiveGeneralRegs(gprs);
 
-        for phyReg in PhyFloatReg desc {
-            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
-            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
-            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
-
-            if FloatRegSet::contains(fpus, simdReg) {
-                MASM::stackPushLiveFloatReg(simdReg);
-            } else if FloatRegSet::contains(fpus, doubleReg) {
-                MASM::stackPushLiveFloatReg(doubleReg);
-            } else if FloatRegSet::contains(fpus, singleReg) {
-                MASM::stackPushLiveFloatReg(singleReg);
-            }
-        }
+//        for phyReg in PhyFloatReg desc {
+//            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+//            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+//            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+//
+//            if FloatRegSet::contains(fpus, simdReg) {
+//                MASM::stackPushLiveFloatReg(simdReg);
+//            } else if FloatRegSet::contains(fpus, doubleReg) {
+//                MASM::stackPushLiveFloatReg(doubleReg);
+//            } else if FloatRegSet::contains(fpus, singleReg) {
+//                MASM::stackPushLiveFloatReg(singleReg);
+//            }
+//        }
+        MASM::stackPushLiveFloatRegs(fpus);
     }
 
     #[refined]
@@ -2542,34 +2554,36 @@ ir MASM {
 
     #[refined]
     fn popRegsInMaskIgnore(set: LiveRegSet, ignore: LiveRegSet) {
-        let fpus = FloatRegSet::reducedForPush(LiveRegSet::fpus(set));
+        let fpus = LiveRegSet::fpus(set);//FloatRegSet::reducedForPush(LiveRegSet::fpus(set));
         let gprs = LiveRegSet::gprs(set);
 
         let fpusIgnore = LiveRegSet::fpus(ignore);
-        let fpusPop = FloatRegSet::difference(fpus, fpusIgnore);
+//        let fpusPop = FloatRegSet::difference(fpus, fpusIgnore);
 
-        for phyReg in PhyFloatReg desc {
-            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
-            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
-            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
-
-            if FloatRegSet::contains(fpusPop, simdReg) {
-                MASM::stackPopLiveFloatReg(simdReg);
-            } else if FloatRegSet::contains(fpusPop, doubleReg) {
-                MASM::stackPopLiveFloatReg(doubleReg);
-            } else if FloatRegSet::contains(fpusPop, singleReg) {
-                MASM::stackPopLiveFloatReg(singleReg);
-            }
-        }
+//        for phyReg in PhyFloatReg desc {
+//            let singleReg = FloatReg::new(phyReg, FloatContentType::Single);
+//            let doubleReg = FloatReg::new(phyReg, FloatContentType::Double);
+//            let simdReg = FloatReg::new(phyReg, FloatContentType::Simd128);
+//
+//            if FloatRegSet::contains(fpusPop, simdReg) {
+//                MASM::stackPopLiveFloatReg(simdReg);
+//            } else if FloatRegSet::contains(fpusPop, doubleReg) {
+//                MASM::stackPopLiveFloatReg(doubleReg);
+//            } else if FloatRegSet::contains(fpusPop, singleReg) {
+//                MASM::stackPopLiveFloatReg(singleReg);
+//            }
+//        }
+        MASM::stackPopLiveFloatRegs(fpus, fpusIgnore);
 
         let gprsIgnore = LiveRegSet::gprs(ignore);
-        let gprsPop = GeneralRegSet::difference(gprs, gprsIgnore);
+        //let gprsPop = GeneralRegSet::difference(gprs, gprsIgnore);
 
-        for reg in Reg desc {
-            if GeneralRegSet::contains(gprsPop, reg) {
-                MASM::stackPopLiveGeneralReg(reg);
-            }
-        }
+//        for reg in Reg desc {
+//            if GeneralRegSet::contains(gprsPop, reg) {
+//                MASM::stackPopLiveGeneralReg(reg);
+//            }
+//        }
+        MASM::stackPopLiveGeneralRegs(gprs, gprsIgnore);
 
         MASM::unsetHasPushedRegs();
     }

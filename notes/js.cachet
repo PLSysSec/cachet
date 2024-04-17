@@ -1697,11 +1697,7 @@ impl Shape {
         let numFixedSlots = unsafe { Shape::numFixedSlotsUnchecked(shape) };
 
         assume numFixedSlots < Shape::numFixedSlotsLimit;
-
-        let class = Shape::classOf(shape);
-        if Class::isTypedArrayObject(class) {
-            assume numFixedSlots >= ArrayBufferViewObject::reservedSlots;
-        }
+        assume numFixedSlots >= Class::numReservedSlots(Shape::classOf(shape));
 
         numFixedSlots
     }
@@ -1742,6 +1738,9 @@ struct Class;
 impl Class {
     fn fromAddr(addr: UInt64) -> Class;
 
+    #[spec]
+    fn numReservedSlots(class: Class) -> UInt32;
+
     fn windowProxyClass() -> Class;
 
     fn emulatesUndefined(class: Class) -> Bool;
@@ -1753,6 +1752,7 @@ impl Class {
         let result = (unsafe { Class::isTypedArrayObjectUnchecked(class) });
         if result {
             assume Class::isNativeObject(class);
+            assume Class::numReservedSlots(class) == ArrayBufferViewObject::reservedSlots;
         }
         result
     }

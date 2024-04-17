@@ -231,34 +231,170 @@ procedure #FloatRegSet~take($set: #FloatRegSet, $reg: #FloatReg)
 var #MASM~pushedLiveGeneralRegs: #Map #Reg #RegData;
 var #MASM~pushedLiveFloatRegs: #Map #PhyFloatReg #FloatData;
 
-procedure #MASM~stackPushLiveGeneralReg($reg: #Reg)
+//procedure #MASM~stackPushLiveGeneralReg($reg: #Reg)
+//{
+//    var $data: #RegData;
+//    call $data := #MASM~getData($reg);
+//    #MASM~pushedLiveGeneralRegs := #Map~set(#MASM~pushedLiveGeneralRegs, $reg, $data);
+//}
+function #MASM~stackPushLiveGeneralRegs~raw(
+  $pushedLiveGeneralRegs: #Map #Reg #RegData,
+  $regs: #Map #Reg #RegData,
+  #gprs: #GeneralRegSet
+): #Map #Reg #RegData;
+procedure #MASM~stackPushLiveGeneralRegs($gprs: #GeneralRegSet)
 {
-    var $data: #RegData;
-    call $data := #MASM~getData($reg);
-    #MASM~pushedLiveGeneralRegs := #Map~set(#MASM~pushedLiveGeneralRegs, $reg, $data);
+  var $newPushedLiveGeneralRegs: #Map #Reg #RegData;
+
+  $newPushedLiveGeneralRegs := #MASM~stackPushLiveGeneralRegs~raw(
+    #MASM~pushedLiveGeneralRegs, #MASM~regs, $gprs
+  );
+
+  assume (forall r:#Reg ::
+    #Set~contains(#GeneralRegSet~rawSet($gprs), r) ==>
+      (#Map~get($newPushedLiveGeneralRegs, r) == #Map~get(#MASM~regs, r)));
+  assume (forall r:#Reg ::
+    !#Set~contains(#GeneralRegSet~rawSet($gprs), r) ==>
+      (#Map~get($newPushedLiveGeneralRegs, r) == #Map~get(#MASM~pushedLiveGeneralRegs, r)));
+
+//  assume (forall r:#Reg :: #Map~get($newPushedLiveGeneralRegs, r) ==
+//    (if #Set~contains(#GeneralRegSet~rawSet($gprs), r)
+//      then #Map~get(#MASM~regs, r)
+//      else #Map~get(#MASM~pushedLiveGeneralRegs, r)));
+
+//  assume (forall r:#Reg :: #Map~get($newPushedLiveGeneralRegs, r) == #Map~get(
+//    (if #Set~contains(#GeneralRegSet~rawSet($gprs), r)
+//      then #MASM~regs
+//      else #MASM~pushedLiveGeneralRegs),
+//    r
+//  ));
+
+  #MASM~pushedLiveGeneralRegs := $newPushedLiveGeneralRegs;
 }
 
-procedure #MASM~stackPopLiveGeneralReg($reg: #Reg)
+//procedure #MASM~stackPopLiveGeneralReg($reg: #Reg)
+//{
+//    var $data: #RegData;
+//    $data := #Map~get(#MASM~pushedLiveGeneralRegs, $reg);
+//    call #MASM~setData($reg, $data);
+//}
+function #MASM~stackPopLiveGeneralRegs~raw(
+  $regs: #Map #Reg #RegData,
+  $pushedLiveGeneralRegs: #Map #Reg #RegData,
+  #gprs: #GeneralRegSet,
+  #gprsIgnore: #GeneralRegSet
+): #Map #Reg #RegData;
+procedure #MASM~stackPopLiveGeneralRegs($gprs: #GeneralRegSet, $gprsIgnore: #GeneralRegSet)
 {
-    var $data: #RegData;
-    $data := #Map~get(#MASM~pushedLiveGeneralRegs, $reg);
-    call #MASM~setData($reg, $data);
+  var $newRegs: #Map #Reg #RegData;
+
+  $newRegs := #MASM~stackPopLiveGeneralRegs~raw(
+    #MASM~regs, #MASM~pushedLiveGeneralRegs, $gprs, $gprsIgnore
+  );
+
+  assume (forall r:#Reg ::
+    (#Set~contains(#GeneralRegSet~rawSet($gprs), r) &&
+        !#Set~contains(#GeneralRegSet~rawSet($gprsIgnore), r)) ==>
+      (#Map~get($newRegs, r) == #Map~get(#MASM~pushedLiveGeneralRegs, r)));
+  assume (forall r:#Reg ::
+    !(#Set~contains(#GeneralRegSet~rawSet($gprs), r) &&
+        !#Set~contains(#GeneralRegSet~rawSet($gprsIgnore), r)) ==>
+      (#Map~get($newRegs, r) == #Map~get(#MASM~regs, r)));
+
+//  assume (forall r:#Reg :: #Map~get($newRegs, r) ==
+//    (if #Set~contains(#GeneralRegSet~rawSet($gprs), r)
+//      then #Map~get(#MASM~pushedLiveGeneralRegs, r)
+//      else #Map~get(#MASM~regs, r)));
+
+//  assume (forall r:#Reg :: #Map~get($newRegs, r) == #Map~get(
+//    (if #Set~contains(#GeneralRegSet~rawSet($gprs), r)
+//      then #MASM~pushedLiveGeneralRegs
+//      else #MASM~regs),
+//    r
+//  ));
+
+  #MASM~regs := $newRegs;
 }
 
-procedure #MASM~stackPushLiveFloatReg($floatReg: #FloatReg)
+//procedure #MASM~stackPushLiveFloatReg($floatReg: #FloatReg)
+//{
+//    var $data: #FloatData;
+//    call $data := #MASM~getFloatData(#FloatReg^field~reg($floatReg));
+//    assert #FloatReg^field~type($floatReg) == #FloatData~contentType($data);
+//    #MASM~pushedLiveFloatRegs := #Map~set(#MASM~pushedLiveFloatRegs, #FloatReg^field~reg($floatReg), $data);
+//}
+function #MASM~stackPushLiveFloatRegs~raw(
+  $pushedLiveFloatRegs: #Map #PhyFloatReg #FloatData,
+  $floatRegs: #Map #PhyFloatReg #FloatData,
+  #fpus: #FloatRegSet
+): #Map #PhyFloatReg #FloatData;
+procedure #MASM~stackPushLiveFloatRegs($fpus: #FloatRegSet)
 {
-    var $data: #FloatData;
-    call $data := #MASM~getFloatData(#FloatReg^field~reg($floatReg));
-    assert #FloatReg^field~type($floatReg) == #FloatData~contentType($data);
-    #MASM~pushedLiveFloatRegs := #Map~set(#MASM~pushedLiveFloatRegs, #FloatReg^field~reg($floatReg), $data);
+  var $newPushedLiveFloatRegs: #Map #PhyFloatReg #FloatData;
+  var $phyFpus: #Set #PhyFloatReg;
+
+  $newPushedLiveFloatRegs := #MASM~stackPushLiveFloatRegs~raw(
+    #MASM~pushedLiveFloatRegs, #MASM~floatRegs, $fpus
+  );
+
+  assert (forall r:#FloatReg ::
+    #Set~contains(#FloatRegSet~rawSet($fpus), r) ==>
+      (#FloatReg^field~type(r) ==
+        #FloatData~contentType(#Map~get(#MASM~floatRegs, #FloatReg^field~reg(r)))));
+
+  assume (forall p:#PhyFloatReg ::
+    (exists r:#FloatReg ::
+        (#FloatReg^field~reg(r) == p && #Set~contains(#FloatRegSet~rawSet($fpus), r))) ==>
+      (#Map~get($newPushedLiveFloatRegs, p) == #Map~get(#MASM~floatRegs, p)));
+  assume (forall p:#PhyFloatReg ::
+    (!(exists r:#FloatReg ::
+        (#FloatReg^field~reg(r) == p && #Set~contains(#FloatRegSet~rawSet($fpus), r)))) ==>
+      (#Map~get($newPushedLiveFloatRegs, p) == #Map~get(#MASM~pushedLiveFloatRegs, p)));
+
+  #MASM~pushedLiveFloatRegs := $newPushedLiveFloatRegs;
 }
 
-procedure #MASM~stackPopLiveFloatReg($floatReg: #FloatReg)
+//procedure #MASM~stackPopLiveFloatReg($floatReg: #FloatReg)
+//{
+//    var $data: #FloatData;
+//    $data := #Map~get(#MASM~pushedLiveFloatRegs, #FloatReg^field~reg($floatReg));
+//    assert #FloatReg^field~type($floatReg) == #FloatData~contentType($data);
+//    call #MASM~setFloatData(#FloatReg^field~reg($floatReg), $data);
+//}
+function #MASM~stackPopLiveFloatRegs~raw(
+  $pushedLiveFloatRegs: #Map #PhyFloatReg #FloatData,
+  $floatRegs: #Map #PhyFloatReg #FloatData,
+  #fpus: #FloatRegSet,
+  #fpusIgnore: #FloatRegSet
+): #Map #PhyFloatReg #FloatData;
+procedure #MASM~stackPopLiveFloatRegs($fpus: #FloatRegSet, $fpusIgnore: #FloatRegSet)
 {
-    var $data: #FloatData;
-    $data := #Map~get(#MASM~pushedLiveFloatRegs, #FloatReg^field~reg($floatReg));
-    assert #FloatReg^field~type($floatReg) == #FloatData~contentType($data);
-    call #MASM~setFloatData(#FloatReg^field~reg($floatReg), $data);
+  var $newFloatRegs: #Map #PhyFloatReg #FloatData;
+
+  $newFloatRegs := #MASM~stackPopLiveFloatRegs~raw(
+    #MASM~floatRegs, #MASM~pushedLiveFloatRegs, $fpus, $fpusIgnore
+  );
+
+  assert (forall r:#FloatReg ::
+    (#Set~contains(#FloatRegSet~rawSet($fpus), r) &&
+        !#Set~contains(#FloatRegSet~rawSet($fpusIgnore), r)) ==>
+      (#FloatReg^field~type(r) ==
+        #FloatData~contentType(#Map~get(#MASM~pushedLiveFloatRegs, #FloatReg^field~reg(r)))));
+
+  assume (forall p:#PhyFloatReg ::
+    (exists r:#FloatReg ::
+        (#FloatReg^field~reg(r) == p &&
+          #Set~contains(#FloatRegSet~rawSet($fpus), r) &&
+          !#Set~contains(#FloatRegSet~rawSet($fpusIgnore), r))) ==>
+      (#Map~get($newFloatRegs, p) == #Map~get(#MASM~pushedLiveFloatRegs, p)));
+  assume (forall p:#PhyFloatReg ::
+    (!(exists r:#FloatReg ::
+        (#FloatReg^field~reg(r) == p &&
+          #Set~contains(#FloatRegSet~rawSet($fpus), r) &&
+          !#Set~contains(#FloatRegSet~rawSet($fpusIgnore), r)))) ==>
+      (#Map~get($newFloatRegs, p) == #Map~get(#MASM~floatRegs, p)));
+
+  #MASM~floatRegs := $newFloatRegs;
 }
 
 var #MASM~stack: #Map #UInt64 #StackData;
