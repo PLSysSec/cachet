@@ -23,10 +23,13 @@ bin_dir="${repo_dir}/target/debug"
 corral_exe="${repo_dir}/vendor/corral/source/Corral/bin/Release/net6.0/corral"
 
 notes_dir="${repo_dir}/notes"
+repro_notes_dir="${repo_dir}/notes-repro"
 test_stubs_dir="${notes_dir}/stubs"
 hacks_bpl_file="${notes_dir}/hacks.bpl"
 cacheir_cachet_file="${notes_dir}/cacheir.cachet"
+repro_cacheir_cachet_file="${repro_notes_dir}/cacheir.cachet"
 masm_cachet_file="${notes_dir}/masm.cachet"
+repro_masm_cachet_file="${repro_notes_dir}/masm.cachet"
 js_cachet_file="${notes_dir}/js.cachet"
 
 default_glob='IonIC/*/*'

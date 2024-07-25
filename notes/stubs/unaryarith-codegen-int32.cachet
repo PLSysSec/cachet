@@ -9,11 +9,7 @@ ir UnaryArithIRGenerator emits CacheIR {
 
     op TryAttachInt32() {
         initRegState();
-
-        let valueId = ValueId::fromId(0_u16);
-        initOperandId(valueId);
-        initInputValueId(valueId);
-
+        let valueId = CacheIR::defineInputValueId();
         initValueOutput();
 
         if UnaryArithIRGenerator::op_ == JSOp::BitNot {
@@ -23,7 +19,7 @@ ir UnaryArithIRGenerator emits CacheIR {
         if (!canConvertToInt32ForToNumber(UnaryArithIRGenerator::value)) {
            return;
         }
-        let int32Id = emitGuardToInt32ForNumber(valueId, UnaryArithIRGenerator::value);
+        let int32Id = emitGuardToInt32ForToNumber(valueId, UnaryArithIRGenerator::value);
 
         if UnaryArithIRGenerator::op_ == JSOp::Pos {
             emit CacheIR::LoadInt32Result(int32Id);

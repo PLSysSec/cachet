@@ -1,0 +1,43 @@
+import "../cacheir.cachet";
+import "../codegen.cachet";
+import "../js.cachet";
+import "../utils.cachet";
+
+ir CompareIRGenerator emits CacheIR {
+    var lhsValue: Value;
+    var rhsValue: Value;
+    var op_: JSOp;
+
+    op TryAttachAnyNullUndefined() {
+        initRegState();
+        let lhsValueId = CacheIR::defineInputValueId();
+        let rhsValueId = CacheIR::defineInputValueId();
+        initValueOutput();
+
+        if CompareIRGenerator::op_ != JSOp::StrictEq &&
+            CompareIRGenerator::op_ != JSOp::StrictNe
+        {
+            return;
+        }
+
+        // Probably can't hit some of these.
+        if Value::isSameType(CompareIRGenerator::lhsValue, CompareIRGenerator::rhsValue) ||
+            (Value::isNumber(CompareIRGenerator::lhsValue) &&
+                Value::isNumber(CompareIRGenerator::rhsValue))
+        {
+            return;
+        }
+
+        // Compare tags
+        let lhsValueTagId = CacheIR::newValueTagId();
+        let rhsValueTagId = CacheIR::newValueTagId();
+        emit CacheIR::LoadValueTag(lhsValueId, lhsValueTagId);
+        emit CacheIR::LoadValueTag(rhsValueId, rhsValueTagId);
+        emit CacheIR::GuardTagNotEqual(lhsValueTagId, rhsValueTagId);
+
+        // Now that we've passed the guard, we know differing types, so return the
+        // bool result.
+        emit CacheIR::LoadBooleanResult(CompareIRGenerator::op_ == JSOp::StrictNe);
+        emit CacheIR::ReturnFromIC();
+    }
+}

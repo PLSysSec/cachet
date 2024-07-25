@@ -356,6 +356,7 @@ pub struct CallableItem {
     pub emits: Option<Spanned<IrIndex>>,
     pub ret: Option<Spanned<TypeIndex>>,
     pub body: Spanned<Option<Body>>,
+    pub loc: u64,
 }
 
 impl HasAttrs for CallableItem {

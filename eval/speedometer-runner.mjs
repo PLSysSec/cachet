@@ -15,7 +15,7 @@ import { Builder, By, until } from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
 import sleep from 'await-sleep';
 
-const firefoxRootDirPath = '/home/spinda/workbench/research/mozilla-unified/objdirs/cachet';
+const firefoxRootDirPath = '/home/spinda/workbench/research/cachet-firefox/objdirs/cachet-browser';
 const geckodriverExePath = path.join(
   firefoxRootDirPath,
   'testing',

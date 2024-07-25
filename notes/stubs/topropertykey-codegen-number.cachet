@@ -1,0 +1,27 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir ToPropertyKeyIRGenerator emits CacheIR {
+    var value: Value;
+
+    op TryAttachNumber() {
+        CacheIR::initStub();
+        let valueId = CacheIR::defineInputValueId();
+        CacheIR::setValueOutput();
+
+        if !Value::isNumber(ToPropertyKeyIRGenerator::value) {
+            return;
+        }
+
+        // We allow negative zero here because ToPropertyKey(-0.0) is 0.
+        if (!Float64::equalsInt32(Value::toNumber(ToPropertyKeyIRGenerator::value))) {
+            return;
+        }
+
+        let int32Id = CacheIR::newInt32Id();
+        emit CacheIR::GuardToInt32Index(valueId, int32Id);
+
+        emit CacheIR::LoadInt32Result(int32Id);
+        emit CacheIR::ReturnFromIC();
+    }
+}

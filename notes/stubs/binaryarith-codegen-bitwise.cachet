@@ -6,19 +6,13 @@ import "../utils.cachet";
 ir BinaryArithIRGenerator emits CacheIR {
     var lhsValue: Value;
     var rhsValue: Value;
+    var resValue: Value;
     var op_: JSOp;
 
     op TryAttachBitwise() {
         initRegState();
-
-        let lhsValueId = ValueId::fromId(0_u16);
-        initOperandId(lhsValueId);
-        initInputValueId(lhsValueId);
-
-        let rhsValueId = ValueId::fromId(1_u16);
-        initOperandId(rhsValueId);
-        initInputValueId(rhsValueId);
-
+        let lhsValueId = CacheIR::defineInputValueId();
+        let rhsValueId = CacheIR::defineInputValueId();
         initValueOutput();
 
         // Only bit-wise and shifts.
@@ -43,6 +37,17 @@ ir BinaryArithIRGenerator emits CacheIR {
 
         if BinaryArithIRGenerator::op_ == JSOp::BitOr {
             emit CacheIR::Int32BitOrResult(lhsInt32Id, rhsInt32Id);
+        } else if BinaryArithIRGenerator::op_ == JSOp::BitXor {
+            emit CacheIR::Int32BitXorResult(lhsInt32Id, rhsInt32Id);
+        } else if BinaryArithIRGenerator::op_ == JSOp::BitAnd {
+            emit CacheIR::Int32BitAndResult(lhsInt32Id, rhsInt32Id);
+        } else if BinaryArithIRGenerator::op_ == JSOp::Lsh {
+            emit CacheIR::Int32LeftShiftResult(lhsInt32Id, rhsInt32Id);
+        } else if BinaryArithIRGenerator::op_ == JSOp::Rsh {
+            emit CacheIR::Int32RightShiftResult(lhsInt32Id, rhsInt32Id);
+        } else if BinaryArithIRGenerator::op_ == JSOp::Ursh {
+            emit CacheIR::Int32URightShiftResult(lhsInt32Id, rhsInt32Id,
+                Value::isDouble(BinaryArithIRGenerator::resValue));
         } else {
             return;
         }

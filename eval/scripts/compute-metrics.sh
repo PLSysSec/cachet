@@ -10,22 +10,30 @@ function count_lines_of_code {
 }
 
 echo "Ops:"
-
-cacheir_op_count="$(grep -c '^ *op [A-Za-z0-9_]\+ *(' "${cacheir_cachet_file}")"
+echo
+echo CacheIR
+echo -------
+cacheir_op_count="$(grep -h '^ *op [A-Za-z0-9_]\+ *(' "${cacheir_cachet_file}" "${repro_cacheir_cachet_file}" | cut -sd ' ' -f 6 | cut -sd '(' -f 1 | sort | uniq | tee /dev/tty | wc -l)"
 helper_cacheir_ops=(
   Assert
+  AssertEqValueInput
   AssertEqValueOutput
+  AssertStackGuard
+  InitStackGuard
 )
 cacheir_op_count="$((${cacheir_op_count}-${#helper_cacheir_ops[@]}))"
-echo "CacheIR op count: ${cacheir_op_count}"
+echo "==> CacheIR op count: ${cacheir_op_count}"
 
-masm_op_count="$(grep -c '^ *op [A-Za-z0-9_]\+ *(' "${masm_cachet_file}")"
+echo
+echo MASM
+echo ----
+masm_op_count="$(grep -h '^ *op [A-Za-z0-9_]\+ *(' "${masm_cachet_file}" "${repro_masm_cachet_file}" | cut -sd ' ' -f 6 | cut -sd '(' -f 1 | sort | uniq | tee /dev/tty | wc -l)"
 helper_masm_ops=(
   Assert
   AssertEqValue
 )
 masm_op_count="$((${masm_op_count}-${#helper_masm_ops[@]}))"
-echo "MASM op count: ${masm_op_count}"
+echo "==> MASM op count: ${masm_op_count}"
 
 echo
 

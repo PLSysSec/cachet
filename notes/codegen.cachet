@@ -44,7 +44,7 @@ fn isCacheableGetPropSlot(object: NativeObject, holder: NativeObject, prop: Prop
 }
 
 fn canTruncateToInt32(value: Value) -> Bool {
-  Value::isInt32(value) || //Value::isNumber(value) ||
+    Value::isInt32(value) || //Value::isNumber(value) ||
       Value::isBool(value) ||
       Value::isNullOrUndefined(value) // ||
       //Value::isString(value)
@@ -82,8 +82,7 @@ fn emitTruncateToInt32Guard(valueId: ValueId, value: Value) emits CacheIR -> Int
 //            emit CacheIR::GuardIsNumber(valueId);
 //            numberId = OperandId::toNumberId(valueId);
 //        }
-//
-//        emit CacheIR::TruncateDoubleToUInt32(numberId);
+
         assert false;
         return OperandId::toInt32Id(valueId);
     }
@@ -93,7 +92,7 @@ fn canConvertToInt32ForToNumber(value: Value) -> Bool {
     Value::isInt32(value) || Value::isBool(value) || Value::isNull(value)
 }
 
-fn emitGuardToInt32ForNumber(valueId: ValueId, value: Value) emits CacheIR -> Int32Id {
+fn emitGuardToInt32ForToNumber(valueId: ValueId, value: Value) emits CacheIR -> Int32Id {
     if Value::isInt32(value) {
         emit CacheIR::GuardToInt32(valueId);
         return OperandId::toInt32Id(valueId);
@@ -110,5 +109,36 @@ fn emitGuardToInt32ForNumber(valueId: ValueId, value: Value) emits CacheIR -> In
         let int32Id = CacheIR::newInt32Id();
         emit CacheIR::GuardBooleanToInt32(valueId, int32Id);
         return int32Id;
+    }
+}
+
+fn emitIdGuard(keyValueId: ValueId, keyValue: Value, key: PropertyKey) emits CacheIR {
+    if PropertyKey::isSymbol(key) {
+        let symbol = PropertyKey::toSymbol(key);
+        assert Value::toSymbol(keyValue) == symbol;
+
+        emit CacheIR::GuardToSymbol(keyValueId);
+        let symbolId = OperandId::toSymbolId(keyValueId);
+
+        let symbolField = CacheIR::writeSymbolField(symbol);
+        emit CacheIR::GuardSpecificSymbol(symbolId, symbolField);
+    } else {
+        assert PropertyKey::isString(key);
+
+        if Value::isUndefined(keyValue) {
+            assert PropertyKey::isAtom(key, AtomState::undefined);
+            emit CacheIR::GuardIsUndefined(keyValueId);
+        } else if Value::isNull(keyValue) {
+            assert PropertyKey::isAtom(key, AtomState::null);
+            emit CacheIR::GuardIsNull(keyValueId);
+        } else {
+            assert Value::isString(keyValue);
+
+            emit CacheIR::GuardToString(keyValueId);
+            let stringId = OperandId::toStringId(keyValueId);
+
+            let stringField = CacheIR::writeStringField(PropertyKey::toAtom(key));
+            emit CacheIR::GuardSpecificAtom(stringId, stringField);
+        }
     }
 }

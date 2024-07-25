@@ -1,0 +1,44 @@
+import "../cacheir.cachet";
+import "../codegen.cachet";
+import "../js.cachet";
+import "../utils.cachet";
+
+ir GetPropIRGenerator emits CacheIR {
+    var value: Value;
+    var index: UInt32;
+    var mode: ICMode;
+
+    op TryAttachDenseElement() {
+        CacheIR::initStub();
+        let valueId = CacheIR::defineInputValueId();
+        let indexId = CacheIR::defineInputInt32Id();
+        CacheIR::setValueOutput();
+
+        if !Value::isObject(GetPropIRGenerator::value) {
+            return;
+        }
+        let object = Value::toObject(GetPropIRGenerator::value);
+
+        if !Object::isNativeObject(object) {
+            return;
+        }
+        let nativeObject = Object::toNativeObject(object);
+        if !NativeObject::containsDenseElement(nativeObject, GetPropIRGenerator::index) {
+            return;
+        }
+
+        emit CacheIR::GuardToObject(valueId);
+        let objectId = OperandId::toObjectId(valueId);
+
+        if GetPropIRGenerator::mode == ICMode::Megamorphic {
+            emit CacheIR::GuardIsNativeObject(objectId);
+        } else {
+            let shape = Object::shapeOf(object);
+            let shapeField = CacheIR::writeShapeField(shape);
+            emit CacheIR::GuardShape(objectId, shapeField);
+        }
+
+        emit CacheIR::LoadDenseElementResult(objectId, indexId);
+        emit CacheIR::ReturnFromIC();
+    }
+}

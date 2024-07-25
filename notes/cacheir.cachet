@@ -2,6 +2,12 @@
 
 import "masm.cachet";
 
+enum ICMode {
+    Specialized,
+    Megamorphic,
+    Generic,
+}
+
 enum OperandLocationKind {
     Uninitialized,
     PayloadReg,
@@ -438,44 +444,123 @@ ir CacheIR emits MASM {
     fn initStub() {
         initRegState();
     }
+    
+    #[spec]
+    var mut nextOperandId: UInt16;
 
+    #[spec]
+    fn takeNextOperandId() -> UInt16 {
+        let id = CacheIR::nextOperandId;
+        CacheIR::nextOperandId = CacheIR::nextOperandId + 1_u16;
+        id
+    }
+
+    #[refined]
     fn defineInputValueId() -> ValueId {
-        let valueId = ValueId::fromId(0_u16);
-        initOperandId(valueId);
+        let valueId = CacheIR::newValueId();
         initInputValueId(valueId);
         valueId
     }
 
+    #[refined]
+    fn defineInputInt32Id() -> Int32Id {
+        let int32Id = CacheIR::newInt32Id();
+        initInputInt32Id(int32Id);
+        int32Id
+    }
+
+    #[refined]
+    fn newValueId() -> ValueId {
+        let valueId = ValueId::fromId(CacheIR::takeNextOperandId());
+        initOperandId(valueId);
+        valueId
+    }
+
+    #[refined]
+    fn newObjectId() -> ObjectId {
+        let objectId = ObjectId::fromId(CacheIR::takeNextOperandId());
+        initOperandId(objectId);
+        objectId
+    }
+
+    #[refined]
     fn newInt32Id() -> Int32Id {
-        let int32Id = Int32Id::fromId(1_u16);
+        let int32Id = Int32Id::fromId(CacheIR::takeNextOperandId());
         initOperandId(int32Id);
         int32Id
     }
 
-    fn newNumberId() -> NumberId {
-        let numberId = NumberId::fromId(1_u16);
-        initOperandId(numberId);
-        numberId
+    #[refined]
+    fn newValueTagId() -> ValueTagId {
+        let valueTagId = ValueTagId::fromId(CacheIR::takeNextOperandId());
+        initOperandId(valueTagId);
+        valueTagId
     }
 
+    #[refined]
     fn setValueOutput() {
         initValueOutput();
     }
     
+    #[spec]
+    var mut nextFieldOffset: UInt32;
 
+    #[spec]
+    fn takeNextFieldOffset() -> UInt32 {
+        let offset = CacheIR::nextFieldOffset;
+        // All stub fields are 8 bytes on x64.
+        CacheIR::nextFieldOffset = CacheIR::nextFieldOffset + 8_u32;
+        offset
+    }
+
+    #[refined]
     fn writeInt32Field(int32: Int32) -> Int32Field {
-        let int32Field = Int32Field::fromOffset(8_u32);
+        let int32Field = Int32Field::fromOffset(CacheIR::takeNextFieldOffset());
         assume CacheIR::readInt32Field(int32Field) == int32;
         int32Field
     }
 
+    #[refined]
     fn writeShapeField(shape: Shape) -> ShapeField {
-        let shapeField = ShapeField::fromOffset(8_u32);
+        let shapeField = ShapeField::fromOffset(CacheIR::takeNextFieldOffset());
         assume CacheIR::readShapeField(shapeField) == shape;
         shapeField
     }
 
-    // (end slightly hacky helper functions)
+//    #[refined]
+//    fn writeGetterSetterField(gs: GetterSetter) -> GetterSetterField {
+//        let gsField = GetterSetterField::fromOffset(CacheIR::takeNextFieldOffset());
+//        assume CacheIR::readGetterSetterField(gsField) == gs;
+//        gsField
+//    }
+
+    #[refined]
+    fn writeObjectField(object: Object) -> ObjectField {
+        let objectField = ObjectField::fromOffset(CacheIR::takeNextFieldOffset());
+        assume CacheIR::readObjectField(objectField) == object;
+        objectField
+    }
+
+    #[refined]
+    fn writeSymbolField(symbol: Symbol) -> SymbolField {
+        let symbolField = SymbolField::fromOffset(CacheIR::takeNextFieldOffset());
+        assume CacheIR::readSymbolField(symbolField) == symbol;
+        symbolField
+    }
+
+    #[refined]
+    fn writeStringField(string: String) -> StringField {
+        let stringField = StringField::fromOffset(CacheIR::takeNextFieldOffset());
+        assume CacheIR::readStringField(stringField) == string;
+        stringField
+    }
+
+//    #[refined]
+//    fn writeIdField(id: PropertyKey) -> IdField {
+//        let idField = IdField::fromOffset(CacheIR::takeNextFieldOffset());
+//        assume CacheIR::readIdField(idField) == id;
+//        idField
+//    }
 
     op ReturnFromIC() {}
 
@@ -970,6 +1055,18 @@ ir CacheIR emits MASM {
         CacheIR::releaseFailurePath();
     }
 
+    op GuardSpecificSymbol(symbolId: SymbolId, expectedSymbolField: SymbolField) {
+        let symbolReg = CacheIR::useSymbolId(symbolId);
+        let expectedSymbol = CacheIR::readSymbolField(expectedSymbolField);
+
+        let failure = CacheIR::addFailurePath();
+
+        emit MASM::BranchSymbolImmGCPtr(Condition::NotEqual, symbolReg, expectedSymbol,
+            failure.label_);
+
+        CacheIR::releaseFailurePath();
+    }
+
     op GuardSpecificAtom(strId: StringId, stringField: StringField) {
         let strReg = CacheIR::useStringId(strId);
         let scratchReg = CacheIR::allocateReg();
@@ -1342,6 +1439,7 @@ ir CacheIR emits MASM {
         CacheIR::releaseReg(scratchReg);
         CacheIR::releaseFailurePath();
     }
+
 
     op CompareInt32Result(jsop: JSOp, lhsId: Int32Id, rhsId: Int32Id) {
         let lhsReg = CacheIR::useInt32Id(lhsId);
@@ -2045,6 +2143,7 @@ ir CacheIR emits MASM {
 
     fn readInt32Field(int32Field: Int32Field) -> Int32;
     fn readObjectField(objectField: ObjectField) -> Object;
+    fn readSymbolField(symbolField: SymbolField) -> Symbol;
     fn readStringField(stringField: StringField) -> String;
     fn readShapeField(shapeField: ShapeField) -> Shape;
     fn readClassField(classField: ClassField) -> Class;

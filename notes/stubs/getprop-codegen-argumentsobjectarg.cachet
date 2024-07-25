@@ -1,0 +1,54 @@
+import "../cacheir.cachet";
+import "../codegen.cachet";
+import "../js.cachet";
+import "../utils.cachet";
+
+ir GetPropIRGenerator emits CacheIR {
+    var value: Value;
+    var index: UInt32;
+
+    op TryAttachArgumentsObjectArg() {
+        CacheIR::initStub();
+        let valueId = CacheIR::defineInputValueId();
+        let indexInt32Id = CacheIR::defineInputInt32Id();
+        CacheIR::setValueOutput();
+
+        if !Value::isObject(GetPropIRGenerator::value) {
+            return;
+        }
+        let object = Value::toObject(GetPropIRGenerator::value);
+
+        if !Object::isArgumentsObject(object) {
+            return;
+        }
+        let argumentsObject = Object::toArgumentsObject(object);
+
+        // No elements must have been overridden or deleted.
+        if ArgumentsObject::hasOverriddenElement(argumentsObject) {
+            return;
+        }
+
+        // Check bounds.
+        if GetPropIRGenerator::index >= ArgumentsObject::getInitialLength(argumentsObject) {
+            return;
+        }
+
+        // And finally also check that the argument isn't forwarded.
+        if ArgumentsObject::argIsForwarded(argumentsObject, GetPropIRGenerator::index) {
+            return;
+        }
+
+        emit CacheIR::GuardToObject(valueId);
+        let objectId = OperandId::toObjectId(valueId);
+
+        if Object::isMappedArgumentsObject(argumentsObject) {
+            emit CacheIR::GuardClass(objectId, GuardClassKind::MappedArguments);
+        } else {
+            assert Object::isUnmappedArgumentsObject(argumentsObject);
+            emit CacheIR::GuardClass(objectId, GuardClassKind::UnmappedArguments);
+        }
+
+        emit CacheIR::LoadArgumentsObjectArgResult(objectId, indexInt32Id);
+        emit CacheIR::ReturnFromIC();
+    }
+}

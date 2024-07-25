@@ -1,0 +1,22 @@
+import "../cacheir.cachet";
+import "../utils.cachet";
+
+ir ToPropertyKeyIRGenerator emits CacheIR {
+    var value: Value;
+
+    op TryAttachInt32() {
+        CacheIR::initStub();
+        let valueId = CacheIR::defineInputValueId();
+        CacheIR::setValueOutput();
+
+        if !Value::isInt32(ToPropertyKeyIRGenerator::value) {
+            return;
+        }
+
+        emit CacheIR::GuardToInt32(valueId);
+        let int32Id = OperandId::toInt32Id(valueId);
+
+        emit CacheIR::LoadInt32Result(int32Id);
+        emit CacheIR::ReturnFromIC();
+    }
+}

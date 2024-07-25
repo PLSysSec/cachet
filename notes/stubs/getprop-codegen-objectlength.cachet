@@ -1,0 +1,61 @@
+import "../cacheir.cachet";
+import "../codegen.cachet";
+import "../js.cachet";
+import "../utils.cachet";
+
+ir GetPropIRGenerator emits CacheIR {
+    var value: Value;
+    var key: PropertyKey;
+    var isFirstStub: Bool;
+
+    op TryAttachObjectLength() {
+        CacheIR::initStub();
+        let valueId = CacheIR::defineInputValueId();
+        CacheIR::setValueOutput();
+
+        if !Value::isObject(GetPropIRGenerator::value) {
+            return;
+        }
+        let object = Value::toObject(GetPropIRGenerator::value);
+
+        if !PropertyKey::isAtom(GetPropIRGenerator::key, AtomState::length) {
+            return;
+        }
+
+        emit CacheIR::GuardToObject(valueId);
+        let objectId = OperandId::toObjectId(valueId);
+
+        if Object::isArrayObject(object) {
+            let arrayObject = Object::toArrayObject(object);
+            if ArrayObject::length(arrayObject) > Int32::maximum as UInt32 {
+                return;
+            }
+
+            if GetPropIRGenerator::isFirstStub {
+                let shape = Object::shapeOf(arrayObject);
+                let shapeField = CacheIR::writeShapeField(shape);
+                emit CacheIR::GuardShape(objectId, shapeField);
+            } else {
+                emit CacheIR::GuardClass(objectId, GuardClassKind::Array);
+            }
+
+            emit CacheIR::LoadInt32ArrayLengthResult(objectId);
+        } else if Object::isArgumentsObject(object) {
+            let argumentsObject = Object::toArgumentsObject(object);
+            if ArgumentsObject::hasOverriddenLength(argumentsObject) {
+                return;
+            }
+
+            if Object::isMappedArgumentsObject(object) {
+                emit CacheIR::GuardClass(objectId, GuardClassKind::MappedArguments);
+            } else {
+                assert Object::isUnmappedArgumentsObject(object);
+                emit CacheIR::GuardClass(objectId, GuardClassKind::UnmappedArguments);
+            }
+
+            emit CacheIR::LoadArgumentsObjectLengthResult(objectId);
+        }
+
+        emit CacheIR::ReturnFromIC();
+    }
+}

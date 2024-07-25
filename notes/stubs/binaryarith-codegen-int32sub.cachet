@@ -1,0 +1,34 @@
+import "../cacheir.cachet";
+import "../codegen.cachet";
+import "../js.cachet";
+import "../utils.cachet";
+
+ir BinaryArithIRGenerator emits CacheIR {
+    var lhsValue: Value;
+    var rhsValue: Value;
+    var resValue: Value;
+    var op_: JSOp;
+
+    op TryAttachInt32Sub() {
+        initRegState();
+        let lhsValueId = CacheIR::defineInputValueId();
+        let rhsValueId = CacheIR::defineInputValueId();
+        initValueOutput();
+
+        if BinaryArithIRGenerator::op_ != JSOp::Sub {
+            return;
+        }
+
+        // Check guard conditions.
+        if !canTruncateToInt32(BinaryArithIRGenerator::lhsValue) ||
+            !canTruncateToInt32(BinaryArithIRGenerator::rhsValue)
+        {
+            return;
+        }
+        let lhsInt32Id = emitTruncateToInt32Guard(lhsValueId, BinaryArithIRGenerator::lhsValue);
+        let rhsInt32Id = emitTruncateToInt32Guard(rhsValueId, BinaryArithIRGenerator::rhsValue);
+
+        emit CacheIR::Int32SubResult(lhsInt32Id, rhsInt32Id);
+        emit CacheIR::ReturnFromIC();
+    }
+}

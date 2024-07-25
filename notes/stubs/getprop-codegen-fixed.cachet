@@ -3,28 +3,33 @@ import "../codegen.cachet";
 import "../js.cachet";
 import "../utils.cachet";
 
-ir CacheStub emits CacheIR {
-    op GetProp(value: Value, keyValue: Value) {
+ir GetPropIRGenerator emits CacheIR {
+    var value: Value;
+    var keyValue: Value;
+
+    op TryAttachNativeFixed() {
         CacheIR::initStub();
         let valueId = CacheIR::defineInputValueId();
         CacheIR::setValueOutput();
 
-        if !PropertyKey::nameOrSymbolFromValue(keyValue, out let key, out let nameOrSymbol) {
+        if !PropertyKey::nameOrSymbolFromValue(
+            GetPropIRGenerator::keyValue, out let key, out let nameOrSymbol
+        ) {
             clearPendingException();
             return;
         }
 
-        if Value::isObject(value) {
-            let object = Value::toObject(value);
+        if Value::isObject(GetPropIRGenerator::value) {
+            let object = Value::toObject(GetPropIRGenerator::value);
             emit CacheIR::GuardToObject(valueId);
             let objectId = OperandId::toObjectId(valueId);
 
             if nameOrSymbol {
                 let kind = canAttachNativeGetProp(object, key, out let holder, out let propInfo);
                 if kind == NativeGetPropKind::Slot {
-                    let object = Object::toNativeObject(object);
+                   let nativeObject = Object::toNativeObject(object);
 
-                    let shape = Object::shapeOf(object);
+                    let shape = Object::shapeOf(nativeObject);
                     let shapeField = CacheIR::writeShapeField(shape);
                     emit CacheIR::GuardShape(objectId, shapeField);
 
@@ -32,8 +37,8 @@ ir CacheStub emits CacheIR {
                     let propInfo = MaybePropertyInfo::toPropertyInfo(propInfo);
                     let slot = PropertyInfo::slot(propInfo);
 
-                    if object == holder {
-                        if NativeObject::hasFixedSlot(object, slot) {
+                    if nativeObject == holder {
+                        if NativeObject::hasFixedSlot(nativeObject, slot) {
                             let offset = NativeObject::offsetOfFixedSlot(slot);
                             let offsetField = CacheIR::writeInt32Field(offset as Int32);
                             emit CacheIR::LoadFixedSlotResult(objectId, offsetField);
