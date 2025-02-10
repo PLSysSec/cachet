@@ -698,10 +698,22 @@ impl FromIterator<Item> for Code {
 
 #[derive(Clone, Debug, Display, From)]
 pub enum Item {
+    PragmaItem(PragmaItem),
     IfDef(IfDefItem),
     Comment(CommentItem),
     Namespace(NamespaceItem),
     Fn(FnItem),
+}
+
+#[derive(Clone, Debug)]
+pub struct PragmaItem {
+    pub content: String,
+}
+
+impl Display for PragmaItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "#pragma {}", self.content)
+    }
 }
 
 #[derive(Clone, Debug)]

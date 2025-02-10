@@ -8,7 +8,7 @@ repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && cd .. && p
 
 notes_dir="${repo_dir}/notes"
 cachet_file="${notes_dir}/stubs/${sample_name}.cachet"
-hacks_bpl_file="${notes_dir}/hacks.bpl"
+support_bpl_file="${notes_dir}/support.bpl"
 
 out_dir="${repo_dir}/out"
 mkdir -p "${out_dir}"
@@ -25,7 +25,7 @@ time (
     --cpp-defs "${cpp_defs_file}" \
     --bpl "${bpl_file}" \
     "${@}"
-  cat "${hacks_bpl_file}" "${bpl_file}" | sponge "${bpl_file}"
+  cat "${support_bpl_file}" "${bpl_file}" | sponge "${bpl_file}"
   cargo run --quiet --bin bpl-tree-shaker -- -i "${bpl_file}" -t '#JSOp' -p '#MASM^Op'
   cargo run --quiet --bin bpl-inliner -- -i "${bpl_file}" -p 9999
 )

@@ -96,11 +96,9 @@ VarTag: VarTag =
     "mut" => VarTag::Mut;
 
 CallableItem: Item =
-    <start: @L>
     <attrs:Attrs>
     <tags:CallableTags> <kind:CallableKind> <ident:Spanned<Ident>>
     "(" <params:Comma<Param>> ")" <emits:("emits" <Spanned<Path>>)?> <ret:("->" <Spanned<Path>>)?> 
-    <end: @R>
     <body:Spanned<CallableBody>> =>? {
         let callable_item = CallableItem {
             ident,

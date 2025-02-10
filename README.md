@@ -1,4 +1,6 @@
-# Cachet
+# ~~Cachet~~ Icarus
+
+_Note: renaming is still in progress._
 
 ## Syntax highlighting
 

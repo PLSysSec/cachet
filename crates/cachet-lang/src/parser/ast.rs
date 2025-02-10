@@ -224,7 +224,6 @@ pub struct CallableItem {
     pub emits: Option<Spanned<Path>>,
     pub ret: Option<Spanned<Path>>,
     pub body: Spanned<Option<Block>>,
-    pub loc: u64,
 }
 
 impl Display for CallableItem {

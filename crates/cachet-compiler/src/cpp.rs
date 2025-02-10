@@ -12,7 +12,7 @@ use fix_hidden_lifetime_bug::Captures;
 use iterate::iterate;
 use typed_index_collections::{TiSlice, TiVec};
 
-use cachet_lang::ast::{BinOper, ForInOrder, Ident, NegateKind, Path, VarParamKind};
+use cachet_lang::ast::{BinOper, CheckKind, ForInOrder, Ident, NegateKind, Path, VarParamKind};
 use cachet_lang::built_in::{BuiltInType, IdentEnum};
 use cachet_lang::normalizer::{self, HasAttrs, Typed};
 use cachet_util::MaybeOwned;
@@ -68,11 +68,31 @@ pub fn compile(env: &normalizer::Env) -> CppCompilerOutput {
     .collect();
 
     let defs = iterate![
+        PragmaItem {
+            content: "GCC diagnostic push".to_owned(),
+        }
+        .into(),
+        PragmaItem {
+            content: "GCC diagnostic ignored \"-Wunused-function\"".to_owned(),
+        }
+        .into(),
+        PragmaItem {
+            content: "GCC diagnostic ignored \"-Wunused-parameter\"".to_owned(),
+        }
+        .into(),
+        PragmaItem {
+            content: "GCC diagnostic ignored \"-Wunused-variable\"".to_owned(),
+        }
+        .into(),
         CommentItem {
             text: "Internal definitions.".to_owned(),
         }
         .into(),
         ..compiler.internal_defs,
+        PragmaItem {
+            content: "GCC diagnostic pop".to_owned(),
+        }
+        .into(),
     ]
     .collect();
 
@@ -610,6 +630,10 @@ impl<'a> Compiler<'a> {
                 }
                 .into();
 
+                emit_fn_decl
+                    .params
+                    .retain(|param| !matches!(param.ident, ParamVarIdent::Ops));
+
                 emit_fn_decl.params.insert(
                     1,
                     Param {
@@ -1062,18 +1086,38 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
         type_index: normalizer::TypeIndex,
         rhs: Option<TaggedExpr>,
     ) {
+        let type_ident = self.get_type_ident(type_index);
+
         let type_ = TypeMemberTypePath {
-            parent: self.get_type_ident(type_index),
+            parent: type_ident,
             ident: ExprTag::Local.into(),
         }
         .into();
 
-        let rhs = rhs.map(|rhs| {
-            assert!(rhs.type_ == type_index);
-            self.use_expr(rhs, ExprTag::Local.into())
-        });
+        let rhs = match rhs {
+            Some(rhs) => {
+                assert!(rhs.type_ == type_index);
+                self.use_expr(rhs, ExprTag::Local.into())
+            }
+            None => CallExpr {
+                target: TypeMemberFnPath {
+                    parent: type_ident,
+                    ident: TypeMemberFnIdent::EmptyLocal,
+                }
+                .into(),
+                args: vec![CONTEXT_ARG],
+            }
+            .into(),
+        };
 
-        self.stmts.push(LetStmt { lhs, type_, rhs }.into());
+        self.stmts.push(
+            LetStmt {
+                lhs,
+                type_,
+                rhs: Some(rhs),
+            }
+            .into(),
+        );
     }
 
     fn init_local_var_with_rhs(&mut self, lhs: VarIdent, rhs: TaggedExpr) {
@@ -1153,16 +1197,21 @@ impl<'a, 'b> ScopedCompiler<'a, 'b> {
     }
 
     fn compile_check_stmt(&mut self, check_stmt: &normalizer::CheckStmt) {
-        let tagged_cond = self.compile_expr(&check_stmt.cond);
-        let cond = self.use_expr(tagged_cond, ExprTag::Ref | ExprTag::Val);
+        match check_stmt.kind {
+            CheckKind::Assert => {
+                let tagged_cond = self.compile_expr(&check_stmt.cond);
+                let cond = self.use_expr(tagged_cond, ExprTag::Ref | ExprTag::Val);
 
-        self.stmts.push(
-            Expr::from(CallExpr {
-                target: HelperFnIdent::Assert.into(),
-                args: vec![cond],
-            })
-            .into(),
-        );
+                self.stmts.push(
+                    Expr::from(CallExpr {
+                        target: HelperFnIdent::Assert.into(),
+                        args: vec![cond],
+                    })
+                    .into(),
+                );
+            }
+            CheckKind::Assume => (),
+        }
     }
 
     fn compile_goto_stmt(&mut self, goto_stmt: &normalizer::GotoStmt) {

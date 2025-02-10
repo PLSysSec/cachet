@@ -551,7 +551,7 @@ impl<'a> FlowTracer<'a> {
                 trace_inside_target(self, &new_emit_label_ident);
             } else {
                 trace_inside_target(self, self.curr_emit_label_ident);
-            };
+            }
         }
     }
 
